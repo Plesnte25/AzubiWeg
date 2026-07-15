@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  vaultPath    String?
+  createdAt    DateTime @default(now())
+  words        Word[]
+}
+
+model Word {
+  id         String      @id @default(cuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headword   String
+  // lowercased headword, mirrors add_word.py's case-insensitive dedupe key
+  sortKey    String
+  meaning    String?
+  ipa        String?
+  grammar    String?
+  example    String?
+  audioPath  String?
+  lesson     String?
+  srDue      DateTime?   @db.Date
+  srInterval Int?
+  srEase     Int?
+  // the exact card block from the vault (card line + SR comment lines) so
+  // unmodeled markdown survives round-trips byte-for-byte
+  rawBlock   String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  reviews    ReviewLog[]
+
+  @@unique([userId, sortKey])
+}
+
+model ReviewLog {
+  id            String   @id @default(cuid())
+  wordId        String
+  word          Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  grade         Grade
+  reviewedAt    DateTime @default(now())
+  intervalAfter Int
+}
+
+enum Grade {
+  hard
+  good
+  easy
+}
