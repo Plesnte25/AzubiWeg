@@ -1,0 +1,16 @@
+# Standard dev/deploy database. On machines without Docker, use the no-root
+# alternative instead: `cd server && npm run db:start` (embedded-postgres).
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: companion
+      POSTGRES_PASSWORD: companion
+      POSTGRES_DB: companion
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
