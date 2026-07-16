@@ -2,6 +2,7 @@ import express from "express";
 import { config } from "./config.js";
 import { authRouter } from "./routes/auth.js";
 import { dashboardRouter } from "./routes/dashboard.js";
+import { filesRouter } from "./routes/files.js";
 import { reviewsRouter } from "./routes/reviews.js";
 import { vaultRouter } from "./routes/vault.js";
 import { wordsRouter } from "./routes/words.js";
@@ -16,6 +17,7 @@ app.use("/api/words", wordsRouter);
 app.use("/api/reviews", reviewsRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/vault", vaultRouter);
+app.use("/api/files", filesRouter);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

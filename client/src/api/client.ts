@@ -1,4 +1,4 @@
-import type { DashboardData, Grade, User, VaultStatus, Word } from "./types";
+import type { DashboardData, Grade, UploadedFileMeta, User, VaultStatus, Word } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -96,6 +96,56 @@ export const api = {
   vaultUnlink: () => request<{ ok: boolean }>("/api/vault/unlink", { method: "POST" }),
   vaultSyncNow: () => request<{ wordCount: number }>("/api/vault/sync", { method: "POST" }),
 };
+
+/**
+ * Uploads a file as multipart form data. Separate from request() because the
+ * shared wrapper hardcodes a JSON content type — here the browser must set
+ * the multipart boundary itself.
+ */
+export async function uploadFile(
+  file: File,
+  opts: { kind: "document" | "cv_photo"; checklistItemId?: string },
+): Promise<UploadedFileMeta> {
+  const token = getToken();
+  const form = new FormData();
+  form.append("file", file);
+  form.append("kind", opts.kind);
+  if (opts.checklistItemId) form.append("checklistItemId", opts.checklistItemId);
+  const res = await fetch("/api/files", {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  if (res.status === 401 && getToken()) {
+    clearSession();
+    window.location.href = "/login";
+  }
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new ApiError(res.status, body.error ?? `Upload failed (${res.status})`);
+  }
+  return ((await res.json()) as { file: UploadedFileMeta }).file;
+}
+
+/** Fetches a stored file with auth and returns an object URL (caller revokes). */
+export async function fetchFileBlobUrl(fileId: string): Promise<string> {
+  const token = getToken();
+  const res = await fetch(`/api/files/${fileId}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new ApiError(res.status, "File not available");
+  return URL.createObjectURL(await res.blob());
+}
+
+/** Downloads a stored file via a temporary anchor element. */
+export async function downloadFile(fileId: string, name: string): Promise<void> {
+  const url = await fetchFileBlobUrl(fileId);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
 
 /** Fetches word audio with auth and plays it (audio tags can't send headers). */
 export async function playWordAudio(wordId: string): Promise<void> {

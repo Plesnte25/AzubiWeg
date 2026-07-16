@@ -7,13 +7,20 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  vaultPath    String?
-  createdAt    DateTime @default(now())
-  words        Word[]
+  id                String          @id @default(cuid())
+  email             String          @unique
+  passwordHash      String
+  name              String
+  vaultPath         String?
+  // when the default document checklist was seeded; guards against re-seeding
+  // after the user deletes items
+  checklistSeededAt DateTime?
+  createdAt         DateTime        @default(now())
+  words             Word[]
+  cvs               Cv[]
+  applications      Application[]
+  checklistItems    ChecklistItem[]
+  files             UploadedFile[]
 }
 
 model Word {
@@ -55,4 +62,135 @@ enum Grade {
   hard
   good
   easy
+}
+
+model UploadedFile {
+  id              String         @id @default(cuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checklistItemId String?
+  checklistItem   ChecklistItem? @relation(fields: [checklistItemId], references: [id], onDelete: Cascade)
+  kind            FileKind       @default(document)
+  originalName    String
+  // server-generated "<cuid>.<whitelisted ext>" under data/uploads/<userId>/;
+  // never derived from originalName, so paths are traversal-safe by construction
+  storedName      String
+  mimeType        String
+  size            Int
+  createdAt       DateTime       @default(now())
+}
+
+enum FileKind {
+  document
+  cv_photo
+}
+
+model Cv {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  template     CvTemplate    @default(lebenslauf)
+  // the whole CV as one document (CvContent, zod-validated on write) — the
+  // form edits one object, PUT saves one object, react-pdf renders one object
+  content      Json
+  // UploadedFile.id with kind=cv_photo; kept out of content so the file
+  // lifecycle stays queryable
+  photoFileId  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  applications Application[]
+}
+
+enum CvTemplate {
+  lebenslauf
+  ats
+}
+
+model Application {
+  id           String             @id @default(cuid())
+  userId       String
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company      String
+  position     String
+  location     String?
+  url          String?
+  contactName  String?
+  contactEmail String?
+  notes        String?
+  status       ApplicationStatus  @default(wishlist)
+  // position within its status column, contiguous per (userId, status)
+  sortOrder    Int                @default(0)
+  appliedAt    DateTime?          @db.Date
+  cvId         String?
+  cv           Cv?                @relation(fields: [cvId], references: [id], onDelete: SetNull)
+  events       ApplicationEvent[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([userId, status, sortOrder])
+}
+
+enum ApplicationStatus {
+  wishlist
+  applied
+  interview
+  offer
+  rejected
+}
+
+model ApplicationEvent {
+  id            String               @id @default(cuid())
+  applicationId String
+  application   Application          @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  type          ApplicationEventType
+  note          String?
+  // populated for status_change events
+  fromStatus    ApplicationStatus?
+  toStatus      ApplicationStatus?
+  occurredAt    DateTime             @default(now())
+}
+
+enum ApplicationEventType {
+  created
+  status_change
+  note
+  interview
+  follow_up
+}
+
+model ChecklistItem {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  category    ChecklistCategory @default(other)
+  status      ChecklistStatus   @default(todo)
+  expiresAt   DateTime?         @db.Date
+  sortOrder   Int               @default(0)
+  // came from the seeded default set
+  isDefault   Boolean           @default(false)
+  files       UploadedFile[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+enum ChecklistCategory {
+  identity
+  education
+  visa
+  finances
+  insurance
+  application
+  after_arrival
+  other
+}
+
+enum ChecklistStatus {
+  todo
+  in_progress
+  done
+  // e.g. "blocked account OR salary proof" — mark the unused path n/a
+  not_applicable
 }
