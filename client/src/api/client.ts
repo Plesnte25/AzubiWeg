@@ -1,4 +1,14 @@
-import type { DashboardData, Grade, UploadedFileMeta, User, VaultStatus, Word } from "./types";
+import type {
+  ChecklistCategory,
+  ChecklistItem,
+  ChecklistStatus,
+  DashboardData,
+  Grade,
+  UploadedFileMeta,
+  User,
+  VaultStatus,
+  Word,
+} from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -95,6 +105,26 @@ export const api = {
     }),
   vaultUnlink: () => request<{ ok: boolean }>("/api/vault/unlink", { method: "POST" }),
   vaultSyncNow: () => request<{ wordCount: number }>("/api/vault/sync", { method: "POST" }),
+
+  checklist: () => request<{ items: ChecklistItem[] }>("/api/checklist"),
+  addChecklistItem: (data: {
+    title: string;
+    description?: string;
+    category: ChecklistCategory;
+    expiresAt?: string | null;
+  }) => request<{ item: ChecklistItem }>("/api/checklist", { method: "POST", body: JSON.stringify(data) }),
+  updateChecklistItem: (
+    id: string,
+    data: Partial<{
+      title: string;
+      description: string | null;
+      category: ChecklistCategory;
+      status: ChecklistStatus;
+      expiresAt: string | null;
+    }>,
+  ) => request<{ item: ChecklistItem }>(`/api/checklist/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteChecklistItem: (id: string) => request<void>(`/api/checklist/${id}`, { method: "DELETE" }),
+  deleteFile: (id: string) => request<void>(`/api/files/${id}`, { method: "DELETE" }),
 };
 
 /**
