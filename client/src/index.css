@@ -14,6 +14,11 @@
   --color-paper: #f9f9f7;
   --color-card: #fcfcfb;
   --color-hairline: #e1e0d9;
+  /* status colors for expiry badges */
+  --color-danger-50: #fdf0ef;
+  --color-danger-600: #c2382c;
+  --color-ok-50: #eff6ee;
+  --color-ok-600: #3d7a3a;
 }
 
 body {
