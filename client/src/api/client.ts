@@ -4,7 +4,10 @@ import type {
   ApplicationStats,
   ApplicationStatus,
   ChecklistCategory,
+  Cv,
+  CvContent,
   CvSummary,
+  CvTemplate,
   ChecklistItem,
   ChecklistStatus,
   DashboardData,
@@ -132,6 +135,15 @@ export const api = {
   deleteFile: (id: string) => request<void>(`/api/files/${id}`, { method: "DELETE" }),
 
   cvs: () => request<{ cvs: CvSummary[] }>("/api/cvs"),
+  cv: (id: string) => request<{ cv: Cv }>(`/api/cvs/${id}`),
+  addCv: (data: { title: string; template: CvTemplate }) =>
+    request<{ cv: Cv }>("/api/cvs", { method: "POST", body: JSON.stringify(data) }),
+  updateCv: (
+    id: string,
+    data: Partial<{ title: string; template: CvTemplate; content: CvContent; photoFileId: string | null }>,
+  ) => request<{ cv: Cv }>(`/api/cvs/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  duplicateCv: (id: string) => request<{ cv: Cv }>(`/api/cvs/${id}/duplicate`, { method: "POST" }),
+  deleteCv: (id: string) => request<void>(`/api/cvs/${id}`, { method: "DELETE" }),
 
   applications: () => request<{ applications: Application[] }>("/api/applications"),
   applicationStats: () => request<{ stats: ApplicationStats }>("/api/applications/stats"),

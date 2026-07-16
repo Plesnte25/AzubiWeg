@@ -66,10 +66,65 @@ export type ChecklistStatus = "todo" | "in_progress" | "done" | "not_applicable"
 
 export type CvTemplate = "lebenslauf" | "ats";
 
+// Hand-maintained mirror of the zod source of truth in
+// server/src/services/cv/schema.ts — keep the two in sync.
+export interface CvContent {
+  personal: {
+    firstName: string;
+    lastName: string;
+    headline?: string;
+    email: string;
+    phone?: string;
+    street?: string;
+    postalCodeCity?: string;
+    birthDate?: string;
+    birthPlace?: string;
+    nationality?: string;
+    linkedin?: string;
+    website?: string;
+  };
+  summary?: string;
+  experience: {
+    id: string;
+    role: string;
+    company: string;
+    location?: string;
+    from: string;
+    to?: string;
+    current: boolean;
+    bullets: string[];
+  }[];
+  education: {
+    id: string;
+    degree: string;
+    institution: string;
+    location?: string;
+    from: string;
+    to?: string;
+    description?: string;
+  }[];
+  languages: { id: string; name: string; level: string }[];
+  skills: { id: string; name: string }[];
+  certifications: { id: string; name: string; issuer?: string; date?: string }[];
+  interests?: string;
+  signature: { city?: string; date?: string };
+}
+
+export interface Cv {
+  id: string;
+  title: string;
+  template: CvTemplate;
+  content: CvContent;
+  photoFileId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CvSummary {
   id: string;
   title: string;
   template: CvTemplate;
+  photoFileId: string | null;
   updatedAt: string;
 }
 
