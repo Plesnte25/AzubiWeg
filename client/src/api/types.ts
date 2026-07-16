@@ -39,3 +39,40 @@ export interface VaultStatus {
 }
 
 export type Grade = "hard" | "good" | "easy";
+
+export interface UploadedFileMeta {
+  id: string;
+  checklistItemId: string | null;
+  kind: "document" | "cv_photo";
+  originalName: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
+}
+
+export type ExpiryStatus = "ok" | "warn" | "urgent" | "expired";
+
+export type ChecklistCategory =
+  | "identity"
+  | "education"
+  | "visa"
+  | "finances"
+  | "insurance"
+  | "application"
+  | "after_arrival"
+  | "other";
+
+export type ChecklistStatus = "todo" | "in_progress" | "done" | "not_applicable";
+
+export interface ChecklistItem {
+  id: string;
+  title: string;
+  description: string | null;
+  category: ChecklistCategory;
+  status: ChecklistStatus;
+  expiresAt: string | null;
+  sortOrder: number;
+  isDefault: boolean;
+  files: UploadedFileMeta[];
+  expiry: ExpiryStatus | null;
+}
