@@ -7,9 +7,12 @@ tracking applications. This app solves the problems I hit along the way, startin
 with the biggest one — vocabulary. **Version 1** is a German vocabulary manager with
 spaced-repetition review that stays in **two-way sync with my existing Obsidian
 vault**, so my phone capture workflow and Obsidian reviews keep working while the
-web app adds search, statistics, and a proper review UI on top.
+web app adds search, statistics, and a proper review UI on top. **Version 2** adds
+the application side of the journey: a German CV builder with live PDF preview, a
+kanban application tracker, and a document checklist preloaded with everything the
+Ausbildung visa process demands.
 
-![Dashboard](docs/screenshots/2-dashboard.png)
+![Dashboard](docs/screenshots/10-dashboard-v2.png)
 
 ## What V1 does
 
@@ -48,6 +51,30 @@ queryable mirror. The server:
 Reviews done in the app and reviews done in Obsidian update the same
 `<!--SR:!date,interval,ease-->` comments, so both schedulers stay in step.
 
+## What V2 adds
+
+- **CV builder** — a form with a **live PDF preview** beside it; the preview and
+  the exported file come from the same `@react-pdf/renderer` components, so what
+  you see is exactly what you download. Two templates: a classic tabular German
+  **Lebenslauf** (photo, Persönliche Daten, Ort/Datum signature line) and an
+  **ATS-friendly** single-column English CV that deliberately omits photo, birth
+  data, and nationality. Multiple CVs per account for tailoring per Betrieb;
+  debounced autosave; German-proof PDF rendering (embedded Inter, hyphenation
+  disabled so compounds like „Krankenversicherung" don't get mangled).
+  ![CV builder](docs/screenshots/11-cv-editor.png)
+- **Application tracker** — drag-and-drop kanban (Wishlist → Applied → Interview →
+  Offer / Rejected) with an auto-logged timeline per application (status changes,
+  notes, interviews), the CV that was sent, and stats: response rate, interview
+  rate, average days to response, applications per week.
+  ![Applications](docs/screenshots/9-applications.png)
+- **Document checklist** — seeded with ~24 items a non-EU Ausbildung applicant
+  actually needs (Zeugnisse + apostille + certified translations, B1/B2
+  certificate, §16a visa paperwork, VIDEX, Sperrkonto *or* salary proof,
+  Anmeldung, Aufenthaltstitel, …), each with status, **file attachments** (PDF
+  scans live with the item), and an expiry date that drives warning badges and a
+  "documents needing attention" section on the dashboard.
+  ![Checklist](docs/screenshots/8-checklist.png)
+
 ## Stack
 
 | Layer | Choice |
@@ -58,6 +85,9 @@ Reviews done in the app and reviews done in Obsidian update the same
 | Auth | JWT (jsonwebtoken) + bcrypt |
 | Vault sync | chokidar file watcher, custom markdown parser/writer |
 | Enrichment | Wiktionary REST + MediaWiki APIs, ffmpeg, msedge-tts |
+| PDF export | @react-pdf/renderer (client-side, lazy-loaded) |
+| Kanban | @dnd-kit |
+| Uploads | multer → per-user disk storage, auth-checked streaming |
 
 ## Running it
 
@@ -89,13 +119,16 @@ cd server && npm test
 ```
 
 The critical suites: byte-identical round-trip of a real `master.md` snapshot
-(`tests/vault-roundtrip.test.ts`) and SRS parity with real plugin output
-(`tests/srs.test.ts`).
+(`tests/vault-roundtrip.test.ts`), SRS parity with real plugin output
+(`tests/srs.test.ts`), and the V2 pure-logic suites — UTC-safe expiry math
+(`reminders`), kanban move planning (`application-order`), tracker stats
+(`application-stats`), CV content validation (`cv-schema`), and upload-name /
+download-header safety (`file-storage`).
 
 ## Roadmap
 
-- **V2** — CV builder (live preview, German/ATS templates, PDF export),
-  application tracker (kanban + stats), document checklist with expiry reminders.
+- ~~**V2** — CV builder (live preview, German/ATS templates, PDF export),
+  application tracker (kanban + stats), document checklist with expiry reminders.~~ ✅
 - **V3** — cost planner, Germany knowledge base (visa, Anmeldung, blocked account,
   insurance…), progress analytics.
 - **V4** — cover letter assistant, notifications, calendar integration, grammar

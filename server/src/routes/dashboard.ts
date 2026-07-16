@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { EXPIRY_WARN_DAYS, expiryStatus } from "../services/reminders.js";
 
 export const dashboardRouter = Router();
 dashboardRouter.use(requireAuth);
@@ -18,7 +19,11 @@ dashboardRouter.get("/", async (req, res) => {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
-  const [totalWords, dueToday, newWords, reviewsToday, lessons, recentLogs] = await Promise.all([
+  const expiryHorizon = new Date();
+  expiryHorizon.setDate(expiryHorizon.getDate() + EXPIRY_WARN_DAYS + 1);
+
+  const [totalWords, dueToday, newWords, reviewsToday, lessons, recentLogs, expiringItems, appsByStatus] =
+    await Promise.all([
     prisma.word.count({ where: { userId: req.userId } }),
     prisma.word.count({ where: { userId: req.userId, srDue: { lte: endOfToday } } }),
     prisma.word.count({ where: { userId: req.userId, srDue: null } }),
@@ -36,6 +41,21 @@ dashboardRouter.get("/", async (req, res) => {
       select: { reviewedAt: true },
       orderBy: { reviewedAt: "desc" },
       take: 5000,
+    }),
+    prisma.checklistItem.findMany({
+      where: {
+        userId: req.userId,
+        status: { notIn: ["done", "not_applicable"] },
+        expiresAt: { not: null, lte: expiryHorizon },
+      },
+      select: { id: true, title: true, expiresAt: true },
+      orderBy: { expiresAt: "asc" },
+      take: 8,
+    }),
+    prisma.application.groupBy({
+      by: ["status"],
+      where: { userId: req.userId },
+      _count: true,
     }),
   ]);
 
@@ -62,6 +82,16 @@ dashboardRouter.get("/", async (req, res) => {
     cursor.setDate(cursor.getDate() - 1);
   }
 
+  const now = new Date();
+  const applications: Record<string, number> = {
+    wishlist: 0,
+    applied: 0,
+    interview: 0,
+    offer: 0,
+    rejected: 0,
+  };
+  for (const g of appsByStatus) applications[g.status] = g._count;
+
   res.json({
     totalWords,
     dueToday,
@@ -70,5 +100,12 @@ dashboardRouter.get("/", async (req, res) => {
     streak,
     lessons: lessons.map((l) => ({ lesson: l.lesson, count: l._count })),
     activity,
+    expiringDocuments: expiringItems.map((i) => ({
+      id: i.id,
+      title: i.title,
+      expiresAt: i.expiresAt,
+      expiry: expiryStatus(i.expiresAt, now),
+    })),
+    applications,
   });
 });

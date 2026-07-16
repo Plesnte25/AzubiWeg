@@ -29,6 +29,8 @@ export interface DashboardData {
   streak: number;
   lessons: { lesson: string | null; count: number }[];
   activity: { date: string; count: number }[];
+  expiringDocuments: { id: string; title: string; expiresAt: string; expiry: ExpiryStatus }[];
+  applications: Record<ApplicationStatus, number>;
 }
 
 export interface VaultStatus {
