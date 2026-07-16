@@ -127,9 +127,25 @@ download-header safety (`file-storage`).
 
 ## Roadmap
 
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the full ecosystem plan and feature specs.
+
 - ~~**V2** — CV builder (live preview, German/ATS templates, PDF export),
   application tracker (kanban + stats), document checklist with expiry reminders.~~ ✅
-- **V3** — cost planner, Germany knowledge base (visa, Anmeldung, blocked account,
-  insurance…), progress analytics.
-- **V4** — cover letter assistant, notifications, calendar integration, grammar
-  micro-lessons.
+- **V3 — Learning Progress Hub + planning tools**
+  - **Learning Progress Hub** — CEFR syllabus checklists (A1 → B1) showing per-level
+    completion, what's left, and what to study next; a study-source registry
+    (YouTube playlists, Nicos Weg chapters, Duolingo units); notes upload attached
+    to sources/lessons; self-test quizzes built on the existing vocab + SRS data;
+    study streak and level-progress tiles on the dashboard.
+  - **Salary & cost planner** — city comparison, taxes, rent, monthly budget,
+    savings projections.
+  - **Germany knowledge base** — visa, Anmeldung, blocked account, insurance guides.
+- **V4 — Applications, deeper**
+  - **Ausbildung opportunity discovery** — job listing search and filters (salary,
+    required German level), bookmarks that feed the existing kanban, notifications.
+  - Cover letter assistant, Europass CV template, automated ATS checks.
+  - Dashboard upgrades: certificates, milestones, GitHub activity.
+- **V5 — Infrastructure & polish**
+  - Vocab PDF export and a CLI for the vocabulary manager.
+  - GitHub Actions CI (server test suites + client typecheck/lint on push).
+  - Calendar integration, grammar micro-lessons.
