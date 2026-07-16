@@ -46,6 +46,53 @@ export default function Dashboard() {
         <ActivityChart data={data.activity} />
       </section>
 
+      {data.expiringDocuments.length > 0 && (
+        <section className="rounded-xl border border-hairline bg-card p-4">
+          <h2 className="mb-3 text-sm font-medium text-ink-600">Documents needing attention</h2>
+          <ul className="space-y-1.5">
+            {data.expiringDocuments.map((d) => (
+              <li key={d.id}>
+                <Link to="/checklist" className="flex items-center gap-2 text-sm hover:text-brand-600">
+                  <span
+                    className={`size-2 shrink-0 rounded-full ${
+                      d.expiry === "warn" ? "bg-brand-400" : "bg-danger-600"
+                    }`}
+                  />
+                  <span className="flex-1">{d.title}</span>
+                  <span className="text-xs text-ink-400">
+                    {d.expiry === "expired" ? "expired" : `by ${d.expiresAt.slice(0, 10)}`}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {Object.values(data.applications).some((n) => n > 0) && (
+        <section className="rounded-xl border border-hairline bg-card p-4">
+          <h2 className="mb-3 text-sm font-medium text-ink-600">Application pipeline</h2>
+          <Link to="/applications" className="flex flex-wrap gap-2">
+            {(
+              [
+                ["wishlist", "Wishlist"],
+                ["applied", "Applied"],
+                ["interview", "Interview"],
+                ["offer", "Offer"],
+                ["rejected", "Rejected"],
+              ] as const
+            ).map(([key, label]) => (
+              <span
+                key={key}
+                className="inline-block rounded-full border border-hairline bg-paper px-3 py-1 text-sm hover:border-brand-400"
+              >
+                {label} <span className="text-ink-400">{data.applications[key]}</span>
+              </span>
+            ))}
+          </Link>
+        </section>
+      )}
+
       {data.lessons.length > 0 && (
         <section className="rounded-xl border border-hairline bg-card p-4">
           <h2 className="mb-3 text-sm font-medium text-ink-600">Words by lesson</h2>
