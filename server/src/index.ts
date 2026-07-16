@@ -1,6 +1,7 @@
 import express from "express";
 import { config } from "./config.js";
 import { authRouter } from "./routes/auth.js";
+import { applicationsRouter } from "./routes/applications.js";
 import { checklistRouter } from "./routes/checklist.js";
 import { dashboardRouter } from "./routes/dashboard.js";
 import { filesRouter } from "./routes/files.js";
@@ -20,6 +21,7 @@ app.use("/api/dashboard", dashboardRouter);
 app.use("/api/vault", vaultRouter);
 app.use("/api/files", filesRouter);
 app.use("/api/checklist", checklistRouter);
+app.use("/api/applications", applicationsRouter);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

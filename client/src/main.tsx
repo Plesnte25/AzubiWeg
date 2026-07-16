@@ -5,6 +5,7 @@ import { createBrowserRouter, Navigate, Outlet, RouterProvider } from "react-rou
 import "./index.css";
 import { getToken } from "./api/client";
 import Layout from "./components/Layout";
+import Applications from "./pages/Applications";
 import Checklist from "./pages/Checklist";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
@@ -32,6 +33,7 @@ const router = createBrowserRouter([
           { path: "/", element: <Dashboard /> },
           { path: "/vocabulary", element: <Vocabulary /> },
           { path: "/review", element: <Review /> },
+          { path: "/applications", element: <Applications /> },
           { path: "/checklist", element: <Checklist /> },
           { path: "/settings", element: <Settings /> },
         ],

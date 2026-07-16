@@ -5,6 +5,7 @@ const tabs = [
   { to: "/", label: "Dashboard", end: true },
   { to: "/vocabulary", label: "Vocabulary" },
   { to: "/review", label: "Review" },
+  { to: "/applications", label: "Applications" },
   { to: "/checklist", label: "Checklist" },
   { to: "/settings", label: "Settings" },
 ];
