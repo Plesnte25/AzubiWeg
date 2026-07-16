@@ -64,6 +64,61 @@ export type ChecklistCategory =
 
 export type ChecklistStatus = "todo" | "in_progress" | "done" | "not_applicable";
 
+export type CvTemplate = "lebenslauf" | "ats";
+
+export interface CvSummary {
+  id: string;
+  title: string;
+  template: CvTemplate;
+  updatedAt: string;
+}
+
+export type ApplicationStatus = "wishlist" | "applied" | "interview" | "offer" | "rejected";
+
+export type ApplicationEventType = "created" | "status_change" | "note" | "interview" | "follow_up";
+
+export interface Application {
+  id: string;
+  company: string;
+  position: string;
+  location: string | null;
+  url: string | null;
+  contactName: string | null;
+  contactEmail: string | null;
+  notes: string | null;
+  status: ApplicationStatus;
+  sortOrder: number;
+  appliedAt: string | null;
+  cvId: string | null;
+  cv: { id: string; title: string } | null;
+  createdAt: string;
+  _count?: { events: number };
+}
+
+export interface ApplicationEvent {
+  id: string;
+  type: ApplicationEventType;
+  note: string | null;
+  fromStatus: ApplicationStatus | null;
+  toStatus: ApplicationStatus | null;
+  occurredAt: string;
+}
+
+export interface ApplicationDetail extends Application {
+  events: ApplicationEvent[];
+}
+
+export interface ApplicationStats {
+  total: number;
+  active: number;
+  byStatus: Record<ApplicationStatus, number>;
+  responseRate: number | null;
+  interviewRate: number | null;
+  offers: number;
+  avgDaysToResponse: number | null;
+  weeklyActivity: { weekStart: string; applied: number }[];
+}
+
 export interface ChecklistItem {
   id: string;
   title: string;

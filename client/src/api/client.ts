@@ -1,5 +1,10 @@
 import type {
+  Application,
+  ApplicationDetail,
+  ApplicationStats,
+  ApplicationStatus,
   ChecklistCategory,
+  CvSummary,
   ChecklistItem,
   ChecklistStatus,
   DashboardData,
@@ -125,6 +130,38 @@ export const api = {
   ) => request<{ item: ChecklistItem }>(`/api/checklist/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteChecklistItem: (id: string) => request<void>(`/api/checklist/${id}`, { method: "DELETE" }),
   deleteFile: (id: string) => request<void>(`/api/files/${id}`, { method: "DELETE" }),
+
+  cvs: () => request<{ cvs: CvSummary[] }>("/api/cvs"),
+
+  applications: () => request<{ applications: Application[] }>("/api/applications"),
+  applicationStats: () => request<{ stats: ApplicationStats }>("/api/applications/stats"),
+  application: (id: string) => request<{ application: ApplicationDetail }>(`/api/applications/${id}`),
+  addApplication: (data: Partial<Application> & { company: string; position: string }) =>
+    request<{ application: Application }>("/api/applications", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateApplication: (id: string, data: Partial<Omit<Application, "id" | "cv" | "_count">>) =>
+    request<{ application: Application }>(`/api/applications/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  moveApplication: (id: string, status: ApplicationStatus, index: number) =>
+    request<{ applications: Application[] }>(`/api/applications/${id}/move`, {
+      method: "PATCH",
+      body: JSON.stringify({ status, index }),
+    }),
+  deleteApplication: (id: string) => request<void>(`/api/applications/${id}`, { method: "DELETE" }),
+  addApplicationEvent: (
+    id: string,
+    data: { type: "note" | "interview" | "follow_up"; note?: string },
+  ) =>
+    request<{ event: ApplicationDetail["events"][number] }>(`/api/applications/${id}/events`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  deleteApplicationEvent: (id: string, eventId: string) =>
+    request<void>(`/api/applications/${id}/events/${eventId}`, { method: "DELETE" }),
 };
 
 /**

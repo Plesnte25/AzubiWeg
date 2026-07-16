@@ -2,6 +2,9 @@ import { useState } from "react";
 
 interface Props {
   data: { date: string; count: number }[];
+  /** tooltip unit and accessible label; defaults match the dashboard reviews chart */
+  unit?: string;
+  ariaLabel?: string;
 }
 
 /**
@@ -9,7 +12,11 @@ interface Props {
  * Palette: categorical slot 1 blue on the light card surface; ink/grid tokens
  * from the reference palette.
  */
-export default function ActivityChart({ data }: Props) {
+export default function ActivityChart({
+  data,
+  unit = "reviews",
+  ariaLabel = "Reviews per day, last 14 days",
+}: Props) {
   const [hover, setHover] = useState<number | null>(null);
   const W = 560;
   const H = 120;
@@ -26,7 +33,7 @@ export default function ActivityChart({ data }: Props) {
 
   return (
     <div className="relative">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Reviews per day, last 14 days">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={ariaLabel}>
         {/* hairline gridlines at 0/50/100% */}
         {[0, 0.5, 1].map((f) => (
           <line
@@ -77,7 +84,7 @@ export default function ActivityChart({ data }: Props) {
           style={{ left: `${((hover + 0.5) / data.length) * 100}%`, transform: "translateX(-50%)" }}
         >
           <span className="font-medium">{data[hover].count}</span>{" "}
-          <span className="text-ink-600">reviews · {fmt(data[hover].date)}</span>
+          <span className="text-ink-600">{unit} · {fmt(data[hover].date)}</span>
         </div>
       )}
     </div>
