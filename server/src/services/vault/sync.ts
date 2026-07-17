@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
+import { spawn } from "node:child_process";
 import { copyFile, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 import { prisma } from "../../db.js";
-import { BATCH_DELAY_MS, delay, enrichWord } from "../enrichment/index.js";
+import { BATCH_DELAY_MS, delay, enrichResolved, resolveWord } from "../enrichment/index.js";
 import {
   FLASHCARD_TAG_LINE,
   type Card,
@@ -16,7 +17,7 @@ import {
   parseSrLine,
   type SrState,
 } from "./format.js";
-import { INBOX_PLACEHOLDER, parseInboxFile, parseMasterFile } from "./parser.js";
+import { INBOX_PLACEHOLDER, buildInboxPlaceholder, parseInboxFile, parseMasterFile } from "./parser.js";
 import { atomicWrite, serializeMasterFile } from "./writer.js";
 
 export function vaultFiles(vaultPath: string) {
@@ -62,6 +63,97 @@ export function makeCard(front: string, fields: CardFields, sr: SrState | null):
     fields,
     sr,
   };
+}
+
+/**
+ * Inserts an enriched card, replacing any existing card for the resolved
+ * headword AND any stale card for the typed form (when "Wohne" resolves to
+ * "wohnen", the old "Wohne" card goes away). The replaced card's SR review
+ * history carries over -- parity with add_word.py's insert_and_resort.
+ */
+export function upsertEnrichedCard(
+  cards: Card[],
+  typed: string,
+  headword: string,
+  fields: CardFields,
+): Card[] {
+  const headKey = headword.toLowerCase();
+  const typedKey = typed.toLowerCase();
+  const srDonor =
+    cards.find((c) => c.sortKey === headKey && c.srLines.length) ??
+    cards.find((c) => c.sortKey === typedKey && c.srLines.length);
+  const card = makeCard(headword, fields, null);
+  if (srDonor) {
+    card.srLines = srDonor.srLines;
+    card.sr = srDonor.sr;
+  }
+  return [...cards.filter((c) => c.sortKey !== headKey && c.sortKey !== typedKey), card];
+}
+
+/**
+ * The typed word resolved to a lemma that already has a card: record the
+ * inflected form on that card (idempotent) instead of re-enriching, and
+ * drop any stale card for the typed form.
+ */
+export function mergeFormNote(
+  cards: Card[],
+  typed: string,
+  headword: string,
+  formNote: string | null,
+): Card[] {
+  const headKey = headword.toLowerCase();
+  const typedKey = typed.toLowerCase();
+  return cards
+    .filter((c) => c.sortKey !== typedKey || c.sortKey === headKey)
+    .map((c) => {
+      if (c.sortKey !== headKey || !formNote || c.fields.form?.includes(formNote)) return c;
+      const form = c.fields.form ? `${c.fields.form}; ${formNote}` : formNote;
+      const updated = makeCard(c.front, { ...c.fields, form }, null);
+      updated.srLines = c.srLines;
+      updated.sr = c.sr;
+      return updated;
+    });
+}
+
+/**
+ * Cross-process lock shared with add_word.py: flock(1) on the same
+ * .enrich.lock file (next to the vault dir, outside what Remotely Save
+ * syncs), so the cron job, the systemd path unit, and this server never
+ * process the same inbox twice. Returns a release function, or null if
+ * another enrichment run holds the lock.
+ */
+function acquireEnrichLock(vaultPath: string): Promise<(() => void) | null> {
+  const lockPath = path.resolve(vaultPath, "..", ".enrich.lock");
+  return new Promise((resolve) => {
+    // detached: the holder gets its own process group. The lock fd is
+    // inherited by the `sleep` child, so release must kill the whole group --
+    // killing only the flock parent leaves an orphaned sleep holding the lock.
+    const child = spawn("flock", ["-n", lockPath, "sleep", "600"], {
+      stdio: "ignore",
+      detached: true,
+    });
+    child.unref();
+    let settled = false;
+    child.on("error", () => {
+      // flock(1) unavailable -- proceed unlocked rather than never enriching
+      if (!settled) (settled = true), resolve(() => {});
+    });
+    child.on("exit", () => {
+      if (!settled) (settled = true), resolve(null);
+    });
+    setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        resolve(() => {
+          try {
+            process.kill(-child.pid!, "SIGTERM");
+          } catch {
+            child.kill();
+          }
+        });
+      }
+    }, 200);
+  });
 }
 
 class VaultSyncService {
@@ -139,34 +231,79 @@ class VaultSyncService {
     await this.reconcile(userId, cards);
   }
 
+  /**
+   * Resolve + enrich one word into the vault. When the word is an inflected
+   * form whose lemma already has a card, the form is merged onto that card
+   * instead of re-enriching (parity with add_word.py's enrich_word).
+   */
+  async enrichIntoVault(
+    userId: string,
+    vaultPath: string,
+    word: string,
+    lesson: string | null = null,
+  ): Promise<{ headword: string; typed: string; found: boolean; merged: boolean }> {
+    const { master, audioDir } = vaultFiles(vaultPath);
+    const res = await resolveWord(word);
+    const headKey = res.headword.toLowerCase();
+
+    if (headKey !== word.toLowerCase()) {
+      const content = existsSync(master) ? await readFile(master, "utf-8") : FLASHCARD_TAG_LINE;
+      const lemmaExists = parseMasterFile(content).cards.some((c) => c.sortKey === headKey);
+      if (lemmaExists) {
+        await this.applyToVault(userId, vaultPath, (cards) =>
+          mergeFormNote(cards, word, res.headword, res.formNote),
+        );
+        return { headword: res.headword, typed: word, found: true, merged: true };
+      }
+    }
+
+    const fields = await enrichResolved(res, audioDir, lesson);
+    await this.applyToVault(userId, vaultPath, (cards) =>
+      upsertEnrichedCard(cards, word, res.headword, fields),
+    );
+    return { headword: res.headword, typed: word, found: fields.found, merged: false };
+  }
+
   /** Port of cmd_enrich_inbox: enrich every raw word, then reset the file. */
   async processInbox(userId: string, vaultPath: string): Promise<string[]> {
     if (this.inboxBusy.has(userId)) return [];
     this.inboxBusy.add(userId);
     try {
-      const { inbox, audioDir } = vaultFiles(vaultPath);
-      if (!existsSync(inbox)) {
-        // OneDrive can't store a 0-byte file; Remotely Save deletes the local
-        // copy once it goes empty — recreate rather than treat as an error.
-        this.lastWriteHash.set(inbox, sha256(INBOX_PLACEHOLDER));
-        await atomicWrite(inbox, INBOX_PLACEHOLDER);
-        return [];
+      const release = await acquireEnrichLock(vaultPath);
+      if (!release) return []; // a cron/systemd add_word.py run owns the inbox right now
+      try {
+        const { inbox } = vaultFiles(vaultPath);
+        if (!existsSync(inbox)) {
+          // OneDrive can't store a 0-byte file; Remotely Save deletes the local
+          // copy once it goes empty — recreate rather than treat as an error.
+          this.lastWriteHash.set(inbox, sha256(INBOX_PLACEHOLDER));
+          await atomicWrite(inbox, INBOX_PLACEHOLDER);
+          return [];
+        }
+        const words = parseInboxFile(await readFile(inbox, "utf-8"));
+        const added: string[] = [];
+        const review: string[] = [];
+        for (const word of words) {
+          const result = await this.enrichIntoVault(userId, vaultPath, word);
+          added.push(
+            result.headword.toLowerCase() === word.toLowerCase()
+              ? result.headword
+              : `${result.headword} (${word})`,
+          );
+          if (!result.found) review.push(result.headword);
+          await delay(BATCH_DELAY_MS);
+        }
+        if (words.length || !existsSync(inbox)) {
+          // Never leave the file at 0 bytes — see note above. The status
+          // comment shows up on the phone after the next sync.
+          const placeholder = buildInboxPlaceholder(added, review);
+          this.lastWriteHash.set(inbox, sha256(placeholder));
+          await atomicWrite(inbox, placeholder);
+        }
+        return words;
+      } finally {
+        release();
       }
-      const words = parseInboxFile(await readFile(inbox, "utf-8"));
-      for (const word of words) {
-        const { found: _found, ...fields } = await enrichWord(word, audioDir);
-        await this.applyToVault(userId, vaultPath, (cards) => [
-          ...cards.filter((c) => c.sortKey !== word.toLowerCase()),
-          makeCard(word, fields, null),
-        ]);
-        await delay(BATCH_DELAY_MS);
-      }
-      if (words.length || !existsSync(inbox)) {
-        // Never leave the file at 0 bytes — see note above.
-        this.lastWriteHash.set(inbox, sha256(INBOX_PLACEHOLDER));
-        await atomicWrite(inbox, INBOX_PLACEHOLDER);
-      }
-      return words;
     } finally {
       this.inboxBusy.delete(userId);
     }

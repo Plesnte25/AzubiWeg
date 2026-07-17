@@ -19,6 +19,7 @@ export interface CardFields {
   meaning: string | null;
   ipa: string | null;
   grammar: string | null;
+  form: string | null; // inflected forms noted on a lemma card ("bist = second-person singular present of sein")
   example: string | null;
   audioPath: string | null;
   lesson: string | null;
@@ -78,6 +79,7 @@ export function parseCardFields(cardLine: string): CardFields {
     meaning: field("Meaning"),
     ipa: ipaRaw ? ipaRaw.replace(/^\/|\/$/g, "") : null,
     grammar: field("Grammar"),
+    form: field("Form"),
     example: exampleRaw ? exampleRaw.replace(/^\*|\*$/g, "") : null,
     audioPath: audioMatch ? audioMatch[1]! : null,
     lesson: lessonMatch ? lessonMatch[1]! : null,
@@ -96,6 +98,7 @@ export function formatCardLine(fields: CardFields & { front: string }): string {
   const backParts = [`**Meaning:** ${meaning}`];
   if (fields.ipa) backParts.push(`**IPA:** /${oneLine(fields.ipa)}/`);
   if (fields.grammar) backParts.push(`**Grammar:** ${oneLine(fields.grammar)}`);
+  if (fields.form) backParts.push(`**Form:** ${oneLine(fields.form)}`);
   if (fields.example) backParts.push(`**Example:** *${oneLine(fields.example)}*`);
   if (fields.audioPath) backParts.push(`![[${fields.audioPath}]]`);
   const tag = fields.lesson ? ` #lesson/${fields.lesson}` : "";

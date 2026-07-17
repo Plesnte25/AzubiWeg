@@ -78,3 +78,29 @@ export function parseInboxFile(content: string): string[] {
 
 export const INBOX_PLACEHOLDER =
   "<!-- type one German word per line above, then run: vocab enrich-inbox -->\n";
+
+/**
+ * Placeholder plus a status comment that shows up on the phone after sync
+ * (format matches add_word.py's _inbox_placeholder exactly).
+ */
+export function buildInboxPlaceholder(added?: string[], review?: string[]): string {
+  let text = INBOX_PLACEHOLDER;
+  if (added !== undefined) {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    let summary = `${added.length} added`;
+    if (added.length) {
+      let listing = added.join(", ");
+      if (listing.length > 150) {
+        const cut = listing.slice(0, 150);
+        listing = cut.slice(0, cut.lastIndexOf(",")) + ", ...";
+      }
+      summary += `: ${listing}`;
+    }
+    const parts = [`last processed ${stamp}`, summary];
+    if (review?.length) parts.push(`${review.length} need review: ${review.join(", ")}`);
+    text += `<!-- ${parts.join(" -- ")} -->\n`;
+  }
+  return text;
+}

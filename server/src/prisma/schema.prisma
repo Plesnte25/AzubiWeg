@@ -42,6 +42,8 @@ model Word {
   meaning    String?
   ipa        String?
   grammar    String?
+  // inflected forms noted on a lemma card ("bist = second-person singular present of sein")
+  form       String?
   example    String?
   audioPath  String?
   lesson     String?
