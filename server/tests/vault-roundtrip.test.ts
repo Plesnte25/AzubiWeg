@@ -71,6 +71,7 @@ describe("field extraction", () => {
       meaning: "(Noun) apple (fruit); (Proper noun) a surname",
       ipa: "ˈap͡fl̩",
       grammar: "der; Plural: die Äpfel",
+      form: null,
       example: "Der Apfel ist eine Obstart.",
       audioPath: "audio/De-Apfel.mp3",
       lesson: null,

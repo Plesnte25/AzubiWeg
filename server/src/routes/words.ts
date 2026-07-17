@@ -73,32 +73,35 @@ wordsRouter.post("/", async (req, res) => {
 
   const added: unknown[] = [];
   for (const [i, word] of words.entries()) {
-    const { found: _found, ...fields } = await enrichWord(word, audioDir, lesson ?? null);
-    const card = makeCard(word, fields, null);
-
+    let sortKey: string;
     if (user.vaultPath) {
-      // dedupe matches the Python script: an existing card with the same
-      // (case-insensitive) front is replaced
-      await vaultSync.applyToVault(user.id, user.vaultPath, (cards) => [
-        ...cards.filter((c) => c.sortKey !== card.sortKey),
-        card,
-      ]);
+      // resolution + lemma merging + typed-form dedupe all live in the
+      // vault sync service (same behavior as the Python script)
+      const result = await vaultSync.enrichIntoVault(user.id, user.vaultPath, word, lesson ?? null);
+      sortKey = result.headword.toLowerCase();
     } else {
+      const { found: _found, headword, typed: _typed, ...fields } =
+        await enrichWord(word, audioDir, lesson ?? null);
+      const card = makeCard(headword, fields, null);
+      sortKey = card.sortKey;
       await prisma.word.upsert({
         where: { userId_sortKey: { userId: user.id, sortKey: card.sortKey } },
         create: {
           userId: user.id,
-          headword: word,
+          headword,
           sortKey: card.sortKey,
           ...fields,
           rawBlock: card.cardLine,
         },
         update: { ...fields, rawBlock: card.cardLine, srDue: null, srInterval: null, srEase: null },
       });
+      if (word.toLowerCase() !== card.sortKey) {
+        await prisma.word.deleteMany({ where: { userId: user.id, sortKey: word.toLowerCase() } });
+      }
     }
     added.push(
       await prisma.word.findUnique({
-        where: { userId_sortKey: { userId: user.id, sortKey: card.sortKey } },
+        where: { userId_sortKey: { userId: user.id, sortKey } },
       }),
     );
     if (i < words.length - 1) await delay(BATCH_DELAY_MS);
@@ -110,6 +113,7 @@ const patchSchema = z.object({
   meaning: z.string().nullish(),
   ipa: z.string().nullish(),
   grammar: z.string().nullish(),
+  form: z.string().nullish(),
   example: z.string().nullish(),
   lesson: z
     .string()
@@ -128,6 +132,7 @@ wordsRouter.patch("/:id", async (req, res) => {
     meaning: parsed.data.meaning !== undefined ? parsed.data.meaning : word.meaning,
     ipa: parsed.data.ipa !== undefined ? parsed.data.ipa : word.ipa,
     grammar: parsed.data.grammar !== undefined ? parsed.data.grammar : word.grammar,
+    form: parsed.data.form !== undefined ? parsed.data.form : word.form,
     example: parsed.data.example !== undefined ? parsed.data.example : word.example,
     lesson: parsed.data.lesson !== undefined ? parsed.data.lesson : word.lesson,
     audioPath: word.audioPath,
