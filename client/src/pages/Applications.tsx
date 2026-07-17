@@ -122,6 +122,8 @@ export default function Applications() {
         </button>
       </div>
 
+      <PortalsRow />
+
       {stats && stats.total > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Tile label="Active" value={stats.active} />
@@ -176,6 +178,117 @@ export default function Applications() {
 
       {adding && <AddDialog onClose={() => setAdding(false)} />}
       {openId && <DetailPanel id={openId} onClose={() => setOpenId(null)} />}
+    </div>
+  );
+}
+
+/**
+ * Quick links to the portals where applications actually live (GoAusbildung
+ * etc.). Links only — none of these platforms offer a public API, so there is
+ * no account sync yet.
+ */
+function PortalsRow() {
+  const queryClient = useQueryClient();
+  const { data } = useQuery({ queryKey: ["portals"], queryFn: api.portals });
+  const [adding, setAdding] = useState(false);
+  const [label, setLabel] = useState("");
+  const [url, setUrl] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["portals"] });
+  const markChecked = useMutation({
+    mutationFn: api.markPortalChecked,
+    onSuccess: () => {
+      invalidate();
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+  const add = useMutation({
+    mutationFn: () => api.addPortal({ label: label.trim(), url: url.trim() }),
+    onSuccess: () => {
+      setLabel("");
+      setUrl("");
+      setAdding(false);
+      setError(null);
+      invalidate();
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : "Could not save"),
+  });
+  const remove = useMutation({ mutationFn: api.deletePortal, onSuccess: invalidate });
+
+  const portals = data?.portals ?? [];
+
+  return (
+    <div className="rounded-xl border border-hairline bg-card p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium text-ink-600">Portals</span>
+        {portals.length === 0 && !adding && (
+          <span className="text-sm text-ink-400">
+            Add the portals you apply through — GoAusbildung, Ausbildung.de… (quick links, not
+            synced accounts: no official APIs yet)
+          </span>
+        )}
+        {portals.map((p) => (
+          <span
+            key={p.id}
+            className="group inline-flex items-center gap-1 rounded-full border border-hairline bg-paper px-3 py-1 text-sm hover:border-brand-400"
+          >
+            <a
+              href={p.url}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-brand-600"
+              onClick={() => markChecked.mutate(p.id)}
+            >
+              {p.label} ↗
+            </a>
+            <button
+              className="hidden text-ink-400 hover:text-danger-600 group-hover:inline"
+              title="Remove portal"
+              onClick={() => remove.mutate(p.id)}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        {adding ? (
+          <form
+            className="flex flex-wrap items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (label.trim() && url.trim()) add.mutate();
+            }}
+          >
+            <input
+              autoFocus
+              className="w-32 rounded border border-hairline bg-paper px-2 py-1 text-sm"
+              placeholder="GoAusbildung"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+            />
+            <input
+              className="w-56 rounded border border-hairline bg-paper px-2 py-1 text-sm"
+              placeholder="https://goausbildung.com/…"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+            />
+            <button className="rounded bg-ink-900 px-2.5 py-1 text-sm text-white" disabled={add.isPending}>
+              Add
+            </button>
+            <button type="button" className="text-sm text-ink-400" onClick={() => setAdding(false)}>
+              Cancel
+            </button>
+          </form>
+        ) : (
+          <button
+            className="rounded-full border border-hairline px-2.5 py-0.5 text-sm text-ink-600 hover:bg-paper"
+            onClick={() => setAdding(true)}
+          >
+            + portal
+          </button>
+        )}
+      </div>
+      {error && <p className="mt-1 text-sm text-danger-600">{error}</p>}
     </div>
   );
 }
@@ -252,6 +365,9 @@ function Card({ app, overlay = false }: { app: Application; overlay?: boolean })
       <div className="mt-1.5 flex items-center gap-2 text-xs text-ink-400">
         {app.location && <span>{app.location}</span>}
         {app.appliedAt && <span>applied {app.appliedAt.slice(0, 10)}</span>}
+        {app.platform && (
+          <span className="rounded-full border border-hairline bg-paper px-1.5">{app.platform}</span>
+        )}
         {app.cv && <span className="rounded-full bg-brand-50 px-1.5 text-brand-600">{app.cv.title}</span>}
       </div>
     </div>
@@ -260,10 +376,13 @@ function Card({ app, overlay = false }: { app: Application; overlay?: boolean })
 
 function AddDialog({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
+  const { data: portalsData } = useQuery({ queryKey: ["portals"], queryFn: api.portals });
   const [company, setCompany] = useState("");
   const [position, setPosition] = useState("");
   const [location, setLocation] = useState("");
   const [url, setUrl] = useState("");
+  const [platform, setPlatform] = useState("");
+  const [platformUrl, setPlatformUrl] = useState("");
   const [status, setStatus] = useState<ApplicationStatus>("wishlist");
 
   const add = useMutation({
@@ -273,6 +392,8 @@ function AddDialog({ onClose }: { onClose: () => void }) {
         position: position.trim(),
         location: location.trim() || null,
         url: url.trim() || null,
+        platform: platform.trim() || null,
+        platformUrl: platformUrl.trim() || null,
         status,
       }),
     onSuccess: () => {
@@ -322,6 +443,30 @@ function AddDialog({ onClose }: { onClose: () => void }) {
         <Field label="Job posting URL">
           <input className={inputCls} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" />
         </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Portal">
+            <input
+              className={inputCls}
+              value={platform}
+              onChange={(e) => setPlatform(e.target.value)}
+              placeholder="GoAusbildung"
+              list="portal-labels"
+            />
+            <datalist id="portal-labels">
+              {(portalsData?.portals ?? []).map((p) => (
+                <option key={p.id} value={p.label} />
+              ))}
+            </datalist>
+          </Field>
+          <Field label="Link on that portal">
+            <input
+              className={inputCls}
+              value={platformUrl}
+              onChange={(e) => setPlatformUrl(e.target.value)}
+              placeholder="https://…"
+            />
+          </Field>
+        </div>
         {add.isError && <p className="text-sm text-danger-600">{(add.error as Error).message}</p>}
         <div className="flex justify-end gap-2 pt-1">
           <button type="button" className="rounded border border-hairline px-3 py-1.5 text-sm" onClick={onClose}>
@@ -412,6 +557,18 @@ function DetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
             onCommit={(v) => update.mutate({ contactEmail: v || null })}
           />
         </Field>
+        <Field label="Portal">
+          <DebouncedInput
+            value={app.platform ?? ""}
+            onCommit={(v) => update.mutate({ platform: v || null })}
+          />
+        </Field>
+        <Field label="Link on that portal">
+          <DebouncedInput
+            value={app.platformUrl ?? ""}
+            onCommit={(v) => update.mutate({ platformUrl: v || null })}
+          />
+        </Field>
         <div className="sm:col-span-2">
           <Field label="Notes">
             <DebouncedInput
@@ -423,11 +580,23 @@ function DetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
         </div>
       </div>
 
-      {app.url && (
-        <a className="mt-3 inline-block text-sm text-brand-600 hover:underline" href={app.url} target="_blank" rel="noreferrer">
-          Job posting ↗
-        </a>
-      )}
+      <div className="mt-3 flex flex-wrap gap-4">
+        {app.url && (
+          <a className="text-sm text-brand-600 hover:underline" href={app.url} target="_blank" rel="noreferrer">
+            Job posting ↗
+          </a>
+        )}
+        {app.platformUrl && (
+          <a
+            className="text-sm text-brand-600 hover:underline"
+            href={app.platformUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open on {app.platform || "portal"} ↗
+          </a>
+        )}
+      </div>
 
       <div className="mt-5 border-t border-hairline pt-4">
         <p className="mb-2 text-sm font-semibold">Timeline</p>

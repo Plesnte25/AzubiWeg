@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
-import ActivityChart from "../components/ActivityChart";
+import ActivityHeatmap from "../components/ActivityHeatmap";
+import FillBar from "../components/FillBar";
+import { levelStates } from "../lib/levels";
 
 function Tile({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
   return (
@@ -42,8 +44,69 @@ export default function Dashboard() {
       </div>
 
       <section className="rounded-xl border border-hairline bg-card p-4">
-        <h2 className="mb-3 text-sm font-medium text-ink-600">Reviews per day — last 14 days</h2>
-        <ActivityChart data={data.activity} />
+        <h2 className="mb-3 text-sm font-medium text-ink-600">Study activity</h2>
+        <ActivityHeatmap data={data.heatmap} />
+      </section>
+
+      <section className="rounded-xl border border-hairline bg-card p-4">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-sm font-medium text-ink-600">German level progress</h2>
+          <div className="flex items-center gap-3 text-sm text-ink-600">
+            {data.learning.streak > 0 && <span>Study streak {data.learning.streak} 🔥</span>}
+            {data.learning.lastSelfTest && (
+              <span>
+                Last test{" "}
+                <span className="font-medium text-ink-900">
+                  {data.learning.lastSelfTest.score}/{data.learning.lastSelfTest.total}
+                </span>
+              </span>
+            )}
+          </div>
+        </div>
+        {data.learning.levels.every((l) => l.total === 0) ? (
+          <Link to="/learning" className="text-sm text-brand-600 hover:underline">
+            Set up your syllabus — open the Learning tab to get started →
+          </Link>
+        ) : (
+          (() => {
+            const states = levelStates(data.learning.levels);
+            const activeIdx = Math.max(0, states.indexOf("active"));
+            const active = data.learning.levels[activeIdx];
+            return (
+              <div className="space-y-3">
+                <Link to="/learning" className="block space-y-1.5 rounded-lg p-1 hover:bg-paper">
+                  <div className="flex items-baseline justify-between text-sm">
+                    <span className="font-semibold uppercase">
+                      {active.level}
+                      <span className="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium normal-case text-brand-600">
+                        current level
+                      </span>
+                    </span>
+                    <span className="text-ink-600">
+                      {active.done}/{active.total} · {active.percent}%
+                    </span>
+                  </div>
+                  <FillBar percent={active.percent} />
+                </Link>
+                {/* later levels stay off the dashboard until reached — one goal at a time */}
+                {states.some((s, i) => s === "done" && i !== activeIdx) && (
+                  <div className="flex flex-wrap gap-2">
+                    {data.learning.levels.map((l, i) =>
+                      i === activeIdx || states[i] !== "done" ? null : (
+                        <span
+                          key={l.level}
+                          className="rounded-full border border-ok-600 bg-ok-50 px-2.5 py-0.5 text-xs uppercase text-ok-600"
+                        >
+                          {l.level} ✓
+                        </span>
+                      ),
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()
+        )}
       </section>
 
       {data.expiringDocuments.length > 0 && (

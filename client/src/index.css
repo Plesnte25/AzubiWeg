@@ -1,24 +1,50 @@
 @import "tailwindcss";
 
+/* Inter ships with the app for the PDF renderer — reuse it for the UI */
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter-Bold.ttf") format("truetype");
+  font-weight: 600 700;
+  font-display: swap;
+}
+
 @theme {
-  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   /* brand: warm German-gold accent on near-black ink */
   --color-brand-50: #fdf8ec;
   --color-brand-100: #faedc8;
+  --color-brand-200: #f5dd97;
   --color-brand-400: #eda100;
   --color-brand-500: #d98e00;
   --color-brand-600: #b57400;
+  --color-brand-700: #8f5c00;
   --color-ink-900: #0b0b0b;
   --color-ink-600: #52514e;
   --color-ink-400: #898781;
+  --color-ink-50: #f1f0ec;
   --color-paper: #f9f9f7;
   --color-card: #fcfcfb;
   --color-hairline: #e1e0d9;
   /* status colors for expiry badges */
   --color-danger-50: #fdf0ef;
+  --color-danger-100: #f9dcd9;
   --color-danger-600: #c2382c;
   --color-ok-50: #eff6ee;
+  --color-ok-100: #dcebda;
   --color-ok-600: #3d7a3a;
+  --shadow-card: 0 1px 2px rgb(11 11 11 / 0.04), 0 2px 8px rgb(11 11 11 / 0.03);
 }
 
 body {
@@ -27,4 +53,38 @@ body {
   color: var(--color-ink-900);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background-color: var(--color-brand-100);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-400);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* buttons and links feel alive without per-page classes */
+button,
+a {
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 100ms ease;
+}
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* cards (the app's rounded-xl bordered surfaces) get a whisper of depth */
+.bg-card {
+  box-shadow: var(--shadow-card);
+}
+
+details summary::-webkit-details-marker {
+  display: none;
 }

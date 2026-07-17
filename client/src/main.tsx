@@ -8,6 +8,7 @@ import Layout from "./components/Layout";
 import Applications from "./pages/Applications";
 import Checklist from "./pages/Checklist";
 import Dashboard from "./pages/Dashboard";
+import Learning from "./pages/Learning";
 import Login from "./pages/Login";
 import Review from "./pages/Review";
 import Settings from "./pages/Settings";
@@ -42,6 +43,7 @@ const router = createBrowserRouter([
           { path: "/", element: <Dashboard /> },
           { path: "/vocabulary", element: <Vocabulary /> },
           { path: "/review", element: <Review /> },
+          { path: "/learning", element: <Learning /> },
           { path: "/applications", element: <Applications /> },
           { path: "/cv", element: <Lazy><CvList /></Lazy> },
           { path: "/cv/:id", element: <Lazy><CvEditor /></Lazy> },

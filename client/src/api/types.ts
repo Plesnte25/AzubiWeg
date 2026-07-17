@@ -31,6 +31,12 @@ export interface DashboardData {
   activity: { date: string; count: number }[];
   expiringDocuments: { id: string; title: string; expiresAt: string; expiry: ExpiryStatus }[];
   applications: Record<ApplicationStatus, number>;
+  heatmap: { date: string; reviews: number; learning: number }[];
+  learning: {
+    levels: { level: CefrLevel; total: number; done: number; percent: number }[];
+    streak: number;
+    lastSelfTest: { score: number; total: number; takenAt: string } | null;
+  };
 }
 
 export interface VaultStatus {
@@ -42,13 +48,19 @@ export interface VaultStatus {
 
 export type Grade = "hard" | "good" | "easy";
 
+export type ExtractionStatus = "pending" | "done" | "failed" | "skipped";
+
 export interface UploadedFileMeta {
   id: string;
   checklistItemId: string | null;
+  syllabusItemId: string | null;
+  studySourceId: string | null;
   kind: "document" | "cv_photo";
   originalName: string;
   mimeType: string;
   size: number;
+  extractedText: string | null;
+  extractionStatus: ExtractionStatus;
   createdAt: string;
 }
 
@@ -143,6 +155,8 @@ export interface Application {
   contactName: string | null;
   contactEmail: string | null;
   notes: string | null;
+  platform: string | null;
+  platformUrl: string | null;
   status: ApplicationStatus;
   sortOrder: number;
   appliedAt: string | null;
@@ -187,4 +201,109 @@ export interface ChecklistItem {
   isDefault: boolean;
   files: UploadedFileMeta[];
   expiry: ExpiryStatus | null;
+}
+
+export type CefrLevel = "a1" | "a2" | "b1";
+
+export type SyllabusCategory = "grammar" | "vocab_theme" | "skill";
+
+export type StudySourceType = "youtube" | "nicos_weg" | "duolingo" | "other";
+
+export type QuizDirection = "de_to_meaning" | "meaning_to_de";
+
+export interface SyllabusItem {
+  id: string;
+  level: CefrLevel;
+  category: SyllabusCategory;
+  theme: string | null;
+  title: string;
+  description: string | null;
+  sortOrder: number;
+  completedAt: string | null;
+  files: UploadedFileMeta[];
+}
+
+export interface LevelProgress {
+  level: CefrLevel;
+  total: number;
+  done: number;
+  percent: number;
+  nextUp: { id: string; title: string } | null;
+}
+
+export interface StudySourceUnit {
+  id: string;
+  position: number;
+  title: string;
+  videoId: string | null;
+  url: string | null;
+  notes: string | null;
+  completedAt: string | null;
+}
+
+export interface StudySource {
+  id: string;
+  type: StudySourceType;
+  title: string;
+  url: string | null;
+  level: CefrLevel | null;
+  totalUnits: number | null;
+  completedUnits: number;
+  notes: string | null;
+  percent: number | null;
+  units: StudySourceUnit[];
+  files: UploadedFileMeta[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type PlaylistFetchOutcome = "playlist" | "course" | "manual" | "failed";
+
+export type LevelState = "done" | "active" | "locked";
+
+// mirrors SessionQuestion in server/src/services/learning/engine.ts
+export type SessionQuestion =
+  | { qid: string; type: "mcq"; level: CefrLevel; topic: string; prompt: string; choices: string[]; answerIndex: number }
+  | { qid: string; type: "fill_blank"; level: CefrLevel; topic: string; prompt: string; accepted: string[] }
+  | { qid: string; type: "true_false"; level: CefrLevel; topic: string; prompt: string; answer: boolean };
+
+export interface TopicBreakdown {
+  topic: string;
+  level: CefrLevel;
+  correct: number;
+  total: number;
+}
+
+export interface SelfTestResult {
+  id: string;
+  kind: "vocab" | "mixed";
+  direction: QuizDirection;
+  lesson: string | null;
+  level: CefrLevel | null;
+  breakdown: TopicBreakdown[] | null;
+  score: number;
+  total: number;
+  takenAt: string;
+}
+
+export interface QuizResultsResponse {
+  results: SelfTestResult[];
+  best: number | null;
+  avg: number | null;
+}
+
+export interface Portal {
+  id: string;
+  label: string;
+  url: string;
+  lastCheckedAt: string | null;
+  createdAt: string;
+}
+
+export interface AppNotification {
+  id: string;
+  type: "portal" | "application" | "document";
+  title: string;
+  detail: string;
+  href: string;
 }

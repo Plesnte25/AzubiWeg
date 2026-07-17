@@ -1,4 +1,5 @@
 import type {
+  AppNotification,
   Application,
   ApplicationDetail,
   ApplicationStats,
@@ -12,6 +13,17 @@ import type {
   ChecklistStatus,
   DashboardData,
   Grade,
+  CefrLevel,
+  LevelProgress,
+  PlaylistFetchOutcome,
+  Portal,
+  QuizResultsResponse,
+  SelfTestResult,
+  SessionQuestion,
+  StudySource,
+  StudySourceType,
+  SyllabusItem,
+  TopicBreakdown,
   UploadedFileMeta,
   User,
   VaultStatus,
@@ -174,6 +186,89 @@ export const api = {
     }),
   deleteApplicationEvent: (id: string, eventId: string) =>
     request<void>(`/api/applications/${id}/events/${eventId}`, { method: "DELETE" }),
+
+  learningSyllabus: () =>
+    request<{ levels: LevelProgress[]; items: SyllabusItem[] }>("/api/learning/syllabus"),
+  toggleSyllabusItem: (id: string, completed: boolean) =>
+    request<{ item: SyllabusItem }>(`/api/learning/syllabus/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ completed }),
+    }),
+  learningSources: () => request<{ sources: StudySource[] }>("/api/learning/sources"),
+  addStudySource: (data: {
+    type: StudySourceType;
+    title: string;
+    url?: string | null;
+    level?: CefrLevel | null;
+    totalUnits?: number | null;
+    completedUnits?: number;
+    notes?: string | null;
+    autoFetch?: boolean;
+  }) =>
+    request<{ source: StudySource; fetch: PlaylistFetchOutcome }>("/api/learning/sources", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  toggleSourceUnit: (sourceId: string, unitId: string, done: boolean) =>
+    request<{ source: StudySource }>(`/api/learning/sources/${sourceId}/units/${unitId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ done }),
+    }),
+  updateUnitNotes: (sourceId: string, unitId: string, notes: string | null) =>
+    request<{ source: StudySource }>(`/api/learning/sources/${sourceId}/units/${unitId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ notes }),
+    }),
+  updateStudySource: (
+    id: string,
+    data: Partial<{
+      type: StudySourceType;
+      title: string;
+      url: string | null;
+      level: CefrLevel | null;
+      totalUnits: number | null;
+      completedUnits: number;
+      notes: string | null;
+    }>,
+  ) =>
+    request<{ source: StudySource }>(`/api/learning/sources/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  logSourceProgress: (id: string, delta = 1) =>
+    request<{ source: StudySource }>(`/api/learning/sources/${id}/progress`, {
+      method: "POST",
+      body: JSON.stringify({ delta }),
+    }),
+  deleteStudySource: (id: string) =>
+    request<void>(`/api/learning/sources/${id}`, { method: "DELETE" }),
+  startSelfTest: (opts: { size?: number } = {}) =>
+    request<{ questions: SessionQuestion[]; level: CefrLevel }>("/api/learning/quiz", {
+      method: "POST",
+      body: JSON.stringify(opts),
+    }),
+  quizResults: () => request<QuizResultsResponse>("/api/learning/quiz/results"),
+  submitQuizResult: (data: {
+    score: number;
+    total: number;
+    kind: "mixed";
+    level?: CefrLevel | null;
+    questionIds?: string[];
+    breakdown?: TopicBreakdown[];
+  }) =>
+    request<{ result: SelfTestResult }>("/api/learning/quiz/results", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  portals: () => request<{ portals: Portal[] }>("/api/portals"),
+  addPortal: (data: { label: string; url: string }) =>
+    request<{ portal: Portal }>("/api/portals", { method: "POST", body: JSON.stringify(data) }),
+  markPortalChecked: (id: string) =>
+    request<{ portal: Portal }>(`/api/portals/${id}/checked`, { method: "POST" }),
+  deletePortal: (id: string) => request<void>(`/api/portals/${id}`, { method: "DELETE" }),
+
+  notifications: () => request<{ notifications: AppNotification[] }>("/api/notifications"),
 };
 
 /**
@@ -183,13 +278,20 @@ export const api = {
  */
 export async function uploadFile(
   file: File,
-  opts: { kind: "document" | "cv_photo"; checklistItemId?: string },
+  opts: {
+    kind: "document" | "cv_photo";
+    checklistItemId?: string;
+    syllabusItemId?: string;
+    studySourceId?: string;
+  },
 ): Promise<UploadedFileMeta> {
   const token = getToken();
   const form = new FormData();
   form.append("file", file);
   form.append("kind", opts.kind);
   if (opts.checklistItemId) form.append("checklistItemId", opts.checklistItemId);
+  if (opts.syllabusItemId) form.append("syllabusItemId", opts.syllabusItemId);
+  if (opts.studySourceId) form.append("studySourceId", opts.studySourceId);
   const res = await fetch("/api/files", {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},

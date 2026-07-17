@@ -15,12 +15,21 @@ model User {
   // when the default document checklist was seeded; guards against re-seeding
   // after the user deletes items
   checklistSeededAt DateTime?
-  createdAt         DateTime        @default(now())
+  // same idea for the CEFR syllabus (learning hub)
+  learningSeededAt  DateTime?
+  // which revision of DEFAULT_SYLLABUS_ITEMS this user has; a bump triggers a
+  // reseed that preserves completions by title match
+  syllabusVersion   Int              @default(0)
+  createdAt         DateTime         @default(now())
   words             Word[]
   cvs               Cv[]
   applications      Application[]
   checklistItems    ChecklistItem[]
   files             UploadedFile[]
+  syllabusItems     SyllabusItem[]
+  studySources      StudySource[]
+  selfTestResults   SelfTestResult[]
+  externalAccounts  ExternalAccount[]
 }
 
 model Word {
@@ -70,6 +79,10 @@ model UploadedFile {
   user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   checklistItemId String?
   checklistItem   ChecklistItem? @relation(fields: [checklistItemId], references: [id], onDelete: Cascade)
+  syllabusItemId  String?
+  syllabusItem    SyllabusItem?  @relation(fields: [syllabusItemId], references: [id], onDelete: Cascade)
+  studySourceId   String?
+  studySource     StudySource?   @relation(fields: [studySourceId], references: [id], onDelete: Cascade)
   kind            FileKind       @default(document)
   originalName    String
   // server-generated "<cuid>.<whitelisted ext>" under data/uploads/<userId>/;
@@ -77,12 +90,26 @@ model UploadedFile {
   storedName      String
   mimeType        String
   size            Int
+  // digital text parsed from the raw upload (PDF text layer, TXT body, OCR for
+  // images); the raw file is always kept. Cleaned + capped at 100k chars.
+  extractedText    String?
+  extractionStatus ExtractionStatus @default(skipped)
   createdAt       DateTime       @default(now())
 }
 
 enum FileKind {
   document
   cv_photo
+}
+
+enum ExtractionStatus {
+  // upload committed, extraction worker not finished yet
+  pending
+  done
+  // extraction threw or produced no text
+  failed
+  // not eligible (cv photos, checklist documents)
+  skipped
 }
 
 model Cv {
@@ -118,6 +145,10 @@ model Application {
   contactName  String?
   contactEmail String?
   notes        String?
+  // which portal the application lives on (e.g. "GoAusbildung") + a one-click
+  // link to it; no sync — the portals expose no public API
+  platform     String?
+  platformUrl  String?
   status       ApplicationStatus  @default(wishlist)
   // position within its status column, contiguous per (userId, status)
   sortOrder    Int                @default(0)
@@ -193,4 +224,144 @@ enum ChecklistStatus {
   done
   // e.g. "blocked account OR salary proof" — mark the unused path n/a
   not_applicable
+}
+
+model SyllabusItem {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level       CefrLevel
+  category    SyllabusCategory
+  // topic heading the item (subtopic) is grouped under, e.g. "Verbs: present tense"
+  theme       String?
+  title       String
+  description String?
+  // pedagogical order within the level; "next up" = first incomplete
+  sortOrder   Int              @default(0)
+  // doubles as the activity date for the learning streak; null = not done
+  completedAt DateTime?
+  files       UploadedFile[]
+  createdAt   DateTime         @default(now())
+
+  @@index([userId, level, sortOrder])
+}
+
+enum CefrLevel {
+  a1
+  a2
+  b1
+}
+
+enum SyllabusCategory {
+  grammar
+  vocab_theme
+  skill
+}
+
+model StudySource {
+  id             String           @id @default(cuid())
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           StudySourceType  @default(other)
+  title          String
+  url            String?
+  level          CefrLevel?
+  // null = open-ended (e.g. a channel with no fixed lesson count)
+  // denormalized from units when units exist (recomputed on every unit
+  // mutation); authoritative for open-ended counter sources without units
+  totalUnits     Int?
+  completedUnits Int               @default(0)
+  notes          String?
+  logs           StudySourceLog[]
+  units          StudySourceUnit[]
+  files          UploadedFile[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+}
+
+model StudySourceUnit {
+  id       String      @id @default(cuid())
+  sourceId String
+  source   StudySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  position Int
+  title    String
+  // YouTube video id when scraped from a playlist; drives per-lesson links
+  // and the client-side thumbnail (img.youtube.com/vi/<id>/mqdefault.jpg)
+  videoId  String?
+  // direct lesson link for non-YouTube sources (e.g. Nicos Weg lesson pages)
+  url      String?
+  // free-form per-lesson notes, edited inline in the lesson list
+  notes    String?
+  // null = not done
+  completedAt DateTime?
+
+  @@unique([sourceId, position])
+}
+
+enum StudySourceType {
+  youtube
+  nicos_weg
+  duolingo
+  other
+}
+
+// immutable progress log; its loggedAt dates feed the learning streak
+model StudySourceLog {
+  id       String      @id @default(cuid())
+  sourceId String
+  source   StudySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  delta    Int         @default(1)
+  loggedAt DateTime    @default(now())
+
+  @@index([sourceId])
+}
+
+// self-tests measure level progress only — they never touch ReviewLog,
+// the SR schedule fields on Word, or the Obsidian vault
+model SelfTestResult {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      SelfTestKind  @default(vocab)
+  direction QuizDirection @default(de_to_meaning)
+  // lesson filter used for the quiz, if any (legacy vocab quizzes)
+  lesson    String?
+  // active level the mixed session targeted
+  level     CefrLevel?
+  // string[] of question ids asked (bank ids + "w:<wordId>:<type>");
+  // the last few results' ids are excluded from the next session (no repeats)
+  questionIds Json?
+  // [{ topic, level, correct, total }] for history display
+  breakdown   Json?
+  score     Int
+  total     Int
+  takenAt   DateTime      @default(now())
+
+  @@index([userId, takenAt])
+}
+
+enum SelfTestKind {
+  // legacy word-only MCQ
+  vocab
+  // session-engine test: bank + vocab questions, mixed formats
+  mixed
+}
+
+enum QuizDirection {
+  de_to_meaning
+  meaning_to_de
+}
+
+// quick links to application portals (GoAusbildung etc.) — links only, not
+// synced accounts: none of these platforms offer a public API today
+model ExternalAccount {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String
+  url       String
+  // stamped when the user opens the portal from the app; drives the
+  // "haven't checked X in a while" notification
+  lastCheckedAt DateTime?
+  createdAt DateTime @default(now())
 }

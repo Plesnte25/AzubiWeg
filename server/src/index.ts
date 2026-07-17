@@ -6,6 +6,9 @@ import { checklistRouter } from "./routes/checklist.js";
 import { cvsRouter } from "./routes/cvs.js";
 import { dashboardRouter } from "./routes/dashboard.js";
 import { filesRouter } from "./routes/files.js";
+import { learningRouter } from "./routes/learning.js";
+import { notificationsRouter } from "./routes/notifications.js";
+import { portalsRouter } from "./routes/portals.js";
 import { reviewsRouter } from "./routes/reviews.js";
 import { vaultRouter } from "./routes/vault.js";
 import { wordsRouter } from "./routes/words.js";
@@ -24,6 +27,9 @@ app.use("/api/files", filesRouter);
 app.use("/api/checklist", checklistRouter);
 app.use("/api/applications", applicationsRouter);
 app.use("/api/cvs", cvsRouter);
+app.use("/api/learning", learningRouter);
+app.use("/api/portals", portalsRouter);
+app.use("/api/notifications", notificationsRouter);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
