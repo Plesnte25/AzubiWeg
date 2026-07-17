@@ -1,17 +1,11 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { computeDayStreak, localDateKey } from "../services/learning/activity.js";
 import { EXPIRY_WARN_DAYS, expiryStatus } from "../services/reminders.js";
 
 export const dashboardRouter = Router();
 dashboardRouter.use(requireAuth);
-
-function localDateKey(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 dashboardRouter.get("/", async (req, res) => {
   const endOfToday = new Date();
@@ -22,8 +16,25 @@ dashboardRouter.get("/", async (req, res) => {
   const expiryHorizon = new Date();
   expiryHorizon.setDate(expiryHorizon.getDate() + EXPIRY_WARN_DAYS + 1);
 
-  const [totalWords, dueToday, newWords, reviewsToday, lessons, recentLogs, expiringItems, appsByStatus] =
-    await Promise.all([
+  // learning activity only matters for the streak, so a year back is plenty
+  const activityHorizon = new Date();
+  activityHorizon.setDate(activityHorizon.getDate() - 366);
+
+  const [
+    totalWords,
+    dueToday,
+    newWords,
+    reviewsToday,
+    lessons,
+    recentLogs,
+    expiringItems,
+    appsByStatus,
+    syllabusRows,
+    syllabusActivity,
+    sourceActivity,
+    testActivity,
+    lastSelfTest,
+  ] = await Promise.all([
     prisma.word.count({ where: { userId: req.userId } }),
     prisma.word.count({ where: { userId: req.userId, srDue: { lte: endOfToday } } }),
     prisma.word.count({ where: { userId: req.userId, srDue: null } }),
@@ -57,6 +68,27 @@ dashboardRouter.get("/", async (req, res) => {
       where: { userId: req.userId },
       _count: true,
     }),
+    prisma.syllabusItem.findMany({
+      where: { userId: req.userId },
+      select: { level: true, completedAt: true },
+    }),
+    prisma.syllabusItem.findMany({
+      where: { userId: req.userId, completedAt: { gte: activityHorizon } },
+      select: { completedAt: true },
+    }),
+    prisma.studySourceLog.findMany({
+      where: { source: { userId: req.userId }, loggedAt: { gte: activityHorizon } },
+      select: { loggedAt: true },
+    }),
+    prisma.selfTestResult.findMany({
+      where: { userId: req.userId, takenAt: { gte: activityHorizon } },
+      select: { takenAt: true },
+    }),
+    prisma.selfTestResult.findFirst({
+      where: { userId: req.userId },
+      orderBy: { takenAt: "desc" },
+      select: { score: true, total: true, takenAt: true },
+    }),
   ]);
 
   // review activity per day (last 14 days) + study streak
@@ -80,6 +112,48 @@ dashboardRouter.get("/", async (req, res) => {
   while (reviewDays.has(localDateKey(cursor))) {
     streak += 1;
     cursor.setDate(cursor.getDate() - 1);
+  }
+
+  // learning: per-level syllabus progress + activity streak across all hub actions
+  const levels = (["a1", "a2", "b1"] as const).map((level) => {
+    const inLevel = syllabusRows.filter((r) => r.level === level);
+    const done = inLevel.filter((r) => r.completedAt !== null).length;
+    return {
+      level,
+      total: inLevel.length,
+      done,
+      percent: inLevel.length === 0 ? 0 : Math.round((done / inLevel.length) * 100),
+    };
+  });
+  const learningTimestamps = [
+    ...syllabusActivity.map((r) => r.completedAt as Date),
+    ...sourceActivity.map((r) => r.loggedAt),
+    ...testActivity.map((r) => r.takenAt),
+  ];
+
+  // GitHub-style heatmap: last 15 full weeks of reviews + learning activity,
+  // aligned so the grid starts on a Monday and ends today
+  const HEATMAP_DAYS = 7 * 15;
+  const reviewCounts = new Map<string, number>();
+  for (const log of recentLogs) {
+    const key = localDateKey(log.reviewedAt);
+    reviewCounts.set(key, (reviewCounts.get(key) ?? 0) + 1);
+  }
+  const learningCounts = new Map<string, number>();
+  for (const ts of learningTimestamps) {
+    const key = localDateKey(ts);
+    learningCounts.set(key, (learningCounts.get(key) ?? 0) + 1);
+  }
+  const heatmap: { date: string; reviews: number; learning: number }[] = [];
+  for (let i = HEATMAP_DAYS - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = localDateKey(d);
+    heatmap.push({
+      date: key,
+      reviews: reviewCounts.get(key) ?? 0,
+      learning: learningCounts.get(key) ?? 0,
+    });
   }
 
   const now = new Date();
@@ -107,5 +181,11 @@ dashboardRouter.get("/", async (req, res) => {
       expiry: expiryStatus(i.expiresAt, now),
     })),
     applications,
+    heatmap,
+    learning: {
+      levels,
+      streak: computeDayStreak(learningTimestamps, now),
+      lastSelfTest,
+    },
   });
 });

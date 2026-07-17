@@ -6,6 +6,7 @@ import multer from "multer";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { extractText, isExtractable } from "../services/files/extract-text.js";
 import {
   contentDispositionFor,
   IMAGE_TYPES,
@@ -26,6 +27,8 @@ const upload = multer({
 const uploadSchema = z.object({
   kind: z.enum(["document", "cv_photo"]).default("document"),
   checklistItemId: z.string().optional(),
+  syllabusItemId: z.string().optional(),
+  studySourceId: z.string().optional(),
 });
 
 // translate multer's size-limit error into a 400 instead of the global 500
@@ -43,7 +46,7 @@ const uploadSingle: express.RequestHandler = (req, res, next) => {
 filesRouter.post("/", uploadSingle, async (req, res) => {
   const parsed = uploadSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
-  const { kind, checklistItemId } = parsed.data;
+  const { kind, checklistItemId, syllabusItemId, studySourceId } = parsed.data;
 
   if (!req.file) return res.status(400).json({ error: "No file provided (field name: file)" });
   if (kind === "cv_photo" && !IMAGE_TYPES.has(req.file.mimetype)) {
@@ -54,30 +57,81 @@ filesRouter.post("/", uploadSingle, async (req, res) => {
     return res.status(400).json({ error: "Only PDF, JPEG, PNG, and WebP files are allowed" });
   }
 
+  const parents = [checklistItemId, syllabusItemId, studySourceId].filter(Boolean);
+  if (parents.length > 1) {
+    return res.status(400).json({ error: "A file can attach to only one item" });
+  }
   if (checklistItemId) {
     const item = await prisma.checklistItem.findFirst({
       where: { id: checklistItemId, userId: req.userId },
     });
     if (!item) return res.status(404).json({ error: "Checklist item not found" });
   }
+  if (syllabusItemId) {
+    const item = await prisma.syllabusItem.findFirst({
+      where: { id: syllabusItemId, userId: req.userId },
+    });
+    if (!item) return res.status(404).json({ error: "Syllabus item not found" });
+  }
+  if (studySourceId) {
+    const source = await prisma.studySource.findFirst({
+      where: { id: studySourceId, userId: req.userId },
+    });
+    if (!source) return res.status(404).json({ error: "Study source not found" });
+  }
 
   const dir = uploadsDir(req.userId);
   await mkdir(dir, { recursive: true });
   await writeFile(path.join(dir, storedName), req.file.buffer);
 
+  // learning notes get parsed into digital text; other uploads (checklist
+  // scans, CV photos) don't need it
+  const wantsExtraction =
+    kind === "document" && Boolean(syllabusItemId || studySourceId) && isExtractable(req.file.mimetype);
+
   const file = await prisma.uploadedFile.create({
     data: {
       userId: req.userId,
       checklistItemId: checklistItemId ?? null,
+      syllabusItemId: syllabusItemId ?? null,
+      studySourceId: studySourceId ?? null,
       kind,
       originalName: req.file.originalname,
       storedName,
       mimeType: req.file.mimetype,
       size: req.file.size,
+      extractionStatus: wantsExtraction ? "pending" : "skipped",
     },
   });
+  if (wantsExtraction) {
+    // fire-and-forget: OCR can take tens of seconds and must never hold up
+    // the upload response; the client polls extractionStatus
+    const { buffer, mimetype } = req.file;
+    setImmediate(() => {
+      runExtraction(file.id, buffer, mimetype).catch((err) => console.error("extraction:", err));
+    });
+  }
   res.status(201).json({ file });
 });
+
+async function runExtraction(fileId: string, buffer: Buffer, mimeType: string): Promise<void> {
+  let text: string | null = null;
+  try {
+    text = await extractText(buffer, mimeType);
+  } catch {
+    text = null;
+  }
+  await prisma.uploadedFile
+    .update({
+      where: { id: fileId },
+      data: {
+        extractedText: text || null,
+        extractionStatus: text ? "done" : "failed",
+      },
+    })
+    // the file may have been deleted while OCR ran — nothing to record then
+    .catch(() => {});
+}
 
 filesRouter.get("/:id", async (req, res) => {
   const file = await prisma.uploadedFile.findFirst({

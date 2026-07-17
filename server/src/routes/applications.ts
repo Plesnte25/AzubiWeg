@@ -56,6 +56,10 @@ const createSchema = z.object({
   contactName: z.string().max(200).nullish(),
   contactEmail: z.email().nullish().or(z.literal("").transform(() => null)),
   notes: z.string().max(5000).nullish(),
+  // which portal the application lives on + a one-click link to it (links
+  // only — the portals expose no public API for real sync)
+  platform: z.string().trim().max(100).nullish().or(z.literal("").transform(() => null)),
+  platformUrl: z.url().max(500).nullish().or(z.literal("").transform(() => null)),
   status: STATUS.default("wishlist"),
   appliedAt: z.iso.date().nullish(),
   cvId: z.string().nullish(),

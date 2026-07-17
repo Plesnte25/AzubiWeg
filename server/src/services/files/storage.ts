@@ -12,6 +12,7 @@ export const ALLOWED_TYPES: Record<string, string> = {
   "image/jpeg": ".jpg",
   "image/png": ".png",
   "image/webp": ".webp",
+  "text/plain": ".txt",
 };
 
 export const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
