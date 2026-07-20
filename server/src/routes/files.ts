@@ -6,7 +6,6 @@ import multer from "multer";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
-import { extractText, isExtractable } from "../services/files/extract-text.js";
 import {
   contentDispositionFor,
   IMAGE_TYPES,
@@ -84,11 +83,6 @@ filesRouter.post("/", uploadSingle, async (req, res) => {
   await mkdir(dir, { recursive: true });
   await writeFile(path.join(dir, storedName), req.file.buffer);
 
-  // learning notes get parsed into digital text; other uploads (checklist
-  // scans, CV photos) don't need it
-  const wantsExtraction =
-    kind === "document" && Boolean(syllabusItemId || studySourceId) && isExtractable(req.file.mimetype);
-
   const file = await prisma.uploadedFile.create({
     data: {
       userId: req.userId,
@@ -100,38 +94,10 @@ filesRouter.post("/", uploadSingle, async (req, res) => {
       storedName,
       mimeType: req.file.mimetype,
       size: req.file.size,
-      extractionStatus: wantsExtraction ? "pending" : "skipped",
     },
   });
-  if (wantsExtraction) {
-    // fire-and-forget: OCR can take tens of seconds and must never hold up
-    // the upload response; the client polls extractionStatus
-    const { buffer, mimetype } = req.file;
-    setImmediate(() => {
-      runExtraction(file.id, buffer, mimetype).catch((err) => console.error("extraction:", err));
-    });
-  }
   res.status(201).json({ file });
 });
-
-async function runExtraction(fileId: string, buffer: Buffer, mimeType: string): Promise<void> {
-  let text: string | null = null;
-  try {
-    text = await extractText(buffer, mimeType);
-  } catch {
-    text = null;
-  }
-  await prisma.uploadedFile
-    .update({
-      where: { id: fileId },
-      data: {
-        extractedText: text || null,
-        extractionStatus: text ? "done" : "failed",
-      },
-    })
-    // the file may have been deleted while OCR ran — nothing to record then
-    .catch(() => {});
-}
 
 filesRouter.get("/:id", async (req, res) => {
   const file = await prisma.uploadedFile.findFirst({

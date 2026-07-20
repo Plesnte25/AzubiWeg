@@ -92,26 +92,12 @@ model UploadedFile {
   storedName      String
   mimeType        String
   size            Int
-  // digital text parsed from the raw upload (PDF text layer, TXT body, OCR for
-  // images); the raw file is always kept. Cleaned + capped at 100k chars.
-  extractedText    String?
-  extractionStatus ExtractionStatus @default(skipped)
   createdAt       DateTime       @default(now())
 }
 
 enum FileKind {
   document
   cv_photo
-}
-
-enum ExtractionStatus {
-  // upload committed, extraction worker not finished yet
-  pending
-  done
-  // extraction threw or produced no text
-  failed
-  // not eligible (cv photos, checklist documents)
-  skipped
 }
 
 model Cv {
