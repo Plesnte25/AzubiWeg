@@ -48,8 +48,6 @@ export interface VaultStatus {
 
 export type Grade = "hard" | "good" | "easy";
 
-export type ExtractionStatus = "pending" | "done" | "failed" | "skipped";
-
 export interface UploadedFileMeta {
   id: string;
   checklistItemId: string | null;
@@ -59,8 +57,6 @@ export interface UploadedFileMeta {
   originalName: string;
   mimeType: string;
   size: number;
-  extractedText: string | null;
-  extractionStatus: ExtractionStatus;
   createdAt: string;
 }
 

@@ -82,9 +82,8 @@ export default function Learning() {
   );
 }
 
-/** Image chips render a thumbnail; parsed files expose their extracted text. */
+/** Image chips render a thumbnail. */
 function FileChip({ file, onChanged }: { file: UploadedFileMeta; onChanged: () => void }) {
-  const [showText, setShowText] = useState(false);
   const [thumb, setThumb] = useState<string | null>(null);
   const removeFile = useMutation({ mutationFn: api.deleteFile, onSuccess: onChanged });
   const isImage = file.mimeType.startsWith("image/");
@@ -107,48 +106,25 @@ function FileChip({ file, onChanged }: { file: UploadedFileMeta; onChanged: () =
   }, [file.id, isImage]);
 
   return (
-    <div className="inline-flex flex-col">
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-paper px-2 py-0.5 text-xs">
-        {isImage && thumb && (
-          <img src={thumb} alt="" className="size-8 rounded object-cover" />
-        )}
-        <button
-          className="max-w-48 truncate hover:text-brand-600 hover:underline"
-          title={`Download ${file.originalName}`}
-          onClick={() => downloadFile(file.id, file.originalName)}
-        >
-          {file.originalName}
-        </button>
-        {file.extractionStatus === "pending" && (
-          <span className="animate-pulse text-ink-400">parsing…</span>
-        )}
-        {file.extractionStatus === "failed" && (
-          <span className="text-ink-400" title="No text could be extracted">
-            no text found
-          </span>
-        )}
-        {file.extractionStatus === "done" && file.extractedText && (
-          <button
-            className="rounded bg-brand-100 px-1.5 text-brand-600 hover:bg-brand-200"
-            onClick={() => setShowText((v) => !v)}
-          >
-            {showText ? "hide text" : "text"}
-          </button>
-        )}
-        <button
-          className="text-ink-400 hover:text-danger-600"
-          title="Remove file"
-          onClick={() => removeFile.mutate(file.id)}
-        >
-          ×
-        </button>
-      </span>
-      {showText && file.extractedText && (
-        <pre className="mt-1.5 max-h-56 max-w-xl overflow-auto whitespace-pre-wrap rounded-lg border border-hairline bg-paper p-3 text-xs text-ink-600">
-          {file.extractedText}
-        </pre>
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-paper px-2 py-0.5 text-xs">
+      {isImage && thumb && (
+        <img src={thumb} alt="" className="size-8 rounded object-cover" />
       )}
-    </div>
+      <button
+        className="max-w-48 truncate hover:text-brand-600 hover:underline"
+        title={`Download ${file.originalName}`}
+        onClick={() => downloadFile(file.id, file.originalName)}
+      >
+        {file.originalName}
+      </button>
+      <button
+        className="text-ink-400 hover:text-danger-600"
+        title="Remove file"
+        onClick={() => removeFile.mutate(file.id)}
+      >
+        ×
+      </button>
+    </span>
   );
 }
 
@@ -198,7 +174,7 @@ function Attachments({
         className="rounded border border-hairline px-2 py-0.5 text-xs text-ink-600 hover:bg-paper"
         disabled={uploading}
         onClick={() => fileInput.current?.click()}
-        title="Attach notes (PDF, photo, or .txt) — parsed to text automatically; OCR works best on printed text"
+        title="Attach notes (PDF, photo, or .txt)"
       >
         {uploading ? "Uploading…" : "+ notes"}
       </button>
@@ -207,19 +183,12 @@ function Attachments({
   );
 }
 
-/** True while any file on the queried entity is still being parsed. */
-function anyPending(files: UploadedFileMeta[][]): boolean {
-  return files.some((fs) => fs.some((f) => f.extractionStatus === "pending"));
-}
-
 // ── Syllabus (sequential roadmap) ──
 
 function SyllabusSection() {
   const { data, isLoading } = useQuery({
     queryKey: ["learning", "syllabus"],
     queryFn: api.learningSyllabus,
-    refetchInterval: (query) =>
-      anyPending((query.state.data?.items ?? []).map((i) => i.files)) ? 4000 : false,
   });
 
   if (isLoading) return <p className="text-ink-400">Loading…</p>;
@@ -355,8 +324,6 @@ function SourcesSection() {
   const { data, isLoading } = useQuery({
     queryKey: ["learning", "sources"],
     queryFn: api.learningSources,
-    refetchInterval: (query) =>
-      anyPending((query.state.data?.sources ?? []).map((s) => s.files)) ? 4000 : false,
   });
 
   if (isLoading) return <p className="text-ink-400">Loading…</p>;
