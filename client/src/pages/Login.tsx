@@ -35,7 +35,7 @@ export default function Login({ mode }: { mode: "login" | "register" }) {
     <div className="flex min-h-screen items-center justify-center px-4">
       <form onSubmit={submit} className="w-full max-w-sm rounded-xl border border-hairline bg-card p-6 shadow-sm">
         <h1 className="text-xl font-semibold tracking-tight">
-          <span className="text-brand-500">●</span> Deutschland Companion
+          <span className="text-brand-500">●</span> AzubiWeg
         </h1>
         <p className="mt-1 mb-5 text-sm text-ink-600">
           {mode === "login" ? "Welcome back. Weiter geht's!" : "Your companion for the journey to Germany."}

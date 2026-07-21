@@ -4,7 +4,7 @@
  * indistinguishable in the vault.
  */
 
-const USER_AGENT = "DeutschlandCompanion/1.0 (personal study tool)";
+const USER_AGENT = "AzubiWeg/1.0 (personal study tool)";
 const REQUEST_TIMEOUT_MS = 10_000;
 
 /** Retries on HTTP 429 — Wiktionary rate-limits under normal batch use. */
