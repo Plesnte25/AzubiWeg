@@ -156,9 +156,9 @@ export default function Layout() {
         <div className="mx-auto flex h-14 max-w-5xl items-center gap-4 px-4">
           <NavLink to="/" className="flex shrink-0 items-center gap-2 font-semibold tracking-tight">
             <span className="grid size-7 place-items-center rounded-lg bg-ink-900 text-xs font-bold text-brand-400">
-              DC
+              AW
             </span>
-            <span className="hidden sm:inline">Companion</span>
+            <span className="hidden sm:inline">AzubiWeg</span>
           </NavLink>
 
           {/* full nav from md up — compact labels, no horizontal scrolling */}

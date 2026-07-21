@@ -7,7 +7,7 @@ import { pipeline } from "node:stream/promises";
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 
 const execFileAsync = promisify(execFile);
-const USER_AGENT = "DeutschlandCompanion/1.0 (personal study tool)";
+const USER_AGENT = "AzubiWeg/1.0 (personal study tool)";
 
 /**
  * Filename sanitizer matching Python's re.sub(r"[^\w.\-]", "_", …) — Python

@@ -1,4 +1,4 @@
-# Deutschland Companion 🇩🇪
+# AzubiWeg 🇩🇪
 
 A platform for people preparing to move to Germany — built by someone doing exactly that.
 
