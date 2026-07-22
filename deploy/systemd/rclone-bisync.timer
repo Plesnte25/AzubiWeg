@@ -1,0 +1,10 @@
+[Unit]
+Description=Run rclone-bisync.service every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Unit=rclone-bisync.service
+
+[Install]
+WantedBy=timers.target

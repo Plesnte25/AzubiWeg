@@ -1,0 +1,11 @@
+azubiweg.is-a.dev {
+	handle /api/* {
+		reverse_proxy localhost:3000
+	}
+
+	handle {
+		root * /opt/azubiweg/client-dist
+		try_files {path} /index.html
+		file_server
+	}
+}
