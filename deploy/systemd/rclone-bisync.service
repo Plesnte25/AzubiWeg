@@ -6,4 +6,4 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 User=azubiweg
-ExecStart=/usr/bin/rclone bisync onedrive:Apps/remotely-save/German /opt/azubiweg/vaults/tanzeel --filters-file=/opt/azubiweg/repo/deploy/rclone-filter.txt --resilient
+ExecStart=/usr/bin/rclone bisync onedrive:Apps/remotely-save/German /opt/azubiweg/vaults/sharjeel --filters-file=/opt/azubiweg/repo/deploy/rclone-filter.txt --resilient
