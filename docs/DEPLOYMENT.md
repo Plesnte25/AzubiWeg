@@ -167,14 +167,14 @@ below) to whatever subfolder actually holds it.
 enabling the timer):**
 
 ```bash
-sudo -u azubiweg rclone bisync onedrive:Apps/remotely-save/German /opt/azubiweg/vaults/tanzeel \
+sudo -u azubiweg rclone bisync onedrive:Apps/remotely-save/German /opt/azubiweg/vaults/sharjeel \
   --resync --filters-file=/opt/azubiweg/repo/deploy/rclone-filter.txt
 ```
 
 Confirm it worked:
 
 ```bash
-ls /opt/azubiweg/vaults/tanzeel/Vocab/master.md
+ls /opt/azubiweg/vaults/sharjeel/Vocab/master.md
 ```
 
 Now enable the recurring timer (ordinary bisync passes from here on, no
@@ -197,7 +197,7 @@ sudo journalctl -u azubiweg -f   # watch it come up
 ```
 
 In the app, sign in and set your vault path (Settings) to
-`/opt/azubiweg/vaults/tanzeel` — same UX as pointing it at a local folder in
+`/opt/azubiweg/vaults/sharjeel` — same UX as pointing it at a local folder in
 dev, it's just backed by the bisync now.
 
 ## 8. Caddy (reverse proxy + free TLS)
