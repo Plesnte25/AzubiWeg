@@ -1,0 +1,5 @@
+# Exclude the atomic-write temp files the app's vault writer creates
+# (server/src/services/vault/writer.ts: `.<basename>.<hex>.tmp`, renamed into
+# place after a full write) so bisync never syncs a half-written temp file
+# or fights the rename.
+- .*.tmp

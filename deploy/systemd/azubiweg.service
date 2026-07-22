@@ -1,0 +1,15 @@
+[Unit]
+Description=AzubiWeg server
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=azubiweg
+WorkingDirectory=/opt/azubiweg/repo/server
+EnvironmentFile=/opt/azubiweg/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

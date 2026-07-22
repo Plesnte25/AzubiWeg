@@ -1,0 +1,9 @@
+[Unit]
+Description=rclone bisync OneDrive vault <-> local (one pass)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=azubiweg
+ExecStart=/usr/bin/rclone bisync onedrive:German /opt/azubiweg/vaults/tanzeel --filters-file=/opt/azubiweg/repo/deploy/rclone-filter.txt --resilient

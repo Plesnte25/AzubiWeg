@@ -1,0 +1,18 @@
+# Production Postgres for the VPS deploy. Bound to loopback only since this
+# box is internet-facing (the app connects via 127.0.0.1, nothing else should).
+# Use your own POSTGRES_PASSWORD in production, not this placeholder.
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: azubiweg
+      POSTGRES_PASSWORD: azubiweg
+      POSTGRES_DB: azubiweg
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  pgdata:
