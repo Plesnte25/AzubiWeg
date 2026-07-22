@@ -123,22 +123,40 @@ sudo -u azubiweg npx prisma migrate deploy
 ## 6. rclone: bridge the Obsidian vault over OneDrive
 
 The Obsidian "Remotely Save" plugin already syncs your vault to OneDrive
-Personal under the base folder `German`. Point rclone at the *same* remote
-so the VPS gets a live local copy without touching your laptop's setup.
+Personal under `Apps/remotely-save/German` (Remotely Save nests everything
+under `Apps/remotely-save/<vault>` — confirm yours with `rclone lsd onedrive:
+-R --max-depth 3` if it differs). Point rclone at the *same* remote so the
+VPS gets a live local copy without touching your laptop's setup.
+
+OAuth needs a real browser, so run this as your own SSH login user (not
+`azubiweg`) over a port-forwarded SSH session:
 
 ```bash
-sudo -u azubiweg rclone config
-# n) New remote -> name it "onedrive" -> type "onedrive" -> same Microsoft
-# account Remotely Save uses. OAuth needs a browser: on a headless VPS,
-# either run `rclone authorize onedrive` on your own laptop and paste the
-# resulting token into the VPS prompt, or use `rclone config` in
-# --auto-confirm mode over an SSH tunnel with a browser on your end.
+# from your laptop:
+gcloud compute ssh <instance> --zone=<zone> --tunnel-through-iap -- -L 53682:localhost:53682
+# once connected:
+rclone config
+# n) New remote -> name it "onedrive" -> type "onedrive" -> leave
+# client_id/secret blank -> global region -> auto config yes -> open the
+# printed 127.0.0.1:53682 URL in your laptop's browser and sign in with the
+# same Microsoft account Remotely Save uses -> OneDrive Personal -> confirm
+# the drive found.
+```
+
+Then copy the resulting config to `azubiweg` (the bisync service runs as
+that user, and `rclone config` above just wrote to *your* home directory):
+
+```bash
+sudo mkdir -p /opt/azubiweg/.config/rclone
+sudo cp ~/.config/rclone/rclone.conf /opt/azubiweg/.config/rclone/rclone.conf
+sudo chown -R azubiweg:azubiweg /opt/azubiweg/.config
+sudo chmod 600 /opt/azubiweg/.config/rclone/rclone.conf
 ```
 
 Confirm the remote sees your vault:
 
 ```bash
-sudo -u azubiweg rclone lsf onedrive:German
+sudo -u azubiweg rclone lsf onedrive:Apps/remotely-save/German
 ```
 
 If `Vocab/master.md` isn't directly under that listing, adjust the remote
@@ -149,7 +167,7 @@ below) to whatever subfolder actually holds it.
 enabling the timer):**
 
 ```bash
-sudo -u azubiweg rclone bisync onedrive:German /opt/azubiweg/vaults/tanzeel \
+sudo -u azubiweg rclone bisync onedrive:Apps/remotely-save/German /opt/azubiweg/vaults/tanzeel \
   --resync --filters-file=/opt/azubiweg/repo/deploy/rclone-filter.txt
 ```
 
