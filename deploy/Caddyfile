@@ -1,4 +1,4 @@
-azubiweg.is-a.dev {
+(app) {
 	handle /api/* {
 		reverse_proxy localhost:3000
 	}
@@ -8,4 +8,19 @@ azubiweg.is-a.dev {
 		try_files {path} /index.html
 		file_server
 	}
+}
+
+azubiweg.is-a.dev {
+	import app
+}
+
+# Permanent plain-HTTP mirror on the raw IP, for is-a.dev PR reviewers to
+# verify reachability before the DNS record exists. Deliberately kept
+# indefinitely (not a one-off toggle) — a prior temporary version of this
+# broke the moment it was reverted, which is exactly why the first PR got
+# closed as "unreachable" when reviewed later. Explicit http:// scheme
+# disables Caddy's automatic-HTTPS for this block only; the real domain
+# above still gets a proper Let's Encrypt cert once DNS goes live.
+http://34.42.175.158 {
+	import app
 }
