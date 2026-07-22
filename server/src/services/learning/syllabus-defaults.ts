@@ -14,8 +14,14 @@ export interface DefaultSyllabusItem {
  * Bump when DEFAULT_SYLLABUS_ITEMS changes shape or content. Users on an
  * older version get reseeded on their next syllabus load; completions are
  * preserved by (level, normalized title) match.
+ *
+ * v3: added the "Alphabet & pronunciation" item below — the roadmap's Week 1
+ * grammar slot referenced this topic before the syllabus/roadmap merge but
+ * had no syllabus counterpart to link to. Any bump here must ship with a
+ * paired ROADMAP_VERSION bump in roadmap-defaults.ts, since grammar/vocab
+ * roadmap content is now generated FROM this list, not hand-authored.
  */
-export const SYLLABUS_VERSION = 2;
+export const SYLLABUS_VERSION = 3;
 
 /**
  * The 2027 syllabus: full CEFR A1–B1 topic/subtopic map aligned with the
@@ -26,6 +32,7 @@ export const SYLLABUS_VERSION = 2;
 export const DEFAULT_SYLLABUS_ITEMS: DefaultSyllabusItem[] = [
   // ════════════════════ A1 ════════════════════
   // ── grammar ──
+  { level: "a1", category: "grammar", theme: "Alphabet & pronunciation", title: "The German alphabet & sound system", description: "Letters, umlauts, ß, and how German spelling maps to sound." },
   { level: "a1", category: "grammar", theme: "Verbs: present tense", title: "sein & haben", description: "The two anchor verbs, all persons." },
   { level: "a1", category: "grammar", theme: "Verbs: present tense", title: "Regular conjugation", description: "Stem + endings: wohnen, lernen, machen, kommen." },
   { level: "a1", category: "grammar", theme: "Verbs: present tense", title: "Stem-changing verbs", description: "e→i/ie (sprechen, lesen), a→ä (fahren, schlafen)." },

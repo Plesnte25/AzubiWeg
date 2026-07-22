@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { api, clearSession, getUser } from "../api/client";
+import { useActivityHeartbeat } from "../hooks/useActivityHeartbeat";
 
 const tabs = [
   { to: "/", label: "Dashboard", end: true },
   { to: "/vocabulary", label: "Vocabulary" },
   { to: "/review", label: "Review" },
-  { to: "/learning", label: "Learning" },
+  { to: "/learning", label: "Learning Hub" },
   { to: "/cv", label: "CV" },
   { to: "/applications", label: "Applications" },
   { to: "/checklist", label: "Checklist" },
@@ -146,6 +147,8 @@ function UserMenu() {
 export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
+
+  useActivityHeartbeat();
 
   // close the mobile menu on navigation
   useEffect(() => setMenuOpen(false), [location.pathname]);

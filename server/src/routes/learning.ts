@@ -2,10 +2,11 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { setSyllabusItemCompletion } from "../services/learning/completion-sync.js";
 import { buildSession } from "../services/learning/engine.js";
 import { levelProgress, levelStates, sourcePercent } from "../services/learning/progress.js";
 import { QUESTION_BANK } from "../services/learning/question-bank.js";
-import { DEFAULT_SYLLABUS_ITEMS, SYLLABUS_VERSION } from "../services/learning/syllabus-defaults.js";
+import { ensureSyllabusSeeded } from "../services/learning/syllabus-seed.js";
 import { extractCourseId, fetchCourse } from "../services/learning/nicosweg.js";
 import { buildCourseUnits, buildManualUnits, buildPlaylistUnits, resizeManualUnits, unitProgress } from "../services/learning/units.js";
 import { extractPlaylistId, fetchPlaylist } from "../services/learning/youtube.js";
@@ -21,87 +22,40 @@ const DIRECTION = z.enum(["de_to_meaning", "meaning_to_de"]);
 // ── syllabus ──
 
 learningRouter.get("/syllabus", async (req, res) => {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
-  if (!user.learningSeededAt) {
-    // seed once per user; the stamp guards re-seeding (same as the checklist)
-    await prisma.$transaction([
-      prisma.syllabusItem.createMany({
-        data: DEFAULT_SYLLABUS_ITEMS.map((item, i) => ({
-          userId: user.id,
-          ...item,
-          sortOrder: i,
-        })),
-      }),
-      prisma.user.update({
-        where: { id: user.id },
-        data: { learningSeededAt: new Date(), syllabusVersion: SYLLABUS_VERSION },
-      }),
-    ]);
-  } else if (user.syllabusVersion < SYLLABUS_VERSION) {
-    // the authored syllabus was revised: replace the user's copy, carrying
-    // completions over wherever a (level, title) still exists in the new set
-    const key = (level: string, title: string) => `${level}|${title.trim().toLowerCase()}`;
-    await prisma.$transaction(async (tx) => {
-      const existing = await tx.syllabusItem.findMany({
-        where: { userId: user.id },
-        select: { id: true, level: true, title: true, completedAt: true },
-      });
-      const oldKeyById = new Map(existing.map((i) => [i.id, key(i.level, i.title)]));
-      const completedAt = new Map(
-        existing
-          .filter((i) => i.completedAt !== null)
-          .map((i) => [key(i.level, i.title), i.completedAt]),
-      );
-      // detach note files first — deleting items would cascade them away
-      const attachedFiles = await tx.uploadedFile.findMany({
-        where: { userId: user.id, syllabusItemId: { not: null } },
-        select: { id: true, syllabusItemId: true },
-      });
-      await tx.uploadedFile.updateMany({
-        where: { userId: user.id, syllabusItemId: { not: null } },
-        data: { syllabusItemId: null },
-      });
-
-      await tx.syllabusItem.deleteMany({ where: { userId: user.id } });
-      await tx.syllabusItem.createMany({
-        data: DEFAULT_SYLLABUS_ITEMS.map((item, i) => ({
-          userId: user.id,
-          ...item,
-          sortOrder: i,
-          completedAt: completedAt.get(key(item.level, item.title)) ?? null,
-        })),
-      });
-
-      // re-attach notes to same-titled items in the new syllabus
-      const fresh = await tx.syllabusItem.findMany({
-        where: { userId: user.id },
-        select: { id: true, level: true, title: true },
-      });
-      const newIdByKey = new Map(fresh.map((i) => [key(i.level, i.title), i.id]));
-      for (const file of attachedFiles) {
-        const oldKey = file.syllabusItemId ? oldKeyById.get(file.syllabusItemId) : undefined;
-        const newId = oldKey ? newIdByKey.get(oldKey) : undefined;
-        if (newId) {
-          await tx.uploadedFile.update({ where: { id: file.id }, data: { syllabusItemId: newId } });
-        }
-      }
-
-      await tx.user.update({
-        where: { id: user.id },
-        data: { syllabusVersion: SYLLABUS_VERSION },
-      });
-    });
-  }
+  await ensureSyllabusSeeded(req.userId);
 
   const items = await prisma.syllabusItem.findMany({
     where: { userId: req.userId },
-    include: { files: true },
+    include: {
+      files: true,
+      // just enough to show "Scheduled -> Day N" when this topic is on the
+      // active roadmap; a syllabus item links to at most one roadmap task
+      roadmapTasks: { select: { day: { select: { dayOffset: true } } }, take: 1 },
+    },
     orderBy: [{ level: "asc" }, { sortOrder: "asc" }],
   });
-  res.json({ levels: levelProgress(items), items });
+  const withRoadmapDay = items.map(({ roadmapTasks, ...item }) => ({
+    ...item,
+    roadmapDayOffset: roadmapTasks[0]?.day.dayOffset ?? null,
+  }));
+  res.json({ levels: levelProgress(items), items: withRoadmapDay });
 });
 
-const toggleSchema = z.object({ completed: z.boolean() });
+const toggleSchema = z
+  .object({
+    completed: z.boolean().optional(),
+    examples: z.string().max(5000).nullish(),
+    exceptions: z.string().max(5000).nullish(),
+    commonMistakes: z.string().max(5000).nullish(),
+  })
+  .refine(
+    (d) =>
+      d.completed !== undefined ||
+      d.examples !== undefined ||
+      d.exceptions !== undefined ||
+      d.commonMistakes !== undefined,
+    { message: "Nothing to update" },
+  );
 
 learningRouter.patch("/syllabus/:id", async (req, res) => {
   const parsed = toggleSchema.safeParse(req.body);
@@ -112,12 +66,27 @@ learningRouter.patch("/syllabus/:id", async (req, res) => {
   });
   if (!existing) return res.status(404).json({ error: "Syllabus item not found" });
 
-  const item = await prisma.syllabusItem.update({
-    where: { id: existing.id },
-    data: { completedAt: parsed.data.completed ? new Date() : null },
-    include: { files: true },
+  const item = await prisma.$transaction(async (tx) => {
+    if (parsed.data.completed !== undefined) {
+      // also mirrors onto any linked RoadmapTask (see completion-sync.ts) —
+      // this item and its roadmap task(s), if any, are the same fact
+      await setSyllabusItemCompletion(tx, req.userId, existing.id, parsed.data.completed);
+    }
+    const notesUpdate = {
+      ...(parsed.data.examples !== undefined ? { examples: parsed.data.examples ?? null } : {}),
+      ...(parsed.data.exceptions !== undefined ? { exceptions: parsed.data.exceptions ?? null } : {}),
+      ...(parsed.data.commonMistakes !== undefined ? { commonMistakes: parsed.data.commonMistakes ?? null } : {}),
+    };
+    if (Object.keys(notesUpdate).length > 0) {
+      await tx.syllabusItem.update({ where: { id: existing.id }, data: notesUpdate });
+    }
+    return tx.syllabusItem.findUniqueOrThrow({
+      where: { id: existing.id },
+      include: { files: true, roadmapTasks: { select: { day: { select: { dayOffset: true } } }, take: 1 } },
+    });
   });
-  res.json({ item });
+  const { roadmapTasks, ...rest } = item;
+  res.json({ item: { ...rest, roadmapDayOffset: roadmapTasks[0]?.day.dayOffset ?? null } });
 });
 
 // ── study sources ──

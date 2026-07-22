@@ -257,11 +257,19 @@ class VaultSyncService {
       }
     }
 
-    const fields = await enrichResolved(res, audioDir, lesson);
-    await this.applyToVault(userId, vaultPath, (cards) =>
-      upsertEnrichedCard(cards, word, res.headword, fields),
+    // strip found/headword/typed before this reaches Card.fields — those
+    // aren't CardFields and Prisma rejects them once reconcile() spreads
+    // card.fields into a Word upsert (same trap words.ts's non-vault path
+    // already guards against with the same destructure)
+    const { found, headword: _headword, typed: _typed, ...cardFields } = await enrichResolved(
+      res,
+      audioDir,
+      lesson,
     );
-    return { headword: res.headword, typed: word, found: fields.found, merged: false };
+    await this.applyToVault(userId, vaultPath, (cards) =>
+      upsertEnrichedCard(cards, word, res.headword, cardFields),
+    );
+    return { headword: res.headword, typed: word, found, merged: false };
   }
 
   /** Port of cmd_enrich_inbox: enrich every raw word, then reset the file. */

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import {
+  AUDIO_TYPES,
   contentDispositionFor,
   IMAGE_TYPES,
   MAX_FILE_SIZE,
@@ -24,10 +25,11 @@ const upload = multer({
 });
 
 const uploadSchema = z.object({
-  kind: z.enum(["document", "cv_photo"]).default("document"),
+  kind: z.enum(["document", "cv_photo", "audio_recording"]).default("document"),
   checklistItemId: z.string().optional(),
   syllabusItemId: z.string().optional(),
   studySourceId: z.string().optional(),
+  roadmapTaskId: z.string().optional(),
 });
 
 // translate multer's size-limit error into a 400 instead of the global 500
@@ -45,18 +47,21 @@ const uploadSingle: express.RequestHandler = (req, res, next) => {
 filesRouter.post("/", uploadSingle, async (req, res) => {
   const parsed = uploadSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
-  const { kind, checklistItemId, syllabusItemId, studySourceId } = parsed.data;
+  const { kind, checklistItemId, syllabusItemId, studySourceId, roadmapTaskId } = parsed.data;
 
   if (!req.file) return res.status(400).json({ error: "No file provided (field name: file)" });
   if (kind === "cv_photo" && !IMAGE_TYPES.has(req.file.mimetype)) {
     return res.status(400).json({ error: "CV photos must be JPEG, PNG, or WebP" });
   }
+  if (kind === "audio_recording" && !AUDIO_TYPES.has(req.file.mimetype)) {
+    return res.status(400).json({ error: "Audio recordings must be WebM, OGG, or MP4/M4A" });
+  }
   const storedName = storedNameFor(req.file.mimetype);
   if (!storedName) {
-    return res.status(400).json({ error: "Only PDF, JPEG, PNG, and WebP files are allowed" });
+    return res.status(400).json({ error: "Only PDF, JPEG, PNG, WebP, TXT, or audio (WebM/OGG/MP4) files are allowed" });
   }
 
-  const parents = [checklistItemId, syllabusItemId, studySourceId].filter(Boolean);
+  const parents = [checklistItemId, syllabusItemId, studySourceId, roadmapTaskId].filter(Boolean);
   if (parents.length > 1) {
     return res.status(400).json({ error: "A file can attach to only one item" });
   }
@@ -78,6 +83,12 @@ filesRouter.post("/", uploadSingle, async (req, res) => {
     });
     if (!source) return res.status(404).json({ error: "Study source not found" });
   }
+  if (roadmapTaskId) {
+    const task = await prisma.roadmapTask.findFirst({
+      where: { id: roadmapTaskId, day: { userId: req.userId } },
+    });
+    if (!task) return res.status(404).json({ error: "Roadmap task not found" });
+  }
 
   const dir = uploadsDir(req.userId);
   await mkdir(dir, { recursive: true });
@@ -89,6 +100,7 @@ filesRouter.post("/", uploadSingle, async (req, res) => {
       checklistItemId: checklistItemId ?? null,
       syllabusItemId: syllabusItemId ?? null,
       studySourceId: studySourceId ?? null,
+      roadmapTaskId: roadmapTaskId ?? null,
       kind,
       originalName: req.file.originalname,
       storedName,
@@ -114,7 +126,7 @@ filesRouter.get("/:id", async (req, res) => {
   res.setHeader("Content-Type", file.mimeType);
   res.setHeader(
     "Content-Disposition",
-    contentDispositionFor(file.originalName, file.mimeType.startsWith("image/")),
+    contentDispositionFor(file.originalName, file.mimeType.startsWith("image/") || file.mimeType.startsWith("audio/")),
   );
   res.sendFile(resolved);
 });

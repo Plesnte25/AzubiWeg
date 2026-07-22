@@ -1,8 +1,21 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { BADGE_DEFAULTS } from "../services/gamification/badge-defaults.js";
 import { computeDayStreak, localDateKey } from "../services/learning/activity.js";
+import { addDaysUTC, dayStatus } from "../services/learning/roadmap.js";
 import { EXPIRY_WARN_DAYS, expiryStatus } from "../services/reminders.js";
+
+function todayUtcFromLocal(): Date {
+  const [y, m, d] = localDateKey(new Date()).split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d));
+}
+
+/** Monday of the UTC week containing `d` (Monday-aligned, matching the roadmap calendar convention). */
+function mondayOf(d: Date): Date {
+  const dayIdx = (d.getUTCDay() + 6) % 7; // 0 = Monday
+  return addDaysUTC(d, -dayIdx);
+}
 
 export const dashboardRouter = Router();
 dashboardRouter.use(requireAuth);
@@ -20,6 +33,10 @@ dashboardRouter.get("/", async (req, res) => {
   const activityHorizon = new Date();
   activityHorizon.setDate(activityHorizon.getDate() - 366);
 
+  const todayUtc = todayUtcFromLocal();
+  const weekStart = mondayOf(todayUtc);
+  const weekEnd = addDaysUTC(weekStart, 7);
+
   const [
     totalWords,
     dueToday,
@@ -33,7 +50,12 @@ dashboardRouter.get("/", async (req, res) => {
     syllabusActivity,
     sourceActivity,
     testActivity,
+    roadmapActivity,
     lastSelfTest,
+    user,
+    weekDays,
+    badgeCount,
+    recentBadges,
   ] = await Promise.all([
     prisma.word.count({ where: { userId: req.userId } }),
     prisma.word.count({ where: { userId: req.userId, srDue: { lte: endOfToday } } }),
@@ -84,10 +106,32 @@ dashboardRouter.get("/", async (req, res) => {
       where: { userId: req.userId, takenAt: { gte: activityHorizon } },
       select: { takenAt: true },
     }),
+    prisma.roadmapTask.findMany({
+      where: { completedAt: { gte: activityHorizon }, day: { userId: req.userId } },
+      select: { completedAt: true },
+    }),
     prisma.selfTestResult.findFirst({
       where: { userId: req.userId },
       orderBy: { takenAt: "desc" },
       select: { score: true, total: true, takenAt: true },
+    }),
+    prisma.user.findUniqueOrThrow({ where: { id: req.userId }, select: { roadmapStartedAt: true, points: true } }),
+    prisma.roadmapDay.findMany({
+      where: { userId: req.userId, date: { gte: weekStart, lt: weekEnd } },
+      select: {
+        date: true,
+        dayOffset: true,
+        theme: true,
+        tasks: { select: { completedAt: true, title: true }, orderBy: { sortOrder: "asc" } },
+      },
+      orderBy: { date: "asc" },
+    }),
+    prisma.userBadge.count({ where: { userId: req.userId } }),
+    prisma.userBadge.findMany({
+      where: { userId: req.userId },
+      orderBy: { unlockedAt: "desc" },
+      take: 5,
+      select: { badgeKey: true, unlockedAt: true },
     }),
   ]);
 
@@ -129,6 +173,7 @@ dashboardRouter.get("/", async (req, res) => {
     ...syllabusActivity.map((r) => r.completedAt as Date),
     ...sourceActivity.map((r) => r.loggedAt),
     ...testActivity.map((r) => r.takenAt),
+    ...roadmapActivity.map((r) => r.completedAt as Date),
   ];
 
   // GitHub-style heatmap: last 15 full weeks of reviews + learning activity,
@@ -166,6 +211,24 @@ dashboardRouter.get("/", async (req, res) => {
   };
   for (const g of appsByStatus) applications[g.status] = g._count;
 
+  const roadmapWeekStrip = weekDays.map((d) => ({
+    date: d.date.toISOString().slice(0, 10),
+    dayOffset: d.dayOffset,
+    status: dayStatus(d, todayUtc),
+  }));
+  const todayRow = weekDays.find((d) => d.date.getTime() === todayUtc.getTime());
+  const roadmapToday =
+    user.roadmapStartedAt && todayRow
+      ? {
+          theme: todayRow.theme,
+          tasksDone: todayRow.tasks.filter((t) => t.completedAt !== null).length,
+          tasksTotal: todayRow.tasks.length,
+          nextIncompleteTitle: todayRow.tasks.find((t) => t.completedAt === null)?.title ?? null,
+        }
+      : null;
+
+  const badgeLabelByKey = new Map<string, string>(BADGE_DEFAULTS.map((b) => [b.key, b.label]));
+
   res.json({
     totalWords,
     dueToday,
@@ -186,6 +249,17 @@ dashboardRouter.get("/", async (req, res) => {
       levels,
       streak: computeDayStreak(learningTimestamps, now),
       lastSelfTest,
+    },
+    roadmapToday,
+    roadmapWeekStrip,
+    gamification: {
+      points: user.points,
+      badgeCount,
+      recentBadges: recentBadges.map((b) => ({
+        key: b.badgeKey,
+        label: badgeLabelByKey.get(b.badgeKey) ?? b.badgeKey,
+        unlockedAt: b.unlockedAt,
+      })),
     },
   });
 });

@@ -1,4 +1,5 @@
 import type {
+  ActivitySummary,
   AppNotification,
   Application,
   ApplicationDetail,
@@ -18,15 +19,30 @@ import type {
   PlaylistFetchOutcome,
   Portal,
   QuizResultsResponse,
+  GoetheReadiness,
+  ReviewHistoryEntry,
+  ReviewStats,
+  RoadmapBacklogResponse,
+  RoadmapCalendarDay,
+  RoadmapDayDetail,
+  RoadmapJournalTask,
+  RoadmapMonthlyReview,
+  RoadmapSkill,
+  RoadmapStatus,
+  RoadmapTask,
+  RoadmapTodayResponse,
+  RoadmapWeeklyReview,
   SelfTestResult,
   SessionQuestion,
   StudySource,
   StudySourceType,
   SyllabusItem,
   TopicBreakdown,
+  UnlockedBadge,
   UploadedFileMeta,
   User,
   VaultStatus,
+  WeakWord,
   Word,
 } from "./types";
 
@@ -100,7 +116,7 @@ export const api = {
   },
   wordsMeta: () => request<{ lessons: { lesson: string; count: number }[] }>("/api/words/meta"),
   addWords: (words: string[], lesson?: string) =>
-    request<{ words: Word[] }>("/api/words", {
+    request<{ words: Word[]; newlyUnlockedBadges: UnlockedBadge[] }>("/api/words", {
       method: "POST",
       body: JSON.stringify({ words, ...(lesson ? { lesson } : {}) }),
     }),
@@ -110,10 +126,15 @@ export const api = {
 
   reviewQueue: () => request<{ due: Word[]; fresh: Word[] }>("/api/reviews/queue"),
   gradeWord: (wordId: string, grade: Grade) =>
-    request<{ next: { due: string; interval: number; ease: number }; word: Word }>(
+    request<{ next: { due: string; interval: number; ease: number }; word: Word; newlyUnlockedBadges: UnlockedBadge[] }>(
       `/api/reviews/${wordId}`,
       { method: "POST", body: JSON.stringify({ grade }) },
     ),
+  reviewHistory: (limit?: number) =>
+    request<{ entries: ReviewHistoryEntry[] }>(`/api/reviews/history${limit ? `?limit=${limit}` : ""}`),
+  reviewWeakWords: (limit?: number) =>
+    request<{ words: WeakWord[] }>(`/api/reviews/weak-words${limit ? `?limit=${limit}` : ""}`),
+  reviewStats: () => request<ReviewStats>("/api/reviews/stats"),
 
   dashboard: () => request<DashboardData>("/api/dashboard"),
 
@@ -194,6 +215,14 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ completed }),
     }),
+  updateSyllabusNotebook: (
+    id: string,
+    data: Partial<{ examples: string | null; exceptions: string | null; commonMistakes: string | null }>,
+  ) =>
+    request<{ item: SyllabusItem }>(`/api/learning/syllabus/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
   learningSources: () => request<{ sources: StudySource[] }>("/api/learning/sources"),
   addStudySource: (data: {
     type: StudySourceType;
@@ -261,6 +290,38 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  roadmapStatus: () => request<RoadmapStatus>("/api/learning/roadmap/status"),
+  activateRoadmap: (startDate?: string) =>
+    request<{ startedAt: string }>("/api/learning/roadmap/activate", {
+      method: "POST",
+      body: JSON.stringify(startDate ? { startDate } : {}),
+    }),
+  roadmapToday: () => request<RoadmapTodayResponse>("/api/learning/roadmap/today"),
+  roadmapBacklog: () => request<RoadmapBacklogResponse>("/api/learning/roadmap/backlog"),
+  roadmapDay: (date: string) => request<{ day: RoadmapDayDetail }>(`/api/learning/roadmap/day/${date}`),
+  roadmapCalendar: (month: string) =>
+    request<{ days: RoadmapCalendarDay[] }>(`/api/learning/roadmap/calendar?month=${month}`),
+  updateRoadmapTask: (
+    id: string,
+    data: Partial<{ completed: boolean; journalEntry: string | null; minutesSpent: number | null }>,
+  ) =>
+    request<{ task: RoadmapTask }>(`/api/learning/roadmap/tasks/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  toggleRoadmapTask: (id: string, completed: boolean) =>
+    request<{ task: RoadmapTask }>(`/api/learning/roadmap/tasks/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ completed }),
+    }),
+  roadmapJournal: (skill: RoadmapSkill) =>
+    request<{ tasks: RoadmapJournalTask[] }>(`/api/learning/roadmap/journal/${skill}`),
+  roadmapWeeklyReview: (date?: string) =>
+    request<RoadmapWeeklyReview>(`/api/learning/roadmap/review/week${date ? `?date=${date}` : ""}`),
+  roadmapMonthlyReview: (month: string) =>
+    request<RoadmapMonthlyReview>(`/api/learning/roadmap/review/month?month=${month}`),
+  goetheReadiness: () => request<GoetheReadiness>("/api/learning/roadmap/readiness"),
+
   portals: () => request<{ portals: Portal[] }>("/api/portals"),
   addPortal: (data: { label: string; url: string }) =>
     request<{ portal: Portal }>("/api/portals", { method: "POST", body: JSON.stringify(data) }),
@@ -269,6 +330,9 @@ export const api = {
   deletePortal: (id: string) => request<void>(`/api/portals/${id}`, { method: "DELETE" }),
 
   notifications: () => request<{ notifications: AppNotification[] }>("/api/notifications"),
+
+  activityPing: () => request<void>("/api/activity/ping", { method: "POST" }),
+  activitySummary: () => request<ActivitySummary>("/api/activity/summary"),
 };
 
 /**
@@ -279,10 +343,11 @@ export const api = {
 export async function uploadFile(
   file: File,
   opts: {
-    kind: "document" | "cv_photo";
+    kind: "document" | "cv_photo" | "audio_recording";
     checklistItemId?: string;
     syllabusItemId?: string;
     studySourceId?: string;
+    roadmapTaskId?: string;
   },
 ): Promise<UploadedFileMeta> {
   const token = getToken();
@@ -292,6 +357,7 @@ export async function uploadFile(
   if (opts.checklistItemId) form.append("checklistItemId", opts.checklistItemId);
   if (opts.syllabusItemId) form.append("syllabusItemId", opts.syllabusItemId);
   if (opts.studySourceId) form.append("studySourceId", opts.studySourceId);
+  if (opts.roadmapTaskId) form.append("roadmapTaskId", opts.roadmapTaskId);
   const res = await fetch("/api/files", {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},

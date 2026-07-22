@@ -1,30 +1,29 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, downloadFile, fetchFileBlobUrl, uploadFile } from "../api/client";
 import type {
   CefrLevel,
   LevelState,
-  SessionQuestion,
+  RoadmapSkill,
   StudySource,
   StudySourceUnit,
   StudySourceType,
   SyllabusCategory,
   SyllabusItem,
-  TopicBreakdown,
-  UploadedFileMeta,
-} from "../api/types";
-import FillBar from "../components/FillBar";
-import { levelStates } from "../lib/levels";
-import { nicosWegCourseIdFromUrl } from "../lib/nicosweg";
-import { isAnswerAccepted } from "../lib/quiz";
+} from "../../api/types";
+import { api } from "../../api/client";
+import { Attachments } from "../../components/Attachments";
+import FillBar from "../../components/FillBar";
+import { levelStates } from "../../lib/levels";
+import { nicosWegCourseIdFromUrl } from "../../lib/nicosweg";
+import { RESOURCES } from "../../lib/resources";
 import {
   youTubePlaylistIdFromUrl,
   youTubeThumbUrl,
   youTubeVideoIdFromUrl,
   youTubeWatchUrl,
-} from "../lib/youtube";
+} from "../../lib/youtube";
 
-const LEVEL_LABELS: Record<CefrLevel, string> = { a1: "A1", a2: "A2", b1: "B1" };
+export const LEVEL_LABELS: Record<CefrLevel, string> = { a1: "A1", a2: "A2", b1: "B1" };
 
 const CATEGORY_LABELS: Record<SyllabusCategory, string> = {
   grammar: "Grammar",
@@ -40,152 +39,9 @@ const SOURCE_TYPES: { key: StudySourceType; label: string }[] = [
   { key: "other", label: "Other" },
 ];
 
-const SECTIONS = [
-  { key: "syllabus", label: "Syllabus" },
-  { key: "sources", label: "Study sources" },
-  { key: "tests", label: "Self-tests" },
-] as const;
-type Section = (typeof SECTIONS)[number]["key"];
+// ── Syllabus ──
 
-export default function Learning() {
-  const [section, setSection] = useState<Section>("syllabus");
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-semibold">Learning</h1>
-          <p className="text-sm text-ink-600">
-            Your German roadmap: one level at a time, lessons from your own sources, and tests that
-            adapt to you.
-          </p>
-        </div>
-        <div className="flex gap-1 rounded-full border border-hairline bg-card p-1">
-          {SECTIONS.map((s) => (
-            <button
-              key={s.key}
-              className={`rounded-full px-3 py-1 text-sm transition-colors ${
-                section === s.key ? "bg-ink-900 text-white" : "text-ink-600 hover:bg-paper"
-              }`}
-              onClick={() => setSection(s.key)}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {section === "syllabus" && <SyllabusSection />}
-      {section === "sources" && <SourcesSection />}
-      {section === "tests" && <TestsSection />}
-    </div>
-  );
-}
-
-/** Image chips render a thumbnail. */
-function FileChip({ file, onChanged }: { file: UploadedFileMeta; onChanged: () => void }) {
-  const [thumb, setThumb] = useState<string | null>(null);
-  const removeFile = useMutation({ mutationFn: api.deleteFile, onSuccess: onChanged });
-  const isImage = file.mimeType.startsWith("image/");
-
-  useEffect(() => {
-    if (!isImage) return;
-    let url: string | null = null;
-    let cancelled = false;
-    fetchFileBlobUrl(file.id).then((u) => {
-      if (cancelled) URL.revokeObjectURL(u);
-      else {
-        url = u;
-        setThumb(u);
-      }
-    });
-    return () => {
-      cancelled = true;
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [file.id, isImage]);
-
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-paper px-2 py-0.5 text-xs">
-      {isImage && thumb && (
-        <img src={thumb} alt="" className="size-8 rounded object-cover" />
-      )}
-      <button
-        className="max-w-48 truncate hover:text-brand-600 hover:underline"
-        title={`Download ${file.originalName}`}
-        onClick={() => downloadFile(file.id, file.originalName)}
-      >
-        {file.originalName}
-      </button>
-      <button
-        className="text-ink-400 hover:text-danger-600"
-        title="Remove file"
-        onClick={() => removeFile.mutate(file.id)}
-      >
-        ×
-      </button>
-    </span>
-  );
-}
-
-function Attachments({
-  files,
-  parent,
-  onChanged,
-}: {
-  files: UploadedFileMeta[];
-  parent: { syllabusItemId?: string; studySourceId?: string };
-  onChanged: () => void;
-}) {
-  const fileInput = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function onUpload(file: File) {
-    setUploading(true);
-    setError(null);
-    try {
-      await uploadFile(file, { kind: "document", ...parent });
-      onChanged();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed");
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  return (
-    <div className="flex flex-wrap items-start gap-2">
-      {files.map((f) => (
-        <FileChip key={f.id} file={f} onChanged={onChanged} />
-      ))}
-      <input
-        ref={fileInput}
-        type="file"
-        hidden
-        accept=".pdf,.jpg,.jpeg,.png,.webp,.txt"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) onUpload(f);
-          e.target.value = "";
-        }}
-      />
-      <button
-        className="rounded border border-hairline px-2 py-0.5 text-xs text-ink-600 hover:bg-paper"
-        disabled={uploading}
-        onClick={() => fileInput.current?.click()}
-        title="Attach notes (PDF, photo, or .txt)"
-      >
-        {uploading ? "Uploading…" : "+ notes"}
-      </button>
-      {error && <span className="text-xs text-danger-600">{error}</span>}
-    </div>
-  );
-}
-
-// ── Syllabus (sequential roadmap) ──
-
-function SyllabusSection() {
+export function SyllabusSection() {
   const { data, isLoading } = useQuery({
     queryKey: ["learning", "syllabus"],
     queryFn: api.learningSyllabus,
@@ -277,10 +133,57 @@ function SyllabusSection() {
   );
 }
 
+const NOTEBOOK_FIELDS = [
+  { key: "examples", label: "Examples", placeholder: "Your own example sentences, one per line…" },
+  { key: "exceptions", label: "Exceptions", placeholder: "Exceptions to watch for…" },
+  { key: "commonMistakes", label: "Common mistakes", placeholder: "Mistakes you keep making…" },
+] as const;
+
+/** Grammar Notebook: collapsible notes panel for grammar-category items only. */
+function GrammarNotebook({ item, onChanged }: { item: SyllabusItem; onChanged: () => void }) {
+  const [drafts, setDrafts] = useState({
+    examples: item.examples ?? "",
+    exceptions: item.exceptions ?? "",
+    commonMistakes: item.commonMistakes ?? "",
+  });
+  const update = useMutation({
+    mutationFn: (data: Parameters<typeof api.updateSyllabusNotebook>[1]) => api.updateSyllabusNotebook(item.id, data),
+    onSuccess: onChanged,
+  });
+
+  return (
+    <details className="mt-1 rounded-lg border border-hairline bg-paper">
+      <summary className="cursor-pointer select-none px-2.5 py-1.5 text-xs font-medium text-ink-600">
+        📓 Notebook
+      </summary>
+      <div className="space-y-2 p-2.5 pt-0">
+        {NOTEBOOK_FIELDS.map((f) => (
+          <div key={f.key}>
+            <label className="text-xs font-medium text-ink-600">{f.label}</label>
+            <textarea
+              className="mt-0.5 w-full rounded-lg border border-hairline bg-card px-2 py-1.5 text-sm"
+              rows={2}
+              placeholder={f.placeholder}
+              value={drafts[f.key]}
+              onChange={(e) => setDrafts((d) => ({ ...d, [f.key]: e.target.value }))}
+              onBlur={() => {
+                if (drafts[f.key] !== (item[f.key] ?? "")) {
+                  update.mutate({ [f.key]: drafts[f.key] || null });
+                }
+              }}
+            />
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
+
 function SyllabusRow({ item }: { item: SyllabusItem }) {
   const queryClient = useQueryClient();
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["learning", "syllabus"] });
+    queryClient.invalidateQueries({ queryKey: ["roadmap"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
   };
   const toggle = useMutation({
@@ -290,37 +193,45 @@ function SyllabusRow({ item }: { item: SyllabusItem }) {
   const done = item.completedAt !== null;
 
   return (
-    <div className="flex flex-wrap items-start gap-3 rounded-lg px-2 py-1.5 hover:bg-paper">
-      <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2.5">
-        <input
-          type="checkbox"
-          className="mt-1 accent-brand-500"
-          checked={done}
-          onChange={(e) => toggle.mutate(e.target.checked)}
-        />
-        <span className="min-w-0">
-          <span className={`font-medium ${done ? "text-ink-400 line-through" : ""}`}>
-            {item.title}
+    <div className="rounded-lg px-2 py-1.5 hover:bg-paper">
+      <div className="flex flex-wrap items-start gap-3">
+        <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2.5">
+          <input
+            type="checkbox"
+            className="mt-1 accent-brand-500"
+            checked={done}
+            onChange={(e) => toggle.mutate(e.target.checked)}
+          />
+          <span className="min-w-0">
+            <span className={`font-medium ${done ? "text-ink-400 line-through" : ""}`}>
+              {item.title}
+            </span>
+            {item.roadmapDayOffset !== null && (
+              <span className="ml-2 rounded-full bg-paper px-2 py-0.5 text-xs text-ink-400">
+                Scheduled → Day {item.roadmapDayOffset + 1}
+              </span>
+            )}
+            {item.description && (
+              <span className="block text-sm text-ink-600">{item.description}</span>
+            )}
           </span>
-          {item.description && (
-            <span className="block text-sm text-ink-600">{item.description}</span>
-          )}
-        </span>
-      </label>
-      <div className="shrink-0 pt-0.5">
-        <Attachments
-          files={item.files}
-          parent={{ syllabusItemId: item.id }}
-          onChanged={invalidate}
-        />
+        </label>
+        <div className="shrink-0 pt-0.5">
+          <Attachments
+            files={item.files}
+            parent={{ syllabusItemId: item.id }}
+            onChanged={invalidate}
+          />
+        </div>
       </div>
+      {item.category === "grammar" && <GrammarNotebook item={item} onChanged={invalidate} />}
     </div>
   );
 }
 
 // ── Study sources ──
 
-function SourcesSection() {
+export function SourcesSection() {
   const { data, isLoading } = useQuery({
     queryKey: ["learning", "sources"],
     queryFn: api.learningSources,
@@ -731,347 +642,77 @@ function SourceForm({ initial, onSaved }: { initial?: StudySource; onSaved: () =
   );
 }
 
-// ── Self-tests ──
+// ── Resources ──
 
-interface AnswerRecord {
-  qid: string;
-  topic: string;
-  level: CefrLevel;
-  correct: boolean;
-}
+const RESOURCE_SKILL_LABEL: Record<RoadmapSkill, string> = {
+  grammar: "Grammar",
+  vocab: "Vocab",
+  listening: "Listening",
+  speaking: "Speaking",
+  writing: "Writing",
+  reading: "Reading",
+  bureaucracy: "Deutschland Context",
+  milestone: "Exams",
+  reflection: "Reflection",
+};
 
-function TestsSection() {
-  const [session, setSession] = useState<{ questions: SessionQuestion[]; level: CefrLevel } | null>(
-    null,
-  );
+const RESOURCE_SKILLS: RoadmapSkill[] = [
+  "grammar",
+  "vocab",
+  "listening",
+  "speaking",
+  "writing",
+  "reading",
+  "bureaucracy",
+  "milestone",
+];
 
-  return (
-    <div className="space-y-6">
-      {session ? (
-        <TestRunner session={session} onDone={() => setSession(null)} />
-      ) : (
-        <TestLauncher onStart={setSession} />
-      )}
-      {!session && <TestHistory />}
-    </div>
-  );
-}
-
-function TestLauncher({
-  onStart,
-}: {
-  onStart: (s: { questions: SessionQuestion[]; level: CefrLevel }) => void;
-}) {
-  const [size, setSize] = useState(12);
-  const [error, setError] = useState<string | null>(null);
-
-  const start = useMutation({
-    mutationFn: () => api.startSelfTest({ size }),
-    onSuccess: (data) => {
-      setError(null);
-      onStart(data);
-    },
-    onError: (e) => setError(e instanceof ApiError ? e.message : "Could not start the test"),
-  });
+export function ResourcesSection() {
+  const [filter, setFilter] = useState<RoadmapSkill | "all">("all");
+  const visible = filter === "all" ? RESOURCES : RESOURCES.filter((r) => r.skill === filter);
 
   return (
-    <div className="space-y-3 rounded-xl border border-hairline bg-card p-4">
-      <div>
-        <h2 className="font-semibold">Test yourself</h2>
-        <p className="text-sm text-ink-600">
-          A mixed test built for your current level — grammar, real-life situations, and your own
-          vocabulary. It adapts to your recent scores, never repeats recent questions, and never
-          touches your review schedule.
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <select
-          className="rounded border border-hairline bg-paper px-2 py-1.5 text-sm"
-          value={size}
-          onChange={(e) => setSize(Number(e.target.value))}
-        >
-          {[8, 12, 20].map((n) => (
-            <option key={n} value={n}>
-              {n} questions
-            </option>
-          ))}
-        </select>
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-1.5">
         <button
-          className="rounded bg-ink-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-          disabled={start.isPending}
-          onClick={() => start.mutate()}
+          className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+            filter === "all" ? "border-ink-900 bg-ink-900 text-white" : "border-hairline text-ink-600 hover:bg-paper"
+          }`}
+          onClick={() => setFilter("all")}
         >
-          {start.isPending ? "Building…" : "Start test"}
+          All
         </button>
-      </div>
-      {error && <p className="text-sm text-danger-600">{error}</p>}
-    </div>
-  );
-}
-
-function TestRunner({
-  session,
-  onDone,
-}: {
-  session: { questions: SessionQuestion[]; level: CefrLevel };
-  onDone: () => void;
-}) {
-  const queryClient = useQueryClient();
-  const { questions } = session;
-  const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState<AnswerRecord[]>([]);
-  const [phase, setPhase] = useState<"answering" | "feedback" | "finished">("answering");
-  const [lastCorrect, setLastCorrect] = useState(false);
-  const [picked, setPicked] = useState<number | null>(null);
-  const [draft, setDraft] = useState("");
-
-  const submit = useMutation({
-    mutationFn: (records: AnswerRecord[]) => {
-      const byTopic = new Map<string, TopicBreakdown>();
-      for (const r of records) {
-        const key = `${r.topic}|${r.level}`;
-        const entry = byTopic.get(key) ?? { topic: r.topic, level: r.level, correct: 0, total: 0 };
-        entry.total += 1;
-        if (r.correct) entry.correct += 1;
-        byTopic.set(key, entry);
-      }
-      return api.submitQuizResult({
-        score: records.filter((r) => r.correct).length,
-        total: records.length,
-        kind: "mixed",
-        level: session.level,
-        questionIds: records.map((r) => r.qid),
-        breakdown: [...byTopic.values()],
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["learning", "quizResults"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    },
-  });
-
-  const q = questions[index];
-
-  function record(correct: boolean) {
-    const next = [...answers, { qid: q.qid, topic: q.topic, level: q.level, correct }];
-    setAnswers(next);
-    setLastCorrect(correct);
-    if (index === questions.length - 1) {
-      setPhase("finished");
-      submit.mutate(next);
-    } else {
-      setPhase("feedback");
-    }
-  }
-
-  function advance() {
-    setIndex(index + 1);
-    setPicked(null);
-    setDraft("");
-    setPhase("answering");
-  }
-
-  if (phase === "finished") {
-    const score = answers.filter((a) => a.correct).length;
-    const pct = Math.round((score / questions.length) * 100);
-    const byTopic = new Map<string, { correct: number; total: number }>();
-    for (const a of answers) {
-      const entry = byTopic.get(a.topic) ?? { correct: 0, total: 0 };
-      entry.total += 1;
-      if (a.correct) entry.correct += 1;
-      byTopic.set(a.topic, entry);
-    }
-    return (
-      <div className="space-y-4 rounded-xl border border-hairline bg-card p-6 text-center">
-        <p className="text-3xl font-semibold">
-          {score} / {questions.length}
-        </p>
-        <p className="text-ink-600">
-          {pct}% correct{pct === 100 ? " — perfekt!" : pct >= 80 ? " — sehr gut!" : ""}
-        </p>
-        <div className="flex flex-wrap justify-center gap-2">
-          {[...byTopic.entries()].map(([topic, t]) => (
-            <span
-              key={topic}
-              className={`rounded-full border px-2.5 py-0.5 text-xs ${
-                t.correct === t.total
-                  ? "border-ok-600 bg-ok-50 text-ok-600"
-                  : t.correct === 0
-                    ? "border-danger-600 bg-danger-50 text-danger-600"
-                    : "border-hairline bg-paper text-ink-600"
-              }`}
-            >
-              {topic} {t.correct}/{t.total}
-            </span>
-          ))}
-        </div>
-        <button className="rounded bg-ink-900 px-4 py-2 text-sm text-white" onClick={onDone}>
-          Done
-        </button>
-      </div>
-    );
-  }
-
-  const answered = phase === "feedback";
-
-  return (
-    <div className="space-y-4 rounded-xl border border-hairline bg-card p-4">
-      <div className="flex items-baseline justify-between text-sm text-ink-600">
-        <span>
-          Question {index + 1} of {questions.length}
-          <span className="ml-2 rounded-full bg-paper px-2 py-0.5 text-xs uppercase">{q.level}</span>
-          <span className="ml-1 text-xs text-ink-400">{q.topic}</span>
-        </span>
-        <span>
-          Score {answers.filter((a) => a.correct).length}
-          <button className="ml-3 text-ink-400 hover:text-danger-600" onClick={onDone}>
-            Quit
-          </button>
-        </span>
-      </div>
-
-      <p className="text-xl font-semibold">{q.prompt}</p>
-
-      {q.type === "mcq" && (
-        <div className="grid gap-2 sm:grid-cols-2">
-          {q.choices.map((choice, i) => {
-            let style = "border-hairline hover:bg-paper";
-            if (answered) {
-              if (i === q.answerIndex) style = "border-ok-600 bg-ok-50 text-ok-600";
-              else if (i === picked) style = "border-danger-600 bg-danger-50 text-danger-600";
-              else style = "border-hairline opacity-60";
-            }
-            return (
-              <button
-                key={i}
-                className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${style}`}
-                disabled={answered}
-                onClick={() => {
-                  setPicked(i);
-                  record(i === q.answerIndex);
-                }}
-              >
-                {choice}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {q.type === "true_false" && (
-        <div className="grid max-w-md gap-2 sm:grid-cols-2">
-          {[true, false].map((value) => {
-            let style = "border-hairline hover:bg-paper";
-            if (answered) {
-              if (value === q.answer) style = "border-ok-600 bg-ok-50 text-ok-600";
-              else if (picked === (value ? 1 : 0)) style = "border-danger-600 bg-danger-50 text-danger-600";
-              else style = "border-hairline opacity-60";
-            }
-            return (
-              <button
-                key={String(value)}
-                className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${style}`}
-                disabled={answered}
-                onClick={() => {
-                  setPicked(value ? 1 : 0);
-                  record(value === q.answer);
-                }}
-              >
-                {value ? "Richtig ✓" : "Falsch ✗"}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {q.type === "fill_blank" && (
-        <form
-          className="flex max-w-md gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!draft.trim() || answered) return;
-            record(isAnswerAccepted(draft, q.accepted));
-          }}
-        >
-          <input
-            autoFocus
-            className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
-              answered
-                ? lastCorrect
-                  ? "border-ok-600 bg-ok-50"
-                  : "border-danger-600 bg-danger-50"
-                : "border-hairline bg-paper"
+        {RESOURCE_SKILLS.map((s) => (
+          <button
+            key={s}
+            className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+              filter === s ? "border-ink-900 bg-ink-900 text-white" : "border-hairline text-ink-600 hover:bg-paper"
             }`}
-            placeholder="Type your answer…"
-            value={draft}
-            disabled={answered}
-            onChange={(e) => setDraft(e.target.value)}
-          />
-          {!answered && (
-            <button className="rounded bg-ink-900 px-3 py-1.5 text-sm text-white" disabled={!draft.trim()}>
-              Check
-            </button>
-          )}
-        </form>
-      )}
-
-      {answered && (
-        <div className="flex items-center gap-3">
-          <span className={`text-sm font-medium ${lastCorrect ? "text-ok-600" : "text-danger-600"}`}>
-            {lastCorrect ? "Richtig!" : "Leider falsch."}
-          </span>
-          {!lastCorrect && q.type === "fill_blank" && (
-            <span className="text-sm text-ink-600">
-              Answer: <span className="font-medium text-ink-900">{q.accepted[0]}</span>
-            </span>
-          )}
-          <button className="rounded bg-ink-900 px-4 py-1.5 text-sm text-white" onClick={advance}>
-            Next
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TestHistory() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["learning", "quizResults"],
-    queryFn: api.quizResults,
-  });
-
-  if (isLoading || !data || data.results.length === 0) return null;
-
-  return (
-    <section className="space-y-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-400">Recent results</h2>
-        <p className="text-sm text-ink-600">
-          Best {data.best}% · average {data.avg}%
-        </p>
-      </div>
-      <div className="space-y-1.5">
-        {data.results.map((r) => (
-          <div
-            key={r.id}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-hairline bg-card px-3 py-2 text-sm"
+            onClick={() => setFilter(s)}
           >
-            <span className="flex flex-wrap items-center gap-2">
-              <span className="font-medium">
-                {r.score} / {r.total}
-              </span>
-              {r.level && (
-                <span className="rounded-full bg-paper px-2 py-0.5 text-xs uppercase">{r.level}</span>
-              )}
-              <span className="text-ink-600">
-                {r.kind === "mixed" ? "mixed test" : "vocab quiz"}
-                {r.lesson ? ` · ${r.lesson}` : ""}
-              </span>
-            </span>
-            <span className="text-ink-400">{new Date(r.takenAt).toLocaleDateString()}</span>
-          </div>
+            {RESOURCE_SKILL_LABEL[s]}
+          </button>
         ))}
       </div>
-    </section>
+      <div className="divide-y divide-hairline rounded-xl border border-hairline bg-card">
+        {visible.map((r) => (
+          <a
+            key={r.title}
+            href={r.url}
+            target={r.url.startsWith("/") ? undefined : "_blank"}
+            rel={r.url.startsWith("/") ? undefined : "noreferrer"}
+            className="block px-4 py-3 hover:bg-paper"
+          >
+            <span className="flex flex-wrap items-baseline gap-2">
+              <span className="font-medium text-brand-600 hover:underline">{r.title}</span>
+              <span className="rounded-full bg-paper px-2 py-0.5 text-xs text-ink-400">
+                {RESOURCE_SKILL_LABEL[r.skill]}
+              </span>
+            </span>
+            {r.note && <span className="mt-0.5 block text-sm text-ink-600">{r.note}</span>}
+          </a>
+        ))}
+      </div>
+    </div>
   );
 }
