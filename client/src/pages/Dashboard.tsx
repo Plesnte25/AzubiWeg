@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import ActivityHeatmap from "../components/ActivityHeatmap";
 import FillBar from "../components/FillBar";
+import RoadmapWeekStrip from "../components/RoadmapWeekStrip";
 import { levelStates } from "../lib/levels";
 
 function Tile({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
@@ -16,6 +17,13 @@ function Tile({ label, value, accent }: { label: string; value: string | number;
 
 export default function Dashboard() {
   const { data, isLoading } = useQuery({ queryKey: ["dashboard"], queryFn: api.dashboard });
+  // separate from the once-per-mount dashboard query and polled — this tile
+  // should visibly tick up while the tab stays open, matching the heartbeat
+  const { data: activity } = useQuery({
+    queryKey: ["activity", "summary"],
+    queryFn: api.activitySummary,
+    refetchInterval: 60_000,
+  });
 
   if (isLoading || !data) return <p className="text-ink-600">Loading…</p>;
 
@@ -41,6 +49,64 @@ export default function Dashboard() {
         <Tile label="Never reviewed" value={data.newWords} />
         <Tile label="Reviews today" value={data.reviewsToday} />
         <Tile label="Day streak" value={`${data.streak} 🔥`} />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <section className="rounded-xl border border-hairline bg-card p-4">
+          <div className="mb-2 flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-medium text-ink-600">Today's roadmap</h2>
+            {activity && (
+              <span className="text-xs text-ink-400">
+                {activity.minutesToday}m today · {activity.minutesThisWeek}m this week
+              </span>
+            )}
+          </div>
+          {data.roadmapToday ? (
+            <Link to="/learning?group=progress&tab=today" className="block space-y-2 rounded-lg p-1 hover:bg-paper">
+              <div className="flex items-baseline justify-between text-sm">
+                <span className="font-medium">{data.roadmapToday.theme ?? "Today"}</span>
+                <span className="text-ink-600">
+                  {data.roadmapToday.tasksDone}/{data.roadmapToday.tasksTotal} done
+                </span>
+              </div>
+              {data.roadmapToday.nextIncompleteTitle && (
+                <p className="text-sm text-ink-600">
+                  Next: <span className="font-medium text-ink-900">{data.roadmapToday.nextIncompleteTitle}</span>
+                </p>
+              )}
+            </Link>
+          ) : (
+            <Link to="/learning?group=progress" className="text-sm text-brand-600 hover:underline">
+              Start your 26-week roadmap →
+            </Link>
+          )}
+          <div className="mt-3">
+            <RoadmapWeekStrip days={data.roadmapWeekStrip} />
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-hairline bg-card p-4">
+          <h2 className="mb-2 text-sm font-medium text-ink-600">Progress points</h2>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-semibold text-brand-600">{data.gamification.points}</span>
+            <span className="text-sm text-ink-600">
+              points · {data.gamification.badgeCount} badge{data.gamification.badgeCount === 1 ? "" : "s"}
+            </span>
+          </div>
+          {data.gamification.recentBadges.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {data.gamification.recentBadges.map((b) => (
+                <span
+                  key={b.key}
+                  title={new Date(b.unlockedAt).toLocaleDateString()}
+                  className="rounded-full border border-brand-100 bg-brand-50 px-2.5 py-0.5 text-xs text-brand-600"
+                >
+                  🏅 {b.label}
+                </span>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
 
       <section className="rounded-xl border border-hairline bg-card p-4">

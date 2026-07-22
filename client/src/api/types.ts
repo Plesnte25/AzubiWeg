@@ -21,6 +21,8 @@ export interface Word {
   createdAt: string;
 }
 
+export type RoadmapDayStripStatus = "done" | "overdue" | "today" | "upcoming";
+
 export interface DashboardData {
   totalWords: number;
   dueToday: number;
@@ -37,6 +39,18 @@ export interface DashboardData {
     streak: number;
     lastSelfTest: { score: number; total: number; takenAt: string } | null;
   };
+  roadmapToday: {
+    theme: string | null;
+    tasksDone: number;
+    tasksTotal: number;
+    nextIncompleteTitle: string | null;
+  } | null;
+  roadmapWeekStrip: { date: string; dayOffset: number; status: RoadmapDayStripStatus }[];
+  gamification: {
+    points: number;
+    badgeCount: number;
+    recentBadges: { key: string; label: string; unlockedAt: string }[];
+  };
 }
 
 export interface VaultStatus {
@@ -48,12 +62,37 @@ export interface VaultStatus {
 
 export type Grade = "hard" | "good" | "easy";
 
+export interface ReviewHistoryEntry {
+  id: string;
+  wordId: string;
+  headword: string;
+  grade: Grade;
+  reviewedAt: string;
+  intervalAfter: number;
+}
+
+export interface WeakWord {
+  wordId: string;
+  headword: string;
+  lastGrade: Grade;
+  lastReviewedAt: string;
+}
+
+export interface ReviewStats {
+  totalReviews: number;
+  reviewsToday: number;
+  reviewsThisWeek: number;
+  gradeBreakdown: Record<Grade, number>;
+  avgIntervalAfter: number | null;
+}
+
 export interface UploadedFileMeta {
   id: string;
   checklistItemId: string | null;
   syllabusItemId: string | null;
   studySourceId: string | null;
-  kind: "document" | "cv_photo";
+  roadmapTaskId: string | null;
+  kind: "document" | "cv_photo" | "audio_recording";
   originalName: string;
   mimeType: string;
   size: number;
@@ -216,7 +255,14 @@ export interface SyllabusItem {
   description: string | null;
   sortOrder: number;
   completedAt: string | null;
+  // Grammar Notebook — user's own notes, grammar-category items only
+  examples: string | null;
+  exceptions: string | null;
+  commonMistakes: string | null;
   files: UploadedFileMeta[];
+  // set when this topic is scheduled on the active roadmap (same fact,
+  // synced via the roadmap/syllabus completion link)
+  roadmapDayOffset: number | null;
 }
 
 export interface LevelProgress {
@@ -288,12 +334,153 @@ export interface QuizResultsResponse {
   avg: number | null;
 }
 
+export type RoadmapTaskType = "generic" | "vocab" | "study_source" | "milestone_test";
+
+export type RoadmapSkill =
+  | "grammar"
+  | "vocab"
+  | "listening"
+  | "speaking"
+  | "writing"
+  | "reading"
+  | "bureaucracy"
+  | "milestone"
+  | "reflection";
+
+export interface RoadmapTask {
+  id: string;
+  sortOrder: number;
+  type: RoadmapTaskType;
+  skill: RoadmapSkill | null;
+  title: string;
+  description: string | null;
+  journalEntry: string | null;
+  minutesSpent: number | null;
+  completedAt: string | null;
+  files: UploadedFileMeta[];
+  // set when this task's content is derived from a syllabus topic — the
+  // same fact as that SyllabusItem's completion, kept in sync
+  syllabusItem: { level: CefrLevel; theme: string | null } | null;
+}
+
+export interface RoadmapJournalTask extends RoadmapTask {
+  day: { date: string; theme: string | null };
+}
+
+export interface RoadmapStatus {
+  activated: boolean;
+  startedAt: string | null;
+}
+
+export interface RoadmapOverview {
+  totalDays: number;
+  currentDayOffset: number;
+  tasksDone: number;
+  tasksTotal: number;
+  percent: number;
+}
+
+export interface RoadmapBacklogGroup {
+  dayId: string;
+  date: string;
+  theme: string | null;
+  daysOverdue: number;
+  tasks: RoadmapTask[];
+}
+
+export interface RoadmapTodayResponse {
+  date: string;
+  theme: string | null;
+  tasks: RoadmapTask[];
+  backlog: RoadmapBacklogGroup[];
+  overview: RoadmapOverview;
+}
+
+export interface RoadmapBacklogResponse {
+  groups: RoadmapBacklogGroup[];
+  totalOverdueTasks: number;
+}
+
+export interface RoadmapDayDetail {
+  date: string;
+  dayOffset: number;
+  theme: string | null;
+  tasks: RoadmapTask[];
+}
+
+export type RoadmapDayStatus = "done" | "overdue" | "today" | "upcoming";
+
+export interface RoadmapCalendarDay {
+  date: string;
+  dayOffset: number;
+  theme: string | null;
+  totalTasks: number;
+  completedTasks: number;
+  status: RoadmapDayStatus;
+}
+
+export interface RoadmapSkillTally {
+  skill: RoadmapSkill;
+  done: number;
+  total: number;
+}
+
+export interface RoadmapTopicWeakness {
+  topic: string;
+  correct: number;
+  total: number;
+  percent: number;
+}
+
+export interface RoadmapReviewSummary {
+  vocabAdded: number;
+  vocabReviewed: number;
+  grammarCompleted: { id: string; title: string }[];
+  tasksCompleted: number;
+  tasksTotal: number;
+  bySkill: RoadmapSkillTally[];
+  weakAreas: RoadmapTopicWeakness[];
+  loggedMinutes: number;
+  tasksWithLoggedTime: number;
+}
+
+export interface RoadmapWeeklyReview extends RoadmapReviewSummary {
+  weekStart: string;
+  weekEnd: string;
+}
+
+export interface RoadmapMonthlyReview extends RoadmapReviewSummary {
+  monthStart: string;
+  monthEnd: string;
+}
+
+export interface GoetheReadiness {
+  level: CefrLevel;
+  syllabusPercent: number;
+  avgRecentTestScore: number | null;
+  trend: "up" | "down" | "flat" | null;
+  readinessLabel: "not started" | "building" | "ready soon" | "exam ready";
+}
+
 export interface Portal {
   id: string;
   label: string;
   url: string;
   lastCheckedAt: string | null;
   createdAt: string;
+}
+
+export interface UnlockedBadge {
+  key: string;
+  label: string;
+  description: string;
+  points: number;
+}
+
+export interface ActivitySummary {
+  minutesToday: number;
+  minutesThisWeek: number;
+  history: { date: string; minutes: number }[];
 }
 
 export interface AppNotification {

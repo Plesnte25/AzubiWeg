@@ -156,10 +156,64 @@ function EditForm({ word, onDone }: { word: Word; onDone: () => void }) {
   );
 }
 
+type GroupMode = "lesson" | "az" | "flat";
+const GROUP_MODES: { key: GroupMode; label: string }[] = [
+  { key: "lesson", label: "By lesson" },
+  { key: "az", label: "A–Z" },
+  { key: "flat", label: "Flat list" },
+];
+
+interface WordGroup {
+  key: string;
+  label: string;
+  words: Word[];
+}
+
+/** Groups already-sortKey-ordered words by lesson, first non-lesson words last. */
+function groupByLesson(words: Word[]): WordGroup[] {
+  const map = new Map<string, Word[]>();
+  for (const w of words) {
+    const key = w.lesson ?? "";
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(w);
+  }
+  return [...map.entries()]
+    .map(([key, ws]) => ({ key, label: key || "No lesson", words: ws }))
+    .sort((a, b) => (a.key === "" ? 1 : b.key === "" ? -1 : a.label.localeCompare(b.label)));
+}
+
+/** Groups already-sortKey-ordered words by first letter of their sort key. */
+function groupByLetter(words: Word[]): WordGroup[] {
+  const map = new Map<string, Word[]>();
+  for (const w of words) {
+    const letter = (w.sortKey[0] ?? "#").toUpperCase();
+    if (!map.has(letter)) map.set(letter, []);
+    map.get(letter)!.push(w);
+  }
+  return [...map.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, ws]) => ({ key, label: key, words: ws }));
+}
+
+function WordGroupDetails({ group, defaultOpen }: { group: WordGroup; defaultOpen: boolean }) {
+  return (
+    <details className="rounded-xl border border-hairline bg-card" open={defaultOpen}>
+      <summary className="flex cursor-pointer select-none items-baseline justify-between gap-2 rounded-xl p-3 hover:bg-paper">
+        <span className="font-semibold">{group.label}</span>
+        <span className="text-xs text-ink-400">{group.words.length}</span>
+      </summary>
+      <ul className="border-t border-hairline">
+        {group.words.map((w) => (
+          <WordRow key={w.id} word={w} />
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 export default function Vocabulary() {
   const [params, setParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const lesson = params.get("lesson") ?? undefined;
+  const [groupMode, setGroupMode] = useState<GroupMode>("lesson");
   const [addInput, setAddInput] = useState("");
   const [addLesson, setAddLesson] = useState("");
   const queryClient = useQueryClient();
@@ -221,6 +275,12 @@ export default function Vocabulary() {
             Added {add.data.words.map((w) => w?.headword).join(", ")} ✓
           </p>
         )}
+        {add.isSuccess && add.data.newlyUnlockedBadges.length > 0 && (
+          <p className="mt-2 text-sm text-brand-600">
+            🏅 New badge{add.data.newlyUnlockedBadges.length === 1 ? "" : "s"}:{" "}
+            {add.data.newlyUnlockedBadges.map((b) => b.label).join(", ")}
+          </p>
+        )}
       </form>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -245,14 +305,42 @@ export default function Vocabulary() {
             </option>
           ))}
         </select>
+        <div className="flex gap-1 rounded-full border border-hairline bg-card p-1">
+          {GROUP_MODES.map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              className={`rounded-full px-3 py-1 text-sm transition-colors ${
+                groupMode === m.key ? "bg-ink-900 text-white" : "text-ink-600 hover:bg-paper"
+              }`}
+              onClick={() => setGroupMode(m.key)}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <ul className="rounded-xl border border-hairline bg-card">
-        {data?.words.map((w) => <WordRow key={w.id} word={w} />)}
-        {data && data.words.length === 0 && (
-          <li className="px-3 py-8 text-center text-sm text-ink-400">No words found.</li>
-        )}
-      </ul>
+      {data && data.words.length === 0 && (
+        <p className="rounded-xl border border-hairline bg-card px-3 py-8 text-center text-sm text-ink-400">
+          No words found.
+        </p>
+      )}
+
+      {data && data.words.length > 0 && groupMode === "flat" && (
+        <ul className="rounded-xl border border-hairline bg-card">
+          {data.words.map((w) => <WordRow key={w.id} word={w} />)}
+        </ul>
+      )}
+
+      {data && data.words.length > 0 && groupMode !== "flat" && (
+        <div className="space-y-2">
+          {(groupMode === "lesson" ? groupByLesson(data.words) : groupByLetter(data.words)).map((group, i) => (
+            <WordGroupDetails key={group.key} group={group} defaultOpen={i === 0} />
+          ))}
+        </div>
+      )}
+
       {data && (
         <p className="text-right text-xs text-ink-400">
           {data.words.length} {data.words.length === 1 ? "word" : "words"}

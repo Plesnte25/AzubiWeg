@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { BATCH_DELAY_MS, delay, enrichWord } from "../services/enrichment/index.js";
+import { checkAndAwardBadges } from "../services/gamification/engine.js";
 import { formatCardLine } from "../services/vault/format.js";
 import { appAudioDir, cardFromBlock, makeCard, vaultFiles, vaultSync } from "../services/vault/sync.js";
 
@@ -106,7 +107,8 @@ wordsRouter.post("/", async (req, res) => {
     );
     if (i < words.length - 1) await delay(BATCH_DELAY_MS);
   }
-  res.status(201).json({ words: added });
+  const newlyUnlockedBadges = await prisma.$transaction((tx) => checkAndAwardBadges(tx, user.id));
+  res.status(201).json({ words: added, newlyUnlockedBadges });
 });
 
 const patchSchema = z.object({

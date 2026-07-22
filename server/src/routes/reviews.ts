@@ -2,6 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { checkAndAwardBadges } from "../services/gamification/engine.js";
+import { computeReviewStats, computeWeakWords } from "../services/reviews/history.js";
 import { schedule } from "../services/srs.js";
 import { formatSrLine, parseSrLine } from "../services/vault/format.js";
 import { vaultSync } from "../services/vault/sync.js";
@@ -14,6 +16,50 @@ function endOfToday(): Date {
   d.setHours(23, 59, 59, 999);
   return d;
 }
+
+reviewsRouter.get("/history", async (req, res) => {
+  const limit = Math.min(Number(req.query.limit ?? 50), 200);
+  const logs = await prisma.reviewLog.findMany({
+    where: { word: { userId: req.userId } },
+    orderBy: { reviewedAt: "desc" },
+    take: limit,
+    include: { word: { select: { headword: true } } },
+  });
+  res.json({
+    entries: logs.map((l) => ({
+      id: l.id,
+      wordId: l.wordId,
+      headword: l.word.headword,
+      grade: l.grade,
+      reviewedAt: l.reviewedAt,
+      intervalAfter: l.intervalAfter,
+    })),
+  });
+});
+
+reviewsRouter.get("/weak-words", async (req, res) => {
+  const limit = Math.min(Number(req.query.limit ?? 20), 100);
+  const logs = await prisma.reviewLog.findMany({
+    where: { word: { userId: req.userId } },
+    orderBy: { reviewedAt: "asc" },
+    include: { word: { select: { headword: true } } },
+  });
+  const rows = logs.map((l) => ({
+    wordId: l.wordId,
+    headword: l.word.headword,
+    grade: l.grade,
+    reviewedAt: l.reviewedAt,
+  }));
+  res.json({ words: computeWeakWords(rows, limit) });
+});
+
+reviewsRouter.get("/stats", async (req, res) => {
+  const logs = await prisma.reviewLog.findMany({
+    where: { word: { userId: req.userId } },
+    select: { grade: true, reviewedAt: true, intervalAfter: true },
+  });
+  res.json(computeReviewStats(logs, new Date()));
+});
 
 reviewsRouter.get("/queue", async (req, res) => {
   const newLimit = Math.min(Number(req.query.newLimit ?? 10), 50);
@@ -75,11 +121,13 @@ reviewsRouter.post("/:wordId", async (req, res) => {
   await prisma.reviewLog.create({
     data: { wordId: word.id, grade, intervalAfter: next.interval },
   });
+  const newlyUnlockedBadges = await prisma.$transaction((tx) => checkAndAwardBadges(tx, req.userId));
 
   res.json({
     next,
     word: await prisma.word.findUnique({
       where: { userId_sortKey: { userId: req.userId, sortKey: word.sortKey } },
     }),
+    newlyUnlockedBadges,
   });
 });

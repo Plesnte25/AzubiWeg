@@ -13,9 +13,16 @@ export const ALLOWED_TYPES: Record<string, string> = {
   "image/png": ".png",
   "image/webp": ".webp",
   "text/plain": ".txt",
+  // browser MediaRecorder output for speaking-practice recordings — webm
+  // (Chrome/Firefox default), ogg, and mp4 (Safari) cover the common cases
+  "audio/webm": ".webm",
+  "audio/ogg": ".ogg",
+  "audio/mp4": ".m4a",
 };
 
 export const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+export const AUDIO_TYPES = new Set(["audio/webm", "audio/ogg", "audio/mp4"]);
 
 export const MAX_FILE_SIZE = 10 * 1024 * 1024;
 

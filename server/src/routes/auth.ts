@@ -48,6 +48,7 @@ authRouter.post("/login", async (req, res) => {
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     return res.status(401).json({ error: "Invalid email or password" });
   }
+  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
   res.json({
     token: signToken(user.id),
     user: { id: user.id, email: user.email, name: user.name, vaultPath: user.vaultPath },
