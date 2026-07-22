@@ -254,10 +254,10 @@ your own GitHub account, not something to hand off. Fork the repo and add
 {
     "owner": {
         "username": "Plesnte25",
-        "email": "tanzeel.zander@gmail.com"
+        "email": "plesnte.workspace@gmail.com"
     },
     "records": {
-        "A": ["<VPS_PUBLIC_IP>"]
+        "A": ["34.42.175.158"]
     }
 }
 ```
