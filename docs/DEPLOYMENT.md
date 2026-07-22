@@ -76,33 +76,61 @@ Create a dedicated non-root user to run the app and own its data:
 sudo useradd -r -m -d /opt/azubiweg -s /usr/sbin/nologin azubiweg
 sudo mkdir -p /opt/azubiweg/vaults
 sudo chown -R azubiweg:azubiweg /opt/azubiweg
+sudo chmod o+x /opt/azubiweg
 ```
+
+That last `chmod` only adds *traverse* permission, not read/list — `useradd -m`
+defaults to `750`, which blocks every other user (including the `caddy`
+system user that needs to follow the `/etc/caddy/Caddyfile` symlink in step 8,
+and your own SSH login user running the `cd`-then-`sudo -u azubiweg` commands
+below) from even entering the directory. Everything inside stays protected by
+its own permissions (`.env` is `600`).
+
+Also, `sudo -u azubiweg <cmd>` on this image does **not** give you a working
+CWD if you `cd` first as your own (non-azubiweg) user — that `cd` silently
+fails against the `750`-turned-`750+x` directory and leaves the shell wherever
+it started, so `sudo -u azubiweg npm ci` etc. then runs from the wrong
+directory. Always do the `cd` *inside* the sudo'd shell instead:
+`sudo -u azubiweg bash -c 'cd /opt/azubiweg/... && <cmd>'` — every command
+below that needs a working directory uses this form.
 
 ## 3. Clone the repo and build
 
 ```bash
 sudo -u azubiweg git clone https://github.com/Plesnte25/AzubiWeg.git /opt/azubiweg/repo
 
-cd /opt/azubiweg/repo/server
-sudo -u azubiweg npm ci
-sudo -u azubiweg npm run build
+sudo -u azubiweg bash -c 'cd /opt/azubiweg/repo/server && npm ci'
+# npm 11's script-allowlist feature blocks Prisma's postinstall hook, so
+# `prisma generate` doesn't run automatically here — do it explicitly:
+sudo -u azubiweg bash -c 'cd /opt/azubiweg/repo/server && npx prisma generate'
+sudo -u azubiweg bash -c 'cd /opt/azubiweg/repo/server && npm run build'
 
-cd /opt/azubiweg/repo/client
-sudo -u azubiweg npm ci
-sudo -u azubiweg npm run build
-sudo -u azubiweg cp -r dist /opt/azubiweg/client-dist
+sudo -u azubiweg bash -c 'cd /opt/azubiweg/repo/client && npm ci'
+sudo -u azubiweg bash -c 'cd /opt/azubiweg/repo/client && npm run build'
+sudo -u azubiweg cp -r /opt/azubiweg/repo/client/dist /opt/azubiweg/client-dist
 ```
 
 ## 4. Postgres
 
+Generate a real password (never use the `azubiweg`/`azubiweg` placeholder
+committed in `deploy/docker-compose.yml`) and patch the compose file with it:
+
 ```bash
-cd /opt/azubiweg/repo
-sudo docker compose -f deploy/docker-compose.yml up -d
+DB_PASS=$(openssl rand -hex 24)
+sudo sed -i "s/POSTGRES_PASSWORD: azubiweg/POSTGRES_PASSWORD: $DB_PASS/" /opt/azubiweg/repo/deploy/docker-compose.yml
+echo "$DB_PASS" | sudo tee /opt/azubiweg/.dbpass > /dev/null
+sudo chown azubiweg:azubiweg /opt/azubiweg/.dbpass
+sudo chmod 600 /opt/azubiweg/.dbpass
 ```
 
-Set a real password (not the `azubiweg`/`azubiweg` placeholder in
-`deploy/docker-compose.yml`) before this ever sees real data — edit the
-compose file's `POSTGRES_PASSWORD` and the `DATABASE_URL` below to match.
+This edits a *tracked* file's working-tree copy only — never commit the real
+password. A future `git pull` on this box will conflict on this file; `git
+stash`, `pull`, `stash pop` reapplies the password cleanly since it touches a
+different line than any upstream change would.
+
+```bash
+sudo bash -c 'cd /opt/azubiweg/repo && docker compose -f deploy/docker-compose.yml up -d'
+```
 
 ## 5. Secrets file
 
@@ -110,14 +138,16 @@ compose file's `POSTGRES_PASSWORD` and the `DATABASE_URL` below to match.
 this:
 
 ```bash
-sudo -u azubiweg tee /opt/azubiweg/.env <<'EOF'
-DATABASE_URL="postgresql://azubiweg:<your-real-password>@127.0.0.1:5433/azubiweg"
-JWT_SECRET="<32+ random bytes, e.g. `openssl rand -hex 32`>"
+DB_PASS=$(sudo cat /opt/azubiweg/.dbpass)
+JWT_SECRET=$(openssl rand -hex 32)
+sudo -u azubiweg tee /opt/azubiweg/.env > /dev/null <<EOF
+DATABASE_URL="postgresql://azubiweg:${DB_PASS}@127.0.0.1:5433/azubiweg"
+JWT_SECRET="${JWT_SECRET}"
 PORT=3000
 EOF
+sudo chmod 600 /opt/azubiweg/.env
 
-cd /opt/azubiweg/repo/server
-sudo -u azubiweg npx prisma migrate deploy
+sudo -u azubiweg bash -c 'cd /opt/azubiweg/repo/server && set -a && source /opt/azubiweg/.env && set +a && npx prisma migrate deploy'
 ```
 
 ## 6. rclone: bridge the Obsidian vault over OneDrive
@@ -164,9 +194,11 @@ path in `deploy/systemd/rclone-bisync.service` (and the one-off command
 below) to whatever subfolder actually holds it.
 
 **First run — establishes the bisync baseline (one-time only, do this before
-enabling the timer):**
+enabling the timer):** bisync requires both sides to already exist, so create
+the local destination first — it's not covered by the `useradd -m` step:
 
 ```bash
+sudo -u azubiweg mkdir -p /opt/azubiweg/vaults/sharjeel
 sudo -u azubiweg rclone bisync onedrive:Apps/remotely-save/German /opt/azubiweg/vaults/sharjeel \
   --resync --filters-file=/opt/azubiweg/repo/deploy/rclone-filter.txt
 ```
