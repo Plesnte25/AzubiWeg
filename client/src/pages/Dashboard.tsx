@@ -9,7 +9,7 @@ import { levelStates } from "../lib/levels";
 function Tile({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
   return (
     <div className="rounded-xl border border-hairline bg-card p-4">
-      <div className={`text-2xl font-semibold ${accent ? "text-brand-600" : ""}`}>{value}</div>
+      <div className={`text-2xl font-semibold ${accent ? "text-brand-700" : ""}`}>{value}</div>
       <div className="mt-0.5 text-sm text-ink-600">{label}</div>
     </div>
   );
@@ -76,7 +76,7 @@ export default function Dashboard() {
               )}
             </Link>
           ) : (
-            <Link to="/learning?group=progress" className="text-sm text-brand-600 hover:underline">
+            <Link to="/learning?group=progress" className="text-sm text-brand-700 hover:underline">
               Start your 26-week roadmap →
             </Link>
           )}
@@ -88,7 +88,7 @@ export default function Dashboard() {
         <section className="rounded-xl border border-hairline bg-card p-4">
           <h2 className="mb-2 text-sm font-medium text-ink-600">Progress points</h2>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-semibold text-brand-600">{data.gamification.points}</span>
+            <span className="text-2xl font-semibold text-brand-700">{data.gamification.points}</span>
             <span className="text-sm text-ink-600">
               points · {data.gamification.badgeCount} badge{data.gamification.badgeCount === 1 ? "" : "s"}
             </span>
@@ -99,7 +99,7 @@ export default function Dashboard() {
                 <span
                   key={b.key}
                   title={new Date(b.unlockedAt).toLocaleDateString()}
-                  className="rounded-full border border-brand-100 bg-brand-50 px-2.5 py-0.5 text-xs text-brand-600"
+                  className="rounded-full border border-brand-100 bg-brand-50 px-2.5 py-0.5 text-xs text-brand-700"
                 >
                   🏅 {b.label}
                 </span>
@@ -130,7 +130,7 @@ export default function Dashboard() {
           </div>
         </div>
         {data.learning.levels.every((l) => l.total === 0) ? (
-          <Link to="/learning" className="text-sm text-brand-600 hover:underline">
+          <Link to="/learning" className="text-sm text-brand-700 hover:underline">
             Set up your syllabus — open the Learning tab to get started →
           </Link>
         ) : (
@@ -144,7 +144,7 @@ export default function Dashboard() {
                   <div className="flex items-baseline justify-between text-sm">
                     <span className="font-semibold uppercase">
                       {active.level}
-                      <span className="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium normal-case text-brand-600">
+                      <span className="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium normal-case text-brand-700">
                         current level
                       </span>
                     </span>
@@ -181,7 +181,7 @@ export default function Dashboard() {
           <ul className="space-y-1.5">
             {data.expiringDocuments.map((d) => (
               <li key={d.id}>
-                <Link to="/checklist" className="flex items-center gap-2 text-sm hover:text-brand-600">
+                <Link to="/checklist" className="flex items-center gap-2 text-sm hover:text-brand-700">
                   <span
                     className={`size-2 shrink-0 rounded-full ${
                       d.expiry === "warn" ? "bg-brand-400" : "bg-danger-600"

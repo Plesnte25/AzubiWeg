@@ -23,7 +23,7 @@ const STATUS_LABELS: Record<ChecklistStatus, string> = {
 
 const EXPIRY_STYLES: Record<ExpiryStatus, string> = {
   ok: "bg-ok-50 text-ok-600",
-  warn: "bg-brand-100 text-brand-600",
+  warn: "bg-brand-100 text-brand-700",
   urgent: "bg-danger-50 text-danger-600",
   expired: "bg-danger-50 text-danger-600",
 };
@@ -128,7 +128,7 @@ function ItemRow({ item }: { item: ChecklistItem }) {
                   className="inline-flex items-center gap-1 rounded-full border border-hairline bg-paper px-2 py-0.5 text-xs"
                 >
                   <button
-                    className="max-w-48 truncate hover:text-brand-600 hover:underline"
+                    className="max-w-48 truncate hover:text-brand-700 hover:underline"
                     title={`Download ${f.originalName}`}
                     onClick={() => downloadFile(f.id, f.originalName)}
                   >

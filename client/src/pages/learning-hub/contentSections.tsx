@@ -70,7 +70,7 @@ export function SyllabusSection() {
                   {LEVEL_LABELS[lvl.level]}
                   {state === "done" && <span className="ml-2 text-ok-600">✓ complete</span>}
                   {state === "active" && (
-                    <span className="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-600">
+                    <span className="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
                       current level
                     </span>
                   )}
@@ -308,13 +308,13 @@ function SourceCard({ source }: { source: StudySource }) {
               {typeLabel}
             </span>
             {source.level && (
-              <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-600">
+              <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
                 {LEVEL_LABELS[source.level]}
               </span>
             )}
             {source.url ? (
               <a
-                className="font-medium hover:text-brand-600 hover:underline"
+                className="font-medium hover:text-brand-700 hover:underline"
                 href={source.url}
                 target="_blank"
                 rel="noreferrer"
@@ -443,7 +443,7 @@ function UnitRow({
           {unit.title}
         </span>
         <button
-          className={`shrink-0 text-xs ${unit.notes ? "text-brand-600" : "text-ink-400"} hover:text-brand-600`}
+          className={`shrink-0 text-xs ${unit.notes ? "text-brand-700" : "text-ink-400"} hover:text-brand-700`}
           title={unit.notes ? "Edit notes" : "Add notes for this lesson"}
           onClick={() => setEditingNotes((v) => !v)}
         >
@@ -451,7 +451,7 @@ function UnitRow({
         </button>
         {lessonUrl && (
           <a
-            className="shrink-0 text-xs text-ink-400 hover:text-brand-600"
+            className="shrink-0 text-xs text-ink-400 hover:text-brand-700"
             href={lessonUrl}
             target="_blank"
             rel="noreferrer"
@@ -587,13 +587,13 @@ function SourceForm({ initial, onSaved }: { initial?: StudySource; onSaved: () =
         onChange={(e) => setUrl(e.target.value)}
       />
       {isPlaylist && (
-        <p className="text-xs text-brand-600 sm:col-span-2">
+        <p className="text-xs text-brand-700 sm:col-span-2">
           ▶ YouTube playlist detected — the lesson list will be fetched automatically (first ~100
           videos).
         </p>
       )}
       {isCourse && (
-        <p className="text-xs text-brand-600 sm:col-span-2">
+        <p className="text-xs text-brand-700 sm:col-span-2">
           📖 Nicos Weg course detected — the lesson list will be fetched from DW automatically.
         </p>
       )}
@@ -629,7 +629,7 @@ function SourceForm({ initial, onSaved }: { initial?: StudySource; onSaved: () =
         onChange={(e) => setNotes(e.target.value)}
       />
       {error && <p className="text-sm text-danger-600 sm:col-span-2">{error}</p>}
-      {notice && <p className="text-sm text-brand-600 sm:col-span-2">{notice}</p>}
+      {notice && <p className="text-sm text-brand-700 sm:col-span-2">{notice}</p>}
       <div className="sm:col-span-2">
         <button
           className="rounded bg-ink-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
@@ -704,7 +704,7 @@ export function ResourcesSection() {
             className="block px-4 py-3 hover:bg-paper"
           >
             <span className="flex flex-wrap items-baseline gap-2">
-              <span className="font-medium text-brand-600 hover:underline">{r.title}</span>
+              <span className="font-medium text-brand-700 hover:underline">{r.title}</span>
               <span className="rounded-full bg-paper px-2 py-0.5 text-xs text-ink-400">
                 {RESOURCE_SKILL_LABEL[r.skill]}
               </span>

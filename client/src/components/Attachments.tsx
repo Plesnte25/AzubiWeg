@@ -41,7 +41,7 @@ function FileChip({ file, onChanged }: { file: UploadedFileMeta; onChanged: () =
     <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-paper px-2 py-0.5 text-xs">
       {isImage && preview && <img src={preview} alt="" className="size-8 rounded object-cover" />}
       <button
-        className="max-w-48 truncate hover:text-brand-600 hover:underline"
+        className="max-w-48 truncate hover:text-brand-700 hover:underline"
         title={`Download ${file.originalName}`}
         onClick={() => downloadFile(file.id, file.originalName)}
       >

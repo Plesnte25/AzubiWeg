@@ -94,7 +94,7 @@ function PracticeSection() {
           <p className="mt-1 text-sm text-ink-600">Nothing due right now. Komm morgen wieder!</p>
         )}
         {newBadges.length > 0 && (
-          <p className="mt-2 text-sm text-brand-600">
+          <p className="mt-2 text-sm text-brand-700">
             🏅 New badge{newBadges.length === 1 ? "" : "s"}: {newBadges.map((b) => b.label).join(", ")}
           </p>
         )}
@@ -124,14 +124,14 @@ function PracticeSection() {
         {queue.length} remaining · {total} done
       </p>
       {newBadges.length > 0 && (
-        <p className="mb-3 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-center text-sm text-brand-600">
+        <p className="mb-3 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-center text-sm text-brand-700">
           🏅 New badge{newBadges.length === 1 ? "" : "s"}: {newBadges.map((b) => b.label).join(", ")}
         </p>
       )}
       <div className="rounded-xl border border-hairline bg-card p-8 text-center shadow-sm">
         <div className="text-2xl font-semibold">{current.headword}</div>
         {current.srDue === null && (
-          <span className="mt-1 inline-block rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-600">
+          <span className="mt-1 inline-block rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-700">
             new card
           </span>
         )}
