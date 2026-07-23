@@ -1,7 +1,14 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, Paperclip, Trash2, X } from "lucide-react";
 import { api, downloadFile, uploadFile } from "../api/client";
 import type { ChecklistCategory, ChecklistItem, ChecklistStatus, ExpiryStatus } from "../api/types";
+import FillBar from "../components/FillBar";
+import { Badge } from "../components/ui/Badge";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { Input } from "../components/ui/Input";
+import { Skeleton, SkeletonCard } from "../components/ui/Skeleton";
 
 const CATEGORIES: { key: ChecklistCategory; label: string }[] = [
   { key: "identity", label: "Identity" },
@@ -21,11 +28,11 @@ const STATUS_LABELS: Record<ChecklistStatus, string> = {
   not_applicable: "N/A",
 };
 
-const EXPIRY_STYLES: Record<ExpiryStatus, string> = {
-  ok: "bg-ok-50 text-ok-600",
-  warn: "bg-brand-100 text-brand-700",
-  urgent: "bg-danger-50 text-danger-600",
-  expired: "bg-danger-50 text-danger-600",
+const EXPIRY_VARIANT: Record<ExpiryStatus, "success" | "warning" | "danger"> = {
+  ok: "success",
+  warn: "warning",
+  urgent: "danger",
+  expired: "danger",
 };
 
 const EXPIRY_LABELS: Record<ExpiryStatus, string> = {
@@ -38,7 +45,16 @@ const EXPIRY_LABELS: Record<ExpiryStatus, string> = {
 export default function Checklist() {
   const { data, isLoading } = useQuery({ queryKey: ["checklist"], queryFn: api.checklist });
 
-  if (isLoading) return <p className="text-ink-400">Loading…</p>;
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-7 w-56" />
+        <Skeleton className="h-2 w-full rounded-full" />
+        <SkeletonCard className="h-20" />
+        <SkeletonCard className="h-20" />
+      </div>
+    );
+  }
   const items = data?.items ?? [];
 
   const relevant = items.filter((i) => i.status !== "not_applicable");
@@ -59,9 +75,7 @@ export default function Checklist() {
         </div>
       </div>
 
-      <div className="h-2 overflow-hidden rounded-full bg-hairline">
-        <div className="h-full rounded-full bg-brand-400 transition-all" style={{ width: `${pct}%` }} />
-      </div>
+      <FillBar percent={pct} />
 
       {CATEGORIES.map((cat) => {
         const catItems = items.filter((i) => i.category === cat.key);
@@ -111,11 +125,11 @@ function ItemRow({ item }: { item: ChecklistItem }) {
   }
 
   return (
-    <div className={`rounded-xl border border-hairline bg-card p-4 ${isNa ? "opacity-60" : ""}`}>
+    <Card className={isNa ? "opacity-60" : undefined}>
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
-          <p className={`font-medium ${isDone ? "text-ink-400 line-through" : ""}`}>
-            {isDone && <span className="mr-1 text-brand-500">✓</span>}
+          <p className={`flex items-center font-medium ${isDone ? "text-ink-400 line-through" : ""}`}>
+            {isDone && <Check className="mr-1 size-4 shrink-0 text-brand-500" aria-hidden="true" />}
             {item.title}
           </p>
           {item.description && <p className="mt-0.5 text-sm text-ink-600">{item.description}</p>}
@@ -139,7 +153,7 @@ function ItemRow({ item }: { item: ChecklistItem }) {
                     title="Remove file"
                     onClick={() => removeFile.mutate(f.id)}
                   >
-                    ×
+                    <X className="size-3" aria-hidden="true" />
                   </button>
                 </span>
               ))}
@@ -148,11 +162,7 @@ function ItemRow({ item }: { item: ChecklistItem }) {
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {item.expiry && (
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${EXPIRY_STYLES[item.expiry]}`}>
-              {EXPIRY_LABELS[item.expiry]}
-            </span>
-          )}
+          {item.expiry && <Badge variant={EXPIRY_VARIANT[item.expiry]}>{EXPIRY_LABELS[item.expiry]}</Badge>}
           <input
             type="date"
             className="rounded border border-hairline bg-paper px-2 py-1 text-xs"
@@ -182,16 +192,20 @@ function ItemRow({ item }: { item: ChecklistItem }) {
               e.target.value = "";
             }}
           />
-          <button
-            className="rounded border border-hairline px-2 py-1 text-xs hover:bg-paper"
-            disabled={uploading}
+          <Button
+            variant="outline"
+            size="sm"
+            loading={uploading}
+            leftIcon={<Paperclip className="size-3.5" aria-hidden="true" />}
             onClick={() => fileInput.current?.click()}
           >
             {uploading ? "Uploading…" : "Attach"}
-          </button>
-          <button
-            className="rounded border border-hairline px-2 py-1 text-xs text-ink-400 hover:text-danger-600"
-            title="Delete item"
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-danger-600 hover:border-danger-100 hover:bg-danger-50"
+            leftIcon={<Trash2 className="size-3.5" aria-hidden="true" />}
             onClick={() => {
               if (confirm(`Delete "${item.title}"${item.files.length ? " and its files" : ""}?`)) {
                 remove.mutate();
@@ -199,10 +213,10 @@ function ItemRow({ item }: { item: ChecklistItem }) {
             }}
           >
             Delete
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -225,16 +239,11 @@ function AddItemForm({ category }: { category: ChecklistCategory }) {
         if (title.trim()) add.mutate();
       }}
     >
-      <input
-        className="flex-1 rounded border border-hairline bg-card px-3 py-1.5 text-sm placeholder:text-ink-400"
-        placeholder="Add an item…"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
+      <Input className="flex-1" placeholder="Add an item…" value={title} onChange={(e) => setTitle(e.target.value)} />
       {title.trim() && (
-        <button className="rounded bg-ink-900 px-3 py-1.5 text-sm text-white" disabled={add.isPending}>
+        <Button size="sm" loading={add.isPending}>
           Add
-        </button>
+        </Button>
       )}
     </form>
   );

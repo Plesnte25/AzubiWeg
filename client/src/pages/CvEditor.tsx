@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { pdf, PDFViewer } from "@react-pdf/renderer";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Trash2, X } from "lucide-react";
 import { api, fetchFileBlobUrl, uploadFile } from "../api/client";
 import type { CvContent, CvTemplate } from "../api/types";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
 import CvDocument from "../pdf/CvDocument";
 import { fullName } from "../pdf/shared";
 
@@ -121,12 +124,16 @@ export default function CvEditor() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Link to="/cv" className="text-sm text-ink-400 hover:text-ink-900">
-          ← CVs
+        <Link to="/cv" className="flex items-center gap-1 text-sm text-ink-400 hover:text-ink-900">
+          <ArrowLeft className="size-4" aria-hidden="true" /> CVs
         </Link>
         <h1 className="text-lg font-semibold">{cv.title}</h1>
-        <span className="text-xs text-ink-400">
-          {saveState === "saved" && "Saved ✓"}
+        <span className="flex items-center gap-1 text-xs text-ink-400">
+          {saveState === "saved" && (
+            <>
+              <Check className="size-3.5 text-ok-600" aria-hidden="true" /> Saved
+            </>
+          )}
           {saveState === "saving" && "Saving…"}
           {saveState === "dirty" && "Unsaved changes…"}
           {saveState === "error" && <span className="text-danger-600">Save failed — retrying on next edit</span>}
@@ -140,13 +147,9 @@ export default function CvEditor() {
             <option value="lebenslauf">Lebenslauf (DE)</option>
             <option value="ats">ATS (EN)</option>
           </select>
-          <button
-            className="rounded bg-ink-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-            onClick={onDownload}
-            disabled={exporting}
-          >
+          <Button loading={exporting} onClick={onDownload}>
             {exporting ? "Exporting…" : "Download PDF"}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -231,16 +234,16 @@ export default function CvEditor() {
 const inputCls =
   "w-full rounded border border-hairline bg-card px-2.5 py-1.5 text-sm placeholder:text-ink-400";
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-hairline bg-card p-4">
+    <Card>
       <p className="mb-3 text-sm font-semibold">{title}</p>
       {children}
-    </div>
+    </Card>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block text-sm">
       <span className="mb-1 block text-xs text-ink-600">{label}</span>
@@ -387,10 +390,11 @@ function PersonalSection({
               {photoDataUrl && (
                 <button
                   type="button"
-                  className="rounded border border-hairline px-2 py-0.5 text-xs text-ink-400 hover:text-danger-600"
+                  className="grid size-6 place-items-center rounded border border-hairline text-ink-400 hover:text-danger-600"
+                  title="Remove photo"
                   onClick={onPhotoRemove}
                 >
-                  ✕
+                  <X className="size-3.5" aria-hidden="true" />
                 </button>
               )}
             </div>
@@ -410,17 +414,17 @@ function EntryControls({
   onDown?: () => void;
   onRemove: () => void;
 }) {
-  const btn = "rounded border border-hairline px-1.5 py-0.5 text-xs disabled:opacity-30 hover:bg-paper";
+  const btn = "grid place-items-center rounded border border-hairline size-6 disabled:opacity-30 hover:bg-paper";
   return (
     <div className="flex gap-1">
       <button type="button" className={btn} disabled={!onUp} onClick={onUp} title="Move up">
-        ↑
+        <ChevronUp className="size-3.5" aria-hidden="true" />
       </button>
       <button type="button" className={btn} disabled={!onDown} onClick={onDown} title="Move down">
-        ↓
+        <ChevronDown className="size-3.5" aria-hidden="true" />
       </button>
       <button type="button" className={`${btn} text-ink-400 hover:text-danger-600`} onClick={onRemove} title="Remove">
-        ✕
+        <Trash2 className="size-3.5" aria-hidden="true" />
       </button>
     </div>
   );
@@ -530,10 +534,11 @@ function BulletEditor({ bullets, onChange }: { bullets: string[]; onChange: (b: 
           />
           <button
             type="button"
-            className="px-1 text-xs text-ink-400 hover:text-danger-600"
+            className="p-1 text-ink-400 hover:text-danger-600"
+            title="Remove"
             onClick={() => onChange(bullets.filter((_, j) => j !== i))}
           >
-            ✕
+            <Trash2 className="size-3.5" aria-hidden="true" />
           </button>
         </div>
       ))}
@@ -653,10 +658,11 @@ function LanguagesSection({ content, update }: { content: CvContent; update: (c:
             </select>
             <button
               type="button"
-              className="px-1 text-xs text-ink-400 hover:text-danger-600"
+              className="p-1 text-ink-400 hover:text-danger-600"
+              title="Remove"
               onClick={() => setItems(items.filter((_, j) => j !== i))}
             >
-              ✕
+              <Trash2 className="size-3.5" aria-hidden="true" />
             </button>
           </div>
         ))}
@@ -696,10 +702,11 @@ function SimpleListSection({
             />
             <button
               type="button"
-              className="px-1 text-xs text-ink-400 hover:text-danger-600"
+              className="p-1 text-ink-400 hover:text-danger-600"
+              title="Remove"
               onClick={() => onChange(items.filter((_, j) => j !== i))}
             >
-              ✕
+              <Trash2 className="size-3.5" aria-hidden="true" />
             </button>
           </div>
         ))}

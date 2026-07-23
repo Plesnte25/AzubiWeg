@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, ChevronLeft, ChevronRight, Minus, TrendingDown, TrendingUp, X } from "lucide-react";
 import { api, ApiError } from "../../api/client";
 import type {
   CefrLevel,
@@ -10,6 +11,10 @@ import type {
   TopicBreakdown,
 } from "../../api/types";
 import FillBar from "../../components/FillBar";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
+import { Skeleton } from "../../components/ui/Skeleton";
 import { isAnswerAccepted } from "../../lib/quiz";
 
 const fmtShort = (iso: string) =>
@@ -97,18 +102,18 @@ function ReviewSummaryBody({ summary }: { summary: RoadmapReviewSummary }) {
 export function WeeklyReviewSection() {
   const { data, isLoading } = useQuery({ queryKey: ["roadmap", "review", "week"], queryFn: () => api.roadmapWeeklyReview() });
 
-  if (isLoading) return <p className="text-ink-400">Loading…</p>;
+  if (isLoading) return <Skeleton className="h-48 w-full" />;
   if (!data) return null;
 
   return (
-    <div className="rounded-xl border border-hairline bg-card p-4">
+    <Card>
       <h3 className="font-semibold">
         Week of {fmtShort(data.weekStart)} – {fmtShort(data.weekEnd)}
       </h3>
       <div className="mt-3">
         <ReviewSummaryBody summary={data} />
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -126,45 +131,47 @@ export function MonthlyReviewSection() {
   };
 
   return (
-    <div className="rounded-xl border border-hairline bg-card p-4">
+    <Card>
       <div className="mb-3 flex items-center justify-between">
-        <button className="rounded-full px-2 py-1 text-sm hover:bg-paper" onClick={() => shiftMonth(-1)}>
-          ← Prev
+        <button className="flex items-center gap-1 rounded-full px-2 py-1 text-sm hover:bg-paper" onClick={() => shiftMonth(-1)}>
+          <ChevronLeft className="size-4" aria-hidden="true" /> Prev
         </button>
         <h3 className="font-semibold">
           {new Date(month + "-01T00:00:00").toLocaleDateString(undefined, { month: "long", year: "numeric" })}
         </h3>
-        <button className="rounded-full px-2 py-1 text-sm hover:bg-paper" onClick={() => shiftMonth(1)}>
-          Next →
+        <button className="flex items-center gap-1 rounded-full px-2 py-1 text-sm hover:bg-paper" onClick={() => shiftMonth(1)}>
+          Next <ChevronRight className="size-4" aria-hidden="true" />
         </button>
       </div>
-      {isLoading ? <p className="text-ink-400">Loading…</p> : data ? <ReviewSummaryBody summary={data} /> : null}
-    </div>
+      {isLoading ? <Skeleton className="h-40 w-full" /> : data ? <ReviewSummaryBody summary={data} /> : null}
+    </Card>
   );
 }
 
-const READINESS_STYLES: Record<GoetheReadiness["readinessLabel"], string> = {
-  "not started": "border-hairline bg-paper text-ink-400",
-  building: "border-brand-600 bg-brand-100 text-brand-700",
-  "ready soon": "border-ok-600 bg-ok-50 text-ok-600",
-  "exam ready": "border-ok-600 bg-ok-50 text-ok-600",
+const READINESS_VARIANT: Record<GoetheReadiness["readinessLabel"], "neutral" | "brand" | "success"> = {
+  "not started": "neutral",
+  building: "brand",
+  "ready soon": "success",
+  "exam ready": "success",
 };
 
-const TREND_ICON: Record<NonNullable<GoetheReadiness["trend"]>, string> = { up: "↑", down: "↓", flat: "→" };
+const TREND_ICON = { up: TrendingUp, down: TrendingDown, flat: Minus } as const;
 
 export function GoetheReadinessSection() {
   const { data, isLoading } = useQuery({ queryKey: ["roadmap", "readiness"], queryFn: api.goetheReadiness });
 
-  if (isLoading) return <p className="text-ink-400">Loading…</p>;
+  if (isLoading) return <Skeleton className="h-48 w-full" />;
   if (!data) return null;
 
+  const TrendIcon = data.trend ? TREND_ICON[data.trend] : null;
+
   return (
-    <div className="rounded-xl border border-hairline bg-card p-4">
+    <Card>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-semibold">Goethe readiness — {data.level.toUpperCase()}</h3>
-        <span className={`rounded-full border px-3 py-1 text-sm font-medium ${READINESS_STYLES[data.readinessLabel]}`}>
+        <Badge variant={READINESS_VARIANT[data.readinessLabel]} size="md">
           {data.readinessLabel}
-        </span>
+        </Badge>
       </div>
       <p className="mt-1 text-xs text-ink-400">
         A rough estimate from your syllabus progress and recent self-tests — not an exam guarantee.
@@ -183,14 +190,14 @@ export function GoetheReadinessSection() {
             {data.avgRecentTestScore === null ? "—" : `${data.avgRecentTestScore}%`}
           </span>
         </p>
-        <p className="text-ink-600">
-          Trend{" "}
-          <span className="float-right font-medium text-ink-900">
-            {data.trend ? TREND_ICON[data.trend] : "—"}
+        <p className="flex items-center justify-between text-ink-600">
+          Trend
+          <span className="font-medium text-ink-900">
+            {TrendIcon ? <TrendIcon className="size-4" aria-hidden="true" /> : "—"}
           </span>
         </p>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -238,7 +245,7 @@ function TestLauncher({
   });
 
   return (
-    <div className="space-y-3 rounded-xl border border-hairline bg-card p-4">
+    <Card className="space-y-3">
       <div>
         <h2 className="font-semibold">Test yourself</h2>
         <p className="text-sm text-ink-600">
@@ -259,16 +266,12 @@ function TestLauncher({
             </option>
           ))}
         </select>
-        <button
-          className="rounded bg-ink-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-          disabled={start.isPending}
-          onClick={() => start.mutate()}
-        >
-          {start.isPending ? "Building…" : "Start test"}
-        </button>
+        <Button size="sm" loading={start.isPending} onClick={() => start.mutate()}>
+          Start test
+        </Button>
       </div>
       {error && <p className="text-sm text-danger-600">{error}</p>}
-    </div>
+    </Card>
   );
 }
 
@@ -345,7 +348,7 @@ function TestRunner({
       byTopic.set(a.topic, entry);
     }
     return (
-      <div className="space-y-4 rounded-xl border border-hairline bg-card p-6 text-center">
+      <Card padding="lg" className="space-y-4 text-center">
         <p className="text-3xl font-semibold">
           {score} / {questions.length}
         </p>
@@ -354,31 +357,20 @@ function TestRunner({
         </p>
         <div className="flex flex-wrap justify-center gap-2">
           {[...byTopic.entries()].map(([topic, t]) => (
-            <span
-              key={topic}
-              className={`rounded-full border px-2.5 py-0.5 text-xs ${
-                t.correct === t.total
-                  ? "border-ok-600 bg-ok-50 text-ok-600"
-                  : t.correct === 0
-                    ? "border-danger-600 bg-danger-50 text-danger-600"
-                    : "border-hairline bg-paper text-ink-600"
-              }`}
-            >
+            <Badge key={topic} variant={t.correct === t.total ? "success" : t.correct === 0 ? "danger" : "neutral"}>
               {topic} {t.correct}/{t.total}
-            </span>
+            </Badge>
           ))}
         </div>
-        <button className="rounded bg-ink-900 px-4 py-2 text-sm text-white" onClick={onDone}>
-          Done
-        </button>
-      </div>
+        <Button onClick={onDone}>Done</Button>
+      </Card>
     );
   }
 
   const answered = phase === "feedback";
 
   return (
-    <div className="space-y-4 rounded-xl border border-hairline bg-card p-4">
+    <Card className="space-y-4">
       <div className="flex items-baseline justify-between text-sm text-ink-600">
         <span>
           Question {index + 1} of {questions.length}
@@ -433,14 +425,22 @@ function TestRunner({
             return (
               <button
                 key={String(value)}
-                className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${style}`}
+                className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${style}`}
                 disabled={answered}
                 onClick={() => {
                   setPicked(value ? 1 : 0);
                   record(value === q.answer);
                 }}
               >
-                {value ? "Richtig ✓" : "Falsch ✗"}
+                {value ? (
+                  <>
+                    <Check className="size-4" aria-hidden="true" /> Richtig
+                  </>
+                ) : (
+                  <>
+                    <X className="size-4" aria-hidden="true" /> Falsch
+                  </>
+                )}
               </button>
             );
           })}
@@ -471,9 +471,9 @@ function TestRunner({
             onChange={(e) => setDraft(e.target.value)}
           />
           {!answered && (
-            <button className="rounded bg-ink-900 px-3 py-1.5 text-sm text-white" disabled={!draft.trim()}>
+            <Button size="sm" disabled={!draft.trim()}>
               Check
-            </button>
+            </Button>
           )}
         </form>
       )}
@@ -488,12 +488,12 @@ function TestRunner({
               Answer: <span className="font-medium text-ink-900">{q.accepted[0]}</span>
             </span>
           )}
-          <button className="rounded bg-ink-900 px-4 py-1.5 text-sm text-white" onClick={advance}>
+          <Button size="sm" onClick={advance}>
             Next
-          </button>
+          </Button>
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 

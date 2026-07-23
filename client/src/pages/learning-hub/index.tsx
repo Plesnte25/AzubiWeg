@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../../api/client";
+import { SegmentedControl } from "../../components/ui/SegmentedControl";
+import { Skeleton } from "../../components/ui/Skeleton";
 import { ResourcesSection, SourcesSection, SyllabusSection } from "./contentSections";
 import { ActivationCard, BacklogSection, CalendarSection, JournalSection, TodaySection } from "./progressSections";
 import { GoetheReadinessSection, MonthlyReviewSection, TestsSection, WeeklyReviewSection } from "./reviewSections";
@@ -69,19 +71,7 @@ export default function LearningHub() {
             Your German syllabus, day-by-day roadmap, and reviews — all in one place.
           </p>
         </div>
-        <div className="flex gap-1 rounded-full border border-hairline bg-card p-1">
-          {GROUPS.map((g) => (
-            <button
-              key={g.key}
-              className={`rounded-full px-3 py-1 text-sm transition-colors ${
-                group === g.key ? "bg-ink-900 text-white" : "text-ink-600 hover:bg-paper"
-              }`}
-              onClick={() => setGroup(g.key)}
-            >
-              {g.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl options={GROUPS} value={group} onChange={setGroup} />
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -89,7 +79,9 @@ export default function LearningHub() {
           <button
             key={t.key}
             className={`rounded-full border px-3 py-1 text-sm transition-colors ${
-              tab === t.key ? "border-ink-900 bg-ink-900 text-white" : "border-hairline text-ink-600 hover:bg-paper"
+              tab === t.key
+                ? "border-brand-600 bg-brand-600 text-white"
+                : "border-hairline text-ink-600 hover:bg-paper hover:text-ink-900"
             }`}
             onClick={() => setTab(t.key)}
           >
@@ -99,7 +91,10 @@ export default function LearningHub() {
       </div>
 
       {statusLoading ? (
-        <p className="text-ink-400">Loading…</p>
+        <div className="space-y-3">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-40 w-full" />
+        </div>
       ) : needsActivation ? (
         <ActivationCard />
       ) : (

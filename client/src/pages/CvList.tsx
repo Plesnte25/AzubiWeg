@@ -1,8 +1,16 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FileText, Trash2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { CvTemplate } from "../api/types";
+import { Badge } from "../components/ui/Badge";
+import { Button, buttonVariants } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { EmptyState } from "../components/ui/EmptyState";
+import { Input } from "../components/ui/Input";
+import { Select } from "../components/ui/Select";
+import { Skeleton, SkeletonCard } from "../components/ui/Skeleton";
 
 const TEMPLATE_LABELS: Record<CvTemplate, string> = {
   lebenslauf: "Lebenslauf (DE)",
@@ -27,7 +35,18 @@ export default function CvList() {
   const duplicate = useMutation({ mutationFn: api.duplicateCv, onSuccess: invalidate });
   const remove = useMutation({ mutationFn: api.deleteCv, onSuccess: invalidate });
 
-  if (isLoading) return <p className="text-ink-400">Loading…</p>;
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-7 w-24" />
+        <Skeleton className="h-10 w-full max-w-xl" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SkeletonCard className="h-28" />
+          <SkeletonCard className="h-28" />
+        </div>
+      </div>
+    );
+  }
   const cvs = data?.cvs ?? [];
 
   return (
@@ -46,71 +65,58 @@ export default function CvList() {
           if (title.trim()) add.mutate();
         }}
       >
-        <input
-          className="min-w-56 flex-1 rounded border border-hairline bg-card px-3 py-1.5 text-sm placeholder:text-ink-400"
+        <Input
+          className="min-w-56 flex-1"
           placeholder='New CV title, e.g. "Lebenslauf — Pflege"'
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
-        <select
-          className="rounded border border-hairline bg-card px-2 py-1.5 text-sm"
-          value={template}
-          onChange={(e) => setTemplate(e.target.value as CvTemplate)}
-        >
+        <Select value={template} onChange={(e) => setTemplate(e.target.value as CvTemplate)}>
           {Object.entries(TEMPLATE_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
           ))}
-        </select>
-        <button
-          className="rounded bg-ink-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-          disabled={!title.trim() || add.isPending}
-        >
+        </Select>
+        <Button disabled={!title.trim() || add.isPending} loading={add.isPending}>
           Create
-        </button>
+        </Button>
       </form>
 
       {cvs.length === 0 && (
-        <p className="rounded-xl border border-hairline bg-card p-6 text-center text-sm text-ink-400">
-          No CVs yet — create your first Lebenslauf above.
-        </p>
+        <EmptyState icon={FileText} title="No CVs yet" description="Create your first Lebenslauf above." />
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         {cvs.map((cv) => (
-          <div key={cv.id} className="rounded-xl border border-hairline bg-card p-4">
+          <Card key={cv.id} interactive>
             <div className="flex items-start justify-between gap-2">
               <Link to={`/cv/${cv.id}`} className="font-medium hover:text-brand-700">
                 {cv.title}
               </Link>
-              <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-700">
-                {TEMPLATE_LABELS[cv.template]}
-              </span>
+              <Badge variant="brand">{TEMPLATE_LABELS[cv.template]}</Badge>
             </div>
-            <p className="mt-1 text-xs text-ink-400">
-              updated {new Date(cv.updatedAt).toLocaleDateString()}
-            </p>
+            <p className="mt-1 text-xs text-ink-400">updated {new Date(cv.updatedAt).toLocaleDateString()}</p>
             <div className="mt-3 flex gap-2">
-              <Link to={`/cv/${cv.id}`} className="rounded border border-hairline px-2 py-1 text-xs hover:bg-paper">
+              <Link to={`/cv/${cv.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
                 Edit
               </Link>
-              <button
-                className="rounded border border-hairline px-2 py-1 text-xs hover:bg-paper"
-                onClick={() => duplicate.mutate(cv.id)}
-              >
+              <Button variant="outline" size="sm" onClick={() => duplicate.mutate(cv.id)}>
                 Duplicate
-              </button>
-              <button
-                className="rounded border border-hairline px-2 py-1 text-xs text-ink-400 hover:text-danger-600"
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-danger-600 hover:border-danger-100 hover:bg-danger-50"
+                leftIcon={<Trash2 className="size-3.5" aria-hidden="true" />}
                 onClick={() => {
                   if (confirm(`Delete "${cv.title}"?`)) remove.mutate(cv.id);
                 }}
               >
                 Delete
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
     </div>

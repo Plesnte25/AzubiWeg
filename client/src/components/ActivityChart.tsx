@@ -9,8 +9,6 @@ interface Props {
 
 /**
  * Reviews-per-day bar chart (single series — the title names it, no legend).
- * Palette: categorical slot 1 blue on the light card surface; ink/grid tokens
- * from the reference palette.
  */
 export default function ActivityChart({
   data,
@@ -42,7 +40,7 @@ export default function ActivityChart({
             x2={W}
             y1={plotH - f * (plotH - 8)}
             y2={plotH - f * (plotH - 8)}
-            stroke="#e1e0d9"
+            stroke="var(--color-hairline)"
             strokeWidth={1}
           />
         ))}
@@ -64,27 +62,35 @@ export default function ActivityChart({
               {h > 0 && (
                 <path
                   d={`M${x},${plotH} v${-(h - 4)} q0,-4 4,-4 h${barW - 8} q4,0 4,4 v${h - 4} z`}
-                  fill={hover === i ? "#1c5cab" : "#2a78d6"}
+                  fill={hover === i ? "var(--color-brand-600)" : "var(--color-brand-400)"}
                   pointerEvents="none"
                 />
               )}
               {(i === 0 || i === data.length - 1 || i === Math.floor(data.length / 2)) && (
-                <text x={i * step + step / 2} y={H - 4} textAnchor="middle" fontSize={10} fill="#898781">
+                <text
+                  x={i * step + step / 2}
+                  y={H - 4}
+                  textAnchor="middle"
+                  fontSize={10}
+                  fill="var(--color-ink-400)"
+                >
                   {fmt(d.date)}
                 </text>
               )}
             </g>
           );
         })}
-        <line x1={0} x2={W} y1={plotH} y2={plotH} stroke="#c3c2b7" strokeWidth={1} />
+        <line x1={0} x2={W} y1={plotH} y2={plotH} stroke="var(--color-hairline)" strokeWidth={1} />
       </svg>
       {hover !== null && (
         <div
-          className="pointer-events-none absolute -top-1 rounded-md border border-hairline bg-card px-2 py-1 text-xs shadow-sm"
+          className="pointer-events-none absolute -top-1 rounded-md border border-hairline bg-card px-2 py-1 text-xs shadow-md"
           style={{ left: `${((hover + 0.5) / data.length) * 100}%`, transform: "translateX(-50%)" }}
         >
           <span className="font-medium">{data[hover].count}</span>{" "}
-          <span className="text-ink-600">{unit} · {fmt(data[hover].date)}</span>
+          <span className="text-ink-600">
+            {unit} · {fmt(data[hover].date)}
+          </span>
         </div>
       )}
     </div>

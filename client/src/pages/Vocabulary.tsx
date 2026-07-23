@@ -1,21 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { Award, BookOpen, CheckCircle2, Trash2, Volume2 } from "lucide-react";
 import { api, playWordAudio } from "../api/client";
 import type { Word } from "../api/types";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { EmptyState } from "../components/ui/EmptyState";
+import { Input } from "../components/ui/Input";
+import { SegmentedControl } from "../components/ui/SegmentedControl";
+import { Select } from "../components/ui/Select";
 
 function AudioButton({ word }: { word: Word }) {
   if (!word.audioPath) return null;
   return (
     <button
       title="Play pronunciation"
-      className="rounded-full border border-hairline px-2 py-0.5 text-xs hover:bg-paper"
+      className="grid size-6 place-items-center rounded-full border border-hairline hover:bg-paper"
       onClick={(e) => {
         e.stopPropagation();
         void playWordAudio(word.id);
       }}
     >
-      🔊
+      <Volume2 className="size-3.5 text-ink-600" aria-hidden="true" />
     </button>
   );
 }
@@ -81,21 +88,21 @@ function WordRow({ word }: { word: Word }) {
                 </p>
               )}
               <div className="flex gap-2 pt-1">
-                <button
-                  className="rounded border border-hairline px-2 py-1 text-xs hover:bg-paper"
-                  onClick={() => setEditing(true)}
-                >
+                <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
                   Edit
-                </button>
-                <button
-                  className="rounded border border-hairline px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-danger-600 hover:border-danger-100 hover:bg-danger-50"
+                  leftIcon={<Trash2 className="size-3.5" aria-hidden="true" />}
                   onClick={() => {
                     if (confirm(`Delete "${word.headword}"? This also removes it from your vault.`))
                       del.mutate();
                   }}
                 >
                   Delete
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -144,14 +151,14 @@ function EditForm({ word, onDone }: { word: Word; onDone: () => void }) {
         </label>
       ))}
       <div className="flex gap-2">
-        <button className="rounded bg-ink-900 px-3 py-1 text-xs text-white" disabled={save.isPending}>
-          {save.isPending ? "Saving…" : "Save"}
-        </button>
-        <button type="button" className="rounded border border-hairline px-3 py-1 text-xs" onClick={onDone}>
+        <Button size="sm" loading={save.isPending}>
+          Save
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={onDone}>
           Cancel
-        </button>
+        </Button>
       </div>
-      {save.isError && <p className="text-xs text-red-700">{String(save.error)}</p>}
+      {save.isError && <p className="text-xs text-danger-600">{String(save.error)}</p>}
     </form>
   );
 }
@@ -209,6 +216,30 @@ function WordGroupDetails({ group, defaultOpen }: { group: WordGroup; defaultOpe
   );
 }
 
+/** One card per letter of the alphabet — every word starting with that letter lives inside it. */
+function LetterCard({ group }: { group: WordGroup }) {
+  return (
+    <Card padding="sm">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-50 text-sm font-bold text-brand-700 dark:bg-brand-900/40 dark:text-brand-300">
+          {group.label}
+        </span>
+        <span className="text-xs text-ink-400">
+          {group.words.length} word{group.words.length === 1 ? "" : "s"}
+        </span>
+      </div>
+      <ul className="max-h-64 space-y-1 overflow-y-auto">
+        {group.words.map((w) => (
+          <li key={w.id} className="truncate text-sm">
+            <span className="font-medium">{w.headword}</span>
+            {w.meaning && <span className="text-ink-400"> — {w.meaning}</span>}
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 export default function Vocabulary() {
   const [params, setParams] = useSearchParams();
   const [search, setSearch] = useState("");
@@ -245,53 +276,53 @@ export default function Vocabulary() {
 
   return (
     <div className="space-y-4">
-      <form onSubmit={submitAdd} className="rounded-xl border border-hairline bg-card p-4">
-        <h2 className="mb-2 text-sm font-medium text-ink-600">
-          Add words — meaning, pronunciation &amp; audio are fetched automatically
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          <input
-            className="min-w-48 flex-1 rounded-md border border-hairline px-3 py-2 text-sm outline-none focus:border-brand-400"
-            placeholder="e.g. Zug, Bahnhof, fahren"
-            value={addInput}
-            onChange={(e) => setAddInput(e.target.value)}
-          />
-          <input
-            className="w-36 rounded-md border border-hairline px-3 py-2 text-sm outline-none focus:border-brand-400"
-            placeholder="lesson (optional)"
-            value={addLesson}
-            onChange={(e) => setAddLesson(e.target.value)}
-          />
-          <button
-            className="rounded-md bg-ink-900 px-4 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
-            disabled={add.isPending || !addInput.trim()}
-          >
-            {add.isPending ? "Looking up…" : "Add"}
-          </button>
-        </div>
-        {add.isError && <p className="mt-2 text-sm text-red-700">{String(add.error)}</p>}
-        {add.isSuccess && add.data.words.length > 0 && (
-          <p className="mt-2 text-sm text-green-800">
-            Added {add.data.words.map((w) => w?.headword).join(", ")} ✓
-          </p>
-        )}
-        {add.isSuccess && add.data.newlyUnlockedBadges.length > 0 && (
-          <p className="mt-2 text-sm text-brand-700">
-            🏅 New badge{add.data.newlyUnlockedBadges.length === 1 ? "" : "s"}:{" "}
-            {add.data.newlyUnlockedBadges.map((b) => b.label).join(", ")}
-          </p>
-        )}
+      <form onSubmit={submitAdd}>
+        <Card>
+          <h2 className="mb-2 text-sm font-medium text-ink-600">
+            Add words — meaning, pronunciation &amp; audio are fetched automatically
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            <Input
+              className="min-w-48 flex-1"
+              placeholder="e.g. Zug, Bahnhof, fahren"
+              value={addInput}
+              onChange={(e) => setAddInput(e.target.value)}
+            />
+            <Input
+              className="w-36"
+              placeholder="lesson (optional)"
+              value={addLesson}
+              onChange={(e) => setAddLesson(e.target.value)}
+            />
+            <Button disabled={add.isPending || !addInput.trim()} loading={add.isPending}>
+              {add.isPending ? "Looking up…" : "Add"}
+            </Button>
+          </div>
+          {add.isError && <p className="mt-2 text-sm text-danger-600">{String(add.error)}</p>}
+          {add.isSuccess && add.data.words.length > 0 && (
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-ok-700">
+              <CheckCircle2 className="size-4" aria-hidden="true" />
+              Added {add.data.words.map((w) => w?.headword).join(", ")}
+            </p>
+          )}
+          {add.isSuccess && add.data.newlyUnlockedBadges.length > 0 && (
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-brand-700">
+              <Award className="size-4" aria-hidden="true" />
+              New badge{add.data.newlyUnlockedBadges.length === 1 ? "" : "s"}:{" "}
+              {add.data.newlyUnlockedBadges.map((b) => b.label).join(", ")}
+            </p>
+          )}
+        </Card>
       </form>
 
       <div className="flex flex-wrap items-center gap-2">
-        <input
-          className="min-w-48 flex-1 rounded-md border border-hairline bg-card px-3 py-2 text-sm outline-none focus:border-brand-400"
+        <Input
+          className="min-w-48 flex-1"
           placeholder="Search words or meanings…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select
-          className="rounded-md border border-hairline bg-card px-2 py-2 text-sm"
+        <Select
           value={lesson ?? ""}
           onChange={(e) => {
             if (e.target.value) setParams({ lesson: e.target.value });
@@ -304,28 +335,11 @@ export default function Vocabulary() {
               {l.lesson} ({l.count})
             </option>
           ))}
-        </select>
-        <div className="flex gap-1 rounded-full border border-hairline bg-card p-1">
-          {GROUP_MODES.map((m) => (
-            <button
-              key={m.key}
-              type="button"
-              className={`rounded-full px-3 py-1 text-sm transition-colors ${
-                groupMode === m.key ? "bg-ink-900 text-white" : "text-ink-600 hover:bg-paper"
-              }`}
-              onClick={() => setGroupMode(m.key)}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
+        </Select>
+        <SegmentedControl options={GROUP_MODES} value={groupMode} onChange={setGroupMode} />
       </div>
 
-      {data && data.words.length === 0 && (
-        <p className="rounded-xl border border-hairline bg-card px-3 py-8 text-center text-sm text-ink-400">
-          No words found.
-        </p>
-      )}
+      {data && data.words.length === 0 && <EmptyState icon={BookOpen} title="No words found" />}
 
       {data && data.words.length > 0 && groupMode === "flat" && (
         <ul className="rounded-xl border border-hairline bg-card">
@@ -333,10 +347,18 @@ export default function Vocabulary() {
         </ul>
       )}
 
-      {data && data.words.length > 0 && groupMode !== "flat" && (
+      {data && data.words.length > 0 && groupMode === "lesson" && (
         <div className="space-y-2">
-          {(groupMode === "lesson" ? groupByLesson(data.words) : groupByLetter(data.words)).map((group, i) => (
+          {groupByLesson(data.words).map((group, i) => (
             <WordGroupDetails key={group.key} group={group} defaultOpen={i === 0} />
+          ))}
+        </div>
+      )}
+
+      {data && data.words.length > 0 && groupMode === "az" && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {groupByLetter(data.words).map((group) => (
+            <LetterCard key={group.key} group={group} />
           ))}
         </div>
       )}

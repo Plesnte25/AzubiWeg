@@ -1,8 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Award, Clock, PartyPopper, Volume2 } from "lucide-react";
 import { api, playWordAudio } from "../api/client";
 import type { Grade, Word } from "../api/types";
+import { Badge } from "../components/ui/Badge";
+import { Button, buttonVariants } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { EmptyState } from "../components/ui/EmptyState";
+import { SegmentedControl } from "../components/ui/SegmentedControl";
+import { Skeleton, SkeletonCard } from "../components/ui/Skeleton";
 
 const SECTIONS = [
   { key: "practice", label: "Practice" },
@@ -22,19 +29,7 @@ export default function Review() {
           <h1 className="text-xl font-semibold">Review</h1>
           <p className="text-sm text-ink-600">Spaced-repetition vocabulary practice.</p>
         </div>
-        <div className="flex gap-1 rounded-full border border-hairline bg-card p-1">
-          {SECTIONS.map((s) => (
-            <button
-              key={s.key}
-              className={`rounded-full px-3 py-1 text-sm transition-colors ${
-                section === s.key ? "bg-ink-900 text-white" : "text-ink-600 hover:bg-paper"
-              }`}
-              onClick={() => setSection(s.key)}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl options={SECTIONS} value={section} onChange={setSection} />
       </div>
 
       {section === "practice" && <PracticeSection />}
@@ -76,15 +71,22 @@ function PracticeSection() {
     },
   });
 
-  if (isLoading || queue === null) return <p className="text-ink-600">Loading…</p>;
+  if (isLoading || queue === null) {
+    return (
+      <div className="mx-auto max-w-lg space-y-4">
+        <Skeleton className="mx-auto h-4 w-32" />
+        <SkeletonCard className="h-56" />
+      </div>
+    );
+  }
 
   const current = queue[0];
   const total = Object.values(done).reduce((a, b) => a + b, 0);
 
   if (!current) {
     return (
-      <div className="mx-auto max-w-md rounded-xl border border-hairline bg-card p-8 text-center">
-        <div className="text-4xl">🎉</div>
+      <Card padding="lg" className="mx-auto max-w-md text-center">
+        <PartyPopper className="mx-auto size-8 text-brand-500" aria-hidden="true" />
         <h1 className="mt-2 text-lg font-semibold">Session complete</h1>
         {total > 0 ? (
           <p className="mt-1 text-sm text-ink-600">
@@ -94,16 +96,17 @@ function PracticeSection() {
           <p className="mt-1 text-sm text-ink-600">Nothing due right now. Komm morgen wieder!</p>
         )}
         {newBadges.length > 0 && (
-          <p className="mt-2 text-sm text-brand-700">
-            🏅 New badge{newBadges.length === 1 ? "" : "s"}: {newBadges.map((b) => b.label).join(", ")}
+          <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-brand-700">
+            <Award className="size-4" aria-hidden="true" />
+            New badge{newBadges.length === 1 ? "" : "s"}: {newBadges.map((b) => b.label).join(", ")}
           </p>
         )}
         <div className="mt-5 flex justify-center gap-2">
-          <Link to="/" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-medium text-white">
+          <Link to="/" className={buttonVariants({ variant: "primary" })}>
             Dashboard
           </Link>
-          <button
-            className="rounded-md border border-hairline px-4 py-2 text-sm"
+          <Button
+            variant="outline"
             onClick={() => {
               setQueue(null);
               setDone({ hard: 0, good: 0, easy: 0 });
@@ -112,9 +115,9 @@ function PracticeSection() {
             }}
           >
             Check for more
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
     );
   }
 
@@ -125,15 +128,16 @@ function PracticeSection() {
       </p>
       {newBadges.length > 0 && (
         <p className="mb-3 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-center text-sm text-brand-700">
-          🏅 New badge{newBadges.length === 1 ? "" : "s"}: {newBadges.map((b) => b.label).join(", ")}
+          <Award className="mr-1 inline size-4" aria-hidden="true" />
+          New badge{newBadges.length === 1 ? "" : "s"}: {newBadges.map((b) => b.label).join(", ")}
         </p>
       )}
-      <div className="rounded-xl border border-hairline bg-card p-8 text-center shadow-sm">
+      <Card padding="lg" className="text-center">
         <div className="text-2xl font-semibold">{current.headword}</div>
         {current.srDue === null && (
-          <span className="mt-1 inline-block rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-700">
+          <Badge variant="brand" className="mt-1">
             new card
-          </span>
+          </Badge>
         )}
 
         {revealed ? (
@@ -154,35 +158,38 @@ function PracticeSection() {
             )}
             {current.audioPath && (
               <p className="text-center">
-                <button
-                  className="rounded-full border border-hairline px-3 py-1 text-sm hover:bg-paper"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Volume2 className="size-3.5" aria-hidden="true" />}
                   onClick={() => void playWordAudio(current.id)}
                 >
-                  🔊 Play
-                </button>
+                  Play
+                </Button>
               </p>
             )}
           </div>
         ) : (
-          <button
-            className="mt-6 w-full rounded-md bg-ink-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-black"
+          <Button
+            size="lg"
+            className="mt-6 w-full"
             onClick={() => {
               setRevealed(true);
               if (current.audioPath) void playWordAudio(current.id).catch(() => {});
             }}
           >
             Show answer
-          </button>
+          </Button>
         )}
-      </div>
+      </Card>
 
       {revealed && (
         <div className="mt-4 grid grid-cols-3 gap-2">
           {(
             [
-              ["hard", "Hard", "border-red-300 text-red-800 hover:bg-red-50"],
+              ["hard", "Hard", "border-danger-100 text-danger-700 hover:bg-danger-50"],
               ["good", "Good", "border-hairline text-ink-900 hover:bg-paper"],
-              ["easy", "Easy", "border-green-300 text-green-800 hover:bg-green-50"],
+              ["easy", "Easy", "border-ok-100 text-ok-700 hover:bg-ok-50"],
             ] as const
           ).map(([g, label, cls]) => (
             <button
@@ -200,22 +207,26 @@ function PracticeSection() {
   );
 }
 
-const GRADE_STYLE: Record<Grade, string> = {
-  hard: "border-red-300 bg-red-50 text-red-800",
-  good: "border-hairline bg-paper text-ink-900",
-  easy: "border-green-300 bg-green-50 text-green-800",
+const GRADE_VARIANT: Record<Grade, "danger" | "neutral" | "success"> = {
+  hard: "danger",
+  good: "neutral",
+  easy: "success",
 };
 
 function HistorySection() {
   const { data, isLoading } = useQuery({ queryKey: ["reviews", "history"], queryFn: () => api.reviewHistory(100) });
 
-  if (isLoading) return <p className="text-ink-400">Loading…</p>;
-  if (!data || data.entries.length === 0) {
+  if (isLoading) {
     return (
-      <p className="rounded-xl border border-hairline bg-card p-6 text-center text-ink-400">
-        No reviews yet — practice a few cards to build up history.
-      </p>
+      <div className="space-y-1.5">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
+      </div>
     );
+  }
+  if (!data || data.entries.length === 0) {
+    return <EmptyState icon={Clock} title="No reviews yet" description="Practice a few cards to build up history." />;
   }
 
   return (
@@ -227,9 +238,9 @@ function HistorySection() {
         >
           <span className="flex items-center gap-2">
             <span className="font-medium">{e.headword}</span>
-            <span className={`rounded-full border px-2 py-0.5 text-xs capitalize ${GRADE_STYLE[e.grade]}`}>
+            <Badge variant={GRADE_VARIANT[e.grade]} className="capitalize">
               {e.grade}
-            </span>
+            </Badge>
           </span>
           <span className="text-ink-400">
             {new Date(e.reviewedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} · next in{" "}
@@ -244,12 +255,22 @@ function HistorySection() {
 function WeakWordsSection() {
   const { data, isLoading } = useQuery({ queryKey: ["reviews", "weak-words"], queryFn: () => api.reviewWeakWords(50) });
 
-  if (isLoading) return <p className="text-ink-400">Loading…</p>;
+  if (isLoading) {
+    return (
+      <div className="space-y-1.5">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
+      </div>
+    );
+  }
   if (!data || data.words.length === 0) {
     return (
-      <p className="rounded-xl border border-hairline bg-card p-6 text-center text-ink-400">
-        No weak words right now — anything most recently graded "hard" shows up here.
-      </p>
+      <EmptyState
+        icon={PartyPopper}
+        title="No weak words right now"
+        description='Anything most recently graded "hard" shows up here.'
+      />
     );
   }
 
@@ -262,7 +283,7 @@ function WeakWordsSection() {
         {data.words.map((w) => (
           <div
             key={w.wordId}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-danger-600/30 bg-danger-50 px-3 py-2 text-sm"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-danger-100 bg-danger-50 px-3 py-2 text-sm"
           >
             <span className="font-medium">{w.headword}</span>
             <span className="text-ink-400">
@@ -278,26 +299,37 @@ function WeakWordsSection() {
 function StatsSection() {
   const { data, isLoading } = useQuery({ queryKey: ["reviews", "stats"], queryFn: api.reviewStats });
 
-  if (isLoading) return <p className="text-ink-400">Loading…</p>;
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <SkeletonCard className="h-20" />
+          <SkeletonCard className="h-20" />
+          <SkeletonCard className="h-20" />
+        </div>
+        <SkeletonCard className="h-32" />
+      </div>
+    );
+  }
   if (!data) return null;
 
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-hairline bg-card p-4 text-center">
+        <Card className="text-center">
           <p className="text-2xl font-semibold">{data.reviewsToday}</p>
           <p className="text-xs text-ink-400">Today</p>
-        </div>
-        <div className="rounded-xl border border-hairline bg-card p-4 text-center">
+        </Card>
+        <Card className="text-center">
           <p className="text-2xl font-semibold">{data.reviewsThisWeek}</p>
           <p className="text-xs text-ink-400">Last 7 days</p>
-        </div>
-        <div className="rounded-xl border border-hairline bg-card p-4 text-center">
+        </Card>
+        <Card className="text-center">
           <p className="text-2xl font-semibold">{data.totalReviews}</p>
           <p className="text-xs text-ink-400">All time</p>
-        </div>
+        </Card>
       </div>
-      <div className="rounded-xl border border-hairline bg-card p-4">
+      <Card>
         <h3 className="font-semibold">Grade breakdown</h3>
         <div className="mt-2 space-y-1.5">
           {(["easy", "good", "hard"] as const).map((g) => {
@@ -307,7 +339,10 @@ function StatsSection() {
               <div key={g} className="flex items-center gap-2 text-sm">
                 <span className="w-12 shrink-0 capitalize text-ink-600">{g}</span>
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-paper">
-                  <div className={`h-full ${g === "hard" ? "bg-red-400" : g === "good" ? "bg-ink-400" : "bg-green-400"}`} style={{ width: `${percent}%` }} />
+                  <div
+                    className={`h-full ${g === "hard" ? "bg-danger-600" : g === "good" ? "bg-ink-400" : "bg-ok-600"}`}
+                    style={{ width: `${percent}%` }}
+                  />
                 </div>
                 <span className="w-16 shrink-0 text-right text-ink-400">
                   {count} ({percent}%)
@@ -321,7 +356,7 @@ function StatsSection() {
             Average interval after grading: {data.avgIntervalAfter} day{data.avgIntervalAfter === 1 ? "" : "s"}.
           </p>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

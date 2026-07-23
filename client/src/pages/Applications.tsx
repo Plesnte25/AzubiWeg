@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ChangeEvent, type ReactNode, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -12,9 +12,15 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Briefcase, ExternalLink, Plus, Trash2, X } from "lucide-react";
 import { api } from "../api/client";
 import type { Application, ApplicationEvent, ApplicationStatus } from "../api/types";
 import ActivityChart from "../components/ActivityChart";
+import { Badge } from "../components/ui/Badge";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { EmptyState } from "../components/ui/EmptyState";
+import { Modal } from "../components/ui/Modal";
 
 const COLUMNS: { key: ApplicationStatus; label: string }[] = [
   { key: "wishlist", label: "Wishlist" },
@@ -117,9 +123,7 @@ export default function Applications() {
           <h1 className="text-xl font-semibold">Applications</h1>
           <p className="text-sm text-ink-600">Track every Ausbildung application from wishlist to offer.</p>
         </div>
-        <button className="rounded bg-ink-900 px-3 py-1.5 text-sm text-white" onClick={() => setAdding(true)}>
-          New application
-        </button>
+        <Button onClick={() => setAdding(true)}>New application</Button>
       </div>
 
       <PortalsRow />
@@ -143,14 +147,14 @@ export default function Applications() {
       )}
 
       {stats && stats.weeklyActivity.some((w) => w.applied > 0) && (
-        <div className="rounded-xl border border-hairline bg-card p-4">
+        <Card>
           <p className="mb-2 text-sm font-medium text-ink-600">Applications per week</p>
           <ActivityChart
             data={stats.weeklyActivity.map((w) => ({ date: w.weekStart, count: w.applied }))}
             unit="applications"
             ariaLabel="Applications per week, last 8 weeks"
           />
-        </div>
+        </Card>
       )}
 
       <DndContext
@@ -173,7 +177,7 @@ export default function Applications() {
             ))}
           </div>
         </div>
-        <DragOverlay>{dragged && <Card app={dragged} overlay />}</DragOverlay>
+        <DragOverlay>{dragged && <AppCard app={dragged} overlay />}</DragOverlay>
       </DndContext>
 
       {adding && <AddDialog onClose={() => setAdding(false)} />}
@@ -219,7 +223,7 @@ function PortalsRow() {
   const portals = data?.portals ?? [];
 
   return (
-    <div className="rounded-xl border border-hairline bg-card p-3">
+    <Card padding="sm">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium text-ink-600">Portals</span>
         {portals.length === 0 && !adding && (
@@ -237,17 +241,17 @@ function PortalsRow() {
               href={p.url}
               target="_blank"
               rel="noreferrer"
-              className="hover:text-brand-700"
+              className="flex items-center gap-1 hover:text-brand-700"
               onClick={() => markChecked.mutate(p.id)}
             >
-              {p.label} ↗
+              {p.label} <ExternalLink className="size-3" aria-hidden="true" />
             </a>
             <button
               className="hidden text-ink-400 hover:text-danger-600 group-hover:inline"
               title="Remove portal"
               onClick={() => remove.mutate(p.id)}
             >
-              ×
+              <X className="size-3" aria-hidden="true" />
             </button>
           </span>
         ))}
@@ -272,33 +276,35 @@ function PortalsRow() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
             />
-            <button className="rounded bg-ink-900 px-2.5 py-1 text-sm text-white" disabled={add.isPending}>
+            <Button size="sm" loading={add.isPending}>
               Add
-            </button>
+            </Button>
             <button type="button" className="text-sm text-ink-400" onClick={() => setAdding(false)}>
               Cancel
             </button>
           </form>
         ) : (
-          <button
-            className="rounded-full border border-hairline px-2.5 py-0.5 text-sm text-ink-600 hover:bg-paper"
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<Plus className="size-3.5" aria-hidden="true" />}
             onClick={() => setAdding(true)}
           >
-            + portal
-          </button>
+            Portal
+          </Button>
         )}
       </div>
       {error && <p className="mt-1 text-sm text-danger-600">{error}</p>}
-    </div>
+    </Card>
   );
 }
 
 function Tile({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-xl border border-hairline bg-card p-4">
+    <Card>
       <p className="text-sm text-ink-600">{label}</p>
       <p className="mt-1 text-2xl font-semibold">{value}</p>
-    </div>
+    </Card>
   );
 }
 
@@ -326,9 +332,11 @@ function Column({
             isOver ? "border-brand-400 bg-brand-50" : "border-hairline bg-paper"
           }`}
         >
-          {items.map((app) => (
-            <SortableCard key={app.id} app={app} onOpen={onOpen} />
-          ))}
+          {items.length === 0 ? (
+            <EmptyState icon={Briefcase} title="No applications" className="border-0 bg-transparent p-4 shadow-none" />
+          ) : (
+            items.map((app) => <SortableCard key={app.id} app={app} onOpen={onOpen} />)
+          )}
         </div>
       </SortableContext>
     </div>
@@ -348,29 +356,27 @@ function SortableCard({ app, onOpen }: { app: Application; onOpen: (id: string) 
       {...listeners}
       onClick={() => onOpen(app.id)}
     >
-      <Card app={app} />
+      <AppCard app={app} />
     </div>
   );
 }
 
-function Card({ app, overlay = false }: { app: Application; overlay?: boolean }) {
+function AppCard({ app, overlay = false }: { app: Application; overlay?: boolean }) {
   return (
-    <div
-      className={`cursor-grab rounded-lg border border-hairline bg-card p-3 text-sm ${
-        overlay ? "shadow-lg" : "hover:border-brand-400"
-      }`}
-    >
+    <Card padding="sm" interactive={!overlay} className={`cursor-grab text-sm ${overlay ? "shadow-lg" : ""}`}>
       <p className="font-medium">{app.company}</p>
       <p className="text-ink-600">{app.position}</p>
-      <div className="mt-1.5 flex items-center gap-2 text-xs text-ink-400">
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-400">
         {app.location && <span>{app.location}</span>}
         {app.appliedAt && <span>applied {app.appliedAt.slice(0, 10)}</span>}
-        {app.platform && (
-          <span className="rounded-full border border-hairline bg-paper px-1.5">{app.platform}</span>
+        {app.platform && <Badge size="sm">{app.platform}</Badge>}
+        {app.cv && (
+          <Badge variant="brand" size="sm">
+            {app.cv.title}
+          </Badge>
         )}
-        {app.cv && <span className="rounded-full bg-brand-50 px-1.5 text-brand-700">{app.cv.title}</span>}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -403,7 +409,7 @@ function AddDialog({ onClose }: { onClose: () => void }) {
   });
 
   return (
-    <Modal title="New application" onClose={onClose}>
+    <Modal title="New application" onClose={onClose} size="sm">
       <form
         className="space-y-3"
         onSubmit={(e) => {
@@ -469,12 +475,10 @@ function AddDialog({ onClose }: { onClose: () => void }) {
         </div>
         {add.isError && <p className="text-sm text-danger-600">{(add.error as Error).message}</p>}
         <div className="flex justify-end gap-2 pt-1">
-          <button type="button" className="rounded border border-hairline px-3 py-1.5 text-sm" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancel
-          </button>
-          <button className="rounded bg-ink-900 px-3 py-1.5 text-sm text-white" disabled={add.isPending}>
-            Add
-          </button>
+          </Button>
+          <Button loading={add.isPending}>Add</Button>
         </div>
       </form>
     </Modal>
@@ -514,7 +518,7 @@ function DetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
   if (!app) return null;
 
   return (
-    <Modal title={`${app.company} — ${app.position}`} onClose={onClose} wide>
+    <Modal title={`${app.company} — ${app.position}`} onClose={onClose} size="lg">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Status">
           <select
@@ -582,18 +586,23 @@ function DetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
 
       <div className="mt-3 flex flex-wrap gap-4">
         {app.url && (
-          <a className="text-sm text-brand-700 hover:underline" href={app.url} target="_blank" rel="noreferrer">
-            Job posting ↗
+          <a
+            className="flex items-center gap-1 text-sm text-brand-700 hover:underline"
+            href={app.url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Job posting <ExternalLink className="size-3.5" aria-hidden="true" />
           </a>
         )}
         {app.platformUrl && (
           <a
-            className="text-sm text-brand-700 hover:underline"
+            className="flex items-center gap-1 text-sm text-brand-700 hover:underline"
             href={app.platformUrl}
             target="_blank"
             rel="noreferrer"
           >
-            Open on {app.platform || "portal"} ↗
+            Open on {app.platform || "portal"} <ExternalLink className="size-3.5" aria-hidden="true" />
           </a>
         )}
       </div>
@@ -622,9 +631,9 @@ function DetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
-          <button className="rounded bg-ink-900 px-3 py-1 text-xs text-white" disabled={addEvent.isPending}>
+          <Button size="sm" loading={addEvent.isPending}>
             Log
-          </button>
+          </Button>
         </form>
         <ul className="space-y-2">
           {app.events.map((ev) => (
@@ -650,14 +659,16 @@ function DetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
       </div>
 
       <div className="mt-5 flex justify-end border-t border-hairline pt-3">
-        <button
-          className="rounded border border-hairline px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50"
+        <Button
+          variant="outline"
+          className="text-danger-600 hover:border-danger-100 hover:bg-danger-50"
+          leftIcon={<Trash2 className="size-3.5" aria-hidden="true" />}
           onClick={() => {
             if (confirm(`Delete the application at ${app.company}?`)) remove.mutate();
           }}
         >
           Delete application
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -679,44 +690,13 @@ function DebouncedInput({
   const props = {
     className: inputCls,
     value: draft,
-    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setDraft(e.target.value),
+    onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setDraft(e.target.value),
     onBlur: commit,
   };
   return textarea ? <textarea rows={3} {...props} /> : <input {...props} />;
 }
 
-function Modal({
-  title,
-  children,
-  onClose,
-  wide = false,
-}: {
-  title: string;
-  children: React.ReactNode;
-  onClose: () => void;
-  wide?: boolean;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink-900/40 p-4 sm:py-12"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className={`w-full rounded-xl border border-hairline bg-card p-5 shadow-xl ${wide ? "max-w-2xl" : "max-w-md"}`}>
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <button className="text-ink-400 hover:text-ink-900" onClick={onClose} title="Close">
-            ✕
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block text-sm">
       <span className="mb-1 block text-ink-600">{label}</span>
