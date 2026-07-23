@@ -145,7 +145,7 @@ export function MonthlyReviewSection() {
 
 const READINESS_STYLES: Record<GoetheReadiness["readinessLabel"], string> = {
   "not started": "border-hairline bg-paper text-ink-400",
-  building: "border-brand-600 bg-brand-100 text-brand-600",
+  building: "border-brand-600 bg-brand-100 text-brand-700",
   "ready soon": "border-ok-600 bg-ok-50 text-ok-600",
   "exam ready": "border-ok-600 bg-ok-50 text-ok-600",
 };

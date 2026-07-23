@@ -81,10 +81,10 @@ export default function CvList() {
         {cvs.map((cv) => (
           <div key={cv.id} className="rounded-xl border border-hairline bg-card p-4">
             <div className="flex items-start justify-between gap-2">
-              <Link to={`/cv/${cv.id}`} className="font-medium hover:text-brand-600">
+              <Link to={`/cv/${cv.id}`} className="font-medium hover:text-brand-700">
                 {cv.title}
               </Link>
-              <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-600">
+              <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-700">
                 {TEMPLATE_LABELS[cv.template]}
               </span>
             </div>

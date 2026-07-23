@@ -40,7 +40,7 @@ function WordRow({ word }: { word: Word }) {
         {word.ipa && <span className="text-xs text-ink-400">/{word.ipa}/</span>}
         <span className="ml-auto flex items-center gap-2">
           {word.lesson && (
-            <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-600">
+            <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-700">
               {word.lesson}
             </span>
           )}
@@ -276,7 +276,7 @@ export default function Vocabulary() {
           </p>
         )}
         {add.isSuccess && add.data.newlyUnlockedBadges.length > 0 && (
-          <p className="mt-2 text-sm text-brand-600">
+          <p className="mt-2 text-sm text-brand-700">
             🏅 New badge{add.data.newlyUnlockedBadges.length === 1 ? "" : "s"}:{" "}
             {add.data.newlyUnlockedBadges.map((b) => b.label).join(", ")}
           </p>

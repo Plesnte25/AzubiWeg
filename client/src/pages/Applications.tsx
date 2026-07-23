@@ -237,7 +237,7 @@ function PortalsRow() {
               href={p.url}
               target="_blank"
               rel="noreferrer"
-              className="hover:text-brand-600"
+              className="hover:text-brand-700"
               onClick={() => markChecked.mutate(p.id)}
             >
               {p.label} ↗
@@ -368,7 +368,7 @@ function Card({ app, overlay = false }: { app: Application; overlay?: boolean })
         {app.platform && (
           <span className="rounded-full border border-hairline bg-paper px-1.5">{app.platform}</span>
         )}
-        {app.cv && <span className="rounded-full bg-brand-50 px-1.5 text-brand-600">{app.cv.title}</span>}
+        {app.cv && <span className="rounded-full bg-brand-50 px-1.5 text-brand-700">{app.cv.title}</span>}
       </div>
     </div>
   );
@@ -582,13 +582,13 @@ function DetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
 
       <div className="mt-3 flex flex-wrap gap-4">
         {app.url && (
-          <a className="text-sm text-brand-600 hover:underline" href={app.url} target="_blank" rel="noreferrer">
+          <a className="text-sm text-brand-700 hover:underline" href={app.url} target="_blank" rel="noreferrer">
             Job posting ↗
           </a>
         )}
         {app.platformUrl && (
           <a
-            className="text-sm text-brand-600 hover:underline"
+            className="text-sm text-brand-700 hover:underline"
             href={app.platformUrl}
             target="_blank"
             rel="noreferrer"

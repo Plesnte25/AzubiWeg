@@ -83,7 +83,7 @@ function TaskRow({ task, onToggle }: { task: RoadmapTask; onToggle: (completed: 
           </span>
         </label>
         {cta && !done && (
-          <Link to={cta.to} className="shrink-0 text-sm text-brand-600 hover:underline">
+          <Link to={cta.to} className="shrink-0 text-sm text-brand-700 hover:underline">
             {cta.label}
           </Link>
         )}

@@ -3,7 +3,7 @@ import type { RoadmapCalendarDay, RoadmapDayStatus } from "../api/types";
 const STATUS_STYLES: Record<RoadmapDayStatus, string> = {
   done: "border-ok-600 bg-ok-50 text-ok-600",
   overdue: "border-danger-600 bg-danger-50 text-danger-600",
-  today: "border-brand-600 bg-brand-100 text-brand-600 ring-2 ring-brand-200",
+  today: "border-brand-600 bg-brand-100 text-brand-700 ring-2 ring-brand-200",
   upcoming: "border-hairline bg-paper text-ink-400",
 };
 
@@ -51,16 +51,18 @@ export default function RoadmapCalendar({ month, days, onSelectDay }: Props) {
           if (!cell) return <div key={`blank-${i}`} />;
           const day = byDate.get(cell.iso);
           const style = day ? STATUS_STYLES[day.status] : "border-hairline bg-paper text-ink-400";
+          // status (done/today/overdue/upcoming) is otherwise conveyed by
+          // border/background color alone — say it in the accessible name too
+          const label = day
+            ? `${cell.iso}, ${day.status}: ${day.completedTasks}/${day.totalTasks} done${day.theme ? ` — ${day.theme}` : ""}`
+            : `${cell.iso}, no roadmap day`;
           return (
             <button
               key={cell.iso}
               disabled={!day}
               onClick={() => day && onSelectDay(cell.iso)}
-              title={
-                day
-                  ? `${cell.iso}: ${day.completedTasks}/${day.totalTasks} done${day.theme ? ` — ${day.theme}` : ""}`
-                  : undefined
-              }
+              title={label}
+              aria-label={label}
               className={`aspect-square rounded-lg border text-sm font-medium transition-colors ${style} ${
                 day ? "cursor-pointer hover:brightness-95" : "cursor-default opacity-40"
               }`}

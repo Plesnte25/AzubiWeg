@@ -10,6 +10,22 @@ const DOT_STYLE: Record<RoadmapDayStripStatus, string> = {
 
 const WEEKDAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
 
+const STATUS_TEXT: Record<RoadmapDayStripStatus, string> = {
+  done: "done",
+  today: "today",
+  overdue: "overdue",
+  upcoming: "upcoming",
+};
+
+function fullLabel(date: string, status: RoadmapDayStripStatus): string {
+  const weekday = new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  });
+  return `${weekday}: ${STATUS_TEXT[status]}`;
+}
+
 export default function RoadmapWeekStrip({
   days,
 }: {
@@ -24,12 +40,14 @@ export default function RoadmapWeekStrip({
       {days.map((d, i) => (
         <button
           key={d.date}
-          title={d.date}
+          aria-label={fullLabel(d.date, d.status)}
           className="flex flex-1 flex-col items-center gap-1 rounded-lg py-1.5 hover:bg-paper"
           onClick={() => navigate(`/learning?group=progress&tab=calendar`)}
         >
-          <span className="text-xs text-ink-400">{WEEKDAY_LABELS[i]}</span>
-          <span className={`size-2.5 rounded-full ${DOT_STYLE[d.status]}`} />
+          <span aria-hidden="true" className="text-xs text-ink-400">
+            {WEEKDAY_LABELS[i]}
+          </span>
+          <span aria-hidden="true" className={`size-2.5 rounded-full ${DOT_STYLE[d.status]}`} />
         </button>
       ))}
     </div>
