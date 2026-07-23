@@ -7,6 +7,13 @@ const STATUS_STYLES: Record<RoadmapDayStatus, string> = {
   upcoming: "border-hairline bg-paper text-ink-400",
 };
 
+const STATUS_BAR: Record<RoadmapDayStatus, string> = {
+  done: "bg-ok-600",
+  overdue: "bg-danger-600",
+  today: "bg-brand-600",
+  upcoming: "bg-hairline",
+};
+
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 interface Props {
@@ -17,10 +24,11 @@ interface Props {
 }
 
 /**
- * A true month grid (unlike ActivityHeatmap's rolling contribution-graph
- * layout) with real day-of-month numbers and clickable cells. Reuses the same
- * status-color language as Checklist.tsx's expiry badges (bg-X-50/text-X-600)
- * rather than inventing a new one.
+ * A true month grid (unlike the rolling contribution-graph layout used
+ * elsewhere) with real day-of-month numbers, clickable cells, and a thin
+ * completion bar per day so progress reads at a glance without opening it.
+ * Reuses the same status-color language as Checklist.tsx's expiry badges
+ * (bg-X-50/text-X-600) rather than inventing a new one.
  */
 export default function RoadmapCalendar({ month, days, onSelectDay }: Props) {
   const [year, m] = month.split("-").map(Number);
@@ -51,6 +59,7 @@ export default function RoadmapCalendar({ month, days, onSelectDay }: Props) {
           if (!cell) return <div key={`blank-${i}`} />;
           const day = byDate.get(cell.iso);
           const style = day ? STATUS_STYLES[day.status] : "border-hairline bg-paper text-ink-400";
+          const fraction = day && day.totalTasks > 0 ? day.completedTasks / day.totalTasks : 0;
           // status (done/today/overdue/upcoming) is otherwise conveyed by
           // border/background color alone — say it in the accessible name too
           const label = day
@@ -63,11 +72,19 @@ export default function RoadmapCalendar({ month, days, onSelectDay }: Props) {
               onClick={() => day && onSelectDay(cell.iso)}
               title={label}
               aria-label={label}
-              className={`aspect-square rounded-lg border text-sm font-medium transition-colors ${style} ${
-                day ? "cursor-pointer hover:brightness-95" : "cursor-default opacity-40"
+              className={`group relative flex aspect-square flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl border text-sm font-medium transition-all ${style} ${
+                day ? "cursor-pointer hover:scale-[1.04] hover:shadow-md" : "cursor-default opacity-40"
               }`}
             >
               {cell.dayOfMonth}
+              {day && day.totalTasks > 0 && (
+                <span className="h-1 w-5 overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+                  <span
+                    className={`block h-full rounded-full ${STATUS_BAR[day.status]}`}
+                    style={{ width: `${Math.round(fraction * 100)}%` }}
+                  />
+                </span>
+              )}
             </button>
           );
         })}

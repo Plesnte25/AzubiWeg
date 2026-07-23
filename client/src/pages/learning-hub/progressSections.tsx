@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { api } from "../../api/client";
 import type {
   RoadmapOverview,
@@ -12,7 +13,11 @@ import { Attachments } from "../../components/Attachments";
 import AudioRecorder from "../../components/AudioRecorder";
 import FillBar from "../../components/FillBar";
 import RoadmapCalendar from "../../components/RoadmapCalendar";
-import { LEVEL_LABELS } from "./contentSections";
+import { Button } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
+import { FilterPill, LEVEL_LABELS } from "./contentSections";
 
 const fmtDay = (iso: string) =>
   new Date(iso + "T00:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
@@ -143,7 +148,7 @@ export function ActivationCard() {
   });
 
   return (
-    <div className="rounded-xl border border-hairline bg-card p-6 text-center">
+    <Card padding="lg" className="text-center">
       <h2 className="text-lg font-semibold">Start your 26-week roadmap</h2>
       <p className="mx-auto mt-2 max-w-md text-sm text-ink-600">
         Day 1 starts today by default — 182 days, A0 to B1, with a calendar you can follow day by day.
@@ -157,21 +162,17 @@ export function ActivationCard() {
         />
         <p className="mt-1 text-xs text-ink-400">Optional — leave blank to start today</p>
       </div>
-      <button
-        className="mt-4 rounded-full bg-ink-900 px-5 py-2 text-sm font-medium text-white hover:bg-ink-900/90 disabled:opacity-60"
-        onClick={() => activate.mutate()}
-        disabled={activate.isPending}
-      >
-        {activate.isPending ? "Starting…" : "Start roadmap"}
-      </button>
+      <Button className="mt-4" loading={activate.isPending} onClick={() => activate.mutate()}>
+        Start roadmap
+      </Button>
       {activate.isError && <p className="mt-2 text-sm text-danger-600">{(activate.error as Error).message}</p>}
-    </div>
+    </Card>
   );
 }
 
 function OverviewHeader({ overview, theme }: { overview: RoadmapOverview; theme: string | null }) {
   return (
-    <div className="rounded-xl border border-hairline bg-card p-4">
+    <Card>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-sm text-ink-600">
           Day {overview.currentDayOffset + 1} of {overview.totalDays}
@@ -184,7 +185,7 @@ function OverviewHeader({ overview, theme }: { overview: RoadmapOverview; theme:
       <div className="mt-2">
         <FillBar percent={overview.percent} />
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -201,14 +202,21 @@ export function TodaySection() {
     onSuccess: invalidate,
   });
 
-  if (isLoading) return <p className="text-ink-400">Loading…</p>;
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <SkeletonCard className="h-16" />
+        <SkeletonCard className="h-32" />
+      </div>
+    );
+  }
   if (!data) return null;
 
   return (
     <div className="space-y-6">
       <OverviewHeader overview={data.overview} theme={data.theme} />
 
-      <div className="rounded-xl border border-hairline bg-card p-4">
+      <Card>
         <h3 className="font-semibold">Today — {fmtDay(data.date)}</h3>
         <div className="mt-2 divide-y divide-hairline">
           {data.tasks.length === 0 ? (
@@ -219,10 +227,10 @@ export function TodaySection() {
             ))
           )}
         </div>
-      </div>
+      </Card>
 
       {data.backlog.length > 0 && (
-        <div className="rounded-xl border border-danger-600/30 bg-danger-50 p-4">
+        <div className="rounded-xl border border-danger-100 bg-danger-50 p-4">
           <h3 className="font-semibold text-danger-600">Carried from earlier days</h3>
           <div className="mt-3 space-y-4">
             {data.backlog.map((group) => (
@@ -258,13 +266,16 @@ export function BacklogSection() {
     onSuccess: invalidate,
   });
 
-  if (isLoading) return <p className="text-ink-400">Loading…</p>;
-  if (!data || data.groups.length === 0) {
+  if (isLoading) {
     return (
-      <p className="rounded-xl border border-hairline bg-card p-6 text-center text-ink-400">
-        No backlog — you're all caught up.
-      </p>
+      <div className="space-y-4">
+        <SkeletonCard className="h-24" />
+        <SkeletonCard className="h-24" />
+      </div>
     );
+  }
+  if (!data || data.groups.length === 0) {
+    return <EmptyState icon={CheckCircle2} title="No backlog" description="You're all caught up." />;
   }
 
   return (
@@ -274,7 +285,7 @@ export function BacklogSection() {
         {data.groups.length === 1 ? "" : "s"}.
       </p>
       {data.groups.map((group) => (
-        <div key={group.dayId} className="rounded-xl border border-hairline bg-card p-4">
+        <Card key={group.dayId}>
           <p className="text-sm font-medium">
             {fmtDay(group.date)} — {group.daysOverdue} day{group.daysOverdue === 1 ? "" : "s"} overdue
             {group.theme && ` · ${group.theme}`}
@@ -284,7 +295,7 @@ export function BacklogSection() {
               <TaskRow key={t.id} task={t} onToggle={(completed) => toggle.mutate({ id: t.id, completed })} />
             ))}
           </div>
-        </div>
+        </Card>
       ))}
     </div>
   );
@@ -322,29 +333,31 @@ export function CalendarSection() {
 
   return (
     <div className="grid gap-6 md:grid-cols-[1fr_320px]">
-      <div className="rounded-xl border border-hairline bg-card p-4">
+      <Card>
         <div className="mb-3 flex items-center justify-between">
-          <button className="rounded-full px-2 py-1 text-sm hover:bg-paper" onClick={() => shiftMonth(-1)}>
-            ← Prev
+          <button
+            className="flex items-center gap-1 rounded-full px-2 py-1 text-sm hover:bg-paper"
+            onClick={() => shiftMonth(-1)}
+          >
+            <ChevronLeft className="size-4" aria-hidden="true" /> Prev
           </button>
           <p className="font-semibold">
             {new Date(month + "-01T00:00:00").toLocaleDateString(undefined, { month: "long", year: "numeric" })}
           </p>
-          <button className="rounded-full px-2 py-1 text-sm hover:bg-paper" onClick={() => shiftMonth(1)}>
-            Next →
+          <button
+            className="flex items-center gap-1 rounded-full px-2 py-1 text-sm hover:bg-paper"
+            onClick={() => shiftMonth(1)}
+          >
+            Next <ChevronRight className="size-4" aria-hidden="true" />
           </button>
         </div>
-        {isLoading ? (
-          <p className="text-ink-400">Loading…</p>
-        ) : (
-          <RoadmapCalendar month={month} days={data?.days ?? []} onSelectDay={setSelectedDate} />
-        )}
-      </div>
-      <div className="rounded-xl border border-hairline bg-card p-4">
+        {isLoading ? <Skeleton className="h-64 w-full" /> : <RoadmapCalendar month={month} days={data?.days ?? []} onSelectDay={setSelectedDate} />}
+      </Card>
+      <Card>
         {!selectedDate ? (
           <p className="text-sm text-ink-400">Click a day to see its tasks.</p>
         ) : dayQuery.isLoading ? (
-          <p className="text-ink-400">Loading…</p>
+          <Skeleton className="h-24 w-full" />
         ) : dayQuery.isError ? (
           <p className="text-sm text-ink-400">No roadmap day here.</p>
         ) : dayQuery.data ? (
@@ -358,7 +371,7 @@ export function CalendarSection() {
             </div>
           </>
         ) : null}
-      </div>
+      </Card>
     </div>
   );
 }
@@ -387,22 +400,14 @@ export function JournalSection() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-1.5">
         {SKILLS.map((s) => (
-          <button
-            key={s.key}
-            className={`rounded-full border px-3 py-1 text-sm transition-colors ${
-              skill === s.key
-                ? "border-ink-900 bg-ink-900 text-white"
-                : "border-hairline text-ink-600 hover:bg-paper"
-            }`}
-            onClick={() => setSkill(s.key)}
-          >
+          <FilterPill key={s.key} active={skill === s.key} onClick={() => setSkill(s.key)}>
             {s.label}
-          </button>
+          </FilterPill>
         ))}
       </div>
-      <div className="rounded-xl border border-hairline bg-card p-4">
+      <Card>
         {isLoading ? (
-          <p className="text-ink-400">Loading…</p>
+          <Skeleton className="h-16 w-full" />
         ) : !data || data.tasks.length === 0 ? (
           <p className="text-sm text-ink-400">No {SKILLS.find((s) => s.key === skill)?.label.toLowerCase()} tasks yet.</p>
         ) : (
@@ -418,7 +423,7 @@ export function JournalSection() {
             ))}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

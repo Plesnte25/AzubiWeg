@@ -1,5 +1,16 @@
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  BookOpen,
+  CheckCircle2,
+  ExternalLink,
+  NotebookText,
+  PenLine,
+  PlayCircle,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import type {
   CefrLevel,
   LevelState,
@@ -13,6 +24,10 @@ import type {
 import { api } from "../../api/client";
 import { Attachments } from "../../components/Attachments";
 import FillBar from "../../components/FillBar";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
+import { SkeletonCard } from "../../components/ui/Skeleton";
 import { levelStates } from "../../lib/levels";
 import { nicosWegCourseIdFromUrl } from "../../lib/nicosweg";
 import { RESOURCES } from "../../lib/resources";
@@ -39,6 +54,19 @@ const SOURCE_TYPES: { key: StudySourceType; label: string }[] = [
   { key: "other", label: "Other" },
 ];
 
+export function FilterPill({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+        active ? "border-brand-600 bg-brand-600 text-white" : "border-hairline text-ink-600 hover:bg-paper hover:text-ink-900"
+      }`}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
 // ── Syllabus ──
 
 export function SyllabusSection() {
@@ -47,7 +75,14 @@ export function SyllabusSection() {
     queryFn: api.learningSyllabus,
   });
 
-  if (isLoading) return <p className="text-ink-400">Loading…</p>;
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <SkeletonCard className="h-24" />
+        <SkeletonCard className="h-24" />
+      </div>
+    );
+  }
   const levels = data?.levels ?? [];
   const items = data?.items ?? [];
   const states = levelStates(levels);
@@ -66,14 +101,14 @@ export function SyllabusSection() {
           >
             <summary className="cursor-pointer select-none space-y-2 rounded-xl p-4 hover:bg-paper">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="font-semibold">
+                <span className="flex items-center gap-2 font-semibold">
                   {LEVEL_LABELS[lvl.level]}
-                  {state === "done" && <span className="ml-2 text-ok-600">✓ complete</span>}
-                  {state === "active" && (
-                    <span className="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
-                      current level
+                  {state === "done" && (
+                    <span className="flex items-center gap-1 text-ok-600">
+                      <CheckCircle2 className="size-4" aria-hidden="true" /> complete
                     </span>
                   )}
+                  {state === "active" && <Badge variant="brand">current level</Badge>}
                 </span>
                 <span className="text-sm text-ink-600">
                   {lvl.done} of {lvl.total} · {lvl.percent}%
@@ -105,14 +140,15 @@ export function SyllabusSection() {
                     </h3>
                     {themes.map(({ theme, items: themeItems }) => {
                       const done = themeItems.filter((it) => it.completedAt !== null).length;
+                      const allDone = done === themeItems.length;
                       return (
                         <div key={theme || themeItems[0].id} className="space-y-0.5">
                           {theme && (
                             <p className="flex items-baseline gap-2 px-2 text-sm font-medium">
                               {theme}
-                              <span className={`text-xs ${done === themeItems.length ? "text-ok-600" : "text-ink-400"}`}>
+                              <span className={`flex items-center gap-1 text-xs ${allDone ? "text-ok-600" : "text-ink-400"}`}>
                                 {done}/{themeItems.length}
-                                {done === themeItems.length && " ✓"}
+                                {allDone && <CheckCircle2 className="size-3" aria-hidden="true" />}
                               </span>
                             </p>
                           )}
@@ -153,8 +189,8 @@ function GrammarNotebook({ item, onChanged }: { item: SyllabusItem; onChanged: (
 
   return (
     <details className="mt-1 rounded-lg border border-hairline bg-paper">
-      <summary className="cursor-pointer select-none px-2.5 py-1.5 text-xs font-medium text-ink-600">
-        📓 Notebook
+      <summary className="flex cursor-pointer select-none items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-ink-600">
+        <NotebookText className="size-3.5" aria-hidden="true" /> Notebook
       </summary>
       <div className="space-y-2 p-2.5 pt-0">
         {NOTEBOOK_FIELDS.map((f) => (
@@ -237,7 +273,14 @@ export function SourcesSection() {
     queryFn: api.learningSources,
   });
 
-  if (isLoading) return <p className="text-ink-400">Loading…</p>;
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <SkeletonCard className="h-28" />
+        <SkeletonCard className="h-28" />
+      </div>
+    );
+  }
   const sources = data?.sources ?? [];
 
   return (
@@ -292,7 +335,7 @@ function SourceCard({ source }: { source: StudySource }) {
   const playlistId = source.url ? youTubePlaylistIdFromUrl(source.url) : null;
 
   return (
-    <div className="space-y-3 rounded-xl border border-hairline bg-card p-4">
+    <Card className="space-y-3">
       <div className="flex flex-wrap items-start gap-3">
         {thumbId && (
           <img
@@ -304,14 +347,8 @@ function SourceCard({ source }: { source: StudySource }) {
         )}
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-hairline bg-paper px-2 py-0.5 text-xs">
-              {typeLabel}
-            </span>
-            {source.level && (
-              <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
-                {LEVEL_LABELS[source.level]}
-              </span>
-            )}
+            <Badge>{typeLabel}</Badge>
+            {source.level && <Badge variant="brand">{LEVEL_LABELS[source.level]}</Badge>}
             {source.url ? (
               <a
                 className="font-medium hover:text-brand-700 hover:underline"
@@ -325,51 +362,49 @@ function SourceCard({ source }: { source: StudySource }) {
               <span className="font-medium">{source.title}</span>
             )}
           </div>
-          <p className="text-sm text-ink-600">
+          <p className="flex items-center gap-1 text-sm text-ink-600">
             {source.totalUnits !== null
               ? `${source.completedUnits} of ${source.totalUnits} lessons`
               : `${source.completedUnits} lessons done`}
             {source.percent !== null && ` · ${source.percent}%`}
-            {atTotal && " · finished ✓"}
+            {atTotal && (
+              <span className="flex items-center gap-1 text-ok-600">
+                · finished <CheckCircle2 className="size-3.5" aria-hidden="true" />
+              </span>
+            )}
           </p>
           {source.percent !== null && <FillBar percent={source.percent} />}
           {source.notes && <p className="text-sm text-ink-600">{source.notes}</p>}
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {hasUnits ? (
-            <button
-              className="rounded bg-ink-900 px-3 py-1.5 text-sm text-white"
-              onClick={() => setShowLessons((v) => !v)}
-            >
+            <Button size="sm" onClick={() => setShowLessons((v) => !v)}>
               {showLessons ? "Hide lessons" : "Lessons"}
-            </button>
+            </Button>
           ) : (
             <>
-              <button
-                className="rounded bg-ink-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-                disabled={logProgress.isPending || atTotal}
-                onClick={() => logProgress.mutate(1)}
-              >
+              <Button size="sm" disabled={logProgress.isPending || atTotal} onClick={() => logProgress.mutate(1)}>
                 +1 lesson
-              </button>
-              <button
-                className="rounded border border-hairline px-2 py-1 text-xs hover:bg-paper"
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 title="Undo one lesson"
                 disabled={logProgress.isPending || source.completedUnits === 0}
                 onClick={() => logProgress.mutate(-1)}
               >
                 −1
-              </button>
+              </Button>
             </>
           )}
-          <button
-            className="rounded border border-hairline px-2 py-1 text-xs hover:bg-paper"
-            onClick={() => setEditing((v) => !v)}
-          >
+          <Button variant="outline" size="sm" onClick={() => setEditing((v) => !v)}>
             {editing ? "Close" : "Edit"}
-          </button>
-          <button
-            className="rounded border border-hairline px-2 py-1 text-xs text-ink-400 hover:text-danger-600"
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-danger-600 hover:border-danger-100 hover:bg-danger-50"
+            leftIcon={<Trash2 className="size-3.5" aria-hidden="true" />}
             onClick={() => {
               if (confirm(`Delete "${source.title}"${source.files.length ? " and its files" : ""}?`)) {
                 remove.mutate();
@@ -377,7 +412,7 @@ function SourceCard({ source }: { source: StudySource }) {
             }}
           >
             Delete
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -405,7 +440,7 @@ function SourceCard({ source }: { source: StudySource }) {
         />
       )}
       <Attachments files={source.files} parent={{ studySourceId: source.id }} onChanged={invalidate} />
-    </div>
+    </Card>
   );
 }
 
@@ -443,21 +478,30 @@ function UnitRow({
           {unit.title}
         </span>
         <button
-          className={`shrink-0 text-xs ${unit.notes ? "text-brand-700" : "text-ink-400"} hover:text-brand-700`}
+          className={`flex shrink-0 items-center gap-0.5 text-xs ${unit.notes ? "text-brand-700" : "text-ink-400"} hover:text-brand-700`}
           title={unit.notes ? "Edit notes" : "Add notes for this lesson"}
           onClick={() => setEditingNotes((v) => !v)}
         >
-          📝{unit.notes ? "" : " +"}
+          <PenLine className="size-3" aria-hidden="true" />
+          {!unit.notes && "+"}
         </button>
         {lessonUrl && (
           <a
-            className="shrink-0 text-xs text-ink-400 hover:text-brand-700"
+            className="flex shrink-0 items-center gap-0.5 text-xs text-ink-400 hover:text-brand-700"
             href={lessonUrl}
             target="_blank"
             rel="noreferrer"
             title={unit.videoId ? "Open on YouTube" : "Open lesson"}
           >
-            {unit.videoId ? "▶ watch" : "↗ open"}
+            {unit.videoId ? (
+              <>
+                <PlayCircle className="size-3" aria-hidden="true" /> watch
+              </>
+            ) : (
+              <>
+                <ExternalLink className="size-3" aria-hidden="true" /> open
+              </>
+            )}
           </a>
         )}
       </div>
@@ -494,23 +538,20 @@ function AddSourceForm() {
 
   if (!open) {
     return (
-      <button
-        className="rounded border border-hairline px-3 py-1.5 text-sm text-ink-600 hover:bg-paper"
-        onClick={() => setOpen(true)}
-      >
-        + Add study source
-      </button>
+      <Button variant="outline" size="sm" leftIcon={<Plus className="size-3.5" aria-hidden="true" />} onClick={() => setOpen(true)}>
+        Add study source
+      </Button>
     );
   }
   return (
-    <div className="rounded-xl border border-hairline bg-card p-4">
+    <Card>
       <SourceForm
         onSaved={() => {
           setOpen(false);
           queryClient.invalidateQueries({ queryKey: ["learning", "sources"] });
         }}
       />
-    </div>
+    </Card>
   );
 }
 
@@ -587,14 +628,15 @@ function SourceForm({ initial, onSaved }: { initial?: StudySource; onSaved: () =
         onChange={(e) => setUrl(e.target.value)}
       />
       {isPlaylist && (
-        <p className="text-xs text-brand-700 sm:col-span-2">
-          ▶ YouTube playlist detected — the lesson list will be fetched automatically (first ~100
-          videos).
+        <p className="flex items-center gap-1.5 text-xs text-brand-700 sm:col-span-2">
+          <PlayCircle className="size-3.5" aria-hidden="true" />
+          YouTube playlist detected — the lesson list will be fetched automatically (first ~100 videos).
         </p>
       )}
       {isCourse && (
-        <p className="text-xs text-brand-700 sm:col-span-2">
-          📖 Nicos Weg course detected — the lesson list will be fetched from DW automatically.
+        <p className="flex items-center gap-1.5 text-xs text-brand-700 sm:col-span-2">
+          <BookOpen className="size-3.5" aria-hidden="true" />
+          Nicos Weg course detected — the lesson list will be fetched from DW automatically.
         </p>
       )}
       <div className="flex gap-2">
@@ -631,12 +673,9 @@ function SourceForm({ initial, onSaved }: { initial?: StudySource; onSaved: () =
       {error && <p className="text-sm text-danger-600 sm:col-span-2">{error}</p>}
       {notice && <p className="text-sm text-brand-700 sm:col-span-2">{notice}</p>}
       <div className="sm:col-span-2">
-        <button
-          className="rounded bg-ink-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-          disabled={(!title.trim() && !autoFetches) || save.isPending}
-        >
-          {save.isPending ? "Saving…" : initial ? "Save changes" : autoFetches ? "Add & fetch lessons" : "Add source"}
-        </button>
+        <Button disabled={(!title.trim() && !autoFetches) || save.isPending} loading={save.isPending}>
+          {initial ? "Save changes" : autoFetches ? "Add & fetch lessons" : "Add source"}
+        </Button>
       </div>
     </form>
   );
@@ -674,24 +713,13 @@ export function ResourcesSection() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-1.5">
-        <button
-          className={`rounded-full border px-3 py-1 text-sm transition-colors ${
-            filter === "all" ? "border-ink-900 bg-ink-900 text-white" : "border-hairline text-ink-600 hover:bg-paper"
-          }`}
-          onClick={() => setFilter("all")}
-        >
+        <FilterPill active={filter === "all"} onClick={() => setFilter("all")}>
           All
-        </button>
+        </FilterPill>
         {RESOURCE_SKILLS.map((s) => (
-          <button
-            key={s}
-            className={`rounded-full border px-3 py-1 text-sm transition-colors ${
-              filter === s ? "border-ink-900 bg-ink-900 text-white" : "border-hairline text-ink-600 hover:bg-paper"
-            }`}
-            onClick={() => setFilter(s)}
-          >
+          <FilterPill key={s} active={filter === s} onClick={() => setFilter(s)}>
             {RESOURCE_SKILL_LABEL[s]}
-          </button>
+          </FilterPill>
         ))}
       </div>
       <div className="divide-y divide-hairline rounded-xl border border-hairline bg-card">
@@ -705,9 +733,7 @@ export function ResourcesSection() {
           >
             <span className="flex flex-wrap items-baseline gap-2">
               <span className="font-medium text-brand-700 hover:underline">{r.title}</span>
-              <span className="rounded-full bg-paper px-2 py-0.5 text-xs text-ink-400">
-                {RESOURCE_SKILL_LABEL[r.skill]}
-              </span>
+              <Badge>{RESOURCE_SKILL_LABEL[r.skill]}</Badge>
             </span>
             {r.note && <span className="mt-0.5 block text-sm text-ink-600">{r.note}</span>}
           </a>

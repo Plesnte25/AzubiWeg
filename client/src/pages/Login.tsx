@@ -1,6 +1,9 @@
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError, setSession } from "../api/client";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { Input } from "../components/ui/Input";
 
 export default function Login({ mode }: { mode: "login" | "register" }) {
   const navigate = useNavigate();
@@ -16,9 +19,7 @@ export default function Login({ mode }: { mode: "login" | "register" }) {
     setError(null);
     try {
       const res =
-        mode === "login"
-          ? await api.login({ email, password })
-          : await api.register({ email, password, name });
+        mode === "login" ? await api.login({ email, password }) : await api.register({ email, password, name });
       setSession(res.token, res.user);
       navigate("/");
     } catch (err) {
@@ -28,87 +29,86 @@ export default function Login({ mode }: { mode: "login" | "register" }) {
     }
   }
 
-  const input =
-    "w-full rounded-md border border-hairline bg-card px-3 py-2 text-sm outline-none focus:border-brand-400";
-
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <form onSubmit={submit} className="w-full max-w-sm rounded-xl border border-hairline bg-card p-6 shadow-sm">
-        <h1 className="text-xl font-semibold tracking-tight">
-          <span className="text-brand-500">●</span> AzubiWeg
-        </h1>
-        <p className="mt-1 mb-5 text-sm text-ink-600">
-          {mode === "login" ? "Welcome back. Weiter geht's!" : "Your companion for the journey to Germany."}
-        </p>
-        {mode === "register" && (
-          <label htmlFor="name" className="mb-3 block text-sm">
-            Name
-            <input
-              id="name"
-              className={input}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+      <Card padding="lg" className="animate-fade-in w-full max-w-sm">
+        <form onSubmit={submit}>
+          <div className="mb-1 flex items-center gap-2">
+            <span className="grid size-7 place-items-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white">
+              AW
+            </span>
+            <h1 className="text-xl font-semibold tracking-tight">AzubiWeg</h1>
+          </div>
+          <p className="mb-5 text-sm text-ink-600">
+            {mode === "login" ? "Welcome back. Weiter geht's!" : "Your companion for the journey to Germany."}
+          </p>
+
+          <div className="space-y-3">
+            {mode === "register" && (
+              <Input
+                id="name"
+                label="Name"
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                aria-describedby={error ? "auth-error" : undefined}
+                required
+              />
+            )}
+            <Input
+              id="email"
+              label="Email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              aria-invalid={error ? true : undefined}
               aria-describedby={error ? "auth-error" : undefined}
               required
             />
-          </label>
-        )}
-        <label htmlFor="email" className="mb-3 block text-sm">
-          Email
-          <input
-            id="email"
-            className={input}
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? "auth-error" : undefined}
-            required
-          />
-        </label>
-        <label htmlFor="password" className="mb-4 block text-sm">
-          Password
-          <input
-            id="password"
-            className={input}
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? "auth-error" : undefined}
-            minLength={8}
-            required
-          />
-        </label>
-        {error && (
-          <p id="auth-error" role="alert" aria-live="assertive" className="mb-3 text-sm text-danger-600">
-            {error}
-          </p>
-        )}
-        <button
-          disabled={busy}
-          className="w-full rounded-md bg-ink-900 px-3 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
-        >
-          {busy ? "…" : mode === "login" ? "Sign in" : "Create account"}
-        </button>
-        <p className="mt-4 text-center text-sm text-ink-600">
-          {mode === "login" ? (
-            <>
-              New here?{" "}
-              <Link className="font-medium text-brand-700 hover:underline" to="/register">
-                Create an account
-              </Link>
-            </>
-          ) : (
-            <>
-              Already registered?{" "}
-              <Link className="font-medium text-brand-700 hover:underline" to="/login">
-                Sign in
-              </Link>
-            </>
+            <Input
+              id="password"
+              label="Password"
+              type="password"
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? "auth-error" : undefined}
+              minLength={8}
+              required
+            />
+          </div>
+
+          {error && (
+            <p id="auth-error" role="alert" aria-live="assertive" className="mt-3 text-sm text-danger-600">
+              {error}
+            </p>
           )}
-        </p>
-      </form>
+
+          <Button type="submit" size="lg" loading={busy} className="mt-4 w-full">
+            {mode === "login" ? "Sign in" : "Create account"}
+          </Button>
+
+          <p className="mt-4 text-center text-sm text-ink-600">
+            {mode === "login" ? (
+              <>
+                New here?{" "}
+                <Link className="font-medium text-brand-700 hover:underline" to="/register">
+                  Create an account
+                </Link>
+              </>
+            ) : (
+              <>
+                Already registered?{" "}
+                <Link className="font-medium text-brand-700 hover:underline" to="/login">
+                  Sign in
+                </Link>
+              </>
+            )}
+          </p>
+        </form>
+      </Card>
     </div>
   );
 }

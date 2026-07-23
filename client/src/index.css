@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Inter ships with the app for the PDF renderer — reuse it for the UI */
+/* Inter ships with the app for the PDF renderer — reuse it for UI body text */
 @font-face {
   font-family: "Inter";
   src: url("/fonts/Inter-Regular.ttf") format("truetype");
@@ -20,33 +20,153 @@
   font-display: swap;
 }
 
+/* Tailwind v4 defaults dark: to prefers-color-scheme only — this enables a
+   manual .dark class toggle (header/Settings switch). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  /* brand: warm German-gold accent on near-black ink */
-  --color-brand-50: #fdf8ec;
-  --color-brand-100: #faedc8;
-  --color-brand-200: #f5dd97;
-  --color-brand-400: #eda100;
-  --color-brand-500: #d98e00;
-  --color-brand-600: #b57400;
-  --color-brand-700: #8f5c00;
-  --color-ink-900: #0b0b0b;
-  --color-ink-600: #52514e;
-  /* darkened from #898781 — the original failed WCAG AA (~3.5:1) at the
-     small text sizes this token is used at throughout the app */
-  --color-ink-400: #706e67;
-  --color-ink-50: #f1f0ec;
-  --color-paper: #f9f9f7;
-  --color-card: #fcfcfb;
-  --color-hairline: #e1e0d9;
-  /* status colors for expiry badges */
+
+  /* radius — softer than Tailwind's defaults, re-tunes every existing
+     rounded-md/lg/xl usage app-wide with no per-page edits */
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+
+  /* brand: crimson — the app's single bold accent (primary actions, active
+     nav, links, gamification highlights) */
+  --color-brand-50: #fdecef;
+  --color-brand-100: #fbd0d7;
+  --color-brand-200: #f6a3b0;
+  --color-brand-300: #ef6f83;
+  --color-brand-400: #e8425c;
+  --color-brand-500: #da0037;
+  --color-brand-600: #b8002e;
+  --color-brand-700: #8f0024;
+  --color-brand-800: #6b001b;
+  --color-brand-900: #480012;
+
+  --color-ink-900: #171717;
+  --color-ink-700: #2e2e2e;
+  --color-ink-600: #444444;
+  --color-ink-400: #6b6b6b;
+  --color-ink-50: #f5f5f5;
+  --color-paper: #ededed;
+  --color-card: #ffffff;
+  --color-hairline: #dcdcdc;
+
+  /* semantic — kept a distinct hue from brand-red so "danger" never reads as
+     a primary action; always pair with an icon too, not color alone */
   --color-danger-50: #fdf0ef;
   --color-danger-100: #f9dcd9;
   --color-danger-600: #c2382c;
+  --color-danger-700: #9c2c22;
+  /* deliberately NOT redefined in .dark — this is for small solid-fill badges
+     paired with white text (e.g. an unread-count dot), where what matters is
+     contrast against the white text sitting on top of it, not against the
+     page background, so it shouldn't lighten the way danger-600/700 do */
+  --color-danger-solid: #c2382c;
   --color-ok-50: #eff6ee;
   --color-ok-100: #dcebda;
-  --color-ok-600: #3d7a3a;
-  --shadow-card: 0 1px 2px rgb(11 11 11 / 0.04), 0 2px 8px rgb(11 11 11 / 0.03);
+  --color-ok-600: #227a3f;
+  --color-ok-700: #1c6534;
+  --color-warning-50: #fff7e6;
+  --color-warning-100: #ffedc2;
+  --color-warning-500: #e08e00;
+  --color-warning-600: #b86f00;
+  --color-info-50: #eef6ff;
+  --color-info-100: #dcecff;
+  --color-info-600: #1d5fc2;
+  --color-info-700: #16499c;
+
+  --shadow-xs: 0 1px 2px rgb(23 23 23 / 0.05);
+  --shadow-card: 0 1px 2px rgb(23 23 23 / 0.04), 0 2px 8px rgb(23 23 23 / 0.03);
+  --shadow-md: 0 4px 12px -2px rgb(23 23 23 / 0.08), 0 2px 4px -2px rgb(23 23 23 / 0.05);
+  --shadow-lg: 0 12px 32px -8px rgb(23 23 23 / 0.14), 0 4px 8px -4px rgb(23 23 23 / 0.06);
+  /* restrained brand-tinted glow — primary CTA hover only */
+  --shadow-brand: 0 8px 24px -8px rgb(218 0 55 / 0.35);
+
+  --animate-fade-in: fade-in 200ms ease-out both;
+  --animate-slide-up: slide-up 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-scale-in: scale-in 150ms ease-out both;
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Dark mode: redefine the SAME variable names — every existing bg-paper /
+   bg-card / text-ink-* / border-hairline / bg-brand-* / bg-ok-* / bg-danger-*
+   usage across the whole app re-themes automatically. */
+.dark {
+  --color-ink-900: #f2f2f2;
+  --color-ink-700: #d4d4d4;
+  --color-ink-600: #a8a8a8;
+  --color-ink-400: #82817e;
+  --color-ink-50: #232323;
+  --color-paper: #121212;
+  --color-card: #1c1c1c;
+  --color-hairline: #2e2e2e;
+
+  /* NB: 500/600 stay dark/saturated (not simply inverted) because Button's
+     primary/danger variants fill these with white text — a naive lightness
+     flip fails contrast there. 700+ lighten, for text/links sitting directly
+     on the dark page background. */
+  --color-brand-50: #2b0a12;
+  --color-brand-100: #3d0f19;
+  --color-brand-200: #5c1523;
+  --color-brand-300: #c81f45;
+  --color-brand-400: #ea2f5c;
+  --color-brand-500: #e0264f;
+  --color-brand-600: #b81f40;
+  --color-brand-700: #ff8fa3;
+  --color-brand-800: #ffb8c5;
+  --color-brand-900: #ffe0e6;
+
+  --color-danger-50: #2c1210;
+  --color-danger-100: #3d1815;
+  /* same reasoning as brand above: Button's danger variant fills this with
+     white text, so 600 stays dark/saturated; 700 lightens for on-page text */
+  --color-danger-600: #d33327;
+  --color-danger-700: #ff8f84;
+  --color-ok-50: #10231a;
+  --color-ok-100: #14301f;
+  --color-ok-600: #57c274;
+  --color-ok-700: #7ed196;
+  --color-warning-50: #2b2007;
+  --color-warning-100: #3d2d09;
+  --color-warning-500: #ffb833;
+  --color-warning-600: #ffcf66;
+  --color-info-50: #0f1e2f;
+  --color-info-100: #15304d;
+  --color-info-600: #6ea8ff;
+  --color-info-700: #97c2ff;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 10px rgb(0 0 0 / 0.35);
+  --shadow-md: 0 6px 16px -4px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.6);
+  --shadow-brand: 0 8px 24px -8px rgb(224 38 79 / 0.45);
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 body {
@@ -63,9 +183,6 @@ body {
 }
 
 :focus-visible {
-  /* brand-400 was only ~2.1:1 against the paper/card backgrounds, below the
-     3:1 WCAG non-text-contrast minimum for a focus indicator; brand-700
-     clears it (~5.4:1) while staying on-brand */
   outline: 2px solid var(--color-brand-700);
   outline-offset: 2px;
   border-radius: 4px;
@@ -92,4 +209,14 @@ button:active:not(:disabled) {
 
 details summary::-webkit-details-marker {
   display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
