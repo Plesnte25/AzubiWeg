@@ -41,27 +41,50 @@ export default function Login({ mode }: { mode: "login" | "register" }) {
           {mode === "login" ? "Welcome back. Weiter geht's!" : "Your companion for the journey to Germany."}
         </p>
         {mode === "register" && (
-          <label className="mb-3 block text-sm">
+          <label htmlFor="name" className="mb-3 block text-sm">
             Name
-            <input className={input} value={name} onChange={(e) => setName(e.target.value)} required />
+            <input
+              id="name"
+              className={input}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              aria-describedby={error ? "auth-error" : undefined}
+              required
+            />
           </label>
         )}
-        <label className="mb-3 block text-sm">
+        <label htmlFor="email" className="mb-3 block text-sm">
           Email
-          <input className={input} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input
+            id="email"
+            className={input}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? "auth-error" : undefined}
+            required
+          />
         </label>
-        <label className="mb-4 block text-sm">
+        <label htmlFor="password" className="mb-4 block text-sm">
           Password
           <input
+            id="password"
             className={input}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? "auth-error" : undefined}
             minLength={8}
             required
           />
         </label>
-        {error && <p className="mb-3 text-sm text-red-700">{error}</p>}
+        {error && (
+          <p id="auth-error" role="alert" aria-live="assertive" className="mb-3 text-sm text-danger-600">
+            {error}
+          </p>
+        )}
         <button
           disabled={busy}
           className="w-full rounded-md bg-ink-900 px-3 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
@@ -72,14 +95,14 @@ export default function Login({ mode }: { mode: "login" | "register" }) {
           {mode === "login" ? (
             <>
               New here?{" "}
-              <Link className="font-medium text-brand-600 hover:underline" to="/register">
+              <Link className="font-medium text-brand-700 hover:underline" to="/register">
                 Create an account
               </Link>
             </>
           ) : (
             <>
               Already registered?{" "}
-              <Link className="font-medium text-brand-600 hover:underline" to="/login">
+              <Link className="font-medium text-brand-700 hover:underline" to="/login">
                 Sign in
               </Link>
             </>
