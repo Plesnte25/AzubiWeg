@@ -10,17 +10,26 @@
 	}
 }
 
-azubiweg.is-a.dev {
+azubiweg.duckdns.org {
 	import app
 }
 
-# Permanent plain-HTTP mirror on the raw IP, for is-a.dev PR reviewers to
-# verify reachability before the DNS record exists. Deliberately kept
-# indefinitely (not a one-off toggle) — a prior temporary version of this
-# broke the moment it was reverted, which is exactly why the first PR got
-# closed as "unreachable" when reviewed later. Explicit http:// scheme
-# disables Caddy's automatic-HTTPS for this block only; the real domain
-# above still gets a proper Let's Encrypt cert once DNS goes live.
+# Uncomment once the eu.org application for azubiweg.eu.org is approved and
+# its A record is live — Caddy will fetch a separate Let's Encrypt cert for
+# it automatically, no other change needed. Leave commented until then: an
+# unresolvable domain block makes Caddy retry/log ACME failures continuously.
+# azubiweg.eu.org {
+# 	import app
+# }
+
+# Permanent plain-HTTP mirror on the raw IP, for domain reviewers (eu.org's
+# manual review, or anyone else) to verify reachability before a given DNS
+# record exists. Deliberately kept indefinitely (not a one-off toggle) — a
+# prior temporary version of this broke the moment it was reverted, which is
+# exactly why the is-a.dev PR got closed as "unreachable" when reviewed
+# later. Explicit http:// scheme disables Caddy's automatic-HTTPS for this
+# block only; the real domains above still get proper Let's Encrypt certs
+# once their DNS goes live.
 http://34.42.175.158 {
 	import app
 }

@@ -1,10 +1,16 @@
 # Deploying AzubiWeg to a free Google Cloud VPS
 
-This is the runbook for hosting AzubiWeg at **azubiweg.is-a.dev** on Google
+This is the runbook for hosting AzubiWeg at **azubiweg.duckdns.org** on Google
 Cloud's Always Free tier, with the Obsidian vault sync bridged over OneDrive
 via `rclone bisync` instead of watching a local folder. Everything here is
 meant to be run by hand over SSH — there's no CI/auto-deploy yet, see
 [docs/ROADMAP.md](ROADMAP.md) V5.
+
+DNS is DuckDNS for now, not is-a.dev — the `is-a-dev/register` PR was denied
+three times, so that path is dropped. A parallel application for
+**azubiweg.eu.org** is in flight (see step 9b); eu.org review can take weeks
+to months, so DuckDNS is the domain actually in use until/unless that's
+approved.
 
 Config files referenced below live in [`deploy/`](../deploy).
 
@@ -240,47 +246,70 @@ sudo systemctl reload caddy
 ```
 
 Caddy fetches a Let's Encrypt cert automatically the moment
-`azubiweg.is-a.dev` resolves to this box (step 9) and port 80/443 are
+`azubiweg.duckdns.org` resolves to this box (step 9) and port 80/443 are
 reachable (step 1.4).
 
-## 9. DNS via is-a.dev
+## 9. DNS via DuckDNS
 
-is-a.dev domains are registered by PR against
-[`is-a-dev/register`](https://github.com/is-a-dev/register) — do this from
-your own GitHub account, not something to hand off. Fork the repo and add
-`domains/azubiweg.json`:
+No PR review, no waiting — DuckDNS gives you a subdomain and a "current ip"
+field per-domain that it publishes as that domain's A record (DuckDNS's UI
+never uses the term "A record" itself — "current ip" *is* the A record, it's
+just not labeled that way). Do this yourself (it's tied to your own DuckDNS
+account, not something to hand off):
 
-```json
-{
-    "owner": {
-        "username": "Plesnte25",
-        "email": "plesnte.workspace@gmail.com"
-    },
-    "records": {
-        "A": ["34.42.175.158"]
-    }
-}
-```
+1. Go to [duckdns.org](https://www.duckdns.org) and sign in (GitHub, Google,
+   Twitter, Reddit, or Persona — pick whichever account you're comfortable
+   linking).
+2. Under "add domain," enter `azubiweg` and click **add domain**. This
+   claims `azubiweg.duckdns.org` — already done as of 2026-07-24.
+3. On the row for that domain, there's a text box next to "current ip"
+   (separate from the "ipv6 address" box below it — use the IPv4 one).
+   Enter the VPS's static IP (`34.42.175.158` from step 1.3) into it and
+   click that row's **update ip** button.
+4. Confirm it resolved: `dig +short azubiweg.duckdns.org` should print
+   `34.42.175.158` (may take a minute or two, DuckDNS's TTL is short).
 
-Check `CONTRIBUTING.md` in that repo first — their required JSON shape
-changes occasionally. Open the PR; once merged, DNS propagation is usually
-fast (their zone has a short TTL) but can take up to a few hours.
+Because the VPS IP is reserved as static (step 1.3), this is a one-time
+setup — no dynamic-update script or cron job needed. If the instance is ever
+deleted and recreated with a new IP, repeat step 3 with the new address.
+
+The Caddyfile (`deploy/Caddyfile`) already points at `azubiweg.duckdns.org`;
+nothing else to change here once DNS resolves.
+
+## 9b. DNS via eu.org (parallel, pending)
+
+Apply for **azubiweg.eu.org** at [eu.org](https://eu.org/) in parallel — do
+this from your own account, same as DuckDNS. eu.org is manually reviewed and
+can take anywhere from a few weeks to several months, so treat DuckDNS
+(step 9) as the domain actually in use until this comes through. Once
+approved:
+
+1. In the eu.org control panel, set the domain's A record to the VPS's
+   static IP (`34.42.175.158`).
+2. Uncomment the `azubiweg.eu.org` block in `deploy/Caddyfile` and reload
+   Caddy: `sudo systemctl reload caddy`. It fetches its own Let's Encrypt
+   cert automatically once DNS resolves — the `azubiweg.duckdns.org` block
+   keeps working unchanged alongside it.
+3. Update the live-demo link (step 10) and this doc to point at
+   `azubiweg.eu.org` as the primary domain if you want to retire the DuckDNS
+   one, or just leave both resolving to the same box.
 
 ## 10. Link it from GitHub
 
-Once `https://azubiweg.is-a.dev` is actually reachable, add a live-demo line
-near the top of `README.md`, e.g.:
+Once `https://azubiweg.duckdns.org` is actually reachable, add a live-demo
+line near the top of `README.md`, e.g.:
 
 ```markdown
-🔗 **Live**: [azubiweg.is-a.dev](https://azubiweg.is-a.dev)
+🔗 **Live**: [azubiweg.duckdns.org](https://azubiweg.duckdns.org)
 ```
 
 Optionally also set it as the repo's website field:
-`gh repo edit --homepage https://azubiweg.is-a.dev`.
+`gh repo edit --homepage https://azubiweg.duckdns.org`.
+Swap both to `azubiweg.eu.org` later if/when that's approved (step 9b).
 
 ## 11. Verify end to end
 
-- `curl https://azubiweg.is-a.dev/api/health` → `{"ok":true}` over a valid
+- `curl https://azubiweg.duckdns.org/api/health` → `{"ok":true}` over a valid
   TLS cert.
 - Log in from two different devices/browsers at once.
 - `journalctl -u azubiweg -u rclone-bisync.timer` — clean, no "vault path

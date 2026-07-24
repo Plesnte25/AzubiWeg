@@ -10,7 +10,10 @@ vault**, so my phone capture workflow and Obsidian reviews keep working while th
 web app adds search, statistics, and a proper review UI on top. **Version 2** adds
 the application side of the journey: a German CV builder with live PDF preview, a
 kanban application tracker, and a document checklist preloaded with everything the
-Ausbildung visa process demands.
+Ausbildung visa process demands. **Version 3** adds a Learning Progress Hub: a
+CEFR syllabus (A1→B1), a day-by-day 182-day study roadmap, self-test quizzes,
+gamification (points, badges, streaks), and activity tracking — all feeding a
+richer dashboard.
 
 ![Dashboard](docs/screenshots/10-dashboard-v2.png)
 
@@ -75,6 +78,35 @@ Reviews done in the app and reviews done in Obsidian update the same
   "documents needing attention" section on the dashboard.
   ![Checklist](docs/screenshots/8-checklist.png)
 
+## What V3 adds
+
+- **CEFR syllabus** — 174 seeded topics (grammar/vocab/skill) across A1, A2, and
+  B1, each with theme, description, common mistakes, worked examples, and
+  exceptions. Checking items off drives per-level completion percentage and
+  "what's next" suggestions.
+- **Day-by-day roadmap** — a 182-day (26-week) study plan from day one to
+  Goethe-exam readiness. Monday/Tuesday (grammar) and Wednesday (vocab) of every
+  regular week are generated live from the user's own syllabus progress;
+  Thursday–Sunday (listening, speaking, writing, bureaucracy/context tasks) are
+  hand-authored. Calendar view, backlog of overdue tasks, and a journal that
+  logs completions by skill.
+- **Study-source registry** — register YouTube playlists (fetches title/item
+  count), Nicos Weg chapters, Duolingo units, or other sources, and self-log
+  progress against them, since none of these platforms expose a progress API.
+- **Self-tests & Goethe readiness** — quizzes (163-question bank) built from
+  syllabus topics and existing vocab/SRS data; weekly/monthly review rollups;
+  a "Goethe readiness" indicator per level with a trend arrow.
+- **Gamification** — points and 15 badges (streaks, syllabus-level completion,
+  roadmap milestones at weeks 8/16/25/26, perfect-day streaks, vocab/review
+  totals), day-streak computed from real activity, not just logins.
+- **Activity tracking** — lightweight session pings roll up into daily active
+  minutes, powering streaks and the dashboard's activity history.
+- **Notifications** — on-demand reminders (no portal APIs to poll, so these are
+  computed from data the app already has): stale applications, documents
+  nearing expiry, portals not checked recently.
+- **Portals** — quick-link bookmarks to external application platforms
+  (GoAusbildung, Ausbildung.de, …) since none of them offer account sync.
+
 ## Stack
 
 | Layer | Choice |
@@ -123,7 +155,20 @@ The critical suites: byte-identical round-trip of a real `master.md` snapshot
 (`tests/srs.test.ts`), and the V2 pure-logic suites — UTC-safe expiry math
 (`reminders`), kanban move planning (`application-order`), tracker stats
 (`application-stats`), CV content validation (`cv-schema`), and upload-name /
-download-header safety (`file-storage`).
+download-header safety (`file-storage`). V3 adds suites for the roadmap
+generator and day-status math (`learning-roadmap`, `learning-roadmap-generator`),
+streak computation (`learning-streak`), the quiz/question-bank engine
+(`learning-quiz`, `question-bank`), study-source progress (`learning-units`,
+`learning-nicosweg`, `learning-youtube`), the gamification badge/points engine
+(`gamification-engine`), and session-based activity tracking
+(`activity-session`).
+
+## Deployment
+
+Self-hostable on a free-tier VPS — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+for the full runbook (GCP e2-micro, Caddy + auto-TLS, DuckDNS DNS with an
+`eu.org` application pending, and bridging the Obsidian vault sync over
+OneDrive/rclone when the app isn't on the same machine as the vault).
 
 ## Roadmap
 
@@ -131,15 +176,14 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full ecosystem plan and feature s
 
 - ~~**V2** — CV builder (live preview, German/ATS templates, PDF export),
   application tracker (kanban + stats), document checklist with expiry reminders.~~ ✅
-- **V3 — Learning Progress Hub + planning tools**
-  - **Learning Progress Hub** — CEFR syllabus checklists (A1 → B1) showing per-level
-    completion, what's left, and what to study next; a study-source registry
-    (YouTube playlists, Nicos Weg chapters, Duolingo units); notes upload attached
-    to sources/lessons; self-test quizzes built on the existing vocab + SRS data;
-    study streak and level-progress tiles on the dashboard.
-  - **Salary & cost planner** — city comparison, taxes, rent, monthly budget,
-    savings projections.
-  - **Germany knowledge base** — visa, Anmeldung, blocked account, insurance guides.
+- ~~**V3 — Learning Progress Hub**~~ ✅
+  - ~~CEFR syllabus checklists (A1 → B1), study-source registry (YouTube,
+    Nicos Weg, Duolingo), self-test quizzes, day-by-day 182-day roadmap,
+    gamification (points/badges/streaks), activity tracking, notifications.~~
+  - Still open from the original V3 scope, carried forward: **salary & cost
+    planner** (city comparison, taxes, rent, budget, savings projections) and
+    a **Germany knowledge base** (visa, Anmeldung, blocked account, insurance
+    guides).
 - **V4 — Applications, deeper**
   - **Ausbildung opportunity discovery** — job listing search and filters (salary,
     required German level), bookmarks that feed the existing kanban, notifications.
