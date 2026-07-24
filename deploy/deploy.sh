@@ -25,4 +25,4 @@ sudo -u azubiweg cp -r "$REPO_DIR/client/dist" "$CLIENT_DIST"
 
 sudo systemctl restart azubiweg
 
-echo "Deployed $(git -C "$REPO_DIR" rev-parse --short HEAD)"
+echo "Deployed $(sudo -u azubiweg git -C "$REPO_DIR" rev-parse --short HEAD)"
