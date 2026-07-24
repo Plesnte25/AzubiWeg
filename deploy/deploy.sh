@@ -14,7 +14,10 @@ sudo -u azubiweg git -C "$REPO_DIR" pull
 # npm 11's script-allowlist blocks Prisma's postinstall hook, and `npm ci`
 # wipes any previously generated client on every run, so `prisma generate`
 # must be explicit here or `tsc` fails on every redeploy, not just the first.
-sudo -u azubiweg bash -c "cd '$REPO_DIR/server' && npm ci && npx prisma generate && npm run build && npx prisma migrate deploy"
+# `prisma migrate deploy` also needs DATABASE_URL on its own (Prisma 7's
+# config file doesn't inherit it from the app), so source the untracked
+# .env the same way the first-time setup in docs/DEPLOYMENT.md does.
+sudo -u azubiweg bash -c "cd '$REPO_DIR/server' && npm ci && npx prisma generate && npm run build && set -a && source /opt/azubiweg/.env && set +a && npx prisma migrate deploy"
 
 sudo -u azubiweg bash -c "cd '$REPO_DIR/client' && npm ci && npm run build"
 sudo -u azubiweg rm -rf "$CLIENT_DIST"
