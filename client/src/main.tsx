@@ -5,17 +5,20 @@ import { createBrowserRouter, Navigate, Outlet, RouterProvider } from "react-rou
 import "./index.css";
 import { getToken } from "./api/client";
 import Layout from "./components/Layout";
-import Applications from "./pages/Applications";
-import Checklist from "./pages/Checklist";
 import Dashboard from "./pages/Dashboard";
-import LearningHub from "./pages/learning-hub";
 import Login from "./pages/Login";
-import Review from "./pages/Review";
-import Settings from "./pages/Settings";
-import Vocabulary from "./pages/Vocabulary";
 
-// the CV pages pull in @react-pdf/renderer (~1.5 MB) — load them lazily so
-// the rest of the app stays fast
+// only Login (unauthenticated) and Dashboard (the first authenticated view)
+// are needed for first paint — every other route is its own chunk, loaded
+// on navigation, so signing in doesn't pull in the CV editor/kanban/quiz
+// code up front
+const Applications = lazy(() => import("./pages/Applications"));
+const Checklist = lazy(() => import("./pages/Checklist"));
+const LearningHub = lazy(() => import("./pages/learning-hub"));
+const Review = lazy(() => import("./pages/Review"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Vocabulary = lazy(() => import("./pages/Vocabulary"));
+// the CV pages additionally pull in @react-pdf/renderer (~1.5 MB)
 const CvList = lazy(() => import("./pages/CvList"));
 const CvEditor = lazy(() => import("./pages/CvEditor"));
 
@@ -41,15 +44,15 @@ const router = createBrowserRouter([
         element: <Layout />,
         children: [
           { path: "/", element: <Dashboard /> },
-          { path: "/vocabulary", element: <Vocabulary /> },
-          { path: "/review", element: <Review /> },
-          { path: "/learning", element: <LearningHub /> },
+          { path: "/vocabulary", element: <Lazy><Vocabulary /></Lazy> },
+          { path: "/review", element: <Lazy><Review /></Lazy> },
+          { path: "/learning", element: <Lazy><LearningHub /></Lazy> },
           { path: "/roadmap", element: <Navigate to="/learning" replace /> },
-          { path: "/applications", element: <Applications /> },
+          { path: "/applications", element: <Lazy><Applications /></Lazy> },
           { path: "/cv", element: <Lazy><CvList /></Lazy> },
           { path: "/cv/:id", element: <Lazy><CvEditor /></Lazy> },
-          { path: "/checklist", element: <Checklist /> },
-          { path: "/settings", element: <Settings /> },
+          { path: "/checklist", element: <Lazy><Checklist /></Lazy> },
+          { path: "/settings", element: <Lazy><Settings /></Lazy> },
         ],
       },
     ],
