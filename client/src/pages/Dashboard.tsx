@@ -307,28 +307,36 @@ export default function Dashboard() {
                 <ChevronDown className="size-3.5" aria-hidden="true" />
               </span>
             </div>
-            {activity && (
-              <div className="mb-4 flex items-center gap-2.5">
-                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-600 text-white">
-                  {todayDelta < 0 ? (
-                    <TrendingDown className="size-4" aria-hidden="true" />
-                  ) : (
-                    <TrendingUp className="size-4" aria-hidden="true" />
-                  )}
-                </span>
-                {todayDelta === 0 ? (
-                  <p className="text-sm text-ink-600">On par with your daily average this week</p>
+            {/* fixed min-h-9 + always-rendered wrapper: `activity` resolves after
+                the dashboard's own skeleton, so without a reserved slot this
+                block pops in above the chart and shifts everything below it */}
+            <div className="mb-4 flex min-h-9 items-center gap-2.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-600 text-white">
+                {!activity ? (
+                  <Skeleton className="size-4 rounded-full bg-white/30" />
+                ) : todayDelta < 0 ? (
+                  <TrendingDown className="size-4" aria-hidden="true" />
                 ) : (
-                  <div>
-                    <p className="text-sm font-bold text-brand-600">
-                      {todayDelta > 0 ? "+" : "-"}
-                      {Math.abs(todayDelta)}m
-                    </p>
-                    <p className="text-sm text-ink-600">{todayDelta > 0 ? "more" : "less"} than your daily average</p>
-                  </div>
+                  <TrendingUp className="size-4" aria-hidden="true" />
                 )}
-              </div>
-            )}
+              </span>
+              {!activity ? (
+                <div className="space-y-1.5">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-3 w-36" />
+                </div>
+              ) : todayDelta === 0 ? (
+                <p className="text-sm text-ink-600">On par with your daily average this week</p>
+              ) : (
+                <div>
+                  <p className="text-sm font-bold text-brand-600">
+                    {todayDelta > 0 ? "+" : "-"}
+                    {Math.abs(todayDelta)}m
+                  </p>
+                  <p className="text-sm text-ink-600">{todayDelta > 0 ? "more" : "less"} than your daily average</p>
+                </div>
+              )}
+            </div>
             <HoursActivityChart data={hoursChartData} />
           </Card>
 

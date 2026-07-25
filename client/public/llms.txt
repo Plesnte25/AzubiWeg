@@ -1,0 +1,9 @@
+# AzubiWeg
+
+> A Germany-prep platform: a German vocabulary manager with spaced-repetition review synced to Obsidian, a CV builder with live PDF preview, an application kanban tracker, a document checklist, and a day-by-day CEFR study roadmap with gamification.
+
+Most pages require sign-in; there is no public content beyond the login/register screens.
+
+## Docs
+
+- [README](https://github.com/Plesnte25/AzubiWeg/blob/main/README.md): project overview and feature list
