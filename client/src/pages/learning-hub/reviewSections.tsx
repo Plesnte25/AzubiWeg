@@ -207,6 +207,7 @@ interface AnswerRecord {
   qid: string;
   topic: string;
   level: CefrLevel;
+  skill: RoadmapSkill;
   correct: boolean;
 }
 
@@ -296,7 +297,7 @@ function TestRunner({
       const byTopic = new Map<string, TopicBreakdown>();
       for (const r of records) {
         const key = `${r.topic}|${r.level}`;
-        const entry = byTopic.get(key) ?? { topic: r.topic, level: r.level, correct: 0, total: 0 };
+        const entry = byTopic.get(key) ?? { topic: r.topic, level: r.level, skill: r.skill, correct: 0, total: 0 };
         entry.total += 1;
         if (r.correct) entry.correct += 1;
         byTopic.set(key, entry);
@@ -319,7 +320,7 @@ function TestRunner({
   const q = questions[index];
 
   function record(correct: boolean) {
-    const next = [...answers, { qid: q.qid, topic: q.topic, level: q.level, correct }];
+    const next = [...answers, { qid: q.qid, topic: q.topic, level: q.level, skill: q.skill, correct }];
     setAnswers(next);
     setLastCorrect(correct);
     if (index === questions.length - 1) {

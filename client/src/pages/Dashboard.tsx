@@ -1,62 +1,75 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Award, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Flame, Hand, TrendingDown, TrendingUp } from "lucide-react";
+import { Award, Check, CheckCircle2, Hand } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api/client";
-import type { RoadmapSkill } from "../api/types";
-import HoursActivityChart from "../components/HoursActivityChart";
-import RoadmapCalendar from "../components/RoadmapCalendar";
+import applyIcon from "../assets/icons/apply.png";
+import clipboardIcon from "../assets/icons/clipboard.png";
+import studyTimeIcon from "../assets/icons/clock (1).png";
+import clockIcon from "../assets/icons/clock.png";
+import dictionaryIcon from "../assets/icons/dictionary.png";
+import fireIcon from "../assets/icons/fire.png";
+import goodFeedbackIcon from "../assets/icons/good-feedback.png";
+import jobInterviewIcon from "../assets/icons/job-interview.png";
+import jobOfferIcon from "../assets/icons/job-offer.png";
+import learningIcon from "../assets/icons/learning.png";
+import onlineCertificateIcon from "../assets/icons/online-certificate.png";
+import quizIcon from "../assets/icons/quiz.png";
+import rejectIcon from "../assets/icons/reject.png";
+import riseIcon from "../assets/icons/rise.png";
+import streamingIcon from "../assets/icons/streaming.png";
+import taskIcon from "../assets/icons/task.png";
+import wishlistIcon from "../assets/icons/wishlist.png";
+import { api, getUser } from "../api/client";
+import type { CefrLevel, RoadmapSkill, SyllabusItem } from "../api/types";
+import CoursesAccordion, { type ThemeCourse } from "../components/CoursesAccordion";
+import RoadmapWeekStrip from "../components/RoadmapWeekStrip";
+import SegmentedSkillBar from "../components/SegmentedSkillBar";
+import SkillPerformanceRadar from "../components/SkillPerformanceRadar";
+import SkillProgressGauges from "../components/SkillProgressGauges";
+import StudyActivityChart from "../components/StudyActivityChart";
 import { Badge } from "../components/ui/Badge";
 import { Card } from "../components/ui/Card";
-import { DonutProgress } from "../components/ui/DonutProgress";
 import { Skeleton, SkeletonCard } from "../components/ui/Skeleton";
-import { levelStates } from "../lib/levels";
+import { cn } from "../lib/cn";
+import { quoteOfTheDay } from "../lib/quotes";
+import { DISPLAY_SKILLS, DISPLAY_SKILL_LABELS_COMPACT, SKILL_COLORS, SKILL_LABELS, displaySkill } from "../lib/skills";
 
-const SKILL_SEGMENTS: { key: RoadmapSkill; label: string; color: string }[] = [
-  { key: "reading", label: "Reading", color: "var(--color-info-600)" },
-  { key: "writing", label: "Writing", color: "var(--color-brand-500)" },
-  { key: "listening", label: "Listening", color: "var(--color-ok-600)" },
-  { key: "grammar", label: "Grammar", color: "var(--color-warning-500)" },
-];
-
-// every RoadmapSkill gets its own dedicated color so the day's tasks read as
-// distinct sections at a glance, not just a plain list
-const SKILL_COLORS: Record<RoadmapSkill, string> = {
-  reading: "var(--color-info-600)",
-  listening: "var(--color-ok-600)",
-  writing: "var(--color-brand-500)",
-  speaking: "#a855f7",
-  grammar: "var(--color-warning-500)",
-  vocab: "#ec4899",
-  bureaucracy: "#64748b",
-  milestone: "#f97316",
-  reflection: "#94a3b8",
-};
-
-const SKILL_LABELS: Record<RoadmapSkill, string> = {
-  reading: "Reading",
-  listening: "Listening",
-  writing: "Writing",
-  speaking: "Speaking",
-  grammar: "Grammar",
-  vocab: "Vocab",
-  bureaucracy: "Bureaucracy",
-  milestone: "Milestone",
-  reflection: "Reflection",
-};
-
+/** Card chrome (border/radius/own bg) below `lg`, unchanged from the classic
+ * per-tile card look; at `lg:` the chrome is stripped since the 5 tiles then
+ * share one outer bordered/divided row instead (see the stats row below). */
 function Tile({ label, value, icon, accent }: { label: string; value: string | number; icon?: ReactNode; accent?: boolean }) {
   return (
-    <Card>
-      <div className="flex items-center gap-2.5">
-        {icon}
-        <div>
-          <div className={`text-2xl font-bold ${accent ? "text-brand-600" : "text-ink-900"}`}>{value}</div>
-          <div className="mt-0.5 text-sm text-ink-600">{label}</div>
-        </div>
+    <div className="flex items-center gap-2.5 rounded-xl border border-hairline bg-card p-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-3">
+      {icon}
+      <div>
+        <div className={`text-2xl font-bold ${accent ? "text-brand-600" : "text-ink-900"}`}>{value}</div>
+        <div className="mt-0.5 text-sm text-ink-600">{label}</div>
       </div>
-    </Card>
+    </div>
+  );
+}
+
+/** Compact quadrant used inside the merged Analytics grid — no visible
+ * heading, just a large low-opacity grayscale watermark icon bleeding off
+ * the top-left corner (per the latest Claude Design mock's "card identity
+ * via watermark, not text" direction). The title still exists as an
+ * `sr-only` heading so screen readers get a real accessible name — the mock
+ * itself flagged this as an open accessibility gap when it dropped text
+ * headings, so it's added back in non-visually here.
+ *
+ * The watermark sits ABOVE the content (z-20 vs. the content's z-10, matching
+ * the mock's own z-index:2/z-index:1 layering) so it stays visible regardless
+ * of what's rendered underneath — `pointer-events-none` keeps it from
+ * blocking clicks/hover on the real content. Content area has no scroll of
+ * its own; each chart is expected to size itself to fit exactly. */
+function Quadrant({ icon, title, className, children }: { icon: string; title: string; className?: string; children: ReactNode }) {
+  return (
+    <div className={cn("relative flex min-h-0 flex-col overflow-hidden p-3", className)}>
+      <h3 className="sr-only">{title}</h3>
+      <img src={icon} alt="" className="pointer-events-none absolute -left-4 -top-4 z-20 h-28 w-28 opacity-10 grayscale" />
+      <div className="relative z-10 min-h-0 flex-1 overflow-hidden">{children}</div>
+    </div>
   );
 }
 
@@ -102,41 +115,99 @@ function SkillTaskRow({ task }: { task: { id: string; title: string; skill: Road
   );
 }
 
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function mondayOf(d: Date): Date {
+  const dayIdx = (d.getDay() + 6) % 7;
+  const out = new Date(d);
+  out.setDate(out.getDate() - dayIdx);
+  return out;
+}
+
+/** Groups syllabus items into "courses" (real themes, e.g. "Verbs: present
+ * tense") per level — module count/completion come straight from the
+ * syllabus, and each theme's badge is colored by its items' dominant real
+ * skill tag (reusing the same global skill-color map used everywhere else),
+ * not a fabricated difficulty rating. */
+function buildThemeCourses(items: SyllabusItem[]): Record<CefrLevel, ThemeCourse[]> {
+  const groups = new Map<string, { level: CefrLevel; theme: string; total: number; done: number; skillCounts: Map<RoadmapSkill, number> }>();
+  for (const item of items) {
+    const theme = item.theme ?? "General";
+    const key = `${item.level}|${theme}`;
+    const g = groups.get(key) ?? { level: item.level, theme, total: 0, done: 0, skillCounts: new Map() };
+    g.total += 1;
+    if (item.completedAt) g.done += 1;
+    if (item.skill) g.skillCounts.set(item.skill, (g.skillCounts.get(item.skill) ?? 0) + 1);
+    groups.set(key, g);
+  }
+  const result: Record<CefrLevel, ThemeCourse[]> = { a1: [], a2: [], b1: [] };
+  for (const g of groups.values()) {
+    let dominant: RoadmapSkill | null = null;
+    let max = 0;
+    for (const [skill, count] of g.skillCounts) {
+      if (count > max) {
+        max = count;
+        dominant = skill;
+      }
+    }
+    result[g.level].push({
+      theme: g.theme,
+      skill: dominant,
+      total: g.total,
+      done: g.done,
+      percent: g.total === 0 ? 0 : Math.round((g.done / g.total) * 100),
+    });
+  }
+  return result;
+}
+
 export default function Dashboard() {
   const { data, isLoading } = useQuery({ queryKey: ["dashboard"], queryFn: api.dashboard });
-  // separate from the once-per-mount dashboard query and polled — this tile
-  // should visibly tick up while the tab stays open, matching the heartbeat
-  const { data: activity } = useQuery({
-    queryKey: ["activity", "summary"],
-    queryFn: api.activitySummary,
+  const { data: hourlyActivity } = useQuery({
+    queryKey: ["activity", "hourly"],
+    queryFn: api.activityHourly,
     refetchInterval: 60_000,
   });
   const { data: weekly } = useQuery({ queryKey: ["roadmap", "review", "week"], queryFn: () => api.roadmapWeeklyReview() });
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const { data: monthlyReview } = useQuery({
+    queryKey: ["roadmap", "review", "month", currentMonth],
+    queryFn: () => api.roadmapMonthlyReview(currentMonth),
+  });
   // full task list (all sections), not just the dashboard summary's single
   // "next incomplete" line — shared cache key with Learning Hub's Today tab
   const { data: todayFull } = useQuery({ queryKey: ["roadmap", "today"], queryFn: api.roadmapToday });
+  const { data: syllabusData } = useQuery({ queryKey: ["learning", "syllabus"], queryFn: api.learningSyllabus });
 
-  const [calMonth, setCalMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [weekStart, setWeekStart] = useState(() => isoDate(mondayOf(new Date())));
   const [calSelected, setCalSelected] = useState<string | null>(null);
-  const { data: calData } = useQuery({
-    queryKey: ["roadmap", "calendar", calMonth],
-    queryFn: () => api.roadmapCalendar(calMonth),
+  const weekEndDate = new Date(weekStart + "T00:00:00");
+  weekEndDate.setDate(weekEndDate.getDate() + 6);
+  const monthsNeeded = Array.from(new Set([weekStart.slice(0, 7), isoDate(weekEndDate).slice(0, 7)]));
+  const { data: calDataA } = useQuery({ queryKey: ["roadmap", "calendar", monthsNeeded[0]], queryFn: () => api.roadmapCalendar(monthsNeeded[0]!) });
+  const { data: calDataB } = useQuery({
+    queryKey: ["roadmap", "calendar", monthsNeeded[1]],
+    queryFn: () => api.roadmapCalendar(monthsNeeded[1]!),
+    enabled: monthsNeeded.length > 1,
   });
+  const weekDays = [...(calDataA?.days ?? []), ...(calDataB?.days ?? [])];
   const selectedDayQuery = useQuery({
     queryKey: ["roadmap", "day", calSelected],
     queryFn: () => api.roadmapDay(calSelected as string),
     enabled: calSelected !== null,
     retry: false,
   });
-  const shiftCalMonth = (delta: number) => {
-    const [y, m] = calMonth.split("-").map(Number);
-    const d = new Date(y, m - 1 + delta, 1);
-    setCalMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  const shiftWeek = (deltaWeeks: number) => {
+    const d = new Date(weekStart + "T00:00:00");
+    d.setDate(d.getDate() + deltaWeeks * 7);
+    setWeekStart(isoDate(d));
   };
 
   if (isLoading || !data) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-8 w-32 rounded-full" />
@@ -146,12 +217,12 @@ export default function Dashboard() {
             <SkeletonCard key={i} />
           ))}
         </div>
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="space-y-4 lg:col-span-2">
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div className="space-y-3 lg:col-span-2">
             <SkeletonCard className="h-40" />
             <SkeletonCard className="h-40" />
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3">
             <SkeletonCard className="h-24" />
             <SkeletonCard className="h-48" />
           </div>
@@ -160,37 +231,43 @@ export default function Dashboard() {
     );
   }
 
-  const activeLevel = (() => {
-    if (data.learning.levels.every((l) => l.total === 0)) return null;
-    const states = levelStates(data.learning.levels);
-    const activeIdx = Math.max(0, states.indexOf("active"));
-    return { level: data.learning.levels[activeIdx], states, activeIdx };
-  })();
-
   const bySkill = weekly?.bySkill ?? [];
-  const namedSkillsDone = SKILL_SEGMENTS.reduce(
-    (sum, s) => sum + (bySkill.find((t) => t.skill === s.key)?.done ?? 0),
-    0,
-  );
-  const totalTasksDone = bySkill.reduce((sum, t) => sum + t.done, 0);
-  const otherSkillsDone = Math.max(0, totalTasksDone - namedSkillsDone);
+  const bySkillTotals = new Map<RoadmapSkill, { done: number; total: number }>();
+  for (const t of bySkill) {
+    const key = displaySkill(t.skill);
+    const entry = bySkillTotals.get(key) ?? { done: 0, total: 0 };
+    entry.done += t.done;
+    entry.total += t.total;
+    bySkillTotals.set(key, entry);
+  }
+  const skillSegments = DISPLAY_SKILLS.map((skill) => {
+    const tally = bySkillTotals.get(skill);
+    return { skill, label: DISPLAY_SKILL_LABELS_COMPACT[skill], color: SKILL_COLORS[skill], done: tally?.done ?? 0, total: tally?.total ?? 0 };
+  });
+
+  const levelsInProgress = data.learning.levels.filter((l) => l.total > 0);
+  const defaultOpenIdx = levelsInProgress.findIndex((l) => l.total === 0 || l.percent < 100);
+  const defaultOpenLevel = levelsInProgress[defaultOpenIdx === -1 ? levelsInProgress.length - 1 : defaultOpenIdx]?.level ?? "a1";
+  const themeCourses = buildThemeCourses(syllabusData?.items ?? []);
+  const activeCoursesCount = levelsInProgress.filter((l) => l.percent > 0 && l.percent < 100).length;
 
   const selectedDay = calSelected && selectedDayQuery.data ? selectedDayQuery.data.day : null;
 
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const hoursChartData = [...(activity?.history ?? []).map((h) => ({ date: h.date, minutes: h.minutes })), { date: todayIso, minutes: activity?.minutesToday ?? 0 }];
-  const weekAvgMinutes = activity ? Math.round(activity.minutesThisWeek / 7) : 0;
-  const todayDelta = activity ? activity.minutesToday - weekAvgMinutes : 0;
-
   const noTasksAtAll = data.dueToday === 0 && (todayFull?.tasks.length ?? 0) === 0 && data.expiringDocuments.length === 0;
 
+  const firstName = getUser()?.name?.trim().split(/\s+/)[0];
+  const quote = quoteOfTheDay();
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2 text-2xl">
-          Guten Tag!
-          <Hand className="size-6 text-brand-500" aria-hidden="true" />
-        </h1>
+    <div className="flex flex-col gap-3 lg:h-full lg:min-h-0">
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl">
+            Guten Tag{firstName ? `, ${firstName}` : ""}!
+            <Hand className="size-6 text-brand-500" aria-hidden="true" />
+          </h1>
+          <p className="mt-0.5 text-sm text-ink-600">{quote}</p>
+        </div>
         <div className="flex items-center gap-2">
           <Badge variant="brand" size="md">
             <Award className="size-3.5" aria-hidden="true" />
@@ -205,351 +282,181 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <Tile label="Words" value={data.totalWords} />
-        <Tile label="Due today" value={data.dueToday} accent={data.dueToday > 0} />
-        <Tile label="Never reviewed" value={data.newWords} />
-        <Tile label="Reviews today" value={data.reviewsToday} />
-        <Tile label="Day streak" value={data.streak} accent icon={<Flame className="size-5 text-brand-500" aria-hidden="true" />} />
+      <div className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 lg:gap-0 lg:divide-x lg:divide-hairline lg:rounded-xl lg:border lg:border-hairline lg:bg-card">
+        <Tile label="Day streak" value={data.streak} accent icon={<img src={fireIcon} alt="" className="size-6" />} />
+        <Tile
+          label="Learning Hrs"
+          value={`${(data.totalLearningMinutes / 60).toFixed(1)}h`}
+          icon={<img src={clockIcon} alt="" className="size-6" />}
+        />
+        <Tile
+          label="Vocab due / total"
+          value={`${data.dueToday} / ${data.totalWords}`}
+          accent={data.dueToday > 0}
+          icon={<img src={dictionaryIcon} alt="" className="size-6" />}
+        />
+        <Tile
+          label="Quizzes completed"
+          value={data.quizzesCompleted}
+          icon={<img src={quizIcon} alt="" className="size-6" />}
+        />
+        <Tile label="Active courses" value={activeCoursesCount} icon={<img src={streamingIcon} alt="" className="size-6" />} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Card className="flex flex-col items-center text-center">
-              <h2 className="mb-4 self-start text-lg font-bold tracking-tight">Words breakdown</h2>
-              <DonutProgress
-                size={140}
-                strokeWidth={18}
-                gap={6}
-                segments={[
-                  {
-                    value: data.dueToday,
-                    color: "var(--color-brand-500)",
-                    label: data.totalWords > 0 && data.dueToday > 0 ? `${Math.round((data.dueToday / data.totalWords) * 100)}%` : undefined,
-                  },
-                  {
-                    value: data.newWords,
-                    color: "var(--color-warning-500)",
-                    label: data.totalWords > 0 && data.newWords > 0 ? `${Math.round((data.newWords / data.totalWords) * 100)}%` : undefined,
-                  },
-                  {
-                    value: data.reviewsToday,
-                    color: "var(--color-ok-600)",
-                    label: data.totalWords > 0 && data.reviewsToday > 0 ? `${Math.round((data.reviewsToday / data.totalWords) * 100)}%` : undefined,
-                  },
-                ]}
-                max={data.totalWords}
-                centerValue={data.totalWords}
-                centerLabel="words"
+      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[7fr_3fr] lg:overflow-hidden">
+        <div className="flex min-h-0 flex-col gap-3">
+          <Card padding="sm" className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+            <h2 className="sr-only">My Courses</h2>
+            <img
+              src={onlineCertificateIcon}
+              alt=""
+              className="pointer-events-none absolute -left-4 -top-4 z-20 h-28 w-28 opacity-10 grayscale"
+            />
+            <img
+              src={learningIcon}
+              alt=""
+              className="pointer-events-none absolute -bottom-4 -right-4 z-20 h-28 w-28 opacity-10 grayscale"
+            />
+            <div className="relative z-10 min-h-0 flex-1">
+              <CoursesAccordion levels={levelsInProgress} courses={themeCourses} defaultOpenLevel={defaultOpenLevel} />
+            </div>
+          </Card>
+
+          <div className="grid min-h-0 flex-[2] grid-cols-1 divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-card lg:grid-cols-2 lg:grid-rows-[1fr_1.1fr] lg:divide-y-0">
+            <Quadrant icon={goodFeedbackIcon} title="Performance" className="lg:border-b lg:border-r lg:border-hairline">
+              <SkillPerformanceRadar data={data.learning.skillPerformance} />
+            </Quadrant>
+            <Quadrant icon={studyTimeIcon} title="Study Time" className="lg:border-b lg:border-hairline">
+              <StudyActivityChart
+                hourly={hourlyActivity?.hours ?? []}
+                weekly={weekly?.dailyMinutesBySkill ?? []}
+                monthly={monthlyReview?.dailyMinutesBySkill ?? []}
               />
-              <ul className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs">
-                <li className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-brand-500" />
-                  Due <span className="font-medium">{data.dueToday}</span>
-                </li>
-                <li className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-warning-500" />
-                  New <span className="font-medium">{data.newWords}</span>
-                </li>
-                <li className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-ok-600" />
-                  Reviewed <span className="font-medium">{data.reviewsToday}</span>
-                </li>
-              </ul>
-            </Card>
-
-            <Card className="flex flex-col items-center text-center">
-              <div className="mb-4 flex w-full items-start justify-between gap-2">
-                <h2 className="text-lg font-bold tracking-tight">Study time by skill</h2>
-                <span className="text-xs text-ink-400">this week</span>
-              </div>
-              {totalTasksDone === 0 ? (
-                <p className="text-sm text-ink-600">No roadmap tasks completed this week yet.</p>
-              ) : (
-                <>
-                  <DonutProgress
-                    size={140}
-                    strokeWidth={18}
-                    gap={6}
-                    segments={[
-                      ...SKILL_SEGMENTS.map((s) => {
-                        const value = bySkill.find((t) => t.skill === s.key)?.done ?? 0;
-                        return {
-                          value,
-                          color: s.color,
-                          label: value > 0 ? `${Math.round((value / totalTasksDone) * 100)}%` : undefined,
-                        };
-                      }),
-                      { value: otherSkillsDone, color: "var(--color-hairline)" },
-                    ]}
-                    centerValue={totalTasksDone}
-                    centerLabel="tasks"
-                  />
-                  <ul className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs">
-                    {SKILL_SEGMENTS.map((s) => (
-                      <li key={s.key} className="flex items-center gap-1.5">
-                        <span className="size-2 rounded-full" style={{ backgroundColor: s.color }} />
-                        {s.label} <span className="font-medium">{bySkill.find((t) => t.skill === s.key)?.done ?? 0}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </>
+            </Quadrant>
+            <Quadrant icon={riseIcon} title="My Progress" className="lg:col-span-2">
+              {todayFull?.overview && (
+                <SkillProgressGauges
+                  name={`German — Ausbildung Track`}
+                  nextLessonLine={data.roadmapToday?.nextIncompleteTitle ?? null}
+                  dayOffset={todayFull.overview.currentDayOffset}
+                  totalDays={todayFull.overview.totalDays}
+                  levels={data.learning.levels}
+                  skills={data.learning.skillProgress}
+                />
               )}
-            </Card>
+            </Quadrant>
           </div>
-
-          <Card>
-            <div className="mb-3 flex items-start justify-between gap-2">
-              <h2 className="text-lg font-bold tracking-tight">Hours Activity</h2>
-              <span className="flex shrink-0 items-center gap-1 rounded-full border border-hairline px-3 py-1 text-xs font-medium text-ink-600">
-                Weekly
-                <ChevronDown className="size-3.5" aria-hidden="true" />
-              </span>
-            </div>
-            {/* fixed min-h-9 + always-rendered wrapper: `activity` resolves after
-                the dashboard's own skeleton, so without a reserved slot this
-                block pops in above the chart and shifts everything below it */}
-            <div className="mb-4 flex min-h-9 items-center gap-2.5">
-              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-600 text-white">
-                {!activity ? (
-                  <Skeleton className="size-4 rounded-full bg-white/30" />
-                ) : todayDelta < 0 ? (
-                  <TrendingDown className="size-4" aria-hidden="true" />
-                ) : (
-                  <TrendingUp className="size-4" aria-hidden="true" />
-                )}
-              </span>
-              {!activity ? (
-                <div className="space-y-1.5">
-                  <Skeleton className="h-3 w-20" />
-                  <Skeleton className="h-3 w-36" />
-                </div>
-              ) : todayDelta === 0 ? (
-                <p className="text-sm text-ink-600">On par with your daily average this week</p>
-              ) : (
-                <div>
-                  <p className="text-sm font-bold text-brand-600">
-                    {todayDelta > 0 ? "+" : "-"}
-                    {Math.abs(todayDelta)}m
-                  </p>
-                  <p className="text-sm text-ink-600">{todayDelta > 0 ? "more" : "less"} than your daily average</p>
-                </div>
-              )}
-            </div>
-            <HoursActivityChart data={hoursChartData} />
-          </Card>
-
-          <Card>
-            <Card.Header>
-              <Card.Title>German level progress</Card.Title>
-              <div className="flex items-center gap-3 text-sm text-ink-600">
-                {data.learning.streak > 0 && (
-                  <span className="flex items-center gap-1">
-                    <Flame className="size-3.5 text-brand-500" aria-hidden="true" />
-                    {data.learning.streak}
-                  </span>
-                )}
-                {data.learning.lastSelfTest && (
-                  <span>
-                    Last test{" "}
-                    <span className="font-medium text-ink-900">
-                      {data.learning.lastSelfTest.score}/{data.learning.lastSelfTest.total}
-                    </span>
-                  </span>
-                )}
-              </div>
-            </Card.Header>
-            {!activeLevel ? (
-              <Link to="/learning" className="text-sm text-brand-700 hover:underline">
-                Set up your syllabus — open the Learning tab to get started →
-              </Link>
-            ) : (
-              <div className="space-y-3">
-                <Link to="/learning" className="flex items-center gap-4 rounded-lg p-1 hover:bg-paper">
-                  <DonutProgress
-                    segments={[{ value: activeLevel.level.percent, color: "var(--color-brand-500)" }]}
-                    max={100}
-                    size={84}
-                    strokeWidth={10}
-                    centerValue={`${activeLevel.level.percent}%`}
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-baseline justify-between text-sm">
-                      <span className="font-semibold uppercase">{activeLevel.level.level}</span>
-                      <span className="text-ink-600">
-                        {activeLevel.level.done}/{activeLevel.level.total}
-                      </span>
-                    </div>
-                    <Badge variant="brand" size="sm" className="mt-1">
-                      current level
-                    </Badge>
-                  </div>
-                </Link>
-                {activeLevel.states.some((s, i) => s === "done" && i !== activeLevel.activeIdx) && (
-                  <div className="flex flex-wrap gap-2">
-                    {data.learning.levels.map((l, i) =>
-                      i === activeLevel.activeIdx || activeLevel.states[i] !== "done" ? null : (
-                        <Badge key={l.level} variant="success" className="uppercase">
-                          {l.level} <CheckCircle2 className="size-3" aria-hidden="true" />
-                        </Badge>
-                      ),
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </Card>
-
-          {(Object.values(data.applications).some((n) => n > 0) || data.lessons.length > 0) && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {Object.values(data.applications).some((n) => n > 0) && (
-                <Card>
-                  <Card.Header>
-                    <Card.Title>Application pipeline</Card.Title>
-                  </Card.Header>
-                  <Link to="/applications" className="flex flex-wrap gap-2">
-                    {(
-                      [
-                        ["wishlist", "Wishlist"],
-                        ["applied", "Applied"],
-                        ["interview", "Interview"],
-                        ["offer", "Offer"],
-                        ["rejected", "Rejected"],
-                      ] as const
-                    ).map(([key, label]) => (
-                      <Badge key={key} size="md" className="hover:border-brand-400">
-                        {label} <span className="text-ink-400">{data.applications[key]}</span>
-                      </Badge>
-                    ))}
-                  </Link>
-                </Card>
-              )}
-
-              {data.lessons.length > 0 && (
-                <Card>
-                  <Card.Header>
-                    <Card.Title>Words by lesson</Card.Title>
-                  </Card.Header>
-                  <ul className="flex flex-wrap gap-2">
-                    {data.lessons.map((l) => (
-                      <li key={l.lesson ?? "none"}>
-                        <Link to={l.lesson ? `/vocabulary?lesson=${l.lesson}` : "/vocabulary"}>
-                          <Badge size="md" className="hover:border-brand-400">
-                            {l.lesson ?? "untagged"} <span className="text-ink-400">{l.count}</span>
-                          </Badge>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </Card>
-              )}
-            </div>
-          )}
         </div>
 
-        <div className="space-y-4">
-          <Card>
-            <Card.Header>
-              <Card.Title>Calendar</Card.Title>
-            </Card.Header>
+        <div className="flex min-h-0 flex-1 flex-col divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-card">
+          <div className="shrink-0 p-3">
             {data.roadmapWeekStrip.length === 0 ? (
               <Link to="/learning?group=progress" className="text-sm text-brand-700 hover:underline">
                 Start your 26-week roadmap →
               </Link>
             ) : (
-              <>
-                <div className="mb-2 flex items-center justify-between">
-                  <button
-                    className="grid size-7 place-items-center rounded-full hover:bg-paper"
-                    onClick={() => shiftCalMonth(-1)}
-                    aria-label="Previous month"
-                  >
-                    <ChevronLeft className="size-4" aria-hidden="true" />
-                  </button>
-                  <p className="text-sm font-medium">
-                    {new Date(calMonth + "-01T00:00:00").toLocaleDateString(undefined, { month: "long", year: "numeric" })}
-                  </p>
-                  <button
-                    className="grid size-7 place-items-center rounded-full hover:bg-paper"
-                    onClick={() => shiftCalMonth(1)}
-                    aria-label="Next month"
-                  >
-                    <ChevronRight className="size-4" aria-hidden="true" />
-                  </button>
-                </div>
-                <RoadmapCalendar month={calMonth} days={calData?.days ?? []} onSelectDay={setCalSelected} />
-              </>
+              <RoadmapWeekStrip
+                weekStart={weekStart}
+                days={weekDays}
+                selectedDate={calSelected}
+                onSelectDay={setCalSelected}
+                onShiftWeek={shiftWeek}
+              />
             )}
-          </Card>
+          </div>
 
-          <Card>
-            <Card.Header>
-              <Card.Title>
+          <div className="shrink-0 p-3">
+            <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-ink-600">
+              <img src={taskIcon} alt="" className="size-4" />
+              Tasks Completed
+            </p>
+            <SegmentedSkillBar segments={skillSegments} />
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col p-3">
+            <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
+              <p className="flex items-center gap-1.5 text-sm font-medium text-ink-600">
+                <img src={clipboardIcon} alt="" className="size-4" />
                 {selectedDay
                   ? new Date(calSelected!).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })
-                  : "Today's tasks"}
-              </Card.Title>
+                  : "Today's Tasks"}
+              </p>
               {selectedDay && (
                 <button className="text-xs text-brand-700 hover:underline" onClick={() => setCalSelected(null)}>
                   Back to today
                 </button>
               )}
-            </Card.Header>
-            {selectedDay ? (
-              selectedDay.tasks.length === 0 ? (
-                <p className="text-sm text-ink-600">No tasks that day.</p>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {selectedDay ? (
+                selectedDay.tasks.length === 0 ? (
+                  <p className="text-sm text-ink-600">No tasks that day.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedDay.tasks.map((t) => (
+                      <SkillTaskRow key={t.id} task={t} />
+                    ))}
+                  </div>
+                )
+              ) : noTasksAtAll ? (
+                <p className="text-sm text-ink-600">Nothing on your plate right now — enjoy the breather.</p>
               ) : (
                 <div className="space-y-2">
-                  {selectedDay.tasks.map((t) => (
-                    <SkillTaskRow key={t.id} task={t} />
+                  {data.dueToday > 0 && (
+                    <TaskListItem
+                      to="/review"
+                      title="Start today's revision"
+                      meta={`${data.dueToday} word${data.dueToday === 1 ? "" : "s"} due`}
+                      tone="warning"
+                    />
+                  )}
+                  {todayFull?.tasks.map((t) => <SkillTaskRow key={t.id} task={t} />)}
+                  {data.expiringDocuments.map((d) => (
+                    <TaskListItem
+                      key={d.id}
+                      to="/checklist"
+                      title={d.title}
+                      meta={d.expiry === "expired" ? "expired" : `due by ${d.expiresAt.slice(0, 10)}`}
+                      tone={d.expiry === "expired" ? "danger" : "warning"}
+                    />
                   ))}
                 </div>
-              )
-            ) : noTasksAtAll ? (
-              <p className="text-sm text-ink-600">Nothing on your plate right now — enjoy the breather.</p>
-            ) : (
-              <div className="space-y-2">
-                {data.dueToday > 0 && (
-                  <TaskListItem
-                    to="/review"
-                    title="Start today's revision"
-                    meta={`${data.dueToday} word${data.dueToday === 1 ? "" : "s"} due`}
-                    tone="warning"
-                  />
-                )}
-                {todayFull?.tasks.map((t) => <SkillTaskRow key={t.id} task={t} />)}
-                {data.expiringDocuments.map((d) => (
-                  <TaskListItem
-                    key={d.id}
-                    to="/checklist"
-                    title={d.title}
-                    meta={d.expiry === "expired" ? "expired" : `due by ${d.expiresAt.slice(0, 10)}`}
-                    tone={d.expiry === "expired" ? "danger" : "warning"}
-                  />
-                ))}
-              </div>
-            )}
-          </Card>
+              )}
+            </div>
+          </div>
 
-          {data.gamification.recentBadges.length > 0 && (
-            <Card>
-              <Card.Header>
-                <Card.Title>Achievements</Card.Title>
-                <span className="text-xs text-ink-400">
-                  {data.gamification.badgeCount} badge{data.gamification.badgeCount === 1 ? "" : "s"}
-                </span>
-              </Card.Header>
-              <div className="flex flex-wrap gap-1.5">
-                {data.gamification.recentBadges.map((b) => (
-                  <Badge key={b.key} variant="brand" title={new Date(b.unlockedAt).toLocaleDateString()}>
-                    <Award className="size-3" aria-hidden="true" />
-                    {b.label}
-                  </Badge>
-                ))}
-              </div>
-            </Card>
-          )}
+          {/* No border lines between icons or above this row — separation
+              comes from spacing alone, each count shown as a
+              notification-style bubble (same pattern as the sidebar's
+              unread-count badge) instead of a number printed below the icon. */}
+          <div className="flex shrink-0 items-center justify-around gap-2 py-3">
+            {(
+              [
+                ["wishlist", "Wishlist", wishlistIcon],
+                ["applied", "Applied", applyIcon],
+                ["interview", "Interview", jobInterviewIcon],
+                ["offer", "Offer", jobOfferIcon],
+                ["rejected", "Rejected", rejectIcon],
+              ] as const
+            ).map(([key, label, icon]) => {
+              const count = data.applications[key];
+              return (
+                <Link
+                  key={key}
+                  to="/applications"
+                  aria-label={`${label}: ${count}`}
+                  className="relative grid place-items-center rounded-full p-1.5 hover:bg-paper"
+                >
+                  <img src={icon} alt="" className="size-[18px]" />
+                  {count > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-[var(--color-danger-solid)] px-1 text-[10px] font-bold leading-4 text-white">
+                      {count}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
