@@ -22,10 +22,10 @@ describe("aggregateReview", () => {
       reviewsCount: 0,
       syllabusCompletions: [],
       roadmapTasks: [
-        { skill: "writing", completedAt: new Date(), minutesSpent: 20 },
-        { skill: "writing", completedAt: null, minutesSpent: null },
-        { skill: "speaking", completedAt: new Date(), minutesSpent: null },
-        { skill: null, completedAt: new Date(), minutesSpent: 10 }, // excluded from bySkill
+        { skill: "writing", completedAt: new Date(), minutesSpent: 20, date: new Date("2026-07-20") },
+        { skill: "writing", completedAt: null, minutesSpent: null, date: new Date("2026-07-20") },
+        { skill: "speaking", completedAt: new Date(), minutesSpent: null, date: new Date("2026-07-20") },
+        { skill: null, completedAt: new Date(), minutesSpent: 10, date: new Date("2026-07-20") }, // excluded from bySkill
       ],
       selfTestBreakdowns: [],
     });
@@ -45,15 +45,40 @@ describe("aggregateReview", () => {
       reviewsCount: 0,
       syllabusCompletions: [],
       roadmapTasks: [
-        { skill: "writing", completedAt: new Date(), minutesSpent: 20 },
-        { skill: "writing", completedAt: new Date(), minutesSpent: null }, // completed but no time logged
-        { skill: "writing", completedAt: null, minutesSpent: 99 }, // not completed — never counted
+        { skill: "writing", completedAt: new Date(), minutesSpent: 20, date: new Date("2026-07-20") },
+        { skill: "writing", completedAt: new Date(), minutesSpent: null, date: new Date("2026-07-20") }, // completed but no time logged
+        { skill: "writing", completedAt: null, minutesSpent: 99, date: new Date("2026-07-20") }, // not completed — never counted
       ],
       selfTestBreakdowns: [],
     });
     expect(summary.loggedMinutes).toBe(20);
     expect(summary.tasksCompleted).toBe(2);
     expect(summary.tasksWithLoggedTime).toBe(1);
+  });
+
+  it("groups self-reported minutesSpent by (date, skill), ignoring tasks with no skill or no logged time", () => {
+    const summary = aggregateReview({
+      wordsAdded: 0,
+      reviewsCount: 0,
+      syllabusCompletions: [],
+      roadmapTasks: [
+        { skill: "grammar", completedAt: new Date(), minutesSpent: 15, date: new Date("2026-07-20") },
+        { skill: "grammar", completedAt: new Date(), minutesSpent: 10, date: new Date("2026-07-20") }, // same day+skill, sums
+        { skill: "vocab", completedAt: new Date(), minutesSpent: 5, date: new Date("2026-07-20") },
+        { skill: "grammar", completedAt: new Date(), minutesSpent: 30, date: new Date("2026-07-21") }, // different day
+        { skill: null, completedAt: new Date(), minutesSpent: 40, date: new Date("2026-07-20") }, // no skill — excluded
+        { skill: "speaking", completedAt: null, minutesSpent: null, date: new Date("2026-07-20") }, // no minutes — excluded
+      ],
+      selfTestBreakdowns: [],
+    });
+    expect(summary.dailyMinutesBySkill).toEqual(
+      expect.arrayContaining([
+        { date: "2026-07-20", skill: "grammar", minutes: 25 },
+        { date: "2026-07-20", skill: "vocab", minutes: 5 },
+        { date: "2026-07-21", skill: "grammar", minutes: 30 },
+      ]),
+    );
+    expect(summary.dailyMinutesBySkill).toHaveLength(3);
   });
 
   it("aggregates self-test breakdowns across topics and sorts weakest first", () => {

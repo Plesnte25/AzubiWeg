@@ -15,6 +15,12 @@ export interface TopicWeakness {
   percent: number;
 }
 
+export interface DailySkillMinutes {
+  date: string;
+  skill: RoadmapSkill;
+  minutes: number;
+}
+
 export interface ReviewSummary {
   vocabAdded: number;
   vocabReviewed: number;
@@ -30,6 +36,10 @@ export interface ReviewSummary {
   // frame loggedMinutes honestly ("X of Y tasks logged") rather than implying
   // full coverage
   tasksWithLoggedTime: number;
+  // self-reported minutesSpent grouped by (date, skill) — the only real
+  // skill-attributed time data that exists; feeds the dashboard's
+  // study-activity stacked bars (weekly/monthly modes)
+  dailyMinutesBySkill: DailySkillMinutes[];
 }
 
 /**
@@ -42,7 +52,7 @@ export function aggregateReview(input: {
   wordsAdded: number;
   reviewsCount: number;
   syllabusCompletions: { id: string; title: string }[];
-  roadmapTasks: { skill: RoadmapSkill | null; completedAt: Date | null; minutesSpent: number | null }[];
+  roadmapTasks: { skill: RoadmapSkill | null; completedAt: Date | null; minutesSpent: number | null; date: Date }[];
   selfTestBreakdowns: { topic: string; correct: number; total: number }[];
 }): ReviewSummary {
   const completedTasks = input.roadmapTasks.filter((t) => t.completedAt !== null);
@@ -54,6 +64,16 @@ export function aggregateReview(input: {
     entry.total += 1;
     if (t.completedAt !== null) entry.done += 1;
     skillTotals.set(t.skill, entry);
+  }
+
+  const dailySkillTotals = new Map<string, { date: string; skill: RoadmapSkill; minutes: number }>();
+  for (const t of input.roadmapTasks) {
+    if (!t.skill || !t.minutesSpent) continue;
+    const date = t.date.toISOString().slice(0, 10);
+    const key = `${date}|${t.skill}`;
+    const entry = dailySkillTotals.get(key) ?? { date, skill: t.skill, minutes: 0 };
+    entry.minutes += t.minutesSpent;
+    dailySkillTotals.set(key, entry);
   }
 
   const topicTotals = new Map<string, { correct: number; total: number }>();
@@ -77,7 +97,39 @@ export function aggregateReview(input: {
     weakAreas,
     loggedMinutes: completedTasks.reduce((sum, t) => sum + (t.minutesSpent ?? 0), 0),
     tasksWithLoggedTime: completedTasks.filter((t) => t.minutesSpent !== null).length,
+    dailyMinutesBySkill: [...dailySkillTotals.values()],
   };
+}
+
+export interface SkillPerformance {
+  skill: RoadmapSkill;
+  correct: number;
+  total: number;
+  percent: number;
+}
+
+/**
+ * Self-test accuracy grouped by skill (not completion count — see SkillTally
+ * above for that). Breakdown entries persisted before the skill-tagging
+ * migration have no `skill` and are skipped rather than backfilled — a
+ * low-traffic personal instance doesn't need historical reconstruction.
+ */
+export function skillPerformance(
+  breakdowns: { skill?: RoadmapSkill | null; correct: number; total: number }[],
+): SkillPerformance[] {
+  const totals = new Map<RoadmapSkill, { correct: number; total: number }>();
+  for (const b of breakdowns) {
+    if (!b.skill) continue;
+    const entry = totals.get(b.skill) ?? { correct: 0, total: 0 };
+    entry.correct += b.correct;
+    entry.total += b.total;
+    totals.set(b.skill, entry);
+  }
+  return [...totals.entries()].map(([skill, v]) => ({
+    skill,
+    ...v,
+    percent: v.total === 0 ? 0 : Math.round((v.correct / v.total) * 100),
+  }));
 }
 
 export interface GoetheReadiness {
