@@ -106,15 +106,39 @@ describe("buildSession", () => {
     expect(session.every((q) => !q.qid.startsWith("w:"))).toBe(true);
   });
 
+  it("carries the bank question's skill through toSession() for all 3 types", () => {
+    const session = buildSession({ ...base, words: [], size: 40, rng: mulberry32(8) });
+    const bySource = new Map(QUESTION_BANK.map((q) => [q.id, q]));
+    const seenTypes = new Set<string>();
+    for (const q of session) {
+      const source = bySource.get(q.qid);
+      if (!source) continue; // vocab-generated, checked separately below
+      expect(q.skill, q.qid).toBe(source.skill);
+      seenTypes.add(q.type);
+    }
+    expect(seenTypes).toEqual(new Set(["mcq", "fill_blank", "true_false"]));
+  });
+
+  it("tags self-generated vocab questions with skill: vocab", () => {
+    const session = buildSession({ ...base, size: 20, rng: mulberry32(9) });
+    const vocabQuestions = session.filter((q) => q.qid.startsWith("w:"));
+    expect(vocabQuestions.length).toBeGreaterThan(0);
+    for (const q of vocabQuestions) expect(q.skill, q.qid).toBe("vocab");
+  });
+
   it("high scorers on a1 see a2 bank questions", () => {
     const session = buildSession({ ...base, recentPercents: [95, 92], size: 20, rng: mulberry32(5) });
     expect(session.some((q) => q.level === "a2")).toBe(true);
   });
 
   it("never leaks ipa/grammar metadata into questions", () => {
+    // checks for the *keys*, not a substring match on the serialized question —
+    // "grammar" is now a legitimate `skill` value (e.g. modal-verbs questions),
+    // which a plain regex would false-positive on
     const session = buildSession({ ...base, size: 20, rng: mulberry32(6) });
     for (const q of session) {
-      expect(JSON.stringify(q)).not.toMatch(/ipa|grammar/i);
+      expect(Object.keys(q)).not.toContain("ipa");
+      expect(Object.keys(q)).not.toContain("grammar");
     }
   });
 });

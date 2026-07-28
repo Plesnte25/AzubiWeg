@@ -38,8 +38,12 @@ export interface DefaultRoadmapDay {
  * buildUserRoadmapPlan, which merges DEFAULT_ROADMAP_DAYS's Thu-Sun content
  * with generated Mon/Tue/Wed tasks). Any SYLLABUS_VERSION bump must ship
  * with a paired bump here, since that generated content depends on it.
+ *
+ * v4: paired with SYLLABUS_VERSION v4 (added `skill` to every syllabus item).
+ * No content changes of its own — bumped only because generated Mon/Tue/Wed
+ * tasks read from the syllabus.
  */
-export const ROADMAP_VERSION = 3;
+export const ROADMAP_VERSION = 4;
 
 interface RegularWeek {
   theme: string;

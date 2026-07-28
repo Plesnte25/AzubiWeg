@@ -1,4 +1,4 @@
-import type { CefrLevel } from "@prisma/client";
+import type { CefrLevel, RoadmapSkill } from "@prisma/client";
 import type { BankQuestion } from "./question-bank.js";
 import { generateQuiz, mulberry32, type QuizWord } from "./quiz.js";
 
@@ -8,9 +8,9 @@ export { mulberry32 };
 // it anyway); results are self-reported — the same trust model the vocab quiz
 // always had. Cheat-resistance against yourself is a non-goal.
 export type SessionQuestion =
-  | { qid: string; type: "mcq"; level: CefrLevel; topic: string; prompt: string; choices: string[]; answerIndex: number }
-  | { qid: string; type: "fill_blank"; level: CefrLevel; topic: string; prompt: string; accepted: string[] }
-  | { qid: string; type: "true_false"; level: CefrLevel; topic: string; prompt: string; answer: boolean };
+  | { qid: string; type: "mcq"; level: CefrLevel; topic: string; skill: RoadmapSkill; prompt: string; choices: string[]; answerIndex: number }
+  | { qid: string; type: "fill_blank"; level: CefrLevel; topic: string; skill: RoadmapSkill; prompt: string; accepted: string[] }
+  | { qid: string; type: "true_false"; level: CefrLevel; topic: string; skill: RoadmapSkill; prompt: string; answer: boolean };
 
 const LEVELS: CefrLevel[] = ["a1", "a2", "b1"];
 
@@ -87,10 +87,10 @@ function shuffle<T>(arr: T[], rng: () => number): T[] {
 
 const toSession = (q: BankQuestion): SessionQuestion =>
   q.type === "mcq"
-    ? { qid: q.id, type: "mcq", level: q.level, topic: q.topic, prompt: q.prompt, choices: q.choices, answerIndex: q.answerIndex }
+    ? { qid: q.id, type: "mcq", level: q.level, topic: q.topic, skill: q.skill, prompt: q.prompt, choices: q.choices, answerIndex: q.answerIndex }
     : q.type === "fill_blank"
-      ? { qid: q.id, type: "fill_blank", level: q.level, topic: q.topic, prompt: q.prompt, accepted: q.accepted }
-      : { qid: q.id, type: "true_false", level: q.level, topic: q.topic, prompt: q.prompt, answer: q.answer };
+      ? { qid: q.id, type: "fill_blank", level: q.level, topic: q.topic, skill: q.skill, prompt: q.prompt, accepted: q.accepted }
+      : { qid: q.id, type: "true_false", level: q.level, topic: q.topic, skill: q.skill, prompt: q.prompt, answer: q.answer };
 
 /**
  * Build a mixed test session: bank questions sampled by the adaptive level
@@ -149,14 +149,14 @@ export function buildSession(input: {
       usedWords.add(word.id);
       const kind = i++ % 3;
       if (kind === 0) {
-        vocab.push({ qid: `w:${word.id}:mcq`, type: "mcq", level: input.activeLevel, topic: "vocabulary", prompt: `What does „${word.headword}" mean?`, choices: q.choices, answerIndex: q.answerIndex });
+        vocab.push({ qid: `w:${word.id}:mcq`, type: "mcq", level: input.activeLevel, topic: "vocabulary", skill: "vocab", prompt: `What does „${word.headword}" mean?`, choices: q.choices, answerIndex: q.answerIndex });
       } else if (kind === 1) {
-        vocab.push({ qid: `w:${word.id}:fb`, type: "fill_blank", level: input.activeLevel, topic: "vocabulary", prompt: `Type the German word for "${word.meaning}": ___`, accepted: [word.headword] });
+        vocab.push({ qid: `w:${word.id}:fb`, type: "fill_blank", level: input.activeLevel, topic: "vocabulary", skill: "vocab", prompt: `Type the German word for "${word.meaning}": ___`, accepted: [word.headword] });
       } else {
         const correct = rng() < 0.5;
         const wrong = shuffle(meanings.filter((m) => m !== word.meaning), rng)[0];
         const shown = correct || wrong === undefined ? word.meaning : wrong;
-        vocab.push({ qid: `w:${word.id}:tf`, type: "true_false", level: input.activeLevel, topic: "vocabulary", prompt: `„${word.headword}" means "${shown}".`, answer: shown === word.meaning });
+        vocab.push({ qid: `w:${word.id}:tf`, type: "true_false", level: input.activeLevel, topic: "vocabulary", skill: "vocab", prompt: `„${word.headword}" means "${shown}".`, answer: shown === word.meaning });
       }
     }
   }

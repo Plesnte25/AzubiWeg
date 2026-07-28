@@ -54,4 +54,11 @@ describe("QUESTION_BANK", () => {
       expect(q.topic, q.id).toMatch(/^[a-z][a-z0-9-]*$/);
     }
   });
+
+  it("every question is tagged with one of the 6 core skills", () => {
+    const coreSkills = new Set(["grammar", "vocab", "listening", "speaking", "writing", "reading"]);
+    for (const q of QUESTION_BANK) {
+      expect(coreSkills.has(q.skill), q.id).toBe(true);
+    }
+  });
 });

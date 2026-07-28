@@ -297,7 +297,7 @@ async function reviewForRange(userId: string, start: Date, end: Date) {
     }),
     prisma.roadmapTask.findMany({
       where: { day: { userId, date: { gte: start, lt: end } } },
-      select: { skill: true, completedAt: true, minutesSpent: true },
+      select: { skill: true, completedAt: true, minutesSpent: true, day: { select: { date: true } } },
     }),
     prisma.selfTestResult.findMany({
       where: { userId, takenAt: { gte: start, lt: end } },
@@ -309,7 +309,13 @@ async function reviewForRange(userId: string, start: Date, end: Date) {
     Array.isArray(r.breakdown) ? (r.breakdown as { topic: string; correct: number; total: number }[]) : [],
   );
 
-  return aggregateReview({ wordsAdded, reviewsCount, syllabusCompletions, roadmapTasks, selfTestBreakdowns });
+  return aggregateReview({
+    wordsAdded,
+    reviewsCount,
+    syllabusCompletions,
+    roadmapTasks: roadmapTasks.map((t) => ({ skill: t.skill, completedAt: t.completedAt, minutesSpent: t.minutesSpent, date: t.day.date })),
+    selfTestBreakdowns,
+  });
 }
 
 const weekQuerySchema = z.object({ date: z.iso.date().optional() });

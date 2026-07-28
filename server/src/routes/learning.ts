@@ -18,6 +18,9 @@ learningRouter.use(requireAuth);
 const LEVEL = z.enum(["a1", "a2", "b1"]);
 const SOURCE_TYPE = z.enum(["youtube", "nicos_weg", "duolingo", "other"]);
 const DIRECTION = z.enum(["de_to_meaning", "meaning_to_de"]);
+// the 6 skills a self-test breakdown can be tagged with — a subset of the
+// full RoadmapSkill enum (bureaucracy/milestone/reflection aren't quiz topics)
+const CORE_SKILL = z.enum(["grammar", "vocab", "listening", "speaking", "writing", "reading"]);
 
 // ── syllabus ──
 
@@ -447,6 +450,7 @@ const resultSchema = z
         z.object({
           topic: z.string().max(60),
           level: LEVEL,
+          skill: CORE_SKILL.optional(),
           correct: z.int().min(0).max(100),
           total: z.int().min(1).max(100),
         }),

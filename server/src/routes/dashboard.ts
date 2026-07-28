@@ -1,10 +1,14 @@
+import type { RoadmapSkill } from "@prisma/client";
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { BADGE_DEFAULTS } from "../services/gamification/badge-defaults.js";
 import { computeDayStreak, localDateKey } from "../services/learning/activity.js";
 import { addDaysUTC, dayStatus } from "../services/learning/roadmap.js";
+import { skillPerformance } from "../services/learning/review.js";
 import { EXPIRY_WARN_DAYS, expiryStatus } from "../services/reminders.js";
+
+const CORE_SKILLS = ["grammar", "vocab", "listening", "speaking", "writing", "reading"] as const satisfies readonly RoadmapSkill[];
 
 function todayUtcFromLocal(): Date {
   const [y, m, d] = localDateKey(new Date()).split("-").map(Number);
@@ -52,6 +56,9 @@ dashboardRouter.get("/", async (req, res) => {
     testActivity,
     roadmapActivity,
     lastSelfTest,
+    selfTestBreakdownRows,
+    quizzesCompleted,
+    totalLearningMinutesAgg,
     user,
     weekDays,
     badgeCount,
@@ -92,7 +99,7 @@ dashboardRouter.get("/", async (req, res) => {
     }),
     prisma.syllabusItem.findMany({
       where: { userId: req.userId },
-      select: { level: true, completedAt: true },
+      select: { level: true, skill: true, completedAt: true },
     }),
     prisma.syllabusItem.findMany({
       where: { userId: req.userId, completedAt: { gte: activityHorizon } },
@@ -115,6 +122,12 @@ dashboardRouter.get("/", async (req, res) => {
       orderBy: { takenAt: "desc" },
       select: { score: true, total: true, takenAt: true },
     }),
+    prisma.selfTestResult.findMany({
+      where: { userId: req.userId },
+      select: { breakdown: true },
+    }),
+    prisma.selfTestResult.count({ where: { userId: req.userId } }),
+    prisma.dailyActiveMinutes.aggregate({ where: { userId: req.userId }, _sum: { minutes: true } }),
     prisma.user.findUniqueOrThrow({ where: { id: req.userId }, select: { roadmapStartedAt: true, points: true } }),
     prisma.roadmapDay.findMany({
       where: { userId: req.userId, date: { gte: weekStart, lt: weekEnd } },
@@ -169,6 +182,29 @@ dashboardRouter.get("/", async (req, res) => {
       percent: inLevel.length === 0 ? 0 : Math.round((done / inLevel.length) * 100),
     };
   });
+  // per-skill syllabus completion (concentric-rings dashboard widget) — always
+  // all 6 core skills, zero-filled, so the ring chart never has to guess a
+  // missing axis. Items pre-dating the skill-tagging migration have
+  // skill: null until their next reseed and are simply excluded until then.
+  const skillProgress = CORE_SKILLS.map((skill) => {
+    const inSkill = syllabusRows.filter((r) => r.skill === skill);
+    const done = inSkill.filter((r) => r.completedAt !== null).length;
+    return {
+      skill,
+      total: inSkill.length,
+      done,
+      percent: inSkill.length === 0 ? 0 : Math.round((done / inSkill.length) * 100),
+    };
+  });
+  // self-test accuracy by skill (radar dashboard widget) — only skills that
+  // actually appear in a breakdown are returned, same convention as review.ts's
+  // bySkill/weakAreas; the client zero-fills any of the 6 skills missing here
+  const selfTestBreakdownEntries = selfTestBreakdownRows.flatMap((r) =>
+    Array.isArray(r.breakdown)
+      ? (r.breakdown as { skill?: RoadmapSkill; correct: number; total: number }[])
+      : [],
+  );
+  const skillPerf = skillPerformance(selfTestBreakdownEntries);
   const learningTimestamps = [
     ...syllabusActivity.map((r) => r.completedAt as Date),
     ...sourceActivity.map((r) => r.loggedAt),
@@ -235,6 +271,11 @@ dashboardRouter.get("/", async (req, res) => {
     newWords,
     reviewsToday,
     streak,
+    quizzesCompleted,
+    // all-time, finalized-days total — today's still-accumulating minutes
+    // roll in tomorrow, same "good enough" heuristic the rest of the
+    // ping-based activity system already uses
+    totalLearningMinutes: totalLearningMinutesAgg._sum.minutes ?? 0,
     lessons: lessons.map((l) => ({ lesson: l.lesson, count: l._count })),
     activity,
     expiringDocuments: expiringItems.map((i) => ({
@@ -247,6 +288,8 @@ dashboardRouter.get("/", async (req, res) => {
     heatmap,
     learning: {
       levels,
+      skillProgress,
+      skillPerformance: skillPerf,
       streak: computeDayStreak(learningTimestamps, now),
       lastSelfTest,
     },

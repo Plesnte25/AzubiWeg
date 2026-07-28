@@ -39,6 +39,7 @@ model User {
   lastLoginAt        DateTime?
   activityPings      ActivityPing[]
   dailyActiveMinutes DailyActiveMinutes[]
+  hourlyActiveMinutes HourlyActiveMinutes[]
   // stored (not derived, unlike most stats here) per explicit request — kept
   // in sync by always writing it in the same transaction as the badge/bonus
   // event that earned it (services/gamification)
@@ -77,6 +78,21 @@ model DailyActiveMinutes {
   minutes Int
 
   @@unique([userId, date])
+}
+
+// permanent, one dimension finer than DailyActiveMinutes — same rollup, same
+// finalizePastDays() write path, split by local hour-of-day (0-23) so the
+// dashboard's hour-of-day activity chart has real history to build on
+// instead of only ever showing today (ActivityPing rows don't survive a day)
+model HourlyActiveMinutes {
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date    DateTime @db.Date
+  hour    Int
+  minutes Int
+
+  @@unique([userId, date, hour])
 }
 
 model Word {
@@ -271,6 +287,11 @@ model SyllabusItem {
   user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   level          CefrLevel
   category       SyllabusCategory
+  // one of the 6 core skills (grammar/vocab/listening/speaking/writing/reading)
+  // this content drills, reusing RoadmapSkill rather than a parallel enum so
+  // the dashboard's skill color/label map applies uniformly everywhere.
+  // Nullable only transiently — a SYLLABUS_VERSION reseed populates every row.
+  skill          RoadmapSkill?
   // topic heading the item (subtopic) is grouped under, e.g. "Verbs: present tense"
   theme          String?
   title          String
