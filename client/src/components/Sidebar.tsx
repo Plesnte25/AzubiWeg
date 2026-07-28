@@ -5,8 +5,6 @@ import {
   Bell,
   Briefcase,
   BookOpen,
-  ChevronsLeft,
-  ChevronsRight,
   FileText,
   GraduationCap,
   LayoutDashboard,
@@ -33,6 +31,16 @@ const tabs = [
 
 const NOTIFICATION_ICON = { portal: Link2, application: Send, document: FileText } as const;
 
+/** Small floating label shown on hover, matching the app's existing
+ * chart-tooltip visual convention — replaces the old whole-rail hover-expand. */
+function HoverTooltip({ label }: { label: string }) {
+  return (
+    <span className="pointer-events-none absolute left-full ml-2 whitespace-nowrap rounded-lg border border-hairline bg-card px-2.5 py-1.5 text-xs font-medium text-ink-900 opacity-0 shadow-md transition-opacity delay-100 group-hover:opacity-100">
+      {label}
+    </span>
+  );
+}
+
 function useClickOutside(onOutside: () => void) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -57,13 +65,12 @@ function NotificationBell({ showExpanded }: { showExpanded: boolean }) {
   const notifications = data?.notifications ?? [];
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="group relative" ref={ref}>
       <button
         className={cn(
           "relative grid size-9 place-items-center rounded-full text-ink-600 hover:bg-paper hover:text-ink-900",
           !showExpanded && "mx-auto",
         )}
-        title="Notifications"
         aria-label={`Notifications (${notifications.length})`}
         onClick={() => setOpen((v) => !v)}
       >
@@ -74,6 +81,7 @@ function NotificationBell({ showExpanded }: { showExpanded: boolean }) {
           </span>
         )}
       </button>
+      {!showExpanded && !open && <HoverTooltip label="Notifications" />}
       {open && (
         <div className="animate-scale-in absolute bottom-0 left-full z-50 ml-2 w-80 origin-bottom-left overflow-hidden rounded-xl border border-hairline bg-card shadow-lg">
           <p className="border-b border-hairline px-4 py-2.5 text-sm font-semibold">Notifications</p>
@@ -122,13 +130,12 @@ function UserMenu({ showExpanded }: { showExpanded: boolean }) {
   const initial = (user?.name?.trim()[0] ?? "?").toUpperCase();
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="group relative" ref={ref}>
       <button
         className={cn(
           "flex w-full items-center gap-2.5 rounded-lg py-1.5 text-left hover:bg-paper",
           showExpanded ? "px-2" : "justify-center px-0",
         )}
-        title={user?.name}
         aria-label="Account menu"
         onClick={() => setOpen((v) => !v)}
       >
@@ -142,6 +149,7 @@ function UserMenu({ showExpanded }: { showExpanded: boolean }) {
           </span>
         )}
       </button>
+      {!showExpanded && !open && <HoverTooltip label={user?.name ?? "Account"} />}
       {open && (
         <div className="animate-scale-in absolute bottom-0 left-full z-50 ml-2 w-56 origin-bottom-left overflow-hidden rounded-xl border border-hairline bg-card shadow-lg">
           <div className="border-b border-hairline px-4 py-3">
@@ -174,17 +182,16 @@ function UserMenu({ showExpanded }: { showExpanded: boolean }) {
 }
 
 interface SidebarProps {
-  collapsed: boolean;
-  onToggleCollapse: () => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;
 }
 
-export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }: SidebarProps) {
-  const [hovered, setHovered] = useState(false);
-  // on mobile the sidebar is a full overlay (never "collapsed"), on desktop it
-  // temporarily widens on hover without shifting the page content underneath
-  const showExpanded = !collapsed || hovered || mobileOpen;
+/** Always rail-width on desktop — no collapse/expand toggle, no hover-expand.
+ * Hovering a nav item shows a small floating label instead. Mobile still
+ * opens as a full off-canvas sidebar via the hamburger menu, unrelated to
+ * this desktop behavior. */
+export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
+  const showExpanded = mobileOpen;
 
   return (
     <>
@@ -192,13 +199,10 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
         <div className="fixed inset-0 z-40 bg-ink-900/40 md:hidden" onClick={onCloseMobile} aria-hidden="true" />
       )}
       <aside
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-hairline bg-card transition-[width,transform] duration-200",
+          "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-hairline bg-card transition-transform duration-200",
           showExpanded ? "w-60" : "w-[76px]",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
-          hovered && !mobileOpen && "shadow-xl",
         )}
       >
         <div className="flex h-14 shrink-0 items-center gap-2 px-4">
@@ -210,27 +214,31 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
           </NavLink>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-2">
+        {/* no overflow-y here (unlike before) — with only 7 tabs it never needs
+            to scroll, and clipping either axis would also clip the hover
+            tooltips that now render outside each item's own box */}
+        <nav className="flex-1 space-y-1 px-3 py-2">
           {tabs.map((t) => (
-            <NavLink
-              key={t.to}
-              to={t.to}
-              end={t.end}
-              title={!showExpanded ? t.label : undefined}
-              onClick={onCloseMobile}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                  !showExpanded && "justify-center px-0",
-                  isActive
-                    ? "bg-brand-50 font-medium text-brand-700 dark:bg-brand-900/40 dark:text-brand-300"
-                    : "text-ink-600 hover:bg-paper hover:text-ink-900",
-                )
-              }
-            >
-              <t.icon className="size-5 shrink-0" aria-hidden="true" />
-              {showExpanded && t.label}
-            </NavLink>
+            <div key={t.to} className="group relative">
+              <NavLink
+                to={t.to}
+                end={t.end}
+                onClick={onCloseMobile}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                    !showExpanded && "justify-center px-0",
+                    isActive
+                      ? "bg-brand-50 font-medium text-brand-700 dark:bg-brand-900/40 dark:text-brand-300"
+                      : "text-ink-600 hover:bg-paper hover:text-ink-900",
+                  )
+                }
+              >
+                <t.icon className="size-5 shrink-0" aria-hidden="true" />
+                {showExpanded && t.label}
+              </NavLink>
+              {!showExpanded && <HoverTooltip label={t.label} />}
+            </div>
           ))}
         </nav>
 
@@ -240,23 +248,6 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
             <NotificationBell showExpanded={showExpanded} />
           </div>
           <UserMenu showExpanded={showExpanded} />
-          <button
-            className={cn(
-              "hidden w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-600 hover:bg-paper hover:text-ink-900 md:flex",
-              !showExpanded && "justify-center px-0",
-            )}
-            onClick={onToggleCollapse}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? (
-              <ChevronsRight className="size-5 shrink-0" aria-hidden="true" />
-            ) : (
-              <>
-                <ChevronsLeft className="size-5 shrink-0" aria-hidden="true" />
-                Collapse
-              </>
-            )}
-          </button>
         </div>
       </aside>
     </>

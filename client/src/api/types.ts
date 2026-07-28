@@ -29,6 +29,8 @@ export interface DashboardData {
   newWords: number;
   reviewsToday: number;
   streak: number;
+  quizzesCompleted: number;
+  totalLearningMinutes: number;
   lessons: { lesson: string | null; count: number }[];
   activity: { date: string; count: number }[];
   expiringDocuments: { id: string; title: string; expiresAt: string; expiry: ExpiryStatus }[];
@@ -36,6 +38,8 @@ export interface DashboardData {
   heatmap: { date: string; reviews: number; learning: number }[];
   learning: {
     levels: { level: CefrLevel; total: number; done: number; percent: number }[];
+    skillProgress: { skill: RoadmapSkill; total: number; done: number; percent: number }[];
+    skillPerformance: { skill: RoadmapSkill; correct: number; total: number; percent: number }[];
     streak: number;
     lastSelfTest: { score: number; total: number; takenAt: string } | null;
   };
@@ -250,6 +254,7 @@ export interface SyllabusItem {
   id: string;
   level: CefrLevel;
   category: SyllabusCategory;
+  skill: RoadmapSkill | null;
   theme: string | null;
   title: string;
   description: string | null;
@@ -305,13 +310,14 @@ export type LevelState = "done" | "active" | "locked";
 
 // mirrors SessionQuestion in server/src/services/learning/engine.ts
 export type SessionQuestion =
-  | { qid: string; type: "mcq"; level: CefrLevel; topic: string; prompt: string; choices: string[]; answerIndex: number }
-  | { qid: string; type: "fill_blank"; level: CefrLevel; topic: string; prompt: string; accepted: string[] }
-  | { qid: string; type: "true_false"; level: CefrLevel; topic: string; prompt: string; answer: boolean };
+  | { qid: string; type: "mcq"; level: CefrLevel; topic: string; skill: RoadmapSkill; prompt: string; choices: string[]; answerIndex: number }
+  | { qid: string; type: "fill_blank"; level: CefrLevel; topic: string; skill: RoadmapSkill; prompt: string; accepted: string[] }
+  | { qid: string; type: "true_false"; level: CefrLevel; topic: string; skill: RoadmapSkill; prompt: string; answer: boolean };
 
 export interface TopicBreakdown {
   topic: string;
   level: CefrLevel;
+  skill?: RoadmapSkill;
   correct: number;
   total: number;
 }
@@ -432,6 +438,12 @@ export interface RoadmapTopicWeakness {
   percent: number;
 }
 
+export interface RoadmapDailySkillMinutes {
+  date: string;
+  skill: RoadmapSkill;
+  minutes: number;
+}
+
 export interface RoadmapReviewSummary {
   vocabAdded: number;
   vocabReviewed: number;
@@ -442,6 +454,7 @@ export interface RoadmapReviewSummary {
   weakAreas: RoadmapTopicWeakness[];
   loggedMinutes: number;
   tasksWithLoggedTime: number;
+  dailyMinutesBySkill: RoadmapDailySkillMinutes[];
 }
 
 export interface RoadmapWeeklyReview extends RoadmapReviewSummary {

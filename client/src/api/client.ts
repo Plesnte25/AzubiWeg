@@ -332,7 +332,9 @@ export const api = {
   notifications: () => request<{ notifications: AppNotification[] }>("/api/notifications"),
 
   activityPing: () => request<void>("/api/activity/ping", { method: "POST" }),
-  activitySummary: () => request<ActivitySummary>("/api/activity/summary"),
+  activitySummary: (days?: number) =>
+    request<ActivitySummary>(`/api/activity/summary${days ? `?days=${days}` : ""}`),
+  activityHourly: () => request<{ hours: { hour: number; minutes: number }[] }>("/api/activity/hourly"),
 };
 
 /**
