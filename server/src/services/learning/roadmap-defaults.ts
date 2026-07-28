@@ -42,8 +42,14 @@ export interface DefaultRoadmapDay {
  * v4: paired with SYLLABUS_VERSION v4 (added `skill` to every syllabus item).
  * No content changes of its own — bumped only because generated Mon/Tue/Wed
  * tasks read from the syllabus.
+ *
+ * v5: regular weeks are now all-skills-daily — every study day (Mon–Sat)
+ * carries reading, listening, speaking and writing (buildRegularWeek), and
+ * grammar/vocab are spread across all six days, not just Mon/Tue/Wed
+ * (roadmap-generator.ts). SYLLABUS_VERSION is unchanged; syllabus CONTENT
+ * didn't change, only how the roadmap slices it into days.
  */
-export const ROADMAP_VERSION = 4;
+export const ROADMAP_VERSION = 5;
 
 interface RegularWeek {
   theme: string;
@@ -59,52 +65,89 @@ interface MilestoneWeek {
   milestone: { title: string; description: string };
 }
 
-/** Mon/Tue grammar + Wed vocab are placeholders here — generated at read
- * time from the live syllabus (see roadmap-generator.ts). Thu listening/
- * reading, Fri speaking (+ optional Deutschland-Context task), Sat writing +
- * vocab review, Sun rest stay hand-authored. */
+/** All-skills-daily: every study day (Mon–Sat) carries reading, listening,
+ * speaking and writing tied to the week's theme; grammar and vocab are
+ * prepended per day from the live syllabus at read time (roadmap-generator).
+ * The week's one specific input resource (a Nicos Weg chunk, a DW clip, a
+ * graded reader…) is pinned to Thursday with its real skill/type so it's
+ * tracked once, not repeated daily. Friday adds any Deutschland-Context task;
+ * Saturday adds the weekly SRS sweep; Sunday (offset 6) is rest / light
+ * immersion. */
 function buildRegularWeek(weekNumber: number, w: RegularWeek): DefaultRoadmapDay[] {
   const base = (weekNumber - 1) * 7;
-  const fri: DefaultRoadmapTask[] = [{ type: "generic", skill: "speaking", title: `Speaking: ${w.speaking}` }];
-  if (w.bureaucracy) {
-    fri.push({
-      type: "generic",
-      skill: "bureaucracy",
-      title: `Deutschland Context: ${w.bureaucracy.title}`,
-      description: w.bureaucracy.description,
-    });
+  const inputIsReading = w.listening.reading === true;
+  const days: DefaultRoadmapDay[] = [];
+
+  for (let d = 0; d < 6; d++) {
+    const tasks: DefaultRoadmapTask[] = [
+      {
+        type: "generic",
+        skill: "reading",
+        title: `Reading: ${w.theme}`,
+        description: "Read a short German text on this week's theme; pull new words into your vault.",
+      },
+      {
+        type: "generic",
+        skill: "listening",
+        title: `Listening: ${w.theme}`,
+        description: "A short Nicos Weg scene, DW clip, or slow-German segment on this week's theme.",
+      },
+      {
+        type: "generic",
+        skill: "speaking",
+        title: `Speaking: ${w.speaking}`,
+        description: "Say it aloud; once this week, record yourself and listen back.",
+      },
+      { type: "generic", skill: "writing", title: `Writing: ${w.writing}` },
+    ];
+
+    // the week's one specific resource, pinned to Thursday and tracked once —
+    // whatever skill/type it was authored as (study_source Nicos Weg, a reading, …)
+    if (d === 3) {
+      tasks.push({
+        type: w.listening.studySource ? "study_source" : "generic",
+        skill: inputIsReading ? "reading" : "listening",
+        title: w.listening.title,
+        description: w.listening.description,
+      });
+    }
+    // one Deutschland-Context task on Friday when the week has one
+    if (w.bureaucracy && d === 4) {
+      tasks.push({
+        type: "generic",
+        skill: "bureaucracy",
+        title: `Deutschland Context: ${w.bureaucracy.title}`,
+        description: w.bureaucracy.description,
+      });
+    }
+    // weekly SRS sweep on the last study day
+    if (d === 5) {
+      tasks.push({
+        type: "vocab",
+        skill: "vocab",
+        title: "Weekly vocab review",
+        description: "Clear your SRS queue and review everything new this week.",
+      });
+    }
+
+    days.push({ dayOffset: base + d, theme: w.theme, tasks });
   }
-  return [
-    { dayOffset: base + 0, theme: w.theme, tasks: [] }, // Monday: grammar (generated)
-    { dayOffset: base + 1, theme: w.theme, tasks: [] }, // Tuesday: grammar (generated)
-    { dayOffset: base + 2, theme: w.theme, tasks: [] }, // Wednesday: vocab (generated)
-    {
-      dayOffset: base + 3,
-      theme: w.theme,
-      tasks: [
-        {
-          type: w.listening.studySource ? "study_source" : "generic",
-          skill: w.listening.reading ? "reading" : "listening",
-          title: w.listening.title,
-          description: w.listening.description,
-        },
-      ],
-    },
-    { dayOffset: base + 4, theme: w.theme, tasks: fri },
-    {
-      dayOffset: base + 5,
-      theme: w.theme,
-      tasks: [
-        { type: "generic", skill: "writing", title: `Writing: ${w.writing}` },
-        { type: "vocab", skill: "vocab", title: "Weekly vocab review", description: "Clear your SRS queue and review everything new this week." },
-      ],
-    },
-    {
-      dayOffset: base + 6,
-      theme: w.theme,
-      tasks: [{ type: "generic", skill: "reflection", title: "Rest or light immersion", description: "Optional: a German film, podcast, or recipe — no new material today." }],
-    },
-  ];
+
+  // Sunday: rest / light immersion
+  days.push({
+    dayOffset: base + 6,
+    theme: w.theme,
+    tasks: [
+      {
+        type: "generic",
+        skill: "reflection",
+        title: "Rest or light immersion",
+        description: "Optional: a German film, podcast, or recipe — no new material today.",
+      },
+    ],
+  });
+
+  return days;
 }
 
 /** Mon-Fri = review of the phase's trouble spots, Sat = the milestone test, Sun = reflect. */

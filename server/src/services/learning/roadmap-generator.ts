@@ -21,11 +21,15 @@ const PHASE_LEVELS: { level: CefrLevel; weekStart: number; weekEnd: number }[] =
   { level: "b1", weekStart: 17, weekEnd: 24 },
 ];
 
+/** Mon–Sat are study days; Sunday (dayOffset base+6) is the rest / light-
+ * immersion day and never receives generated grammar/vocab. */
+const STUDY_DAYS = 6;
+
 /**
- * Balanced partition: splits `items` into exactly `buckets` groups whose
- * sizes differ by at most 1, earlier buckets front-loaded with the
- * remainder. Preserves the input's own order (the syllabus's pedagogical
- * sortOrder) within and across buckets.
+ * Balanced partition: splits `items` into exactly `buckets` groups whose sizes
+ * differ by at most 1, earlier buckets front-loaded with the remainder.
+ * Preserves the input's own order (the syllabus's pedagogical sortOrder) within
+ * and across buckets.
  */
 export function distributeEvenly<T>(items: T[], buckets: number): T[][] {
   if (buckets <= 0) return [];
@@ -52,13 +56,35 @@ function tasksFor(items: SyllabusRowForGeneration[], skill: "grammar" | "vocab",
   }));
 }
 
+/** A study day with no *new* syllabus item still gets a same-skill
+ * consolidation task, so every day touches grammar and vocab (the daily-
+ * revision goal). These carry no syllabusItemId — they're practice, not a
+ * checklist item, and so never affect SyllabusItem completion. */
+const GRAMMAR_CONSOLIDATION: DefaultRoadmapTask = {
+  type: "generic",
+  skill: "grammar",
+  title: "Grammar consolidation",
+  description: "No new rule today — redo this week's trickiest exercises and firm up what's still shaky.",
+};
+const VOCAB_CONSOLIDATION: DefaultRoadmapTask = {
+  type: "vocab",
+  skill: "vocab",
+  title: "Vocabulary review",
+  description: "Review this week's words in your SRS queue and fill any gaps in the vault.",
+};
+
 /**
- * Distributes every grammar/vocab_theme syllabus item across the roadmap's
- * regular-week Mon(grammar)/Tue(grammar)/Wed(vocab) slots, per CEFR phase, in
- * the syllabus's own pedagogical order. Returns a dayOffset -> tasks map to
- * merge onto DEFAULT_ROADMAP_DAYS's hand-authored skeleton (see
- * buildUserRoadmapPlan) — skill-category items are never included here, they
- * stay Syllabus-tab-only (see roadmap-defaults.ts's v3 changelog).
+ * Spreads every grammar/vocab_theme syllabus item across the SIX study days of
+ * each regular week (per CEFR phase, in the syllabus's own pedagogical order),
+ * so each day carries a grammar task and a vocab task — a new item where one is
+ * due, a consolidation task otherwise. Reading/listening/speaking/writing for
+ * each day come from roadmap-defaults' buildRegularWeek; this function only
+ * owns the syllabus-derived grammar/vocab. Skill-category syllabus items stay
+ * Syllabus-tab-only (unchanged). Returns dayOffset -> tasks to merge onto the
+ * hand-authored skeleton in buildUserRoadmapPlan.
+ *
+ * (v5: was Mon/Tue grammar + Wed vocab only — now every study day, so the
+ * roadmap is all-skills-daily. Pairs with ROADMAP_VERSION 5.)
  */
 export function deriveSyllabusTasks(syllabusRows: SyllabusRowForGeneration[]): Map<number, DefaultRoadmapTask[]> {
   const byDayOffset = new Map<number, DefaultRoadmapTask[]>();
@@ -82,14 +108,18 @@ export function deriveSyllabusTasks(syllabusRows: SyllabusRowForGeneration[]): M
       const weekNumber = phase.weekStart + w;
       const base = (weekNumber - 1) * 7;
 
-      const [monItems, tueItems] = distributeEvenly(grammarByWeek[w] ?? [], 2);
-      const monTasks = tasksFor(monItems ?? [], "grammar", "Grammar");
-      const tueTasks = tasksFor(tueItems ?? [], "grammar", "Grammar");
-      const vocabTasks = tasksFor(vocabByWeek[w] ?? [], "vocab", "Vocab");
+      // second-level split: this week's items across its six study days
+      const grammarByDay = distributeEvenly(grammarByWeek[w] ?? [], STUDY_DAYS);
+      const vocabByDay = distributeEvenly(vocabByWeek[w] ?? [], STUDY_DAYS);
 
-      if (monTasks.length) byDayOffset.set(base + 0, monTasks);
-      if (tueTasks.length) byDayOffset.set(base + 1, tueTasks);
-      if (vocabTasks.length) byDayOffset.set(base + 2, vocabTasks);
+      for (let d = 0; d < STUDY_DAYS; d++) {
+        const dayTasks: DefaultRoadmapTask[] = [];
+        const g = grammarByDay[d] ?? [];
+        dayTasks.push(...(g.length ? tasksFor(g, "grammar", "Grammar") : [GRAMMAR_CONSOLIDATION]));
+        const v = vocabByDay[d] ?? [];
+        dayTasks.push(...(v.length ? tasksFor(v, "vocab", "Vocab") : [VOCAB_CONSOLIDATION]));
+        byDayOffset.set(base + d, dayTasks);
+      }
     }
   }
 
@@ -97,10 +127,11 @@ export function deriveSyllabusTasks(syllabusRows: SyllabusRowForGeneration[]): M
 }
 
 /**
- * Merges the hand-authored roadmap skeleton with syllabus-derived Mon/Tue/Wed
- * tasks for a specific user's live syllabus rows. This — not
- * DEFAULT_ROADMAP_DAYS directly — is what activation/reseed in
- * routes/roadmap.ts should materialize.
+ * Merges the hand-authored roadmap skeleton with syllabus-derived grammar/vocab
+ * for each study day of a specific user's live syllabus rows. Generated
+ * grammar/vocab are prepended so each day reads grammar → vocab → reading →
+ * listening → speaking → writing. This — not DEFAULT_ROADMAP_DAYS directly — is
+ * what activation/reseed in routes/roadmap.ts materializes.
  */
 export function buildUserRoadmapPlan(syllabusRows: SyllabusRowForGeneration[]): DefaultRoadmapDay[] {
   const generated = deriveSyllabusTasks(syllabusRows);
