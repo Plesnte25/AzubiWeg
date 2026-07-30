@@ -351,7 +351,7 @@ export default function Dashboard() {
         <div className="flex min-h-0 flex-1 flex-col divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-card">
           <div className="shrink-0 p-3">
             {data.roadmapWeekStrip.length === 0 ? (
-              <Link to="/learning?group=progress" className="text-sm text-brand-700 hover:underline">
+              <Link to="/learning?view=roadmap" className="text-sm text-brand-700 hover:underline">
                 Start your 26-week roadmap →
               </Link>
             ) : (
@@ -404,7 +404,7 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   {data.dueToday > 0 && (
                     <TaskListItem
-                      to="/review"
+                      to="/vocabulary"
                       title="Start today's revision"
                       meta={`${data.dueToday} word${data.dueToday === 1 ? "" : "s"} due`}
                       tone="warning"

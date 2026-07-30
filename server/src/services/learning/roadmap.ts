@@ -31,6 +31,7 @@ export function dayStatus(day: DayLike, today: Date): DayStatus {
 interface TaskLike {
   id: string;
   completedAt: Date | null;
+  droppedAt?: Date | null;
 }
 
 interface BacklogDayLike<T extends TaskLike> {
@@ -63,7 +64,7 @@ export function computeBacklog<T extends TaskLike>(
     .map((day) => ({
       day,
       offset: daysUntil(day.date, today),
-      incomplete: day.tasks.filter((t) => t.completedAt === null),
+      incomplete: day.tasks.filter((t) => t.completedAt === null && !t.droppedAt),
     }))
     .filter((d) => d.offset < 0 && d.incomplete.length > 0)
     .sort((a, b) => a.offset - b.offset)
@@ -78,7 +79,7 @@ export function computeBacklog<T extends TaskLike>(
 
 interface ExistingDay {
   dayOffset: number;
-  tasks: { title: string; completedAt: Date | null }[];
+  tasks: { title: string; completedAt: Date | null; droppedAt: Date | null }[];
 }
 
 export interface ReseedDayPlan {
@@ -91,6 +92,7 @@ export interface ReseedDayPlan {
     title: string;
     description: string | null;
     completedAt: Date | null;
+    droppedAt: Date | null;
     syllabusItemId: string | null;
   }[];
 }
@@ -106,27 +108,38 @@ const normalize = (title: string) => title.trim().toLowerCase();
  * drift, so title-matching never applies to them. Dates are never part of
  * this plan — callers always re-derive `date = roadmapStartedAt +
  * dayOffset` themselves, so a reseed can never shift when a day falls.
+ *
+ * `droppedAt` (a task the user chose to abandon rather than complete) has no
+ * live source of truth to fall back on the way syllabus-linked completedAt
+ * does, so it's always carried by the (dayOffset, title) key, even for
+ * syllabus-linked tasks — dropping a day's occurrence of a grammar/vocab
+ * task never touches the underlying SyllabusItem's own completion.
  */
 export function diffReseed(existingDays: ExistingDay[], newContent: DefaultRoadmapDay[]): ReseedDayPlan[] {
   const completedByKey = new Map<string, Date>();
+  const droppedByKey = new Map<string, Date>();
   for (const day of existingDays) {
     for (const task of day.tasks) {
-      if (task.completedAt) completedByKey.set(`${day.dayOffset}|${normalize(task.title)}`, task.completedAt);
+      const k = `${day.dayOffset}|${normalize(task.title)}`;
+      if (task.completedAt) completedByKey.set(k, task.completedAt);
+      if (task.droppedAt) droppedByKey.set(k, task.droppedAt);
     }
   }
   return newContent.map((day) => ({
     dayOffset: day.dayOffset,
     theme: day.theme,
-    tasks: day.tasks.map((task, i) => ({
-      sortOrder: i,
-      type: task.type,
-      skill: task.skill ?? null,
-      title: task.title,
-      description: task.description ?? null,
-      syllabusItemId: task.syllabusItemId ?? null,
-      completedAt: task.syllabusItemId
-        ? (task.completedAt ?? null)
-        : (completedByKey.get(`${day.dayOffset}|${normalize(task.title)}`) ?? null),
-    })),
+    tasks: day.tasks.map((task, i) => {
+      const k = `${day.dayOffset}|${normalize(task.title)}`;
+      return {
+        sortOrder: i,
+        type: task.type,
+        skill: task.skill ?? null,
+        title: task.title,
+        description: task.description ?? null,
+        syllabusItemId: task.syllabusItemId ?? null,
+        completedAt: task.syllabusItemId ? (task.completedAt ?? null) : (completedByKey.get(k) ?? null),
+        droppedAt: droppedByKey.get(k) ?? null,
+      };
+    }),
   }));
 }

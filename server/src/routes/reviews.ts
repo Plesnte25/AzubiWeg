@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { checkAndAwardBadges } from "../services/gamification/engine.js";
 import { computeReviewStats, computeWeakWords } from "../services/reviews/history.js";
 import { schedule } from "../services/srs.js";
+import { withComputedFields } from "../services/vocab/classify.js";
 import { formatSrLine, parseSrLine } from "../services/vault/format.js";
 import { vaultSync } from "../services/vault/sync.js";
 
@@ -74,7 +75,7 @@ reviewsRouter.get("/queue", async (req, res) => {
       take: newLimit,
     }),
   ]);
-  res.json({ due, fresh });
+  res.json({ due: due.map(withComputedFields), fresh: fresh.map(withComputedFields) });
 });
 
 const gradeSchema = z.object({ grade: z.enum(["hard", "good", "easy"]) });
@@ -117,6 +118,11 @@ reviewsRouter.post("/:wordId", async (req, res) => {
       },
     });
   }
+  // leech is app-only state (see schema.prisma) — clearing it on a good
+  // grade never touches the vault, regardless of user.vaultPath above.
+  if (grade === "easy" && word.leech) {
+    await prisma.word.update({ where: { id: word.id }, data: { leech: false } });
+  }
 
   await prisma.reviewLog.create({
     data: { wordId: word.id, grade, intervalAfter: next.interval },
@@ -125,9 +131,11 @@ reviewsRouter.post("/:wordId", async (req, res) => {
 
   res.json({
     next,
-    word: await prisma.word.findUnique({
-      where: { userId_sortKey: { userId: req.userId, sortKey: word.sortKey } },
-    }),
+    word: withComputedFields(
+      await prisma.word.findUniqueOrThrow({
+        where: { userId_sortKey: { userId: req.userId, sortKey: word.sortKey } },
+      }),
+    ),
     newlyUnlockedBadges,
   });
 });

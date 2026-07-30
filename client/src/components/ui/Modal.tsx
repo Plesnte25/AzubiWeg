@@ -6,11 +6,11 @@ import { cn } from "../../lib/cn";
 interface ModalProps {
   title: string;
   onClose: () => void;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   children: ReactNode;
 }
 
-const SIZE_CLASSES = { sm: "max-w-md", md: "max-w-lg", lg: "max-w-2xl" };
+const SIZE_CLASSES = { sm: "max-w-md", md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-5xl" };
 
 const FOCUSABLE = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
 

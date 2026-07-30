@@ -10,7 +10,6 @@ import {
   LayoutDashboard,
   Link2,
   ListChecks,
-  RotateCcw,
   Send,
   Settings as SettingsIcon,
   Sparkles,
@@ -22,7 +21,6 @@ import ThemeToggle from "./ThemeToggle";
 const tabs = [
   { to: "/", label: "Dashboard", end: true, icon: LayoutDashboard },
   { to: "/vocabulary", label: "Vocabulary", icon: BookOpen },
-  { to: "/review", label: "Review", icon: RotateCcw },
   { to: "/learning", label: "Learning Hub", icon: GraduationCap },
   { to: "/cv", label: "CV", icon: FileText },
   { to: "/applications", label: "Applications", icon: Briefcase },

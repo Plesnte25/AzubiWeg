@@ -5,6 +5,26 @@ export interface User {
   vaultPath: string | null;
 }
 
+export type Wortart = "Nomen" | "Verb" | "Adjektiv" | "Adverb" | "Funktionswort" | "Wendung";
+export type Genus = "der" | "die" | "das" | null;
+export type SrsState = "new" | "due" | "learning" | "mastered";
+
+export type Themenfeld =
+  | "person_familie"
+  | "alltag_zuhause"
+  | "essen_einkaufen"
+  | "arbeit_ausbildung"
+  | "bildung"
+  | "gesundheit"
+  | "reise_verkehr"
+  | "freizeit_kultur"
+  | "medien_technik"
+  | "geld"
+  | "amt_buerokratie"
+  | "gefuehle_meinung"
+  | "natur_umwelt"
+  | "gesellschaft";
+
 export interface Word {
   id: string;
   headword: string;
@@ -12,6 +32,7 @@ export interface Word {
   meaning: string | null;
   ipa: string | null;
   grammar: string | null;
+  form: string | null;
   example: string | null;
   audioPath: string | null;
   lesson: string | null;
@@ -19,6 +40,14 @@ export interface Word {
   srInterval: number | null;
   srEase: number | null;
   createdAt: string;
+  // app-only, persisted (server/src/prisma/schema.prisma's Word model)
+  themenfeld: Themenfeld[];
+  level: CefrLevel | null;
+  leech: boolean;
+  // computed at read time, never persisted (server/src/services/vocab/classify.ts)
+  wortart: Wortart;
+  genus: Genus;
+  state: SrsState;
 }
 
 export type RoadmapDayStripStatus = "done" | "overdue" | "today" | "upcoming";
@@ -264,10 +293,26 @@ export interface SyllabusItem {
   examples: string | null;
   exceptions: string | null;
   commonMistakes: string | null;
+  // "station" = every item sharing (level, theme); skipping bulk-stamps this
+  // across the whole group (see PATCH /syllabus/station)
+  skippedAt: string | null;
   files: UploadedFileMeta[];
   // set when this topic is scheduled on the active roadmap (same fact,
   // synced via the roadmap/syllabus completion link)
   roadmapDayOffset: number | null;
+}
+
+export interface RoutePace {
+  itemsPerWeek: number;
+  projectedFinishDate: string | null;
+  examTargetDate: string | null;
+  weeksBehindPace: number | null;
+}
+
+export interface SyllabusResponse {
+  levels: LevelProgress[];
+  items: SyllabusItem[];
+  routePace: RoutePace;
 }
 
 export interface LevelProgress {
@@ -336,8 +381,10 @@ export interface SelfTestResult {
 
 export interface QuizResultsResponse {
   results: SelfTestResult[];
+  testsTaken: number;
   best: number | null;
   avg: number | null;
+  weakestTopics: RoadmapTopicWeakness[];
 }
 
 export type RoadmapTaskType = "generic" | "vocab" | "study_source" | "milestone_test";
@@ -363,6 +410,7 @@ export interface RoadmapTask {
   journalEntry: string | null;
   minutesSpent: number | null;
   completedAt: string | null;
+  droppedAt: string | null;
   files: UploadedFileMeta[];
   // set when this task's content is derived from a syllabus topic — the
   // same fact as that SyllabusItem's completion, kept in sync
@@ -467,6 +515,46 @@ export interface RoadmapMonthlyReview extends RoadmapReviewSummary {
   monthEnd: string;
 }
 
+export interface MovedTask {
+  id: string;
+  fromDayOffset: number;
+}
+
+export interface RoadmapPace {
+  plannedTasksPerDay: number;
+  actualTasksPerDay: number;
+  daysLeft: number;
+}
+
+export interface RoadmapWeekDay {
+  date: string;
+  dayOffset: number;
+  theme: string | null;
+  tasks: RoadmapTask[];
+  status: RoadmapDayStatus;
+}
+
+export interface RoadmapWeekOverviewEntry {
+  week: number;
+  taskCount: number;
+  doneCount: number;
+  isCurrentWeek: boolean;
+  isExamWeek: boolean;
+}
+
+export interface RoadmapWeekResponse {
+  week: number;
+  totalWeeks: number;
+  weekStart: string;
+  weekEnd: string;
+  theme: string | null;
+  days: RoadmapWeekDay[];
+  thisWeek: { done: number; total: number };
+  lateAcrossPlan: number;
+  pace: RoadmapPace;
+  weeksOverview: RoadmapWeekOverviewEntry[];
+}
+
 export interface GoetheReadiness {
   level: CefrLevel;
   syllabusPercent: number;
@@ -494,6 +582,68 @@ export interface ActivitySummary {
   minutesToday: number;
   minutesThisWeek: number;
   history: { date: string; minutes: number }[];
+}
+
+export interface SavedLink {
+  id: string;
+  title: string;
+  url: string;
+  skill: RoadmapSkill | null;
+  note: string | null;
+  createdAt: string;
+}
+
+export type ActivityFeedFilter = "all" | "lessons" | "links";
+
+export interface ActivityFeedEntry {
+  id: string;
+  at: string;
+  kind: "lesson" | "manual" | "link";
+  sourceId: string | null;
+  sourceTitle: string | null;
+  title: string;
+  notes: string | null;
+}
+
+export interface ActivityFeedResponse {
+  entries: ActivityFeedEntry[];
+  nextCursor: string | null;
+}
+
+export type ProgressPeriod = "7d" | "30d" | "90d" | "all";
+
+export interface ProgressKpi {
+  value: number | null;
+  total?: number;
+  delta?: number | null;
+  deltaPercent?: number | null;
+  deltaPoints?: number | null;
+}
+
+export interface ProgressResponse {
+  period: ProgressPeriod;
+  rangeStart: string;
+  rangeEnd: string;
+  kpis: {
+    tasksKept: { value: number; total: number; delta: number | null };
+    minutes: { value: number; deltaPercent: number | null };
+    testAvg: { value: number | null; deltaPoints: number | null };
+    syllabusPercent: { value: number; deltaPoints: number };
+    streak: { current: number; best: number };
+  };
+  chart: { labels: string[]; current: number[]; previous: number[] };
+  bySkill: { skill: RoadmapSkill; done: number; planned: number; dropped: number }[];
+  weakAreas: RoadmapTopicWeakness[];
+  improvedMost: { topic: string; percent: number; deltaPoints: number }[];
+  streakGrid: { date: string; minutes: number }[];
+  readiness: GoetheReadiness;
+  timeCoverage: { tasksCompleted: number; tasksWithLoggedTime: number };
+}
+
+export interface NotebookLinkResult {
+  matched: boolean;
+  candidates?: string[];
+  item?: SyllabusItem;
 }
 
 export interface AppNotification {

@@ -13,6 +13,9 @@ export type BankQuestion =
       prompt: string;
       choices: string[];
       answerIndex: number;
+      // most questions don't have one authored yet — the Feedback screen
+      // falls back to restating the correct choice when this is unset
+      explanation?: string;
     }
   | {
       id: string;
@@ -24,6 +27,7 @@ export type BankQuestion =
       // comparison normalizes both sides (see engine normalizeAnswer)
       prompt: string;
       accepted: string[];
+      explanation?: string;
     }
   | {
       id: string;
@@ -33,6 +37,7 @@ export type BankQuestion =
       type: "true_false";
       prompt: string;
       answer: boolean;
+      explanation?: string;
     };
 
 /**

@@ -25,3 +25,20 @@ export function computeDayStreak(timestamps: Date[], today: Date): number {
   }
   return streak;
 }
+
+/** Longest-ever run of consecutive active days — the Progress destination's
+ * "best" streak, distinct from computeDayStreak's "current, still-alive"
+ * count. Walks the sorted distinct day-keys once. */
+export function computeBestStreak(timestamps: Date[]): number {
+  const days = [...new Set(timestamps.map(localDateKey))].sort();
+  if (days.length === 0) return 0;
+  let best = 1;
+  let run = 1;
+  for (let i = 1; i < days.length; i++) {
+    const prev = new Date(days[i - 1]!);
+    prev.setDate(prev.getDate() + 1);
+    run = localDateKey(prev) === days[i] ? run + 1 : 1;
+    best = Math.max(best, run);
+  }
+  return best;
+}
