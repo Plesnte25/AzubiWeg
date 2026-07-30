@@ -1,4 +1,6 @@
 import type {
+  ActivityFeedFilter,
+  ActivityFeedResponse,
   ActivitySummary,
   AppNotification,
   Application,
@@ -15,9 +17,12 @@ import type {
   DashboardData,
   Grade,
   CefrLevel,
-  LevelProgress,
+  MovedTask,
+  NotebookLinkResult,
   PlaylistFetchOutcome,
   Portal,
+  ProgressPeriod,
+  ProgressResponse,
   QuizResultsResponse,
   GoetheReadiness,
   ReviewHistoryEntry,
@@ -32,17 +37,22 @@ import type {
   RoadmapTask,
   RoadmapTodayResponse,
   RoadmapWeeklyReview,
+  RoadmapWeekResponse,
+  SavedLink,
   SelfTestResult,
   SessionQuestion,
   StudySource,
   StudySourceType,
+  SyllabusCategory,
   SyllabusItem,
+  SyllabusResponse,
   TopicBreakdown,
   UnlockedBadge,
   UploadedFileMeta,
   User,
   VaultStatus,
   WeakWord,
+  Themenfeld,
   Word,
 } from "./types";
 
@@ -107,21 +117,22 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  words: (params: { search?: string; lesson?: string; due?: boolean } = {}) => {
-    const q = new URLSearchParams();
-    if (params.search) q.set("search", params.search);
-    if (params.lesson) q.set("lesson", params.lesson);
-    if (params.due) q.set("due", "true");
-    return request<{ words: Word[] }>(`/api/words?${q}`);
-  },
+  // Faceting/search/grouping all happen client-side now (the shelves UI
+  // needs the whole set in memory for cross-filtered facet counts anyway)
+  // — this always fetches the full vault, no query params.
+  words: () => request<{ words: Word[] }>("/api/words"),
   wordsMeta: () => request<{ lessons: { lesson: string; count: number }[] }>("/api/words/meta"),
-  addWords: (words: string[], lesson?: string) =>
+  addWords: (words: string[], lesson?: string, classification?: { themenfeld?: Themenfeld[]; level?: CefrLevel }) =>
     request<{ words: Word[]; newlyUnlockedBadges: UnlockedBadge[] }>("/api/words", {
       method: "POST",
-      body: JSON.stringify({ words, ...(lesson ? { lesson } : {}) }),
+      body: JSON.stringify({ words, ...(lesson ? { lesson } : {}), ...classification }),
     }),
-  updateWord: (id: string, data: Partial<Pick<Word, "meaning" | "ipa" | "grammar" | "example" | "lesson">>) =>
-    request<{ word: Word }>(`/api/words/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  updateWord: (
+    id: string,
+    data: Partial<
+      Pick<Word, "meaning" | "ipa" | "grammar" | "example" | "lesson" | "themenfeld" | "level" | "leech">
+    >,
+  ) => request<{ word: Word }>(`/api/words/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteWord: (id: string) => request<void>(`/api/words/${id}`, { method: "DELETE" }),
 
   reviewQueue: () => request<{ due: Word[]; fresh: Word[] }>("/api/reviews/queue"),
@@ -208,8 +219,7 @@ export const api = {
   deleteApplicationEvent: (id: string, eventId: string) =>
     request<void>(`/api/applications/${id}/events/${eventId}`, { method: "DELETE" }),
 
-  learningSyllabus: () =>
-    request<{ levels: LevelProgress[]; items: SyllabusItem[] }>("/api/learning/syllabus"),
+  learningSyllabus: () => request<SyllabusResponse>("/api/learning/syllabus"),
   toggleSyllabusItem: (id: string, completed: boolean) =>
     request<{ item: SyllabusItem }>(`/api/learning/syllabus/${id}`, {
       method: "PATCH",
@@ -223,6 +233,22 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
+  setStationSkipped: (level: CefrLevel, theme: string, skipped: boolean) =>
+    request<{ updated: number }>("/api/learning/syllabus/station", {
+      method: "PATCH",
+      body: JSON.stringify({ level, theme, skipped }),
+    }),
+  addSyllabusItem: (data: {
+    level: CefrLevel;
+    category: SyllabusCategory;
+    theme: string;
+    title: string;
+    description?: string | null;
+    afterTheme?: string | null;
+  }) => request<{ item: SyllabusItem }>("/api/learning/syllabus/item", { method: "POST", body: JSON.stringify(data) }),
+  replanRoute: (level: CefrLevel) =>
+    request<{ moved: number; studyDays: number }>("/api/learning/syllabus/replan", { method: "POST", body: JSON.stringify({ level }) }),
+
   learningSources: () => request<{ sources: StudySource[] }>("/api/learning/sources"),
   addStudySource: (data: {
     type: StudySourceType;
@@ -271,6 +297,19 @@ export const api = {
     }),
   deleteStudySource: (id: string) =>
     request<void>(`/api/learning/sources/${id}`, { method: "DELETE" }),
+  sourcesActivity: (opts: { cursor?: string; type?: ActivityFeedFilter } = {}) =>
+    request<ActivityFeedResponse>(
+      `/api/learning/sources/activity?${new URLSearchParams({
+        ...(opts.cursor ? { cursor: opts.cursor } : {}),
+        ...(opts.type ? { type: opts.type } : {}),
+      })}`,
+    ),
+
+  savedLinks: () => request<{ links: SavedLink[] }>("/api/learning/saved-links"),
+  addSavedLink: (data: { title: string; url: string; skill?: RoadmapSkill | null; note?: string | null }) =>
+    request<{ link: SavedLink }>("/api/learning/saved-links", { method: "POST", body: JSON.stringify(data) }),
+  deleteSavedLink: (id: string) => request<void>(`/api/learning/saved-links/${id}`, { method: "DELETE" }),
+
   startSelfTest: (opts: { size?: number } = {}) =>
     request<{ questions: SessionQuestion[]; level: CefrLevel }>("/api/learning/quiz", {
       method: "POST",
@@ -289,6 +328,13 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  addToNotebook: (data: {
+    level: CefrLevel;
+    topic: string;
+    questionPrompt: string;
+    explanation?: string | null;
+    theme?: string | null;
+  }) => request<NotebookLinkResult>("/api/learning/quiz/notebook", { method: "POST", body: JSON.stringify(data) }),
 
   roadmapStatus: () => request<RoadmapStatus>("/api/learning/roadmap/status"),
   activateRoadmap: (startDate?: string) =>
@@ -301,9 +347,17 @@ export const api = {
   roadmapDay: (date: string) => request<{ day: RoadmapDayDetail }>(`/api/learning/roadmap/day/${date}`),
   roadmapCalendar: (month: string) =>
     request<{ days: RoadmapCalendarDay[] }>(`/api/learning/roadmap/calendar?month=${month}`),
+  roadmapWeek: (week?: number) =>
+    request<RoadmapWeekResponse>(`/api/learning/roadmap/week${week ? `?week=${week}` : ""}`),
   updateRoadmapTask: (
     id: string,
-    data: Partial<{ completed: boolean; journalEntry: string | null; minutesSpent: number | null }>,
+    data: Partial<{
+      completed: boolean;
+      dropped: boolean;
+      journalEntry: string | null;
+      minutesSpent: number | null;
+      dayOffset: number;
+    }>,
   ) =>
     request<{ task: RoadmapTask }>(`/api/learning/roadmap/tasks/${id}`, {
       method: "PATCH",
@@ -314,6 +368,17 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ completed }),
     }),
+  rescheduleRoadmapTask: (id: string, dayOffset: number) =>
+    request<{ task: RoadmapTask }>(`/api/learning/roadmap/tasks/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ dayOffset }),
+    }),
+  addRoadmapTask: (data: { date: string; title: string; description?: string | null; skill?: RoadmapSkill | null }) =>
+    request<{ task: RoadmapTask }>("/api/learning/roadmap/tasks", { method: "POST", body: JSON.stringify(data) }),
+  pullBacklogIntoToday: () =>
+    request<{ moved: MovedTask[] }>("/api/learning/roadmap/backlog/pull-into-today", { method: "POST" }),
+  spreadBacklog: () =>
+    request<{ moved: MovedTask[]; overDays: number }>("/api/learning/roadmap/backlog/spread", { method: "POST" }),
   roadmapJournal: (skill: RoadmapSkill) =>
     request<{ tasks: RoadmapJournalTask[] }>(`/api/learning/roadmap/journal/${skill}`),
   roadmapWeeklyReview: (date?: string) =>
@@ -321,6 +386,13 @@ export const api = {
   roadmapMonthlyReview: (month: string) =>
     request<RoadmapMonthlyReview>(`/api/learning/roadmap/review/month?month=${month}`),
   goetheReadiness: () => request<GoetheReadiness>("/api/learning/roadmap/readiness"),
+  setExamTarget: (examTargetDate: string | null) =>
+    request<{ examTargetDate: string | null }>("/api/learning/roadmap/exam-target", {
+      method: "PATCH",
+      body: JSON.stringify({ examTargetDate }),
+    }),
+  learningProgress: (period: ProgressPeriod = "30d") =>
+    request<ProgressResponse>(`/api/learning/roadmap/progress?period=${period}`),
 
   portals: () => request<{ portals: Portal[] }>("/api/portals"),
   addPortal: (data: { label: string; url: string }) =>

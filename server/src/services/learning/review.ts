@@ -42,6 +42,21 @@ export interface ReviewSummary {
   dailyMinutesBySkill: DailySkillMinutes[];
 }
 
+/** Shared by aggregateReview (date-scoped) and the Self-tests destination's
+ * all-time weak-areas footer (unscoped) — worst-percent first. */
+export function weakAreasFromBreakdowns(breakdowns: { topic: string; correct: number; total: number }[]): TopicWeakness[] {
+  const topicTotals = new Map<string, { correct: number; total: number }>();
+  for (const b of breakdowns) {
+    const entry = topicTotals.get(b.topic) ?? { correct: 0, total: 0 };
+    entry.correct += b.correct;
+    entry.total += b.total;
+    topicTotals.set(b.topic, entry);
+  }
+  return [...topicTotals.entries()]
+    .map(([topic, v]) => ({ topic, ...v, percent: v.total === 0 ? 0 : Math.round((v.correct / v.total) * 100) }))
+    .sort((a, b) => a.percent - b.percent);
+}
+
 /**
  * Pure aggregation over data the caller has already scoped to a date range
  * (a week or a month) via its own Prisma `where` clauses — same recipe
@@ -76,16 +91,7 @@ export function aggregateReview(input: {
     dailySkillTotals.set(key, entry);
   }
 
-  const topicTotals = new Map<string, { correct: number; total: number }>();
-  for (const b of input.selfTestBreakdowns) {
-    const entry = topicTotals.get(b.topic) ?? { correct: 0, total: 0 };
-    entry.correct += b.correct;
-    entry.total += b.total;
-    topicTotals.set(b.topic, entry);
-  }
-  const weakAreas = [...topicTotals.entries()]
-    .map(([topic, v]) => ({ topic, ...v, percent: v.total === 0 ? 0 : Math.round((v.correct / v.total) * 100) }))
-    .sort((a, b) => a.percent - b.percent);
+  const weakAreas = weakAreasFromBreakdowns(input.selfTestBreakdowns);
 
   return {
     vocabAdded: input.wordsAdded,

@@ -15,7 +15,6 @@ import Login from "./pages/Login";
 const Applications = lazy(() => import("./pages/Applications"));
 const Checklist = lazy(() => import("./pages/Checklist"));
 const LearningHub = lazy(() => import("./pages/learning-hub"));
-const Review = lazy(() => import("./pages/Review"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Vocabulary = lazy(() => import("./pages/Vocabulary"));
 // the CV pages additionally pull in @react-pdf/renderer (~1.5 MB)
@@ -45,9 +44,9 @@ const router = createBrowserRouter([
         children: [
           { path: "/", element: <Dashboard /> },
           { path: "/vocabulary", element: <Lazy><Vocabulary /></Lazy> },
-          { path: "/review", element: <Lazy><Review /></Lazy> },
+          { path: "/review", element: <Navigate to="/vocabulary" replace /> },
           { path: "/learning", element: <Lazy><LearningHub /></Lazy> },
-          { path: "/roadmap", element: <Navigate to="/learning" replace /> },
+          { path: "/roadmap", element: <Navigate to="/learning?view=roadmap" replace /> },
           { path: "/applications", element: <Lazy><Applications /></Lazy> },
           { path: "/cv", element: <Lazy><CvList /></Lazy> },
           { path: "/cv/:id", element: <Lazy><CvEditor /></Lazy> },

@@ -1,22 +1,23 @@
-import type { RoadmapSkill } from "../api/types";
+import type { RoadmapSkill } from "@prisma/client";
 
-export interface Resource {
+export interface DefaultSavedLink {
   skill: RoadmapSkill;
   title: string;
   url: string;
   note?: string;
 }
 
-/** Hand-authored from the source roadmap's "Resource Stack" section, adapted:
- * anything AzubiWeg already covers itself (vocab SRS, self-tests) is noted
- * rather than pointed at an external tool. */
-export const RESOURCES: Resource[] = [
+/** Mirrors client/src/lib/resources.ts's curated list — seeded once per user
+ * into their own editable SavedLink rows (see ensureSavedLinksSeeded), then
+ * that copy is the live source of truth, not this one. Bump nothing here on
+ * a content edit; a already-seeded user's own copy is theirs to edit/delete. */
+export const DEFAULT_SAVED_LINKS: DefaultSavedLink[] = [
   { skill: "grammar", title: "Goethe-Institut online courses (A1–B1)", url: "https://www.goethe.de/", note: "Structured curriculum with tutor support." },
-  { skill: "listening", title: "DW Nicos Weg", url: "https://learngerman.dw.com/en/nicos-weg/c-36519789", note: "Free video course, A1–B1 — already trackable as a Learning Source in this app." },
+  { skill: "listening", title: "DW Nicos Weg", url: "https://learngerman.dw.com/en/nicos-weg/c-36519789", note: "Free video course, A1–B1 — already trackable as a Learning Source." },
   { skill: "speaking", title: "Lingoda Sprint", url: "https://www.lingoda.com/", note: "Optional intensive live classes for speaking practice." },
   { skill: "grammar", title: "DeutschAkademie App", url: "https://www.deutschakademie.de/", note: "Free grammar drills." },
   { skill: "listening", title: "Seedlang", url: "https://seedlang.com/", note: "Story-based listening practice." },
-  { skill: "vocab", title: "Your vocab manager", url: "/vocabulary", note: "AzubiWeg's own SRS system — the roadmap's vocab tasks already link here." },
+  { skill: "vocab", title: "Your vocab manager", url: "/vocabulary", note: "This app's own SRS system — roadmap vocab tasks already link here." },
   { skill: "listening", title: "DW Langsam Gesprochene Nachrichten", url: "https://learngerman.dw.com/en/langsam-gesprochene-nachrichten/", note: "Slow-spoken news, good for A1–A2." },
   { skill: "listening", title: "Easy German Podcast", url: "https://easygerman.org/podcast", note: "Normal-speed conversations with transcripts — good from B1 onward." },
   { skill: "reading", title: "Nachrichtenleicht", url: "https://www.nachrichtenleicht.de/", note: "Simplified news articles for reading practice." },

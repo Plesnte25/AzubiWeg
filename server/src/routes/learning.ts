@@ -2,11 +2,15 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { localDateKey } from "../services/learning/activity.js";
 import { setSyllabusItemCompletion } from "../services/learning/completion-sync.js";
 import { buildSession } from "../services/learning/engine.js";
+import { computeRoutePace } from "../services/learning/pace.js";
 import { levelProgress, levelStates, sourcePercent } from "../services/learning/progress.js";
 import { QUESTION_BANK } from "../services/learning/question-bank.js";
+import { weakAreasFromBreakdowns } from "../services/learning/review.js";
 import { ensureSyllabusSeeded } from "../services/learning/syllabus-seed.js";
+import { ensureSavedLinksSeeded } from "../services/learning/saved-links-seed.js";
 import { extractCourseId, fetchCourse } from "../services/learning/nicosweg.js";
 import { buildCourseUnits, buildManualUnits, buildPlaylistUnits, resizeManualUnits, unitProgress } from "../services/learning/units.js";
 import { extractPlaylistId, fetchPlaylist } from "../services/learning/youtube.js";
@@ -27,21 +31,60 @@ const CORE_SKILL = z.enum(["grammar", "vocab", "listening", "speaking", "writing
 learningRouter.get("/syllabus", async (req, res) => {
   await ensureSyllabusSeeded(req.userId);
 
-  const items = await prisma.syllabusItem.findMany({
-    where: { userId: req.userId },
-    include: {
-      files: true,
-      // just enough to show "Scheduled -> Day N" when this topic is on the
-      // active roadmap; a syllabus item links to at most one roadmap task
-      roadmapTasks: { select: { day: { select: { dayOffset: true } } }, take: 1 },
-    },
-    orderBy: [{ level: "asc" }, { sortOrder: "asc" }],
-  });
+  const [items, user] = await Promise.all([
+    prisma.syllabusItem.findMany({
+      where: { userId: req.userId },
+      include: {
+        files: true,
+        // just enough to show "Scheduled -> Day N" when this topic is on the
+        // active roadmap; a syllabus item links to at most one roadmap task
+        roadmapTasks: { select: { day: { select: { dayOffset: true } } }, take: 1 },
+      },
+      orderBy: [{ level: "asc" }, { sortOrder: "asc" }],
+    }),
+    prisma.user.findUniqueOrThrow({ where: { id: req.userId }, select: { examTargetDate: true } }),
+  ]);
   const withRoadmapDay = items.map(({ roadmapTasks, ...item }) => ({
     ...item,
     roadmapDayOffset: roadmapTasks[0]?.day.dayOffset ?? null,
   }));
-  res.json({ levels: levelProgress(items), items: withRoadmapDay });
+
+  const levels = levelProgress(items);
+  const states = levelStates(levels);
+  const activeIdx = states.indexOf("active");
+  const activeLevel = activeIdx === -1 ? levels[levels.length - 1]?.level : levels[activeIdx]?.level;
+
+  // ROUTE PACE: remaining/recently-completed items in the active level only —
+  // a skipped item doesn't count as remaining (it's off the route), but
+  // doesn't count as done either
+  const activeItems = items.filter((i) => i.level === activeLevel);
+  const routePace = computeRoutePace({
+    remainingItems: activeItems.filter((i) => i.completedAt === null && i.skippedAt === null).length,
+    recentCompletions: activeItems.filter((i) => i.completedAt !== null).map((i) => i.completedAt as Date),
+    examTargetDate: user.examTargetDate,
+    today: new Date(),
+  });
+
+  res.json({ levels, items: withRoadmapDay, routePace });
+});
+
+// A "station" is every SyllabusItem sharing (level, theme) — derived, not a
+// separate table (see schema.prisma's SyllabusItem.skippedAt comment).
+// Registered before PATCH /syllabus/:id — Express matches route registration
+// order, and "station" would otherwise be swallowed by :id.
+
+const stationSchema = z.object({ level: LEVEL, theme: z.string().trim().min(1), skipped: z.boolean() });
+
+learningRouter.patch("/syllabus/station", async (req, res) => {
+  const parsed = stationSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+
+  const { count } = await prisma.syllabusItem.updateMany({
+    where: { userId: req.userId, level: parsed.data.level, theme: parsed.data.theme },
+    data: { skippedAt: parsed.data.skipped ? new Date() : null },
+  });
+  if (count === 0) return res.status(404).json({ error: "No station with that theme" });
+  res.json({ updated: count });
 });
 
 const toggleSchema = z
@@ -90,6 +133,123 @@ learningRouter.patch("/syllabus/:id", async (req, res) => {
   });
   const { roadmapTasks, ...rest } = item;
   res.json({ item: { ...rest, roadmapDayOffset: roadmapTasks[0]?.day.dayOffset ?? null } });
+});
+
+const createItemSchema = z.object({
+  level: LEVEL,
+  category: z.enum(["grammar", "vocab_theme", "skill"]),
+  theme: z.string().trim().min(1).max(100),
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(1000).nullish(),
+  // for a brand-new station only — where to insert it; omitted/null = at the
+  // end of the level. Ignored when `theme` matches an existing station (the
+  // item just joins it at its natural end).
+  afterTheme: z.string().trim().min(1).nullish(),
+});
+
+// "＋ Item" (adds to an open station) and "＋ Custom station" (a new theme
+// group, optionally positioned after an existing station) are the same
+// operation: create one SyllabusItem, inserted so its theme group stays
+// contiguous in sortOrder — the client's grouping-by-consecutive-theme
+// (Vocabulary-page-style) depends on that contiguity, not on any stored
+// station id.
+learningRouter.post("/syllabus/item", async (req, res) => {
+  const parsed = createItemSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+  const { afterTheme, ...data } = parsed.data;
+
+  const item = await prisma.$transaction(async (tx) => {
+    const sameStation = await tx.syllabusItem.findFirst({
+      where: { userId: req.userId, level: data.level, theme: data.theme },
+      orderBy: { sortOrder: "desc" },
+    });
+    const anchor =
+      sameStation ??
+      (afterTheme
+        ? await tx.syllabusItem.findFirst({
+            where: { userId: req.userId, level: data.level, theme: afterTheme },
+            orderBy: { sortOrder: "desc" },
+          })
+        : null);
+    const insertAt = anchor
+      ? anchor.sortOrder + 1
+      : ((await tx.syllabusItem.aggregate({ where: { userId: req.userId, level: data.level }, _max: { sortOrder: true } }))._max
+          .sortOrder ?? -1) + 1;
+
+    await tx.syllabusItem.updateMany({
+      where: { userId: req.userId, level: data.level, sortOrder: { gte: insertAt } },
+      data: { sortOrder: { increment: 1 } },
+    });
+    return tx.syllabusItem.create({
+      data: { userId: req.userId, sortOrder: insertAt, ...data },
+      include: { files: true, roadmapTasks: { select: { day: { select: { dayOffset: true } } }, take: 1 } },
+    });
+  });
+  const { roadmapTasks, ...rest } = item;
+  res.status(201).json({ item: { ...rest, roadmapDayOffset: roadmapTasks[0]?.day.dayOffset ?? null } });
+});
+
+const toDate = (s: string) => new Date(s + "T00:00:00Z");
+const todayLocal = () => toDate(localDateKey(new Date()));
+
+const replanSchema = z.object({ level: LEVEL });
+
+/**
+ * Compresses the remaining pace to hit the exam target: takes every
+ * still-open (not completed, not skipped) SyllabusItem in the level that
+ * already has a linked RoadmapTask, and re-spreads those tasks evenly across
+ * the real study days (days with a non-reflection task already scheduled —
+ * i.e. not Sundays) between today and the exam target date. This is the same
+ * dayId-reassignment mechanism the Roadmap destination's "Spread over 3
+ * days" bulk action already uses (routes/roadmap.ts), just windowed to a
+ * user-chosen date instead of a fixed 3 days. Doesn't touch the generator or
+ * the phase week ranges — a re-plan only moves already-generated tasks
+ * earlier/later within the plan, it never invents new ones.
+ */
+learningRouter.post("/syllabus/replan", async (req, res) => {
+  const parsed = replanSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
+  if (!user.examTargetDate) return res.status(400).json({ error: "Set an exam target date first" });
+  const today = todayLocal();
+  if (user.examTargetDate <= today) return res.status(400).json({ error: "Exam target date is in the past" });
+
+  const remainingItems = await prisma.syllabusItem.findMany({
+    where: { userId: req.userId, level: parsed.data.level, completedAt: null, skippedAt: null },
+    select: { id: true },
+    orderBy: { sortOrder: "asc" },
+  });
+  const remainingIds = remainingItems.map((i) => i.id);
+  if (remainingIds.length === 0) return res.json({ moved: 0, studyDays: 0 });
+
+  const linkedTasks = await prisma.roadmapTask.findMany({
+    where: { syllabusItemId: { in: remainingIds }, day: { userId: req.userId } },
+    select: { id: true, syllabusItemId: true },
+  });
+  // preserve the syllabus's own pedagogical order, not whatever order tasks happen to come back in
+  const orderById = new Map(remainingIds.map((id, i) => [id, i]));
+  linkedTasks.sort((a, b) => (orderById.get(a.syllabusItemId!) ?? 0) - (orderById.get(b.syllabusItemId!) ?? 0));
+
+  const windowDays = await prisma.roadmapDay.findMany({
+    where: { userId: req.userId, date: { gte: today, lte: user.examTargetDate } },
+    include: { tasks: { select: { skill: true } } },
+    orderBy: { date: "asc" },
+  });
+  const studyDays = windowDays.filter((d) => d.tasks.some((t) => t.skill !== "reflection"));
+  if (studyDays.length === 0) return res.status(400).json({ error: "No study days left before the exam target" });
+
+  const maxSortByDay = new Map<string, number>();
+  await prisma.$transaction(
+    linkedTasks.map((t, i) => {
+      const target = studyDays[i % studyDays.length]!;
+      const next = (maxSortByDay.get(target.id) ?? 1_000_000) + 1;
+      maxSortByDay.set(target.id, next);
+      return prisma.roadmapTask.update({ where: { id: t.id }, data: { dayId: target.id, sortOrder: next } });
+    }),
+  );
+
+  res.json({ moved: linkedTasks.length, studyDays: studyDays.length });
 });
 
 // ── study sources ──
@@ -350,6 +510,139 @@ learningRouter.delete("/sources/:id", async (req, res) => {
   res.status(204).end();
 });
 
+// ── activity feed ──
+// StudySourceLog exists purely for the streak — it's written for BOTH a unit
+// completion and a manual +1 (see PATCH /sources/:id/units/:unitId and POST
+// /sources/:id/progress above). Displaying it here too would double up every
+// unit completion, so the feed only reads StudySourceLog for sources that
+// have no units at all (the manual, open-ended ones); unit-backed sources
+// show their StudySourceUnit completions instead.
+
+interface FeedEntry {
+  id: string;
+  at: Date;
+  kind: "lesson" | "manual" | "link";
+  sourceId: string | null;
+  sourceTitle: string | null;
+  title: string;
+  notes: string | null;
+}
+
+// "notes" was dropped as a distinct filter value — a note is always attached
+// to a lesson completion (no freestanding note entity exists), so it was a
+// strict subset of "lessons" and never surfaced anything new. See the client
+// SourcesPage.tsx FEED_FILTERS comment for the same reasoning.
+const ACTIVITY_FILTER = z.enum(["all", "lessons", "links"]).default("all");
+const FEED_PAGE_SIZE = 20;
+
+learningRouter.get("/sources/activity", async (req, res) => {
+  const filter = ACTIVITY_FILTER.safeParse(req.query.type).data ?? "all";
+  const cursorParsed = z.iso.datetime().safeParse(req.query.cursor);
+  const cursor = cursorParsed.success ? new Date(cursorParsed.data) : new Date();
+
+  const wantLessons = filter === "all" || filter === "lessons";
+  const wantLinks = filter === "all" || filter === "links";
+
+  const [units, logs, links] = await Promise.all([
+    wantLessons
+      ? prisma.studySourceUnit.findMany({
+          where: { source: { userId: req.userId }, completedAt: { lt: cursor } },
+          orderBy: { completedAt: "desc" },
+          take: FEED_PAGE_SIZE,
+          include: { source: { select: { id: true, title: true } } },
+        })
+      : [],
+    wantLessons
+      ? prisma.studySourceLog.findMany({
+          where: {
+            source: { userId: req.userId, units: { none: {} } },
+            loggedAt: { lt: cursor },
+            delta: { gt: 0 },
+          },
+          orderBy: { loggedAt: "desc" },
+          take: FEED_PAGE_SIZE,
+          include: { source: { select: { id: true, title: true } } },
+        })
+      : [],
+    wantLinks
+      ? prisma.savedLink.findMany({
+          where: { userId: req.userId, createdAt: { lt: cursor } },
+          orderBy: { createdAt: "desc" },
+          take: FEED_PAGE_SIZE,
+        })
+      : [],
+  ]);
+
+  const entries: FeedEntry[] = [
+    ...units
+      .filter((u) => u.completedAt !== null)
+      .map((u) => ({
+        id: `unit:${u.id}`,
+        at: u.completedAt as Date,
+        kind: "lesson" as const,
+        sourceId: u.source.id,
+        sourceTitle: u.source.title,
+        title: u.title,
+        notes: u.notes,
+      })),
+    ...logs.map((l) => ({
+      id: `log:${l.id}`,
+      at: l.loggedAt,
+      kind: "manual" as const,
+      sourceId: l.source.id,
+      sourceTitle: l.source.title,
+      title: `Logged ${l.delta} lesson${l.delta === 1 ? "" : "s"}`,
+      notes: null,
+    })),
+    ...links.map((l) => ({
+      id: `link:${l.id}`,
+      at: l.createdAt,
+      kind: "link" as const,
+      sourceId: null,
+      sourceTitle: null,
+      title: `Saved: ${l.title}`,
+      notes: l.note,
+    })),
+  ]
+    .sort((a, b) => b.at.getTime() - a.at.getTime())
+    .slice(0, FEED_PAGE_SIZE);
+
+  const nextCursor = entries.length === FEED_PAGE_SIZE ? entries[entries.length - 1]!.at.toISOString() : null;
+  res.json({ entries, nextCursor });
+});
+
+// ── saved links ──
+
+learningRouter.get("/saved-links", async (req, res) => {
+  await ensureSavedLinksSeeded(req.userId);
+  const links = await prisma.savedLink.findMany({ where: { userId: req.userId }, orderBy: { createdAt: "desc" } });
+  res.json({ links });
+});
+
+const createLinkSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  url: z.url().max(500),
+  skill: CORE_SKILL.or(z.enum(["bureaucracy", "milestone"])).nullish(),
+  note: z.string().trim().max(300).nullish(),
+});
+
+learningRouter.post("/saved-links", async (req, res) => {
+  const parsed = createLinkSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+
+  const link = await prisma.savedLink.create({
+    data: { userId: req.userId, ...parsed.data, skill: parsed.data.skill ?? null, note: parsed.data.note ?? null },
+  });
+  res.status(201).json({ link });
+});
+
+learningRouter.delete("/saved-links/:id", async (req, res) => {
+  const link = await prisma.savedLink.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  if (!link) return res.status(404).json({ error: "Saved link not found" });
+  await prisma.savedLink.delete({ where: { id: link.id } });
+  res.status(204).end();
+});
+
 // ── self-tests ──
 // Session-engine tests: authored A1–B1 bank questions mixed with questions
 // generated from the user's own vocabulary. Deliberately independent of the
@@ -423,16 +716,25 @@ learningRouter.get("/quiz/results", async (req, res) => {
     }),
     prisma.selfTestResult.findMany({
       where: { userId: req.userId },
-      select: { score: true, total: true },
+      select: { score: true, total: true, breakdown: true },
     }),
   ]);
   const percents = all.filter((r) => r.total > 0).map((r) => (r.score / r.total) * 100);
+  const allBreakdowns = all.flatMap((r) =>
+    Array.isArray(r.breakdown) ? (r.breakdown as { topic: string; correct: number; total: number }[]) : [],
+  );
+  // Self-tests entry screen's footer strip — all-time, not date-scoped like
+  // Weekly/Monthly Review's weakAreas
+  const weakestTopics = weakAreasFromBreakdowns(allBreakdowns).filter((w) => w.total > 0);
+
   res.json({
     results,
+    testsTaken: all.length,
     best: percents.length ? Math.round(Math.max(...percents)) : null,
     avg: percents.length
       ? Math.round(percents.reduce((a, b) => a + b, 0) / percents.length)
       : null,
+    weakestTopics: weakestTopics.slice(0, 2),
   });
 });
 
@@ -478,4 +780,63 @@ learningRouter.post("/quiz/results", async (req, res) => {
     },
   });
   res.status(201).json({ result });
+});
+
+// "Add to notebook" — a self-test question has no stored link to a syllabus
+// item (BankQuestion only carries a `topic` slug like "numbers-time", not a
+// syllabusItemId), so this matches by word-overlap between the topic slug
+// and the level's station (theme) names. Ambiguous or zero-overlap topics
+// return candidates instead of guessing — the client shows a small picker.
+const tokenize = (s: string) => new Set(s.toLowerCase().replace(/[^a-z0-9äöüß]+/g, " ").split(" ").filter(Boolean));
+
+const notebookSchema = z.object({
+  level: LEVEL,
+  topic: z.string().trim().min(1).max(60),
+  questionPrompt: z.string().trim().min(1).max(500),
+  explanation: z.string().trim().max(1000).nullish(),
+  // set on a second call once the client's picker resolves an ambiguous match
+  theme: z.string().trim().min(1).max(100).nullish(),
+});
+
+learningRouter.post("/quiz/notebook", async (req, res) => {
+  const parsed = notebookSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+  const { level, topic, questionPrompt, explanation, theme } = parsed.data;
+
+  const levelItems = await prisma.syllabusItem.findMany({
+    where: { userId: req.userId, level },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, theme: true, completedAt: true },
+  });
+
+  let targetTheme = theme ?? null;
+  if (!targetTheme) {
+    const topicTokens = tokenize(topic);
+    const themes = [...new Set(levelItems.map((i) => i.theme).filter((t): t is string => !!t))];
+    const scored = themes
+      .map((t) => ({ theme: t, score: [...topicTokens].filter((tok) => tokenize(t).has(tok)).length }))
+      .filter((s) => s.score > 0)
+      .sort((a, b) => b.score - a.score);
+    if (scored.length === 0 || (scored.length > 1 && scored[0]!.score === scored[1]!.score)) {
+      return res.json({ matched: false, candidates: themes });
+    }
+    targetTheme = scored[0]!.theme;
+  }
+
+  const inStation = levelItems.filter((i) => i.theme === targetTheme);
+  if (inStation.length === 0) return res.status(404).json({ error: "No station with that theme" });
+  // the item currently being worked on — first incomplete, else the last one
+  const target = inStation.find((i) => i.completedAt === null) ?? inStation[inStation.length - 1]!;
+
+  const existing = await prisma.syllabusItem.findUniqueOrThrow({ where: { id: target.id }, select: { examples: true } });
+  const entry = `[Self-test] ${questionPrompt}${explanation ? `\n${explanation}` : ""}`;
+  const examples = existing.examples ? `${existing.examples}\n\n${entry}` : entry;
+
+  const item = await prisma.syllabusItem.update({
+    where: { id: target.id },
+    data: { examples },
+    include: { files: true, roadmapTasks: { select: { day: { select: { dayOffset: true } } }, take: 1 } },
+  });
+  const { roadmapTasks, ...rest } = item;
+  res.json({ matched: true, item: { ...rest, roadmapDayOffset: roadmapTasks[0]?.day.dayOffset ?? null } });
 });

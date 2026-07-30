@@ -6,42 +6,22 @@ import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { BATCH_DELAY_MS, delay, enrichWord } from "../services/enrichment/index.js";
 import { checkAndAwardBadges } from "../services/gamification/engine.js";
+import { classifyTheme, THEMENFELD_VALUES, withComputedFields } from "../services/vocab/classify.js";
 import { formatCardLine } from "../services/vault/format.js";
 import { appAudioDir, cardFromBlock, makeCard, vaultFiles, vaultSync } from "../services/vault/sync.js";
 
 export const wordsRouter = Router();
 wordsRouter.use(requireAuth);
 
-const listQuerySchema = z.object({
-  search: z.string().optional(),
-  lesson: z.string().optional(),
-  letter: z.string().length(1).optional(),
-  due: z.coerce.boolean().optional(),
-});
-
+// Faceting (search/state/type/level/theme/source) is all client-side now —
+// the shelves UI needs the whole set in memory anyway for cross-filtered
+// facet counts, so replicating 6-way AND filtering in SQL isn't worth it.
 wordsRouter.get("/", async (req, res) => {
-  const parsed = listQuerySchema.safeParse(req.query);
-  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
-  const { search, lesson, letter, due } = parsed.data;
-
   const words = await prisma.word.findMany({
-    where: {
-      userId: req.userId,
-      ...(search
-        ? {
-            OR: [
-              { headword: { contains: search, mode: "insensitive" } },
-              { meaning: { contains: search, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-      ...(lesson ? { lesson } : {}),
-      ...(letter ? { sortKey: { startsWith: letter.toLowerCase() } } : {}),
-      ...(due ? { srDue: { lte: new Date() } } : {}),
-    },
+    where: { userId: req.userId },
     orderBy: { sortKey: "asc" },
   });
-  res.json({ words });
+  res.json({ words: words.map(withComputedFields) });
 });
 
 wordsRouter.get("/meta", async (req, res) => {
@@ -62,12 +42,16 @@ const addSchema = z.object({
     .string()
     .regex(/^[\w-]+$/)
     .nullish(),
+  // left unset ("Auto") to run classifyTheme() per word; sent explicit to skip it and use as-is
+  // (themenfeld is a non-nullable array column — [] means explicitly "Unclassified", not "auto")
+  themenfeld: z.array(z.enum(THEMENFELD_VALUES)).max(2).optional(),
+  level: z.enum(["a1", "a2", "b1"]).nullish(),
 });
 
 wordsRouter.post("/", async (req, res) => {
   const parsed = addSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
-  const { words, lesson } = parsed.data;
+  const { words, lesson, themenfeld: explicitThemenfeld, level: explicitLevel } = parsed.data;
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
   const audioDir = user.vaultPath ? vaultFiles(user.vaultPath).audioDir : appAudioDir(user.id);
@@ -100,11 +84,26 @@ wordsRouter.post("/", async (req, res) => {
         await prisma.word.deleteMany({ where: { userId: user.id, sortKey: word.toLowerCase() } });
       }
     }
-    added.push(
-      await prisma.word.findUnique({
-        where: { userId_sortKey: { userId: user.id, sortKey } },
-      }),
-    );
+
+    // themenfeld/level are app-only columns (never part of the vault card
+    // format), so this always writes straight to Postgres regardless of
+    // user.vaultPath.
+    const created = await prisma.word.findUniqueOrThrow({
+      where: { userId_sortKey: { userId: user.id, sortKey } },
+    });
+    // Level and Theme are overridden independently — leaving one on "Auto"
+    // while the other is explicit still runs the classifier for the "Auto" one.
+    const auto = classifyTheme(created);
+    const classified = {
+      themenfeld: explicitThemenfeld !== undefined ? explicitThemenfeld : auto.themenfeld,
+      level: explicitLevel !== undefined ? explicitLevel : auto.level,
+    };
+    const withClassification = await prisma.word.update({
+      where: { id: created.id },
+      data: classified,
+    });
+
+    added.push(withComputedFields(withClassification));
     if (i < words.length - 1) await delay(BATCH_DELAY_MS);
   }
   const newlyUnlockedBadges = await prisma.$transaction((tx) => checkAndAwardBadges(tx, user.id));
@@ -121,22 +120,27 @@ const patchSchema = z.object({
     .string()
     .regex(/^[\w-]+$/)
     .nullish(),
+  // app-only — never part of the vault card format, see the write path below
+  themenfeld: z.array(z.enum(THEMENFELD_VALUES)).max(2).optional(),
+  level: z.enum(["a1", "a2", "b1"]).nullish(),
+  leech: z.boolean().optional(),
 });
 
 wordsRouter.patch("/:id", async (req, res) => {
   const parsed = patchSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+  const { themenfeld, level, leech, ...vaultPatch } = parsed.data;
 
   const word = await prisma.word.findFirst({ where: { id: req.params.id, userId: req.userId } });
   if (!word) return res.status(404).json({ error: "Word not found" });
 
   const fields = {
-    meaning: parsed.data.meaning !== undefined ? parsed.data.meaning : word.meaning,
-    ipa: parsed.data.ipa !== undefined ? parsed.data.ipa : word.ipa,
-    grammar: parsed.data.grammar !== undefined ? parsed.data.grammar : word.grammar,
-    form: parsed.data.form !== undefined ? parsed.data.form : word.form,
-    example: parsed.data.example !== undefined ? parsed.data.example : word.example,
-    lesson: parsed.data.lesson !== undefined ? parsed.data.lesson : word.lesson,
+    meaning: vaultPatch.meaning !== undefined ? vaultPatch.meaning : word.meaning,
+    ipa: vaultPatch.ipa !== undefined ? vaultPatch.ipa : word.ipa,
+    grammar: vaultPatch.grammar !== undefined ? vaultPatch.grammar : word.grammar,
+    form: vaultPatch.form !== undefined ? vaultPatch.form : word.form,
+    example: vaultPatch.example !== undefined ? vaultPatch.example : word.example,
+    lesson: vaultPatch.lesson !== undefined ? vaultPatch.lesson : word.lesson,
     audioPath: word.audioPath,
   };
   const newLine = formatCardLine({ front: word.headword, ...fields });
@@ -155,10 +159,25 @@ wordsRouter.patch("/:id", async (req, res) => {
       data: { ...fields, rawBlock: newLine + oldCard.srLines.join("") },
     });
   }
+  // themenfeld/level/leech bypass the vault entirely — they have no
+  // representation in the card format, so they always go straight to
+  // Postgres regardless of user.vaultPath (see schema.prisma's Word model).
+  if (themenfeld !== undefined || level !== undefined || leech !== undefined) {
+    await prisma.word.update({
+      where: { id: word.id },
+      data: {
+        ...(themenfeld !== undefined ? { themenfeld } : {}),
+        ...(level !== undefined ? { level } : {}),
+        ...(leech !== undefined ? { leech } : {}),
+      },
+    });
+  }
   res.json({
-    word: await prisma.word.findUnique({
-      where: { userId_sortKey: { userId: user.id, sortKey: word.sortKey } },
-    }),
+    word: withComputedFields(
+      await prisma.word.findUniqueOrThrow({
+        where: { userId_sortKey: { userId: user.id, sortKey: word.sortKey } },
+      }),
+    ),
   });
 });
 

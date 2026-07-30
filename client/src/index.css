@@ -90,6 +90,63 @@
   --animate-slide-up: slide-up 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-scale-in: scale-in 150ms ease-out both;
   --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+
+  /* Genus (der/die/das) — a fixed identity system for the Vocabulary page's
+     word cards, deliberately kept OUTSIDE the adaptive SRS/semantic palette
+     above (der/die/das never mean "good"/"bad"), so these don't get
+     redefined in .dark either. */
+  --color-genus-der: #3b6fa8;
+  --color-genus-die: #a8497f;
+  --color-genus-das: #7a6a3a;
+
+  /* Wortart glyph colors (Vocabulary page). Several intentionally alias an
+     existing semantic color rather than duplicating its hex, so they still
+     re-theme with .dark; Nomen matches der's blue since most Nomen cards are
+     "der" nouns; Wendung reuses the vocab skill accent (lib/skills.ts). */
+  --color-wortart-nomen: var(--color-genus-der);
+  --color-wortart-verb: var(--color-danger-600);
+  --color-wortart-adjektiv: var(--color-ok-600);
+  --color-wortart-adverb: #8a6d1f;
+  --color-wortart-funktionswort: var(--color-ink-400);
+  --color-wortart-wendung: #ec4899;
+
+  /* SRS state identity (Vocabulary page: word-card dots, mastery bar,
+     state filter chips) — "new" reuses the same pink as Wendung above (the
+     handoff's "vocab accent" token), everything else aliases an existing
+     semantic color so it re-themes with .dark automatically. */
+  --color-state-new: var(--color-wortart-wendung);
+  --color-state-due: var(--color-brand-500);
+  --color-state-learning: #dcd9d4;
+  --color-state-mastered: var(--color-ok-600);
+  --color-state-problem: var(--color-danger-600);
+
+  /* Learning Hub "late / behind pace" identity — deliberately a distinct
+     rust-brown, not the generic --color-warning-* amber, so "overdue task"
+     and "generic warning" never get confused reading the same page (carried-
+     over tasks, roadmap late-day cards, route-pace behind-schedule line). */
+  --color-warn-500: #b06a2f;
+  --color-warn-tint-50: #fdf6f0;
+  --color-warn-tint-100: #f0dcc9;
+  --color-warn-tint-200: #e3c9b3;
+  --color-warn-700: #8a5526;
+
+  /* Nested surfaces on a --color-ink-900 base — the self-test full-bleed
+     runner and the Sources "Continue" hero card. Not re-themed in .dark:
+     these cards are dark by design in both themes (a deliberate departure
+     from the page background, not a light/dark pair). */
+  --color-surface-dark-1: #2a2a2a;
+  --color-surface-dark-2: #333333;
+  --color-surface-dark-3: #3a3a3a;
+}
+
+.dark {
+  --color-state-learning: #4a4844;
+
+  --color-warn-500: #d68a4c;
+  --color-warn-tint-50: #2b2015;
+  --color-warn-tint-100: #3d2c1a;
+  --color-warn-tint-200: #4d3820;
+  --color-warn-700: #e8b27f;
 }
 
 @keyframes fade-in {
