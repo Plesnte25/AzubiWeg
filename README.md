@@ -5,10 +5,11 @@ A platform for people preparing to move to Germany — built by someone doing ex
 I'm preparing for an Ausbildung in Germany: learning German, collecting documents,
 tracking applications. This app solves the problems I hit along the way. **V1** is
 a German vocabulary manager with spaced-repetition review, kept in **two-way sync
-with my Obsidian vault**. **V2** adds the application side: a CV builder with live
-PDF preview, a kanban application tracker, and a document checklist for the
-Ausbildung visa process. **V3** adds a Learning Progress Hub — a CEFR syllabus, a
-day-by-day study roadmap, self-tests, and gamification — feeding a richer dashboard.
+with my Obsidian vault**. **V2** adds the application side: a Job Search page
+(kanban application tracker + a CV shelf, with best-effort autofill from a pasted
+posting URL) and a document checklist for the Ausbildung visa process. **V3** adds
+a Learning Progress Hub — a CEFR syllabus, a day-by-day study roadmap, self-tests,
+and gamification — feeding a richer dashboard.
 
 ![Dashboard](docs/screenshots/10-dashboard-v2.png)
 
@@ -40,26 +41,27 @@ snapshot). Reviews done in the app and in Obsidian update the same
 
 ## What V2 adds
 
-- **CV builder** — a form with a **live PDF preview** beside it; the preview and
-  the exported file come from the same `@react-pdf/renderer` components, so what
-  you see is exactly what you download. Two templates: a classic tabular German
-  **Lebenslauf** (photo, Persönliche Daten, Ort/Datum signature line) and an
-  **ATS-friendly** single-column English CV that deliberately omits photo, birth
-  data, and nationality. Multiple CVs per account for tailoring per Betrieb;
-  debounced autosave; German-proof PDF rendering (embedded Inter, hyphenation
-  disabled so compounds like „Krankenversicherung" don't get mangled).
-  ![CV builder](docs/screenshots/11-cv-editor.png)
-- **Application tracker** — drag-and-drop kanban (Wishlist → Applied → Interview →
-  Offer / Rejected) with an auto-logged timeline per application (status changes,
-  notes, interviews), the CV that was sent, and stats: response rate, interview
-  rate, average days to response, applications per week.
-  ![Applications](docs/screenshots/9-applications.png)
+- **Job Search** — a kanban application tracker (Wishlist → Applied → Interview →
+  Offer / Rejected) with a permanent CV shelf beside it, so "which CV did I send
+  where" never needs a second page. A CV here is just a file you already have
+  (PDF/Word, tagged Lebenslauf or ATS) — no in-app builder to keep in sync with a
+  PDF export; there used to be one (a form + live `@react-pdf/renderer` preview),
+  retired in favor of this simpler, less-brittle model. New applications can be
+  created from a pasted job-posting URL: a server-side fetch reads the page's
+  `JobPosting` structured data (or falls back to its title/meta tags) to
+  best-effort prefill company/role/location/portal — always editable, never
+  required. Auto-logged timeline per application (status changes, notes,
+  interviews), portal quick-links with stale-check reminders, and stats: response
+  rate, interview rate, average days to response, applications per week.
+  ![Job Search](docs/screenshots/9-job-search.png)
 - **Document checklist** — seeded with ~24 items a non-EU Ausbildung applicant
   actually needs (Zeugnisse + apostille + certified translations, B1/B2
   certificate, §16a visa paperwork, VIDEX, Sperrkonto *or* salary proof,
-  Anmeldung, Aufenthaltstitel, …), each with status, **file attachments** (PDF
-  scans live with the item), and an expiry date that drives warning badges and a
-  "documents needing attention" section on the dashboard.
+  Anmeldung, Aufenthaltstitel, …). Search, an "Up Next" panel surfacing the
+  nearest deadlines across every category, and category filter tiles with live
+  completion rings — urgency leads, categories filter the list rather than
+  containing it. Each item carries status, **file attachments**, and a deadline
+  badge that drives a "documents needing attention" section on the dashboard.
   ![Checklist](docs/screenshots/8-checklist.png)
 
 ## What V3 adds
@@ -91,7 +93,6 @@ snapshot). Reviews done in the app and in Obsidian update the same
 | Auth | JWT (jsonwebtoken) + bcrypt |
 | Vault sync | chokidar file watcher, custom markdown parser/writer |
 | Enrichment | Wiktionary REST + MediaWiki APIs, ffmpeg, msedge-tts |
-| PDF export | @react-pdf/renderer (client-side, lazy-loaded) |
 | Kanban | @dnd-kit |
 | Uploads | multer → per-user disk storage, auth-checked streaming |
 
@@ -125,7 +126,7 @@ cd server && npm test
 ```
 
 Covers the vault sync's byte-identical round-trip, SRS scheduling parity with
-the Obsidian plugin, and pure-logic suites for applications, CVs, checklist
+the Obsidian plugin, and pure-logic suites for applications, checklist
 reminders, and the Learning Hub (roadmap generation, quizzes, gamification,
 activity tracking).
 
@@ -141,7 +142,11 @@ OneDrive/rclone when the app isn't on the same machine as the vault).
 See [docs/ROADMAP.md](docs/ROADMAP.md) for the full ecosystem plan and feature specs.
 
 - ~~**V2** — CV builder (live preview, German/ATS templates, PDF export),
-  application tracker (kanban + stats), document checklist with expiry reminders.~~ ✅
+  application tracker (kanban + stats), document checklist with expiry
+  reminders.~~ ✅ (2026-07-31: CV builder retired in favor of plain file
+  uploads; CV + application tracking merged into one **Job Search** page with
+  best-effort autofill from a pasted posting URL; checklist redesigned around
+  search, an urgency-first "Up Next" panel, and category filters.)
 - ~~**V3 — Learning Progress Hub**~~ ✅ CEFR syllabus, day-by-day roadmap,
   self-tests, gamification, activity tracking. The **salary & cost planner**
   and **Germany knowledge base** were also scoped here but haven't shipped —

@@ -136,10 +136,16 @@ function acquireEnrichLock(vaultPath: string): Promise<(() => void) | null> {
     let settled = false;
     child.on("error", () => {
       // flock(1) unavailable -- proceed unlocked rather than never enriching
-      if (!settled) (settled = true), resolve(() => {});
+      if (!settled) {
+        settled = true;
+        resolve(() => {});
+      }
     });
     child.on("exit", () => {
-      if (!settled) (settled = true), resolve(null);
+      if (!settled) {
+        settled = true;
+        resolve(null);
+      }
     });
     setTimeout(() => {
       if (!settled) {

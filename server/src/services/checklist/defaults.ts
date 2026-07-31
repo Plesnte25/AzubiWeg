@@ -51,7 +51,7 @@ export const DEFAULT_CHECKLIST_ITEMS: DefaultChecklistItem[] = [
   // application
   {
     title: "Lebenslauf (CV) — German format",
-    description: "Tabular German CV with photo. Build it in the CV section of this app.",
+    description: "Tabular German CV with photo. Upload it to your CV shelf on the Job Search page.",
     category: "application",
   },
   {
