@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { planMove, type Columns } from "../services/applications/order.js";
+import { fetchJobPreview } from "../services/applications/fetchPreview.js";
 import { computeStats } from "../services/applications/stats.js";
 
 export const applicationsRouter = Router();
@@ -13,11 +14,21 @@ const STATUS = z.enum(["wishlist", "applied", "interview", "offer", "rejected"])
 const toDate = (s: string) => new Date(s + "T00:00:00Z");
 const todayUtc = () => toDate(new Date().toISOString().slice(0, 10));
 
+const fetchPreviewSchema = z.object({ url: z.url() });
+
+applicationsRouter.post("/fetch-preview", async (req, res) => {
+  const parsed = fetchPreviewSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+
+  const data = await fetchJobPreview(parsed.data.url);
+  res.json({ fetched: data !== null, data });
+});
+
 applicationsRouter.get("/", async (req, res) => {
   const applications = await prisma.application.findMany({
     where: { userId: req.userId },
     orderBy: [{ status: "asc" }, { sortOrder: "asc" }],
-    include: { _count: { select: { events: true } }, cv: { select: { id: true, title: true } } },
+    include: { _count: { select: { events: true } }, cv: { select: { id: true, title: true, file: { select: { id: true, originalName: true } } } } },
   });
   res.json({ applications });
 });
@@ -41,7 +52,7 @@ applicationsRouter.get("/:id", async (req, res) => {
     where: { id: req.params.id, userId: req.userId },
     include: {
       events: { orderBy: { occurredAt: "desc" } },
-      cv: { select: { id: true, title: true } },
+      cv: { select: { id: true, title: true, file: { select: { id: true, originalName: true } } } },
     },
   });
   if (!application) return res.status(404).json({ error: "Application not found" });
@@ -50,16 +61,15 @@ applicationsRouter.get("/:id", async (req, res) => {
 
 const createSchema = z.object({
   company: z.string().trim().min(1).max(200),
-  position: z.string().trim().min(1).max(200),
+  role: z.string().trim().min(1).max(200),
+  // the Ausbildungsberuf/profession name, when distinct from the posted role title
+  jobProfile: z.string().max(200).nullish(),
+  description: z.string().max(20000).nullish(),
   location: z.string().max(200).nullish(),
   url: z.url().max(500).nullish().or(z.literal("").transform(() => null)),
-  contactName: z.string().max(200).nullish(),
-  contactEmail: z.email().nullish().or(z.literal("").transform(() => null)),
-  notes: z.string().max(5000).nullish(),
-  // which portal the application lives on + a one-click link to it (links
-  // only — the portals expose no public API for real sync)
-  platform: z.string().trim().max(100).nullish().or(z.literal("").transform(() => null)),
-  platformUrl: z.url().max(500).nullish().or(z.literal("").transform(() => null)),
+  // which portal the application lives on — a free-text label matching one
+  // of the user's saved Portals, no hard FK (the portals expose no API)
+  portal: z.string().trim().max(100).nullish().or(z.literal("").transform(() => null)),
   status: STATUS.default("wishlist"),
   appliedAt: z.iso.date().nullish(),
   cvId: z.string().nullish(),
@@ -88,7 +98,7 @@ applicationsRouter.post("/", async (req, res) => {
       appliedAt: appliedAt ? toDate(appliedAt) : status === "applied" ? todayUtc() : null,
       events: { create: { type: "created", toStatus: status } },
     },
-    include: { _count: { select: { events: true } }, cv: { select: { id: true, title: true } } },
+    include: { _count: { select: { events: true } }, cv: { select: { id: true, title: true, file: { select: { id: true, originalName: true } } } } },
   });
   res.status(201).json({ application });
 });
@@ -148,7 +158,7 @@ applicationsRouter.patch("/:id", async (req, res) => {
         ...fields,
         ...(appliedAt !== undefined ? { appliedAt: appliedAt ? toDate(appliedAt) : null } : {}),
       },
-      include: { _count: { select: { events: true } }, cv: { select: { id: true, title: true } } },
+      include: { _count: { select: { events: true } }, cv: { select: { id: true, title: true, file: { select: { id: true, originalName: true } } } } },
     });
   });
   res.json({ application });
@@ -195,7 +205,7 @@ applicationsRouter.patch("/:id/move", async (req, res) => {
   const applications = await prisma.application.findMany({
     where: { userId: req.userId },
     orderBy: [{ status: "asc" }, { sortOrder: "asc" }],
-    include: { _count: { select: { events: true } }, cv: { select: { id: true, title: true } } },
+    include: { _count: { select: { events: true } }, cv: { select: { id: true, title: true, file: { select: { id: true, originalName: true } } } } },
   });
   res.json({ applications });
 });

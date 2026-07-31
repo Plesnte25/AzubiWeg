@@ -146,67 +146,18 @@ export type ChecklistCategory =
 
 export type ChecklistStatus = "todo" | "in_progress" | "done" | "not_applicable";
 
-export type CvTemplate = "lebenslauf" | "ats";
+export type CvCategory = "lebenslauf" | "ats";
 
-// Hand-maintained mirror of the zod source of truth in
-// server/src/services/cv/schema.ts — keep the two in sync.
-export interface CvContent {
-  personal: {
-    firstName: string;
-    lastName: string;
-    headline?: string;
-    email: string;
-    phone?: string;
-    street?: string;
-    postalCodeCity?: string;
-    birthDate?: string;
-    birthPlace?: string;
-    nationality?: string;
-    linkedin?: string;
-    website?: string;
-  };
-  summary?: string;
-  experience: {
-    id: string;
-    role: string;
-    company: string;
-    location?: string;
-    from: string;
-    to?: string;
-    current: boolean;
-    bullets: string[];
-  }[];
-  education: {
-    id: string;
-    degree: string;
-    institution: string;
-    location?: string;
-    from: string;
-    to?: string;
-    description?: string;
-  }[];
-  languages: { id: string; name: string; level: string }[];
-  skills: { id: string; name: string }[];
-  certifications: { id: string; name: string; issuer?: string; date?: string }[];
-  interests?: string;
-  signature: { city?: string; date?: string };
-}
-
+// a CV is just an uploaded file with a title/category — no in-app builder,
+// nothing rendered; server/src/routes/cvs.ts
 export interface Cv {
   id: string;
   title: string;
-  template: CvTemplate;
-  content: CvContent;
-  photoFileId: string | null;
+  category: CvCategory;
+  file: { id: string; originalName: string; mimeType: string; size: number };
+  // count of applications currently pointing at this CV; 0 = unused
+  usedIn: number;
   createdAt: string;
-  updatedAt: string;
-}
-
-export interface CvSummary {
-  id: string;
-  title: string;
-  template: CvTemplate;
-  photoFileId: string | null;
   updatedAt: string;
 }
 
@@ -217,21 +168,27 @@ export type ApplicationEventType = "created" | "status_change" | "note" | "inter
 export interface Application {
   id: string;
   company: string;
-  position: string;
+  role: string;
+  jobProfile: string | null;
+  description: string | null;
   location: string | null;
   url: string | null;
-  contactName: string | null;
-  contactEmail: string | null;
-  notes: string | null;
-  platform: string | null;
-  platformUrl: string | null;
+  portal: string | null;
   status: ApplicationStatus;
   sortOrder: number;
   appliedAt: string | null;
   cvId: string | null;
-  cv: { id: string; title: string } | null;
+  cv: { id: string; title: string; file: { id: string; originalName: string } } | null;
   createdAt: string;
   _count?: { events: number };
+}
+
+/** Best-effort result of scraping a pasted job-posting URL; server/src/services/applications/fetchPreview.ts */
+export interface JobPreview {
+  company: string | null;
+  role: string | null;
+  location: string | null;
+  portal: string | null;
 }
 
 export interface ApplicationEvent {

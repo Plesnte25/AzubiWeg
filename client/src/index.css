@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Inter ships with the app for the PDF renderer — reuse it for UI body text */
+/* self-hosted Inter for UI body text (no Google Fonts CDN round-trip) */
 @font-face {
   font-family: "Inter";
   src: url("/fonts/Inter-Regular.ttf") format("truetype");
@@ -50,10 +50,16 @@
   --color-ink-700: #2e2e2e;
   --color-ink-600: #444444;
   --color-ink-400: #6b6b6b;
+  /* lighter than ink-400 — labels/meta text (stat labels, CV shelf meta,
+     job-detail field labels) where ink-400 reads too dark */
+  --color-ink-300: #a3a3a3;
   --color-ink-50: #f5f5f5;
   --color-paper: #ededed;
   --color-card: #ffffff;
   --color-hairline: #dcdcdc;
+  /* fainter than hairline — dividers inside a card (e.g. between a CV
+     shelf row's fields), not the card's own border */
+  --color-hairline-soft: #f0efec;
 
   /* semantic — kept a distinct hue from brand-red so "danger" never reads as
      a primary action; always pair with an icon too, not color alone */
@@ -90,6 +96,21 @@
   --animate-slide-up: slide-up 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-scale-in: scale-in 150ms ease-out both;
   --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+
+  /* FabNav dock: bouncy "overshoot" pop-open (a stylized stand-in for the
+     rain-drop-pop reference) vs. a plain accelerating ease-in for the
+     "falling drop" close — a drop doesn't bounce on the way down. */
+  --animate-fab-pop: fab-pop 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-fab-retract: fab-retract 220ms ease-in both;
+  --animate-fab-item-in: fab-item-in 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  /* idle "alive" wobble — organic border-radius drift, only while closed */
+  --animate-fab-wobble: fab-wobble 6s ease-in-out infinite alternate;
+  /* goo-layer shapes only: item circles travel FROM the hub's center point
+     OUT to their arc slot (via transform, not left/bottom) so two blurred
+     circles passing close together mid-transition visually fuse under the
+     goo filter's contrast boost, then pinch apart as they separate. */
+  --animate-fab-goo-emerge: fab-goo-emerge 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-fab-goo-retract: fab-goo-retract 220ms ease-in both;
 
   /* Genus (der/die/das) — a fixed identity system for the Vocabulary page's
      word cards, deliberately kept OUTSIDE the adaptive SRS/semantic palette
@@ -165,6 +186,43 @@
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+/* Hub dock: idle rest pose is translate(-50%, 50%) — center pinned to the
+   viewport-bottom baseline so only the top half peeks up. Both keyframes
+   bake that -50% X-centering into every stop (not just a Tailwind utility
+   alongside them) because an @keyframes `transform` fully replaces the
+   element's transform for its duration — layering a separate translate-x
+   utility on top would get clobbered while the animation runs. The
+   border-radius stop matches fab-wobble's own values so the handoff between
+   "closed, wobbling" and "opening" (and back) never snaps. */
+@keyframes fab-pop {
+  from { transform: translate(-50%, 50%) scale(0.9); border-radius: 42% 58% 63% 37% / 41% 45% 55% 59%; }
+  to { transform: translate(-50%, 0%) scale(1); border-radius: 50%; }
+}
+@keyframes fab-retract {
+  from { transform: translate(-50%, 0%) scale(1); border-radius: 50%; }
+  to { transform: translate(-50%, 50%) scale(1); border-radius: 42% 58% 63% 37% / 41% 45% 55% 59%; }
+}
+@keyframes fab-wobble {
+  0% { border-radius: 42% 58% 63% 37% / 41% 45% 55% 59%; }
+  50% { border-radius: 58% 42% 38% 62% / 63% 40% 60% 37%; }
+  100% { border-radius: 42% 58% 63% 37% / 41% 45% 55% 59%; }
+}
+@keyframes fab-item-in {
+  from { transform: translate(-50%, 50%) scale(0.4); opacity: 0; }
+  to { transform: translate(-50%, 50%) scale(1); opacity: 1; }
+}
+/* goo-layer item shapes: --dx/--dy (set per-item via inline style) point
+   from the item's resting arc slot back to the hub's open-state center, so
+   "from" parks the shape at the hub and "to" is its natural left/bottom
+   position — the shape travels there purely via transform. */
+@keyframes fab-goo-emerge {
+  from { transform: translate(-50%, 50%) translate(var(--dx), var(--dy)) scale(0.4); opacity: 0.7; }
+  to { transform: translate(-50%, 50%) translate(0, 0) scale(1); opacity: 1; }
+}
+@keyframes fab-goo-retract {
+  from { transform: translate(-50%, 50%) translate(0, 0) scale(1); opacity: 1; }
+  to { transform: translate(-50%, 50%) translate(var(--dx), var(--dy)) scale(0.4); opacity: 0; }
+}
 
 /* Dark mode: redefine the SAME variable names — every existing bg-paper /
    bg-card / text-ink-* / border-hairline / bg-brand-* / bg-ok-* / bg-danger-*
@@ -174,10 +232,12 @@
   --color-ink-700: #d4d4d4;
   --color-ink-600: #a8a8a8;
   --color-ink-400: #82817e;
+  --color-ink-300: #6f6d69;
   --color-ink-50: #232323;
   --color-paper: #121212;
   --color-card: #1c1c1c;
   --color-hairline: #2e2e2e;
+  --color-hairline-soft: #262626;
 
   /* NB: 500/600 stay dark/saturated (not simply inverted) because Button's
      primary/danger variants fill these with white text — a naive lightness
