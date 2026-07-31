@@ -23,6 +23,10 @@ export default function Settings() {
   const link = useMutation({ mutationFn: () => api.vaultLink(path), onSuccess: invalidateAll });
   const unlink = useMutation({ mutationFn: api.vaultUnlink, onSuccess: invalidateAll });
   const sync = useMutation({ mutationFn: api.vaultSyncNow, onSuccess: invalidateAll });
+  const reclassify = useMutation({
+    mutationFn: api.reclassifyWords,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["words"] }),
+  });
 
   return (
     <div className="max-w-2xl space-y-4">
@@ -103,6 +107,33 @@ export default function Settings() {
           <p className="mt-2 flex items-center gap-1.5 text-sm text-ok-700">
             <CheckCircle2 className="size-4" aria-hidden="true" />
             Linked — imported {link.data.wordCount} words
+          </p>
+        )}
+      </Card>
+
+      <Card padding="lg">
+        <h1 className="text-lg font-semibold">Vocabulary tagging</h1>
+        <p className="mt-1 text-sm text-ink-600">
+          Words get a level and theme (Themenfeld) automatically when added. Words added before
+          that existed, or through the mobile inbox before this was wired up, may still be missing
+          one — this fills in whatever's missing without touching anything you've already set or
+          edited manually.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3"
+          loading={reclassify.isPending}
+          onClick={() => reclassify.mutate()}
+        >
+          {reclassify.isPending ? "Classifying…" : "Fill in missing tags"}
+        </Button>
+        {reclassify.isSuccess && (
+          <p className="mt-2 flex items-center gap-1.5 text-sm text-ok-700">
+            <CheckCircle2 className="size-4" aria-hidden="true" />
+            {reclassify.data.updated === 0
+              ? `Checked ${reclassify.data.total} words — nothing was missing.`
+              : `Classified ${reclassify.data.updated} of ${reclassify.data.total} words that needed it.`}
           </p>
         )}
       </Card>

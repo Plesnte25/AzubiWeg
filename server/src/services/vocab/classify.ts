@@ -152,40 +152,183 @@ function lessonThemeEntry(lesson: string): LessonThemeEntry | null {
   return { themenfeld, level };
 }
 
+// Word-boundary match, not substring — a plain `.includes()` let short
+// keywords like "app" false-positive inside unrelated words ("apple",
+// "application"), e.g. Apfel/Bewerbung both wrongly landing in
+// medien_technik because their English glosses contain "app".
+const KEYWORDS: [Themenfeld, string[]][] = [
+  [
+    "person_familie",
+    [
+      "familie", "eltern", "mutter", "vater", "elternteil", "kind", "kinder", "geschwister", "bruder", "schwester",
+      "sohn", "tochter", "oma", "opa", "großmutter", "großvater", "ehemann", "ehefrau", "partner", "partnerin",
+      "verwandte", "tante", "onkel", "cousin", "cousine", "baby", "geburtstag", "verheiratet", "ledig", "geschieden",
+      "family", "parent", "parents", "mother", "father", "child", "children", "sibling", "brother", "sister",
+      "son", "daughter", "grandmother", "grandfather", "husband", "wife", "relative", "aunt", "uncle", "cousin",
+      "baby", "birthday", "married", "single", "divorced",
+    ],
+  ],
+  [
+    "alltag_zuhause",
+    [
+      "zuhause", "wohnung", "haus", "zimmer", "küche", "bad", "badezimmer", "schlafzimmer", "wohnzimmer", "möbel",
+      "tisch", "stuhl", "bett", "schrank", "sofa", "lampe", "fenster", "tür", "haushalt", "alltag", "routine",
+      "putzen", "aufräumen", "wäsche", "miete", "vermieter", "nachbar", "mitbewohner", "wg", "toilette",
+      "home", "apartment", "flat", "house", "room", "kitchen", "bathroom", "bedroom", "living room", "furniture",
+      "table", "chair", "bed", "closet", "wardrobe", "sofa", "lamp", "window", "door", "household", "everyday",
+      "routine", "clean", "tidy", "laundry", "rent", "landlord", "neighbor", "neighbour", "roommate", "chores",
+      "toilet",
+    ],
+  ],
+  [
+    "essen_einkaufen",
+    [
+      "essen", "trinken", "lebensmittel", "supermarkt", "einkaufen", "restaurant", "café", "brot", "wasser",
+      "kaffee", "tee", "milch", "obst", "gemüse", "fleisch", "fisch", "käse", "eier", "zucker", "salz",
+      "speisekarte", "kellner", "bestellen", "kochen", "rezept", "frühstück", "mittagessen", "abendessen", "hungrig",
+      "durstig", "süß", "bäckerei", "metzgerei", "apfel", "birne", "banane", "kartoffel", "reis", "nudeln",
+      "suppe", "wurst", "schokolade", "kuchen", "pizza", "obstart", "frucht",
+      "food", "drink", "grocery", "groceries", "shop", "shopping", "restaurant", "cafe", "bread", "water",
+      "coffee", "tea", "milk", "fruit", "vegetable", "meat", "fish", "cheese", "egg", "eggs", "sugar", "salt",
+      "menu", "waiter", "order", "cook", "recipe", "meal", "breakfast", "lunch", "dinner", "hungry", "thirsty",
+      "bakery", "butcher", "apple", "pear", "banana", "potato", "rice", "pasta", "noodles", "soup", "sausage",
+      "chocolate", "cake", "pizza",
+    ],
+  ],
+  [
+    "arbeit_ausbildung",
+    [
+      "arbeit", "beruf", "ausbildung", "betrieb", "kollege", "kollegin", "chef", "chefin", "gehalt", "lohn",
+      "bewerbung", "lebenslauf", "vorstellungsgespräch", "vertrag", "praktikum", "schicht", "überstunden",
+      "kündigung", "arbeitgeber", "arbeitnehmer", "unternehmen", "firma", "büro", "azubi", "geselle",
+      "job", "work", "career", "apprenticeship", "employer", "employee", "colleague", "boss", "salary", "wage",
+      "application", "resume", "cv", "interview", "contract", "internship", "shift", "overtime", "resignation",
+      "company", "firm", "office", "trainee", "workplace",
+    ],
+  ],
+  [
+    "bildung",
+    [
+      "schule", "kurs", "prüfung", "studium", "universität", "klasse", "lehrer", "lehrerin", "schüler", "student",
+      "studentin", "hausaufgaben", "note", "zeugnis", "unterricht", "lernen", "studieren", "vorlesung", "seminar",
+      "abschluss", "diplom",
+      "school", "exam", "course", "university", "college", "class", "teacher", "student", "homework", "grade",
+      "certificate", "lesson", "learn", "study", "lecture", "seminar", "degree", "diploma", "curriculum",
+    ],
+  ],
+  [
+    "gesundheit",
+    [
+      "gesund", "krank", "arzt", "ärztin", "apotheke", "schmerz", "medikament", "krankheit", "krankenhaus",
+      "termin", "fieber", "husten", "erkältung", "verletzung", "behandlung", "symptom", "impfung", "zahnarzt",
+      "notaufnahme", "rezept",
+      "health", "doctor", "sick", "ill", "pharmacy", "pain", "medicine", "illness", "hospital", "appointment",
+      "fever", "cough", "cold", "injury", "treatment", "symptom", "vaccine", "dentist", "emergency room",
+      "prescription",
+    ],
+  ],
+  [
+    "reise_verkehr",
+    [
+      "reise", "zug", "bahnhof", "bus", "auto", "fahren", "flug", "flughafen", "flugzeug", "pilot", "passagier",
+      "ticket", "fahrkarte", "straße", "ampel", "verkehr", "stau", "fahrrad", "u-bahn", "s-bahn", "straßenbahn",
+      "taxi", "gepäck", "urlaub", "haltestelle", "abfahrt", "ankunft", "verspätung",
+      "travel", "train", "station", "bus", "car", "drive", "flight", "airport", "plane", "airplane", "pilot",
+      "passenger", "ticket", "street", "road", "traffic", "traffic light", "jam", "bike", "bicycle", "subway",
+      "tram", "taxi", "luggage", "baggage", "vacation", "holiday", "trip", "departure", "arrival", "delay",
+    ],
+  ],
+  [
+    "freizeit_kultur",
+    [
+      "hobby", "freizeit", "sport", "musik", "film", "kino", "buch", "lesen", "kultur", "museum", "theater",
+      "konzert", "party", "feier", "tanzen", "spielen", "spiel", "fußball", "schwimmen", "wandern", "ausstellung",
+      "gitarre", "klavier", "instrument", "lied", "lagerfeuer",
+      "leisure", "hobby", "sport", "music", "movie", "cinema", "book", "read", "culture", "museum", "theater",
+      "concert", "party", "celebration", "dance", "play", "game", "football", "soccer", "swim", "hike",
+      "exhibition", "guitar", "piano", "instrument", "song", "campfire",
+    ],
+  ],
+  [
+    "medien_technik",
+    [
+      "handy", "smartphone", "internet", "computer", "app", "medien", "fernsehen", "fernseher", "radio",
+      "zeitung", "nachrichten", "webseite", "software", "laptop", "tablet", "digital", "sozial", "technologie",
+      "drucker", "telefon", "e-mail",
+      "phone", "internet", "computer", "media", "television", "tv", "radio", "newspaper", "news", "website",
+      "software", "laptop", "tablet", "wifi", "digital", "online", "technology", "social media", "printer",
+      "telephone", "e-mail", "email",
+    ],
+  ],
+  [
+    "geld",
+    [
+      "geld", "bank", "konto", "preis", "bezahlen", "rechnung", "kredit", "sparen", "gebühr", "überweisung",
+      "bargeld", "kreditkarte", "kosten", "teuer", "billig", "sparkonto", "gehaltsabrechnung",
+      "money", "bank", "account", "price", "pay", "bill", "invoice", "credit", "save", "fee", "transfer",
+      "cash", "credit card", "cost", "expensive", "cheap", "savings", "payslip",
+    ],
+  ],
+  [
+    "amt_buerokratie",
+    [
+      "amt", "antrag", "formular", "behörde", "anmeldung", "abmeldung", "bescheid", "ausweis", "pass", "visum",
+      "aufenthaltstitel", "meldebescheinigung", "unterschrift", "stempel", "frist", "dokument", "bürgeramt",
+      "office", "form", "authority", "registration", "deregistration", "notice", "id", "passport", "visa",
+      "residence permit", "signature", "stamp", "deadline", "bureaucracy", "document",
+    ],
+  ],
+  [
+    "gefuehle_meinung",
+    [
+      "gefühl", "meinung", "glücklich", "traurig", "wütend", "ängstlich", "nervös", "zufrieden", "stolz",
+      "überrascht", "hoffen", "denken", "glauben", "lieben", "hassen", "enttäuscht", "aufgeregt",
+      "feeling", "opinion", "happy", "sad", "angry", "afraid", "nervous", "satisfied", "proud", "surprised",
+      "hope", "think", "believe", "love", "hate", "disappointed", "excited",
+    ],
+  ],
+  [
+    "natur_umwelt",
+    [
+      "natur", "umwelt", "wetter", "tier", "pflanze", "baum", "blume", "wald", "berg", "see", "meer", "fluss",
+      "klima", "sonne", "regen", "schnee", "wind", "umweltschutz",
+      "nature", "environment", "weather", "animal", "plant", "tree", "flower", "forest", "mountain", "lake",
+      "sea", "river", "climate", "sun", "rain", "snow", "wind", "conservation",
+    ],
+  ],
+  [
+    "gesellschaft",
+    [
+      "gesellschaft", "politik", "wahl", "regierung", "gesetz", "recht", "religion", "tradition", "gemeinschaft",
+      "integration", "migration", "gleichberechtigung", "demokratie",
+      "society", "politics", "election", "government", "law", "religion", "tradition", "community",
+      "integration", "migration", "equality", "democracy",
+    ],
+  ],
+];
+
 /**
  * Best-effort keyword classifier for lesson-less (ad-hoc inbox) words —
  * deliberately isolated from classifyTheme()'s caller so a later one-off
  * backfill script can swap in an LLM call here without touching the live
  * add/edit path (never wire an LLM call into that path).
  */
-export function classifyThemeHeuristic(headword: string, meaning: string | null): Themenfeld[] {
-  const haystack = `${headword} ${meaning ?? ""}`.toLowerCase();
-  const KEYWORDS: [Themenfeld, string[]][] = [
-    ["person_familie", ["familie", "eltern", "mutter", "vater", "kind", "geschwister", "family", "parent", "sibling"]],
-    ["alltag_zuhause", ["zuhause", "wohnung", "zimmer", "möbel", "haushalt", "alltag", "routine", "home", "room", "furniture", "household"]],
-    ["essen_einkaufen", ["essen", "trinken", "lebensmittel", "supermarkt", "einkaufen", "restaurant", "food", "drink", "grocery", "shop", "meal"]],
-    ["arbeit_ausbildung", ["arbeit", "beruf", "ausbildung", "betrieb", "kollege", "job", "work", "career", "apprenticeship", "employer"]],
-    ["bildung", ["schule", "kurs", "prüfung", "studium", "universität", "school", "exam", "course", "university", "education"]],
-    ["gesundheit", ["gesund", "krank", "arzt", "apotheke", "schmerz", "medikament", "health", "doctor", "sick", "pharmacy", "medicine"]],
-    ["reise_verkehr", ["reise", "zug", "bahnhof", "bus", "auto", "fahren", "flug", "travel", "train", "station", "bus", "flight", "transport"]],
-    ["freizeit_kultur", ["hobby", "freizeit", "sport", "musik", "film", "buch", "kultur", "hobby", "leisure", "music", "movie", "book"]],
-    ["medien_technik", ["handy", "internet", "computer", "app", "medien", "phone", "internet", "computer", "media", "digital"]],
-    ["geld", ["geld", "bank", "konto", "preis", "bezahlen", "money", "bank", "account", "price", "pay"]],
-    ["amt_buerokratie", ["amt", "antrag", "formular", "behörde", "anmeldung", "bescheid", "office", "form", "authority", "registration"]],
-    ["gefuehle_meinung", ["gefühl", "meinung", "glücklich", "traurig", "feeling", "opinion", "happy", "sad", "believe"]],
-    ["natur_umwelt", ["natur", "umwelt", "wetter", "tier", "pflanze", "nature", "environment", "weather", "animal", "plant"]],
-    ["gesellschaft", ["gesellschaft", "politik", "wahl", "society", "politics", "election", "culture"]],
-  ];
-  // Word-boundary match, not substring — a plain `.includes()` let short
-  // keywords like "app" false-positive inside unrelated words ("apple",
-  // "application"), e.g. Apfel/Bewerbung both wrongly landing in
-  // medien_technik because their English glosses contain "app".
-  const matches: Themenfeld[] = [];
-  for (const [themenfeld, keywords] of KEYWORDS) {
-    if (keywords.some((k) => new RegExp(`\\b${k}\\b`, "i").test(haystack))) matches.push(themenfeld);
-    if (matches.length >= 2) break;
-  }
-  return matches;
+export function classifyThemeHeuristic(
+  headword: string,
+  meaning: string | null,
+  example: string | null = null,
+): Themenfeld[] {
+  const haystack = `${headword} ${meaning ?? ""} ${example ?? ""}`.toLowerCase();
+  // Score by keyword-hit count per theme (not "first theme in list order that
+  // matches at all") — a word whose meaning/example mentions several
+  // Krankenhaus/Arzt/Termin-type terms should outrank one with a single
+  // incidental hit in an earlier-listed theme.
+  const scored = KEYWORDS.map(([themenfeld, keywords]) => {
+    const hits = keywords.filter((k) => new RegExp(`\\b${k}\\b`, "i").test(haystack)).length;
+    return { themenfeld, hits };
+  }).filter((s) => s.hits > 0);
+  scored.sort((a, b) => b.hits - a.hits);
+  return scored.slice(0, 2).map((s) => s.themenfeld);
 }
 
 /** Attaches the read-time-derived facets (never persisted) to any word-shaped row. */
@@ -204,10 +347,11 @@ export function classifyTheme(word: {
   lesson: string | null;
   headword: string;
   meaning: string | null;
+  example?: string | null;
 }): { themenfeld: Themenfeld[]; level: CefrLevel | null } {
   if (word.lesson) {
     const entry = lessonThemeEntry(word.lesson);
     if (entry) return entry;
   }
-  return { themenfeld: classifyThemeHeuristic(word.headword, word.meaning), level: null };
+  return { themenfeld: classifyThemeHeuristic(word.headword, word.meaning, word.example ?? null), level: null };
 }

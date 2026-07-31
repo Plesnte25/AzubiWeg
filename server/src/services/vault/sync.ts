@@ -19,6 +19,7 @@ import {
 } from "./format.js";
 import { INBOX_PLACEHOLDER, buildInboxPlaceholder, parseInboxFile, parseMasterFile } from "./parser.js";
 import { atomicWrite, serializeMasterFile } from "./writer.js";
+import { classifyTheme } from "../vocab/classify.js";
 
 export function vaultFiles(vaultPath: string) {
   return {
@@ -187,6 +188,19 @@ class VaultSyncService {
             headword: card.front,
             sortKey: card.sortKey,
             ...card.fields,
+            // themenfeld/level only get set here, on creation — words entering
+            // via any path (mobile inbox, add_word.py, external master.md
+            // edits) all funnel through this upsert's create branch, whereas
+            // routes/words.ts's own classifyTheme() call only ever fires for
+            // the in-app "Add words" form. Never done in `update` below:
+            // these are app-only columns vault reconcile must never overwrite
+            // once a word already exists (see schema.prisma's comment on them).
+            ...classifyTheme({
+              lesson: card.fields.lesson ?? null,
+              headword: card.front,
+              meaning: card.fields.meaning ?? null,
+              example: card.fields.example ?? null,
+            }),
             srDue: card.sr ? new Date(card.sr.due) : null,
             srInterval: card.sr?.interval ?? null,
             srEase: card.sr?.ease ?? null,
