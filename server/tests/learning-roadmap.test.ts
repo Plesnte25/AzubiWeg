@@ -14,17 +14,9 @@ describe("DEFAULT_ROADMAP_DAYS content", () => {
     );
   });
 
-  it("Mon/Tue/Wed of regular weeks are empty generated-content placeholders; every other day is hand-authored", () => {
-    const milestoneWeeks = new Set([8, 16, 25, 26]);
+  it("every day has hand-authored content — all-skills-daily (ROADMAP_VERSION 5) means the generator only ever prepends grammar/vocab, it never fills an empty day", () => {
     for (const day of DEFAULT_ROADMAP_DAYS) {
-      const week = Math.floor(day.dayOffset / 7) + 1;
-      const dayOfWeek = day.dayOffset % 7; // 0=Mon ... 6=Sun
-      const isSyllabusPlaceholder = !milestoneWeeks.has(week) && dayOfWeek <= 2;
-      if (isSyllabusPlaceholder) {
-        expect(day.tasks).toHaveLength(0);
-      } else {
-        expect(day.tasks.length).toBeGreaterThan(0);
-      }
+      expect(day.tasks.length).toBeGreaterThan(0);
     }
   });
 

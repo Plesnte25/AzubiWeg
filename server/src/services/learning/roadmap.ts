@@ -2,8 +2,6 @@ import type { RoadmapSkill, RoadmapTaskType } from "@prisma/client";
 import { daysUntil } from "../reminders.js";
 import type { DefaultRoadmapDay } from "./roadmap-defaults.js";
 
-const DAY_MS = 86_400_000;
-
 /** UTC-safe date-offset arithmetic: `date + days` days, ignoring local time-of-day. */
 export function addDaysUTC(base: Date, days: number): Date {
   return new Date(

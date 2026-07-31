@@ -157,10 +157,11 @@ container.
 - **Notification-bubble count pattern**: a small circle
   (`bg-[var(--color-danger-solid)]`, white bold text, `rounded-full`,
   positioned `absolute -right-0.5 -top-0.5`) overlaid on an icon, shown only
-  when count > 0 — established first in the sidebar's unread-notifications
-  dot, reused for the Jobs-pipeline icon row. Prefer this over a
-  count-printed-below-the-icon or a bordered-pill-with-text-label when space
-  is tight and the icon alone is identifiable.
+  when count > 0 — used by the Jobs-pipeline icon row (`Dashboard.tsx`).
+  Prefer this over a count-printed-below-the-icon or a
+  bordered-pill-with-text-label when space is tight and the icon alone is
+  identifiable. (Nav is `FabNav.tsx` now, not a sidebar — it signals
+  notifications differently, via the hub's gradient fill, not this bubble.)
 - **Divided lists over individually-carded rows** when something is
   logically one list (course rows, learning-hub sections): wrap in
   `divide-y divide-hairline`, no per-row border/radius/own-background. Only

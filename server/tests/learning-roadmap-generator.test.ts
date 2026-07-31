@@ -57,17 +57,28 @@ describe("deriveSyllabusTasks", () => {
     expect(result.get(43)?.[0].title).toBe("Grammar: Topic 13");
   });
 
-  it("puts vocab_theme items on Wednesday, tagged with the vocab task type", () => {
+  it("distributes vocab_theme items across the phase's study days (front-loaded like grammar), tagged with the vocab task type", () => {
+    // all-skills-daily (ROADMAP_VERSION 5): every study day carries a grammar
+    // slot THEN a vocab slot, so a single vocab item lands on the phase's
+    // first study day (Monday) at index 1, behind that day's grammar
+    // consolidation placeholder (there are no grammar rows in this input).
     const rows: SyllabusRowForGeneration[] = [row({ id: "v0", level: "a1", category: "vocab_theme", sortOrder: 0, title: "Numbers" })];
     const result = deriveSyllabusTasks(rows);
-    const wed = result.get(2); // week 1 Wednesday = dayOffset 2
-    expect(wed?.[0]).toMatchObject({ type: "vocab", skill: "vocab", title: "Vocab: Numbers", syllabusItemId: "v0" });
+    const monday = result.get(0); // week 1 Monday = dayOffset 0
+    expect(monday?.[0]).toMatchObject({ type: "generic", skill: "grammar", title: "Grammar consolidation" });
+    expect(monday?.[1]).toMatchObject({ type: "vocab", skill: "vocab", title: "Vocab: Numbers", syllabusItemId: "v0" });
   });
 
-  it("never generates tasks for skill-category items", () => {
+  it("skill-category items never surface as a task themselves (every study day still gets its consolidation placeholders regardless)", () => {
+    // all-skills-daily means the map is never sparse — every study day across
+    // all 3 phases gets grammar+vocab entries (real or consolidation) even
+    // when nothing in the input applies to them. What must stay true is that
+    // a skill-category item is simply ignored, never turned into a task.
     const rows: SyllabusRowForGeneration[] = [row({ id: "s0", level: "a1", category: "skill", sortOrder: 0, title: "Give a presentation" })];
     const result = deriveSyllabusTasks(rows);
-    expect(result.size).toBe(0);
+    const allTasks = [...result.values()].flat();
+    expect(allTasks.some((t) => t.syllabusItemId === "s0")).toBe(false);
+    expect(allTasks.some((t) => t.title.includes("Give a presentation"))).toBe(false);
   });
 
   it("carries the live completedAt straight through onto the generated task", () => {
@@ -80,8 +91,10 @@ describe("deriveSyllabusTasks", () => {
   it("keeps a2/b1 items entirely out of the a1 phase's weeks", () => {
     const rows: SyllabusRowForGeneration[] = [row({ id: "g0", level: "b1", category: "grammar", sortOrder: 0, title: "B1 topic" })];
     const result = deriveSyllabusTasks(rows);
+    // a1's Monday still gets its own consolidation placeholders
+    // (all-skills-daily), but never the b1 item specifically
+    expect(result.get(0)?.some((t) => t.syllabusItemId === "g0")).toBe(false);
     // b1 phase starts at week 17 -> dayOffset 112
-    expect(result.get(0)).toBeUndefined();
     expect(result.get(112)?.[0].title).toBe("Grammar: B1 topic");
   });
 });
