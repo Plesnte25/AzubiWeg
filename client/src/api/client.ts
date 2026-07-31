@@ -9,9 +9,7 @@ import type {
   ApplicationStatus,
   ChecklistCategory,
   Cv,
-  CvContent,
-  CvSummary,
-  CvTemplate,
+  CvCategory,
   ChecklistItem,
   ChecklistStatus,
   DashboardData,
@@ -25,6 +23,7 @@ import type {
   ProgressResponse,
   QuizResultsResponse,
   GoetheReadiness,
+  JobPreview,
   ReviewHistoryEntry,
   ReviewStats,
   RoadmapBacklogResponse,
@@ -178,21 +177,23 @@ export const api = {
   deleteChecklistItem: (id: string) => request<void>(`/api/checklist/${id}`, { method: "DELETE" }),
   deleteFile: (id: string) => request<void>(`/api/files/${id}`, { method: "DELETE" }),
 
-  cvs: () => request<{ cvs: CvSummary[] }>("/api/cvs"),
+  cvs: () => request<{ cvs: Cv[] }>("/api/cvs"),
   cv: (id: string) => request<{ cv: Cv }>(`/api/cvs/${id}`),
-  addCv: (data: { title: string; template: CvTemplate }) =>
+  addCv: (data: { title: string; category: CvCategory; fileId: string }) =>
     request<{ cv: Cv }>("/api/cvs", { method: "POST", body: JSON.stringify(data) }),
-  updateCv: (
-    id: string,
-    data: Partial<{ title: string; template: CvTemplate; content: CvContent; photoFileId: string | null }>,
-  ) => request<{ cv: Cv }>(`/api/cvs/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  duplicateCv: (id: string) => request<{ cv: Cv }>(`/api/cvs/${id}/duplicate`, { method: "POST" }),
+  updateCv: (id: string, data: Partial<{ title: string; category: CvCategory }>) =>
+    request<{ cv: Cv }>(`/api/cvs/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteCv: (id: string) => request<void>(`/api/cvs/${id}`, { method: "DELETE" }),
 
   applications: () => request<{ applications: Application[] }>("/api/applications"),
   applicationStats: () => request<{ stats: ApplicationStats }>("/api/applications/stats"),
   application: (id: string) => request<{ application: ApplicationDetail }>(`/api/applications/${id}`),
-  addApplication: (data: Partial<Application> & { company: string; position: string }) =>
+  fetchJobPreview: (url: string) =>
+    request<{ fetched: boolean; data: JobPreview | null }>("/api/applications/fetch-preview", {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    }),
+  addApplication: (data: Partial<Application> & { company: string; role: string }) =>
     request<{ application: Application }>("/api/applications", {
       method: "POST",
       body: JSON.stringify(data),

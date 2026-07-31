@@ -13,6 +13,9 @@ export const ALLOWED_TYPES: Record<string, string> = {
   "image/png": ".png",
   "image/webp": ".webp",
   "text/plain": ".txt",
+  // CVs uploaded as a Word doc rather than PDF
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+  "application/msword": ".doc",
   // browser MediaRecorder output for speaking-practice recordings — webm
   // (Chrome/Firefox default), ogg, and mp4 (Safari) cover the common cases
   "audio/webm": ".webm",
@@ -21,6 +24,12 @@ export const ALLOWED_TYPES: Record<string, string> = {
 };
 
 export const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+export const CV_DOCUMENT_TYPES = new Set([
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
+]);
 
 export const AUDIO_TYPES = new Set(["audio/webm", "audio/ogg", "audio/mp4"]);
 

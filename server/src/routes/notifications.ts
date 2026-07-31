@@ -29,7 +29,7 @@ notificationsRouter.get("/", async (req, res) => {
       select: {
         id: true,
         company: true,
-        position: true,
+        role: true,
         status: true,
         updatedAt: true,
         events: { orderBy: { occurredAt: "desc" }, take: 1, select: { occurredAt: true } },
@@ -64,7 +64,7 @@ notificationsRouter.get("/", async (req, res) => {
         detail: portal.lastCheckedAt
           ? `You haven't opened it from here in ${days} days — there may be updates waiting.`
           : "You haven't opened it from here yet — check for updates.",
-        href: "/applications",
+        href: "/job-search",
       });
     }
   }
@@ -81,7 +81,7 @@ notificationsRouter.get("/", async (req, res) => {
           app.status === "interview"
             ? "Interview stage has been quiet — consider following up."
             : "Applied a while ago with no update — a polite follow-up can help.",
-        href: "/applications",
+        href: "/job-search",
       });
     }
   }

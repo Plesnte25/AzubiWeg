@@ -12,14 +12,11 @@ import Login from "./pages/Login";
 // are needed for first paint — every other route is its own chunk, loaded
 // on navigation, so signing in doesn't pull in the CV editor/kanban/quiz
 // code up front
-const Applications = lazy(() => import("./pages/Applications"));
-const Checklist = lazy(() => import("./pages/Checklist"));
+const JobSearch = lazy(() => import("./pages/job-search"));
+const Checklist = lazy(() => import("./pages/checklist"));
 const LearningHub = lazy(() => import("./pages/learning-hub"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Vocabulary = lazy(() => import("./pages/Vocabulary"));
-// the CV pages additionally pull in @react-pdf/renderer (~1.5 MB)
-const CvList = lazy(() => import("./pages/CvList"));
-const CvEditor = lazy(() => import("./pages/CvEditor"));
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<p className="text-ink-400">Loading…</p>}>{children}</Suspense>;
@@ -47,9 +44,10 @@ const router = createBrowserRouter([
           { path: "/review", element: <Navigate to="/vocabulary" replace /> },
           { path: "/learning", element: <Lazy><LearningHub /></Lazy> },
           { path: "/roadmap", element: <Navigate to="/learning?view=roadmap" replace /> },
-          { path: "/applications", element: <Lazy><Applications /></Lazy> },
-          { path: "/cv", element: <Lazy><CvList /></Lazy> },
-          { path: "/cv/:id", element: <Lazy><CvEditor /></Lazy> },
+          { path: "/job-search", element: <Lazy><JobSearch /></Lazy> },
+          { path: "/applications", element: <Navigate to="/job-search" replace /> },
+          { path: "/cv", element: <Navigate to="/job-search" replace /> },
+          { path: "/cv/:id", element: <Navigate to="/job-search" replace /> },
           { path: "/checklist", element: <Lazy><Checklist /></Lazy> },
           { path: "/settings", element: <Lazy><Settings /></Lazy> },
         ],

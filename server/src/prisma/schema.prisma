@@ -184,6 +184,9 @@ model UploadedFile {
   studySource     StudySource?   @relation(fields: [studySourceId], references: [id], onDelete: Cascade)
   roadmapTaskId   String?
   roadmapTask     RoadmapTask?   @relation(fields: [roadmapTaskId], references: [id], onDelete: Cascade)
+  // a CV is just an uploaded file with metadata (see Cv below) — one file per CV
+  cvId            String?        @unique
+  cv              Cv?            @relation(fields: [cvId], references: [id], onDelete: Cascade)
   kind            FileKind       @default(document)
   originalName    String
   // server-generated "<cuid>.<whitelisted ext>" under data/uploads/<userId>/;
@@ -206,47 +209,44 @@ model Cv {
   userId       String
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   title        String
-  template     CvTemplate    @default(lebenslauf)
-  // the whole CV as one document (CvContent, zod-validated on write) — the
-  // form edits one object, PUT saves one object, react-pdf renders one object
-  content      Json
-  // UploadedFile.id with kind=cv_photo; kept out of content so the file
-  // lifecycle stays queryable
-  photoFileId  String?
+  category     CvCategory    @default(lebenslauf)
+  // the CV IS this file — a PDF/Word doc the user already has, nothing
+  // rendered or edited in-app; see UploadedFile.cvId for the other side
+  file         UploadedFile?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   applications Application[]
 }
 
-enum CvTemplate {
+enum CvCategory {
   lebenslauf
   ats
 }
 
 model Application {
-  id           String             @id @default(cuid())
-  userId       String
-  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  company      String
-  position     String
-  location     String?
-  url          String?
-  contactName  String?
-  contactEmail String?
-  notes        String?
-  // which portal the application lives on (e.g. "GoAusbildung") + a one-click
-  // link to it; no sync — the portals expose no public API
-  platform     String?
-  platformUrl  String?
-  status       ApplicationStatus  @default(wishlist)
+  id          String             @id @default(cuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company     String
+  role        String
+  // the Ausbildungsberuf/profession name when distinct from the posted role title
+  jobProfile  String?
+  description String?
+  location    String?
+  // the job posting link the application was created from
+  url         String?
+  // which portal the application lives on (e.g. "GoAusbildung"); the portal's
+  // own URL lives on the Portal (ExternalAccount) row, not duplicated here
+  portal      String?
+  status      ApplicationStatus  @default(wishlist)
   // position within its status column, contiguous per (userId, status)
-  sortOrder    Int                @default(0)
-  appliedAt    DateTime?          @db.Date
-  cvId         String?
-  cv           Cv?                @relation(fields: [cvId], references: [id], onDelete: SetNull)
-  events       ApplicationEvent[]
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+  sortOrder   Int                @default(0)
+  appliedAt   DateTime?          @db.Date
+  cvId        String?
+  cv          Cv?                @relation(fields: [cvId], references: [id], onDelete: SetNull)
+  events      ApplicationEvent[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
 
   @@index([userId, status, sortOrder])
 }
