@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
+import type { Prisma } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
@@ -34,6 +35,29 @@ wordsRouter.get("/meta", async (req, res) => {
   res.json({
     lessons: lessons.map((l) => ({ lesson: l.lesson, count: l._count })),
   });
+});
+
+// Fills in themenfeld/level for words that are missing one or the other —
+// e.g. words that entered via the vault-sync path before that path ran
+// classifyTheme(), or words added before the heuristic below was refined.
+// Only ever fills a gap, never overwrites a value that's already set
+// (whether from a prior auto-classification or a manual edit), so it's safe
+// to expose as a repeatable action rather than a one-shot admin script.
+wordsRouter.post("/reclassify", async (req, res) => {
+  const words = await prisma.word.findMany({
+    where: { userId: req.userId, OR: [{ themenfeld: { equals: [] } }, { level: null }] },
+  });
+  const updates = words
+    .map((w) => {
+      const auto = classifyTheme(w);
+      const data: Prisma.WordUpdateInput = {};
+      if (w.themenfeld.length === 0 && auto.themenfeld.length > 0) data.themenfeld = auto.themenfeld;
+      if (w.level === null && auto.level !== null) data.level = auto.level;
+      return Object.keys(data).length ? prisma.word.update({ where: { id: w.id }, data }) : null;
+    })
+    .filter((q) => q !== null);
+  if (updates.length) await prisma.$transaction(updates);
+  res.json({ total: words.length, updated: updates.length });
 });
 
 const addSchema = z.object({

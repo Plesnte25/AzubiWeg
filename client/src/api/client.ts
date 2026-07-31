@@ -133,6 +133,8 @@ export const api = {
     >,
   ) => request<{ word: Word }>(`/api/words/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteWord: (id: string) => request<void>(`/api/words/${id}`, { method: "DELETE" }),
+  reclassifyWords: () =>
+    request<{ total: number; updated: number }>("/api/words/reclassify", { method: "POST" }),
 
   reviewQueue: () => request<{ due: Word[]; fresh: Word[] }>("/api/reviews/queue"),
   gradeWord: (wordId: string, grade: Grade) =>
