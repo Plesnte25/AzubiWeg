@@ -61,3 +61,32 @@ export const DISPLAY_SKILL_LABELS_COMPACT: Record<RoadmapSkill, string> = {
   ...DISPLAY_SKILL_LABELS,
   speaking: "S/L",
 };
+
+export interface SkillProgressDatum {
+  skill: RoadmapSkill;
+  total: number;
+  done: number;
+  percent: number;
+}
+
+/** Folds the 9 raw skills down to the 5 display skills (via displaySkill())
+ * and recomputes each bucket's percent from its summed done/total — shared
+ * by every chart that shows per-skill overall progress (gauges, bars, …) so
+ * the merge logic lives in exactly one place. */
+export function mergeSkillProgress(
+  skills: SkillProgressDatum[],
+): { skill: RoadmapSkill; label: string; color: string; percent: number }[] {
+  const totals = new Map<RoadmapSkill, { done: number; total: number }>();
+  for (const d of skills) {
+    const key = displaySkill(d.skill);
+    const entry = totals.get(key) ?? { done: 0, total: 0 };
+    entry.done += d.done;
+    entry.total += d.total;
+    totals.set(key, entry);
+  }
+  return DISPLAY_SKILLS.map((skill) => {
+    const t = totals.get(skill);
+    const percent = !t || t.total === 0 ? 0 : Math.round((t.done / t.total) * 100);
+    return { skill, percent, label: DISPLAY_SKILL_LABELS[skill], color: SKILL_COLORS[skill] };
+  });
+}

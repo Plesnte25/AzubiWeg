@@ -21,7 +21,7 @@ export interface ThemeCourse {
 }
 
 const LEVEL_ORDER: CefrLevel[] = ["a1", "a2", "b1"];
-const LEVEL_TITLES: Record<CefrLevel, string> = { a1: "Beginner", a2: "Elementary", b1: "Intermediate" };
+export const LEVEL_TITLES: Record<CefrLevel, string> = { a1: "Beginner", a2: "Elementary", b1: "Intermediate" };
 
 /** A single completed theme is highlighted green (via `ok` tokens) instead of
  * its skill color, so finished courses stand out at a glance in the list. */

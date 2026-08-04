@@ -1,34 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Award, Flag, PartyPopper, Volume2, X } from "lucide-react";
 import { createPortal } from "react-dom";
-import { api, playWordAudio } from "../../api/client";
-import type { Grade, Word } from "../../api/types";
+import { playWordAudio } from "../../api/client";
+import type { Word } from "../../api/types";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
 import { articleFront, THEMENFELD_LABELS, WORTART_COLORS } from "../../lib/vocab";
-
-type QueueOrder = "due-first" | "new-first" | "shuffle";
-const ORDERS: { key: QueueOrder; label: string }[] = [
-  { key: "due-first", label: "Due first" },
-  { key: "new-first", label: "New first" },
-  { key: "shuffle", label: "Shuffle" },
-];
-
-function orderQueue(due: Word[], fresh: Word[], order: QueueOrder): Word[] {
-  if (order === "new-first") return [...fresh, ...due];
-  if (order === "shuffle") {
-    const all = [...due, ...fresh];
-    for (let i = all.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [all[i], all[j]] = [all[j]!, all[i]!];
-    }
-    return all;
-  }
-  return [...due, ...fresh];
-}
+import { ORDERS, useReviewSession } from "./useReviewSession";
 
 interface PracticeOverlayProps {
   /** Pre-curated words (a shelf's "Practice N", the Problem-words shelf, a
@@ -46,55 +26,26 @@ export function PracticeOverlay({ words, onClose }: PracticeOverlayProps) {
     };
   }, []);
 
-  const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery({
-    queryKey: ["review-queue"],
-    queryFn: api.reviewQueue,
-    enabled: words === undefined,
-    refetchOnWindowFocus: false,
-    staleTime: Infinity,
-  });
-
-  const [order, setOrder] = useState<QueueOrder>("due-first");
-  const [queue, setQueue] = useState<Word[] | null>(words ?? null);
-  const [revealed, setRevealed] = useState(false);
-  const [done, setDone] = useState<Record<Grade, number>>({ hard: 0, good: 0, easy: 0 });
-  const [newBadges, setNewBadges] = useState<{ label: string }[]>([]);
-
-  useEffect(() => {
-    if (words === undefined && data && queue === null) setQueue(orderQueue(data.due, data.fresh, order));
-  }, [data, queue, words, order]);
-
-  const grade = useMutation({
-    mutationFn: ({ wordId, g }: { wordId: string; g: Grade }) => api.gradeWord(wordId, g),
-    onSuccess: (res, { g }) => {
-      setDone((d) => ({ ...d, [g]: d[g] + 1 }));
-      setQueue((q) => (q ? q.slice(1) : q));
-      setRevealed(false);
-      if (res.newlyUnlockedBadges.length > 0) setNewBadges((b) => [...b, ...res.newlyUnlockedBadges]);
-      queryClient.invalidateQueries({ queryKey: ["words"] });
-      queryClient.invalidateQueries({ queryKey: ["reviews", "history"] });
-      queryClient.invalidateQueries({ queryKey: ["reviews", "weak-words"] });
-      queryClient.invalidateQueries({ queryKey: ["reviews", "stats"] });
-    },
-  });
-
-  const toggleLeech = useMutation({
-    mutationFn: (word: Word) => api.updateWord(word.id, { leech: !word.leech }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["words"] });
-      setQueue((q) => q?.map((w) => (w.id === current?.id ? { ...w, leech: !w.leech } : w)) ?? q);
-    },
-  });
-
-  const loading = words === undefined && (isLoading || queue === null);
-  const current = queue?.[0] ?? null;
-  const total = Object.values(done).reduce((a, b) => a + b, 0);
-  const remaining = queue?.length ?? 0;
-  const progressPercent = remaining + total === 0 ? 0 : Math.round((total / (remaining + total)) * 100);
+  const {
+    loading,
+    current,
+    total,
+    remaining,
+    progressPercent,
+    revealed,
+    setRevealed,
+    order,
+    changeOrder,
+    done,
+    newBadges,
+    grade,
+    toggleLeech,
+    checkForMore,
+    isGeneralQueue,
+  } = useReviewSession({ words });
 
   return createPortal(
-    <div className="fixed inset-0 z-40 flex flex-col bg-paper">
+    <div className="fixed inset-0 z-40 hidden flex-col bg-paper lg:flex">
       <div className="h-[3px] w-full bg-hairline">
         <div className="h-full bg-brand-500 transition-[width] duration-300" style={{ width: `${progressPercent}%` }} />
       </div>
@@ -109,11 +60,7 @@ export function PracticeOverlay({ words, onClose }: PracticeOverlayProps) {
             <select
               className="rounded-md border border-hairline bg-card px-2 py-1 text-xs outline-none"
               value={order}
-              onChange={(e) => {
-                const next = e.target.value as QueueOrder;
-                setOrder(next);
-                if (data) setQueue(orderQueue(data.due, data.fresh, next));
-              }}
+              onChange={(e) => changeOrder(e.target.value as (typeof ORDERS)[number]["key"])}
             >
               {ORDERS.map((o) => (
                 <option key={o.key} value={o.key}>
@@ -155,15 +102,8 @@ export function PracticeOverlay({ words, onClose }: PracticeOverlayProps) {
               <Button variant="primary" onClick={onClose}>
                 Back to vault
               </Button>
-              {words === undefined && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setQueue(null);
-                    setDone({ hard: 0, good: 0, easy: 0 });
-                    queryClient.invalidateQueries({ queryKey: ["review-queue"] });
-                  }}
-                >
+              {isGeneralQueue && (
+                <Button variant="outline" onClick={checkForMore}>
                   Check for more
                 </Button>
               )}

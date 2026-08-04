@@ -1,12 +1,7 @@
-import type { CefrLevel, RoadmapSkill } from "../api/types";
-import { DISPLAY_SKILLS, DISPLAY_SKILL_LABELS, SKILL_COLORS, displaySkill } from "../lib/skills";
+import type { CefrLevel } from "../api/types";
+import { mergeSkillProgress, type SkillProgressDatum } from "../lib/skills";
 
-export interface SkillProgressDatum {
-  skill: RoadmapSkill;
-  total: number;
-  done: number;
-  percent: number;
-}
+export type { SkillProgressDatum };
 
 export interface LevelTotal {
   level: CefrLevel;
@@ -83,19 +78,7 @@ export default function SkillProgressGauges({
     return { level: lvl, pct: grandTotal === 0 ? 0 : (cumulative / grandTotal) * 100 };
   });
 
-  const totals = new Map<string, { done: number; total: number }>();
-  for (const d of skills) {
-    const key = displaySkill(d.skill);
-    const entry = totals.get(key) ?? { done: 0, total: 0 };
-    entry.done += d.done;
-    entry.total += d.total;
-    totals.set(key, entry);
-  }
-  const gauges = DISPLAY_SKILLS.map((skill) => {
-    const t = totals.get(skill);
-    const percent = !t || t.total === 0 ? 0 : Math.round((t.done / t.total) * 100);
-    return { skill, percent, label: DISPLAY_SKILL_LABELS[skill], color: SKILL_COLORS[skill] };
-  });
+  const gauges = mergeSkillProgress(skills);
 
   return (
     <div className="space-y-4">

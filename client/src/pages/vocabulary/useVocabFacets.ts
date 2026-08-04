@@ -1,29 +1,17 @@
-import { useMemo, useState } from "react";
-import type { CefrLevel, Genus, SrsState, Themenfeld, Word, Wortart } from "../../api/types";
+import { useMemo } from "react";
+import type { SrsState, Word } from "../../api/types";
 
 export interface VocabFilters {
   search: string;
   state: SrsState | "leech" | "all";
-  level: CefrLevel | "all";
-  wortart: Wortart | "all";
-  genus: NonNullable<Genus> | "all";
-  themenfeld: Themenfeld | "unclassified" | "all";
-  lesson: string | "all";
 }
 
 export const DEFAULT_FILTERS: VocabFilters = {
   search: "",
   state: "all",
-  level: "all",
-  wortart: "all",
-  genus: "all",
-  themenfeld: "all",
-  lesson: "all",
 };
 
-type FacetKey = keyof VocabFilters;
-
-function matchesFacet(word: Word, filters: VocabFilters, skip?: FacetKey): boolean {
+function matchesFacet(word: Word, filters: VocabFilters, skip?: "search" | "state"): boolean {
   if (skip !== "search" && filters.search) {
     const haystack = `${word.headword} ${word.meaning ?? ""}`.toLowerCase();
     if (!haystack.includes(filters.search.toLowerCase())) return false;
@@ -33,20 +21,7 @@ function matchesFacet(word: Word, filters: VocabFilters, skip?: FacetKey): boole
       if (!word.leech) return false;
     } else if (word.state !== filters.state) return false;
   }
-  if (skip !== "level" && filters.level !== "all" && word.level !== filters.level) return false;
-  if (skip !== "wortart" && filters.wortart !== "all" && word.wortart !== filters.wortart) return false;
-  if (skip !== "genus" && filters.genus !== "all" && word.genus !== filters.genus) return false;
-  if (skip !== "themenfeld" && filters.themenfeld !== "all") {
-    if (filters.themenfeld === "unclassified") {
-      if (word.themenfeld.length > 0) return false;
-    } else if (!word.themenfeld.includes(filters.themenfeld)) return false;
-  }
-  if (skip !== "lesson" && filters.lesson !== "all" && (word.lesson ?? "") !== filters.lesson) return false;
   return true;
-}
-
-function matches(word: Word, filters: VocabFilters): boolean {
-  return matchesFacet(word, filters);
 }
 
 function countBy<K extends string>(pool: Word[], key: (w: Word) => K[]): Record<K, number> {
@@ -58,35 +33,19 @@ function countBy<K extends string>(pool: Word[], key: (w: Word) => K[]): Record<
 }
 
 /**
- * Cross-filtered facet counts: each facet's counts are computed against the
- * *other* active facets, not the whole vault, so switching one filter
- * doesn't reshuffle another's counts under the cursor — ports facetPool(skip)
- * from design_handoff_azubiweg_vocabulary/design/Vocabulary.dc.html (~L938).
+ * State counts are cross-filtered against search (but not state itself), so
+ * switching search narrows the counts shown on each state tab without one
+ * tab's own count reshuffling under the cursor when you pick it.
  */
 export function useVocabFacets(words: Word[], filters: VocabFilters) {
   return useMemo(() => {
-    const filtered = words.filter((w) => matches(w, filters));
-
+    const filtered = words.filter((w) => matchesFacet(w, filters));
     const statePool = words.filter((w) => matchesFacet(w, filters, "state"));
-    const levelPool = words.filter((w) => matchesFacet(w, filters, "level"));
-    const wortartPool = words.filter((w) => matchesFacet(w, filters, "wortart"));
-    const genusPool = words.filter((w) => matchesFacet(w, filters, "genus"));
-    const themePool = words.filter((w) => matchesFacet(w, filters, "themenfeld"));
-    const lessonPool = words.filter((w) => matchesFacet(w, filters, "lesson"));
 
     return {
       filtered,
       stateCounts: countBy(statePool, (w) => [w.leech ? "leech" : w.state]),
-      levelCounts: countBy(levelPool, (w) => (w.level ? [w.level] : [])),
-      wortartCounts: countBy(wortartPool, (w) => [w.wortart]),
-      genusCounts: countBy(genusPool, (w) => (w.genus ? [w.genus] : [])),
-      themenfeldCounts: countBy(themePool, (w) => (w.themenfeld.length ? w.themenfeld : ["unclassified"])),
-      lessonCounts: countBy(lessonPool, (w) => (w.lesson ? [w.lesson] : [])),
       totalInPool: words.length,
     };
   }, [words, filters]);
-}
-
-export function useVocabFiltersState() {
-  return useState<VocabFilters>(DEFAULT_FILTERS);
 }
