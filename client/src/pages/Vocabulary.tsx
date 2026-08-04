@@ -1,31 +1,34 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
-import { BookOpen, Plus, X } from "lucide-react";
+import { BookOpen, Plus, Search } from "lucide-react";
 import { api, playWordAudio } from "../api/client";
 import type { Themenfeld, Word } from "../api/types";
 import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
 import { SegmentedControl } from "../components/ui/SegmentedControl";
 import { SkeletonCard } from "../components/ui/Skeleton";
-import { THEMENFELD_LABELS, THEMENFELD_ORDER, WORTART_COLORS, WORTART_ORDER } from "../lib/vocab";
+import { WORTART_COLORS, WORTART_ORDER } from "../lib/vocab";
 import { AddWordsDialog } from "./vocabulary/AddWordsDialog";
 import { AnalyticsModal } from "./vocabulary/AnalyticsModal";
+import AnalyticsSheet from "./vocabulary/AnalyticsSheet";
 import { AzScrubber } from "./vocabulary/AzScrubber";
-import { FilterRail } from "./vocabulary/FilterRail";
 import { MasteryBar } from "./vocabulary/MasteryBar";
+import MasteryStrip from "./vocabulary/MasteryStrip";
 import { PracticeOverlay } from "./vocabulary/PracticeOverlay";
+import ReviewActions from "./vocabulary/ReviewActions";
+import ReviewModal from "./vocabulary/ReviewModal";
+import SearchModal from "./vocabulary/SearchModal";
 import { Shelf } from "./vocabulary/Shelf";
+import StateTabs from "./vocabulary/StateTabs";
+import VocabularyMobile from "./vocabulary/VocabularyMobile";
 import { glidePageTo } from "../lib/useShelfPan";
 import { DEFAULT_FILTERS, useVocabFacets, type VocabFilters } from "./vocabulary/useVocabFacets";
 
-type GroupBy = "wortart" | "thema" | "level" | "woche" | "az" | "neu";
+type GroupBy = "wortart" | "az" | "woche";
 const GROUP_OPTIONS: { key: GroupBy; label: string }[] = [
   { key: "wortart", label: "Wortart" },
-  { key: "thema", label: "Thema" },
-  { key: "level", label: "Level" },
-  { key: "woche", label: "Woche" },
   { key: "az", label: "A–Z" },
-  { key: "neu", label: "Neu" },
+  { key: "woche", label: "Woche" },
 ];
 
 interface ShelfGroup {
@@ -39,15 +42,6 @@ interface ShelfGroup {
 const byHeadword = (a: Word, b: Word) => a.sortKey.localeCompare(b.sortKey);
 
 function buildShelves(words: Word[], groupBy: GroupBy): ShelfGroup[] {
-  if (groupBy === "neu") {
-    return [
-      {
-        id: "neu",
-        title: "Newest first",
-        words: [...words].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-      },
-    ];
-  }
   if (groupBy === "wortart") {
     return WORTART_ORDER.map((w) => ({
       id: `wortart-${w}`,
@@ -56,30 +50,6 @@ function buildShelves(words: Word[], groupBy: GroupBy): ShelfGroup[] {
       titleColor: WORTART_COLORS[w],
       words: words.filter((word) => word.wortart === w).sort(byHeadword),
     })).filter((s) => s.words.length > 0);
-  }
-  if (groupBy === "thema") {
-    const groups = THEMENFELD_ORDER.map((t) => ({
-      id: `thema-${t}`,
-      title: THEMENFELD_LABELS[t],
-      words: words.filter((w) => w.themenfeld.includes(t)).sort(byHeadword),
-    }));
-    const unclassified = {
-      id: "thema-unclassified",
-      title: "Unclassified",
-      words: words.filter((w) => w.themenfeld.length === 0).sort(byHeadword),
-    };
-    return [...groups, unclassified].filter((s) => s.words.length > 0);
-  }
-  if (groupBy === "level") {
-    const levels: { key: string | null; label: string }[] = [
-      { key: "a1", label: "A1" },
-      { key: "a2", label: "A2" },
-      { key: "b1", label: "B1" },
-      { key: null, label: "Unclassified" },
-    ];
-    return levels
-      .map((l) => ({ id: `level-${l.label}`, title: l.label, words: words.filter((w) => w.level === l.key).sort(byHeadword) }))
-      .filter((s) => s.words.length > 0);
   }
   if (groupBy === "woche") {
     const map = new Map<string, Word[]>();
@@ -104,23 +74,6 @@ function buildShelves(words: Word[], groupBy: GroupBy): ShelfGroup[] {
     .map(([letter, ws]) => ({ id: `az-${letter}`, title: letter, words: ws.sort(byHeadword) }));
 }
 
-function activePills(filters: VocabFilters, onChange: (patch: Partial<VocabFilters>) => void) {
-  const pills: { key: string; label: string; onClear: () => void }[] = [];
-  if (filters.search) pills.push({ key: "search", label: `"${filters.search}"`, onClear: () => onChange({ search: "" }) });
-  if (filters.state !== "all") pills.push({ key: "state", label: `STATE ${filters.state}`, onClear: () => onChange({ state: "all" }) });
-  if (filters.level !== "all") pills.push({ key: "level", label: `LEVEL ${filters.level.toUpperCase()}`, onClear: () => onChange({ level: "all" }) });
-  if (filters.wortart !== "all") pills.push({ key: "wortart", label: `WORTART ${filters.wortart}`, onClear: () => onChange({ wortart: "all" }) });
-  if (filters.genus !== "all") pills.push({ key: "genus", label: `GENUS ${filters.genus}`, onClear: () => onChange({ genus: "all" }) });
-  if (filters.themenfeld !== "all")
-    pills.push({
-      key: "themenfeld",
-      label: `THEMA ${filters.themenfeld === "unclassified" ? "Unclassified" : THEMENFELD_LABELS[filters.themenfeld]}`,
-      onClear: () => onChange({ themenfeld: "all" }),
-    });
-  if (filters.lesson !== "all") pills.push({ key: "lesson", label: `WOCHE ${filters.lesson}`, onClear: () => onChange({ lesson: "all" }) });
-  return pills;
-}
-
 export default function Vocabulary() {
   const queryClient = useQueryClient();
   const { data } = useQuery({ queryKey: ["words"], queryFn: api.words });
@@ -131,6 +84,7 @@ export default function Vocabulary() {
   const [groupBy, setGroupBy] = useState<GroupBy>("wortart");
   const [showAdd, setShowAdd] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   // null = closed, undefined = general due+fresh queue, Word[] = curated queue
   const [practiceWords, setPracticeWords] = useState<Word[] | undefined | null>(null);
   const [audioPlayingId, setAudioPlayingId] = useState<string | null>(null);
@@ -139,15 +93,17 @@ export default function Vocabulary() {
   const cardRefs = useRef(new Map<string, HTMLDivElement>());
 
   const onFilterChange = (patch: Partial<VocabFilters>) => setFilters((f) => ({ ...f, ...patch }));
-  const { filtered, stateCounts, levelCounts, wortartCounts, genusCounts, themenfeldCounts, lessonCounts } = useVocabFacets(
-    allWords,
-    filters,
-  );
+  const { filtered, stateCounts } = useVocabFacets(allWords, filters);
 
   const shelves = useMemo(() => buildShelves(filtered, groupBy), [filtered, groupBy]);
   const problemWords = useMemo(() => filtered.filter((w) => w.leech).sort(byHeadword), [filtered]);
   const showProblemShelf = problemWords.length > 0 && filters.state !== "leech";
-  const pills = activePills(filters, onFilterChange);
+
+  // sm/md Netflix shelves: reuse the same "woche" grouping + a pinned
+  // "Due today" shelf first (see plan's D1 — real word.lesson data, no
+  // fabricated "Week N — Theme" labels).
+  const mobileShelves = useMemo(() => buildShelves(filtered, "woche"), [filtered]);
+  const dueTodayWords = useMemo(() => filtered.filter((w) => w.state === "due").sort(byHeadword), [filtered]);
 
   const del = useMutation({
     mutationFn: (word: Word) => api.deleteWord(word.id),
@@ -204,7 +160,6 @@ export default function Vocabulary() {
   }
 
   function handleDrillTheme(themenfeld: string) {
-    onFilterChange({ themenfeld: themenfeld as Themenfeld });
     setShowAnalytics(false);
     setPracticeWords(
       allWords.filter((w) => w.themenfeld.includes(themenfeld as Themenfeld) && (w.state === "due" || w.state === "new")),
@@ -213,9 +168,10 @@ export default function Vocabulary() {
 
   const dueCount = allWords.filter((w) => w.state === "due").length;
   const newCount = allWords.filter((w) => w.state === "new").length;
+  const hasActiveCustomization = filters.search !== "" || filters.state !== "all";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-semibold">Vocabulary</h1>
@@ -223,22 +179,60 @@ export default function Vocabulary() {
             {allWords.length} words · {dueCount} due
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <input
-            className="w-56 rounded-md border border-hairline bg-card px-3 py-2 text-sm outline-none focus:border-brand-400"
-            placeholder="Search words or meanings…"
-            value={filters.search}
-            onChange={(e) => onFilterChange({ search: e.target.value })}
-          />
+        <div className="flex items-center gap-2 lg:hidden">
+          <button
+            className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline bg-card hover:border-brand-400"
+            onClick={() => setShowSearch(true)}
+            title="Search"
+          >
+            <Search className="size-4" aria-hidden="true" />
+          </button>
+          <button
+            className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-600 text-white hover:bg-brand-700"
+            onClick={() => setShowAdd(true)}
+            title="Add words"
+          >
+            <Plus className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+        <div className="hidden lg:block">
           <Button leftIcon={<Plus className="size-4" aria-hidden="true" />} onClick={() => setShowAdd(true)}>
             Add words
           </Button>
         </div>
       </div>
 
+      <div className="hidden md:flex lg:hidden">
+        <ReviewActions reviewCount={dueCount + newCount} onOpenReview={() => openPractice()} onOpenAnalytics={() => setShowAnalytics(true)} />
+      </div>
+
+      <div className="lg:hidden">
+        <MasteryStrip allWords={allWords} />
+      </div>
+
+      <input
+        className="hidden w-full rounded-md border border-hairline bg-card px-3 py-2 text-sm outline-none focus:border-brand-400 md:max-w-sm lg:block lg:max-w-md"
+        placeholder="Search words or meanings…"
+        aria-label="Search words or meanings"
+        value={filters.search}
+        onChange={(e) => onFilterChange({ search: e.target.value })}
+      />
+
+      <StateTabs allWords={allWords} stateCounts={stateCounts} value={filters.state} onChange={(state) => onFilterChange({ state })} />
+
+      <VocabularyMobile
+        allWords={allWords}
+        filtered={filtered}
+        dueTodayWords={dueTodayWords}
+        mobileShelves={mobileShelves}
+        reviewCount={dueCount + newCount}
+        onOpenReview={() => openPractice()}
+        onOpenAnalytics={() => setShowAnalytics(true)}
+      />
+
       {(dueCount > 0 || newCount > 0) && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-hairline bg-card px-4 py-3">
-          <p className="text-sm text-ink-600">
+        <div className="hidden items-center gap-2 rounded-xl border border-hairline bg-card px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3 lg:flex">
+          <p className="min-w-0 flex-1 truncate text-xs text-ink-600 sm:text-sm">
             {dueCount > 0 && (
               <>
                 You have <span className="font-semibold text-ink-900">{dueCount}</span> due
@@ -251,62 +245,38 @@ export default function Vocabulary() {
               </>
             )}
           </p>
-          <div className="ml-auto flex gap-2">
+          <div className="flex shrink-0 gap-1.5 sm:gap-2">
             {dueCount > 0 && (
               <Button size="sm" onClick={() => openPractice(allWords.filter((w) => w.state === "due"))}>
-                Practice {dueCount} due
+                <span className="md:hidden">Practice</span>
+                <span className="hidden md:inline">Practice {dueCount} due</span>
               </Button>
             )}
             {newCount > 0 && (
               <Button size="sm" variant="outline" onClick={() => openPractice(allWords.filter((w) => w.state === "new"))}>
-                Drill {newCount} new
+                <span className="md:hidden">Drill</span>
+                <span className="hidden md:inline">Drill {newCount} new</span>
               </Button>
             )}
           </div>
         </div>
       )}
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        <FilterRail
-          filters={filters}
-          onChange={onFilterChange}
-          levelCounts={levelCounts}
-          wortartCounts={wortartCounts}
-          genusCounts={genusCounts}
-          themenfeldCounts={themenfeldCounts}
-          lessonCounts={lessonCounts}
-          filtered={filtered}
-        />
-
+      <div className="hidden gap-4 lg:flex lg:items-start">
         <div className="min-w-0 flex-1 space-y-3">
           <MasteryBar
             allWords={allWords}
-            stateCounts={stateCounts}
-            filters={filters}
-            onChangeState={(state) => onFilterChange({ state })}
             reviewsToday={statsData?.reviewsToday ?? 0}
             totalReviews={statsData?.totalReviews ?? 0}
             onOpenAnalytics={() => setShowAnalytics(true)}
           />
 
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-1.5">
-              {pills.map((p) => (
-                <button
-                  key={p.key}
-                  className="flex items-center gap-1 rounded-full border border-hairline bg-card px-2.5 py-1 text-xs text-ink-600 hover:border-brand-400"
-                  onClick={p.onClear}
-                >
-                  {p.label}
-                  <X className="size-3" aria-hidden="true" />
-                </button>
-              ))}
-              {pills.length > 0 && (
-                <button className="text-xs font-medium text-ink-400 hover:text-ink-900" onClick={() => setFilters(DEFAULT_FILTERS)}>
-                  Clear all
-                </button>
-              )}
-            </div>
+          <div className={`flex flex-wrap items-center gap-2 ${hasActiveCustomization ? "justify-between" : "justify-end"}`}>
+            {hasActiveCustomization && (
+              <button className="text-xs font-medium text-ink-400 hover:text-ink-900" onClick={() => setFilters(DEFAULT_FILTERS)}>
+                Clear filters
+              </button>
+            )}
             <SegmentedControl options={GROUP_OPTIONS} value={groupBy} onChange={setGroupBy} />
           </div>
 
@@ -325,7 +295,7 @@ export default function Vocabulary() {
                   : "Try a different search, or clear your filters."
               }
               action={
-                allWords.length > 0 && pills.length > 0 ? (
+                allWords.length > 0 && hasActiveCustomization ? (
                   <Button size="sm" variant="outline" onClick={() => setFilters(DEFAULT_FILTERS)}>
                     Clear filters
                   </Button>
@@ -378,8 +348,19 @@ export default function Vocabulary() {
       </div>
 
       {showAdd && <AddWordsDialog onClose={() => setShowAdd(false)} />}
-      {showAnalytics && <AnalyticsModal words={allWords} onClose={() => setShowAnalytics(false)} onDrillTheme={handleDrillTheme} />}
-      {practiceWords !== null && <PracticeOverlay words={practiceWords} onClose={() => setPracticeWords(null)} />}
+      {showSearch && <SearchModal words={allWords} onClose={() => setShowSearch(false)} />}
+      {showAnalytics && (
+        <>
+          <AnalyticsModal desktopOnly words={allWords} onClose={() => setShowAnalytics(false)} onDrillTheme={handleDrillTheme} />
+          <AnalyticsSheet words={allWords} onClose={() => setShowAnalytics(false)} />
+        </>
+      )}
+      {practiceWords !== null && (
+        <>
+          <PracticeOverlay words={practiceWords} onClose={() => setPracticeWords(null)} />
+          <ReviewModal words={practiceWords ?? undefined} onClose={() => setPracticeWords(null)} />
+        </>
+      )}
     </div>
   );
 }

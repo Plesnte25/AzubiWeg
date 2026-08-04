@@ -22,7 +22,9 @@ import taskIcon from "../assets/icons/task.png";
 import wishlistIcon from "../assets/icons/wishlist.png";
 import { api, getUser } from "../api/client";
 import type { CefrLevel, RoadmapSkill, SyllabusItem } from "../api/types";
-import CoursesAccordion, { type ThemeCourse } from "../components/CoursesAccordion";
+import CoursesAccordion, { LEVEL_TITLES, type ThemeCourse } from "../components/CoursesAccordion";
+import LinearSkillBars from "../components/LinearSkillBars";
+import MiniBarChart from "../components/MiniBarChart";
 import RoadmapWeekStrip from "../components/RoadmapWeekStrip";
 import SegmentedSkillBar from "../components/SegmentedSkillBar";
 import SkillPerformanceRadar from "../components/SkillPerformanceRadar";
@@ -40,11 +42,11 @@ import { DISPLAY_SKILLS, DISPLAY_SKILL_LABELS_COMPACT, SKILL_COLORS, SKILL_LABEL
  * share one outer bordered/divided row instead (see the stats row below). */
 function Tile({ label, value, icon, accent }: { label: string; value: string | number; icon?: ReactNode; accent?: boolean }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-xl border border-hairline bg-card p-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-3">
+    <div className="flex flex-col items-center justify-center gap-1 rounded-xl border border-hairline bg-card p-2 text-center lg:flex-row lg:items-center lg:justify-start lg:gap-2.5 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:text-left">
       {icon}
-      <div>
-        <div className={`text-2xl font-bold ${accent ? "text-brand-600" : "text-ink-900"}`}>{value}</div>
-        <div className="mt-0.5 text-sm text-ink-600">{label}</div>
+      <div className="min-w-0">
+        <div className={`text-base font-bold leading-tight lg:text-2xl ${accent ? "text-brand-600" : "text-ink-900"}`}>{value}</div>
+        <div className="text-[10px] leading-tight text-ink-600 lg:mt-0.5 lg:text-sm">{label}</div>
       </div>
     </div>
   );
@@ -258,8 +260,33 @@ export default function Dashboard() {
   const firstName = getUser()?.name?.trim().split(/\s+/)[0];
   const quote = quoteOfTheDay();
 
+  // sm/md mini-graphs: Performance merges the 9 raw skills into the 5
+  // display skills the same way SkillPerformanceRadar does internally
+  // (max per merged group); Study time buckets the current week's minutes
+  // (already fetched for the segmented bar / lg bar chart) into 7 daily bars.
+  const perfByDisplay = new Map<RoadmapSkill, number>();
+  for (const d of data.learning.skillPerformance) {
+    const key = displaySkill(d.skill);
+    perfByDisplay.set(key, Math.max(perfByDisplay.get(key) ?? 0, d.percent));
+  }
+  const perfBars = DISPLAY_SKILLS.map((s) => ({
+    label: DISPLAY_SKILL_LABELS_COMPACT[s],
+    value: perfByDisplay.get(s) ?? 0,
+    color: SKILL_COLORS[s],
+  }));
+
+  const weekMonday = mondayOf(new Date());
+  const dailyTotals = new Map<string, number>();
+  for (const e of weekly?.dailyMinutesBySkill ?? []) dailyTotals.set(e.date, (dailyTotals.get(e.date) ?? 0) + e.minutes);
+  const weeklyTotals = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekMonday);
+    d.setDate(d.getDate() + i);
+    const key = isoDate(d);
+    return { label: d.toLocaleDateString(undefined, { weekday: "narrow" }), value: dailyTotals.get(key) ?? 0, color: "var(--color-brand-400)" };
+  });
+
   return (
-    <div className="flex flex-col gap-3 lg:h-full lg:min-h-0">
+    <div className="flex flex-col gap-3 md:h-[calc(100dvh-2rem)] md:min-h-0 lg:h-full lg:min-h-0">
       <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl">
@@ -282,28 +309,118 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 lg:gap-0 lg:divide-x lg:divide-hairline lg:rounded-xl lg:border lg:border-hairline lg:bg-card">
-        <Tile label="Day streak" value={data.streak} accent icon={<img src={fireIcon} alt="" className="size-6" />} />
+      {/* sm shows 4 (no Active courses, so a single row never needs to
+          scroll); md adds Active courses back for 5, same as lg — Tile
+          itself stacks icon-over-value below lg and switches to lg's
+          horizontal chromeless look via its own responsive classes. */}
+      <div className="grid shrink-0 grid-cols-4 gap-2 md:grid-cols-5 md:gap-3 lg:gap-0 lg:divide-x lg:divide-hairline lg:rounded-xl lg:border lg:border-hairline lg:bg-card">
+        <Tile label="Day streak" value={data.streak} accent icon={<img src={fireIcon} alt="" className="size-5 lg:size-6" />} />
         <Tile
           label="Learning Hrs"
           value={`${(data.totalLearningMinutes / 60).toFixed(1)}h`}
-          icon={<img src={clockIcon} alt="" className="size-6" />}
+          icon={<img src={clockIcon} alt="" className="size-5 lg:size-6" />}
         />
         <Tile
           label="Vocab due / total"
           value={`${data.dueToday} / ${data.totalWords}`}
           accent={data.dueToday > 0}
-          icon={<img src={dictionaryIcon} alt="" className="size-6" />}
+          icon={<img src={dictionaryIcon} alt="" className="size-5 lg:size-6" />}
         />
         <Tile
           label="Quizzes completed"
           value={data.quizzesCompleted}
-          icon={<img src={quizIcon} alt="" className="size-6" />}
+          icon={<img src={quizIcon} alt="" className="size-5 lg:size-6" />}
         />
-        <Tile label="Active courses" value={activeCoursesCount} icon={<img src={streamingIcon} alt="" className="size-6" />} />
+        <div className="hidden md:contents">
+          <Tile label="Active courses" value={activeCoursesCount} icon={<img src={streamingIcon} alt="" className="size-5 lg:size-6" />} />
+        </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[7fr_3fr] lg:overflow-hidden">
+      {/* sm/md-only: a simplified subset (today's tasks, a linear-bar
+          "Continue" card, 2 compact mini-cards) replacing lg's full Courses
+          accordion / radar+chart Analytics grid / Schedule column, which
+          don't fit below lg — see the hidden lg:grid block further down. */}
+      <div className="flex min-h-0 flex-col gap-3 md:flex-1 md:justify-evenly lg:hidden">
+        <Card padding="sm" className="flex flex-col">
+          <p className="mb-2 flex shrink-0 items-center gap-1.5 text-sm font-medium text-ink-600">
+            <img src={clipboardIcon} alt="" className="size-4" />
+            Today's tasks
+          </p>
+          {noTasksAtAll ? (
+            <p className="text-sm text-ink-600">Nothing on your plate right now — enjoy the breather.</p>
+          ) : (
+            <div className="max-h-64 space-y-2 overflow-y-auto">
+              {[
+                ...(data.dueToday > 0
+                  ? [
+                      <TaskListItem
+                        key="due"
+                        to="/vocabulary"
+                        title="Start today's revision"
+                        meta={`${data.dueToday} word${data.dueToday === 1 ? "" : "s"} due`}
+                        tone="warning"
+                      />,
+                    ]
+                  : []),
+                ...(todayFull?.tasks.map((t) => <SkillTaskRow key={t.id} task={t} />) ?? []),
+                ...data.expiringDocuments.map((d) => (
+                  <TaskListItem
+                    key={d.id}
+                    to="/checklist"
+                    title={d.title}
+                    meta={d.expiry === "expired" ? "expired" : `due by ${d.expiresAt.slice(0, 10)}`}
+                    tone={d.expiry === "expired" ? "danger" : "warning"}
+                  />
+                )),
+              ]}
+            </div>
+          )}
+        </Card>
+
+        <Card padding="sm" className="md:shrink-0">
+          <p className="font-semibold text-ink-900">
+            Continue: {defaultOpenLevel.toUpperCase()} {LEVEL_TITLES[defaultOpenLevel]}
+          </p>
+          {data.roadmapToday?.nextIncompleteTitle && (
+            <p className="mt-0.5 text-sm text-ink-600">Next: {data.roadmapToday.nextIncompleteTitle}</p>
+          )}
+          <div className="relative mt-3 h-2.5 rounded-full bg-paper">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600 transition-[width] duration-700"
+              style={{ width: `${levelsInProgress.find((l) => l.level === defaultOpenLevel)?.percent ?? 0}%` }}
+            />
+          </div>
+          <div className="mt-4">
+            <LinearSkillBars skills={data.learning.skillProgress} />
+          </div>
+          <Link to="/learning" className="mt-3 inline-block text-sm font-medium text-brand-700 hover:underline">
+            Resume →
+          </Link>
+        </Card>
+
+        <div className="grid grid-cols-2 gap-3 md:shrink-0">
+          <Card padding="sm">
+            <p className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-ink-600">
+              <img src={goodFeedbackIcon} alt="" className="size-4" />
+              Performance
+            </p>
+            <div className="h-14">
+              <MiniBarChart bars={perfBars} max={100} />
+            </div>
+          </Card>
+          <Card padding="sm">
+            <p className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-ink-600">
+              <img src={studyTimeIcon} alt="" className="size-4" />
+              Study time
+            </p>
+            <div className="h-14">
+              <MiniBarChart bars={weeklyTotals} />
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      <div className="hidden min-h-0 flex-1 gap-3 lg:grid lg:grid-cols-[7fr_3fr] lg:overflow-hidden">
         <div className="flex min-h-0 flex-col gap-3">
           <Card padding="sm" className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <h2 className="sr-only">My Courses</h2>

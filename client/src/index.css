@@ -286,6 +286,15 @@ h3 {
   letter-spacing: -0.02em;
 }
 
+/* Global safety net: this app should never scroll horizontally — a page
+   should always constrain its own overflowing content (truncate/wrap/
+   scroll internally), never widen the document. Applied at the root rather
+   than per-page so no future component can silently reintroduce it. */
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   background-color: var(--color-paper);

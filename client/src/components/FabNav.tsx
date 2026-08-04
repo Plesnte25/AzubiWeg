@@ -6,39 +6,22 @@ import type {
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
 } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Bell,
-  Briefcase,
-  BookOpen,
-  FileText,
-  GraduationCap,
-  LayoutDashboard,
-  Link2,
-  ListChecks,
   LogOut,
   Moon,
-  Send,
   Settings as SettingsIcon,
   Sparkles,
   Sun,
   UserCog,
 } from "lucide-react";
-import { api, clearSession } from "../api/client";
+import { clearSession } from "../api/client";
+import { useNotifications, NOTIFICATION_ICON } from "../hooks/useNotifications";
 import { useTheme } from "../hooks/useTheme";
 import { cn } from "../lib/cn";
+import { isActivePath, NAV_DESTINATIONS } from "../lib/navDestinations";
 import { useClickOutside } from "../lib/useClickOutside";
-
-const NAV_TABS: { to: string; label: string; end?: boolean; icon: ComponentType<{ className?: string }> }[] = [
-  { to: "/", label: "Dashboard", end: true, icon: LayoutDashboard },
-  { to: "/vocabulary", label: "Vocabulary", icon: BookOpen },
-  { to: "/learning", label: "Learning Hub", icon: GraduationCap },
-  { to: "/job-search", label: "Job Search", icon: Briefcase },
-  { to: "/checklist", label: "Checklist", icon: ListChecks },
-];
-
-const NOTIFICATION_ICON = { portal: Link2, application: Send, document: FileText } as const;
 
 type PopMode = "closed" | "nav" | "account";
 
@@ -57,11 +40,6 @@ interface ArcItemDef {
   icon: ComponentType<{ className?: string }>;
   active?: boolean;
   onSelect: () => void;
-}
-
-function isActivePath(to: string, end: boolean | undefined, pathname: string) {
-  if (end) return pathname === to;
-  return pathname === to || pathname.startsWith(`${to}/`);
 }
 
 /** Position an item's center point relative to the hub's own open-state
@@ -179,12 +157,7 @@ export default function FabNav() {
   // pointerdown and its following click.
   const pointerInteractionRef = useRef(false);
 
-  const { data } = useQuery({
-    queryKey: ["notifications"],
-    queryFn: api.notifications,
-    refetchInterval: 60_000,
-  });
-  const notifications = data?.notifications ?? [];
+  const notifications = useNotifications();
   const badgeCount = notifications.length;
   const hasNotifications = badgeCount > 0;
   const gooColor = hasNotifications ? GOO_COLOR_ALERT : GOO_COLOR_DEFAULT;
@@ -320,7 +293,7 @@ export default function FabNav() {
   };
 
   const navItems: ArcItemDef[] = [
-    ...NAV_TABS.map((t) => ({
+    ...NAV_DESTINATIONS.map((t) => ({
       key: t.to,
       label: t.label,
       icon: t.icon,

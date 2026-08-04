@@ -7,6 +7,10 @@ interface ModalProps {
   title: string;
   onClose: () => void;
   size?: "sm" | "md" | "lg" | "xl";
+  /** This modal has an sm/md-specific replacement elsewhere (e.g. a bottom
+   * sheet) — stay mounted (for shared trigger state) but only render visibly
+   * at lg. See client/src/pages/vocabulary/AnalyticsSheet.tsx. */
+  desktopOnly?: boolean;
   children: ReactNode;
 }
 
@@ -14,7 +18,7 @@ const SIZE_CLASSES = { sm: "max-w-md", md: "max-w-lg", lg: "max-w-2xl", xl: "max
 
 const FOCUSABLE = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
 
-export function Modal({ title, onClose, size = "md", children }: ModalProps) {
+export function Modal({ title, onClose, size = "md", desktopOnly, children }: ModalProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,7 +54,11 @@ export function Modal({ title, onClose, size = "md", children }: ModalProps) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink-900/40 p-4 sm:py-12"
+      className={
+        desktopOnly
+          ? "fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto bg-ink-900/40 p-4 sm:py-12 lg:flex"
+          : "fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink-900/40 p-4 sm:py-12"
+      }
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -62,7 +70,11 @@ export function Modal({ title, onClose, size = "md", children }: ModalProps) {
         aria-label={title}
         tabIndex={-1}
         className={cn(
-          "animate-scale-in w-full rounded-xl border border-hairline bg-card p-5 shadow-xl outline-none",
+          // min-w-0: flex items default to min-width:auto, which lets a
+          // wide-min-content child (a long unbreakable string, an unwrapped
+          // form control) force this box past its own max-width instead of
+          // shrinking/wrapping internally — override that default.
+          "animate-scale-in w-full min-w-0 rounded-xl border border-hairline bg-card p-5 shadow-xl outline-none",
           SIZE_CLASSES[size],
         )}
       >
