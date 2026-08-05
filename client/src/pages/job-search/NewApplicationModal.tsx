@@ -68,7 +68,7 @@ export default function NewApplicationModal({ onClose }: { onClose: () => void }
   });
 
   return (
-    <Modal title="New application" onClose={onClose} size="md">
+    <Modal title="New application" onClose={onClose} size="md" sheetOnSm>
       <p className="-mt-3 mb-4 text-sm text-ink-400">Paste the job posting link and we'll try to fill in the rest</p>
       <form
         className="space-y-3"
@@ -100,7 +100,7 @@ export default function NewApplicationModal({ onClose }: { onClose: () => void }
             <p className="flex items-center gap-1 text-sm font-medium text-ok-700">
               <Check className="size-3.5" aria-hidden="true" /> Fetched from {fetchedFrom}
             </p>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+            <div className="mt-2 grid grid-cols-1 gap-2 text-xs md:grid-cols-2">
               <MiniField label="Company" value={company} />
               <MiniField label="Role" value={role} />
               <MiniField label="Location" value={location} />
@@ -115,7 +115,7 @@ export default function NewApplicationModal({ onClose }: { onClose: () => void }
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <Field label="Company *">
             <input className={inputCls} value={company} onChange={(e) => setCompany(e.target.value)} />
           </Field>
@@ -144,7 +144,7 @@ export default function NewApplicationModal({ onClose }: { onClose: () => void }
           <DebouncedInput textarea value={description} onCommit={setDescription} placeholder="Paste the job posting text (optional)" />
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <Field label="CV to use">
             <select className={inputCls} value={cvId} onChange={(e) => setCvId(e.target.value)}>
               <option value="">—</option>

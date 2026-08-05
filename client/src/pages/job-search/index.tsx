@@ -3,8 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { Button } from "../../components/ui/Button";
 import ApplicationDetailModal from "./ApplicationDetailModal";
+import ApplicationDetailSheet from "./ApplicationDetailSheet";
 import Board from "./Board";
+import BoardMobile from "./BoardMobile";
 import CvShelf from "./CvShelf";
+import CvShelfMobile from "./CvShelfMobile";
 import NewApplicationModal from "./NewApplicationModal";
 import AddCvModal from "./AddCvModal";
 import PortalsCard from "./PortalsCard";
@@ -32,9 +35,17 @@ export default function JobSearch() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setAddingCv(true)}>
-            + New CV
-          </Button>
+          {/* below lg, CV-adding lives next to the compact CV chip row
+              instead (CvShelfMobile) — no need for a second entry point.
+              Wrapped in a div rather than a className override: Button's
+              base classes always include `inline-flex` unconditionally, and
+              cn() is a plain string-join (not tailwind-merge, see
+              CLAUDE.md), so `hidden` wouldn't reliably win against it. */}
+          <div className="hidden lg:block">
+            <Button variant="outline" onClick={() => setAddingCv(true)}>
+              + New CV
+            </Button>
+          </div>
           <Button onClick={() => setAddingApplication(true)}>+ New application</Button>
         </div>
       </div>
@@ -66,14 +77,27 @@ export default function JobSearch() {
         </div>
       )}
 
-      <div className="flex gap-4">
+      {/* sm/md: compact CV chip row + stage-pill filtered list, no drag.
+          lg: unchanged 5-column kanban + CV sidebar. */}
+      <div className="mb-3 lg:hidden">
+        <CvShelfMobile />
+      </div>
+      <div className="lg:hidden">
+        <BoardMobile onOpen={setOpenId} />
+      </div>
+      <div className="hidden lg:flex lg:gap-4">
         <Board onOpen={setOpenId} />
         <CvShelf />
       </div>
 
       {addingCv && <AddCvModal onClose={() => setAddingCv(false)} />}
       {addingApplication && <NewApplicationModal onClose={() => setAddingApplication(false)} />}
-      {openId && <ApplicationDetailModal id={openId} onClose={() => setOpenId(null)} />}
+      {openId && (
+        <>
+          <ApplicationDetailModal id={openId} onClose={() => setOpenId(null)} />
+          <ApplicationDetailSheet id={openId} onClose={() => setOpenId(null)} />
+        </>
+      )}
     </div>
   );
 }
