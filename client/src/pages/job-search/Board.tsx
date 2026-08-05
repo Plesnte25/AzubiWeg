@@ -17,22 +17,7 @@ import { api } from "../../api/client";
 import type { Application, ApplicationStatus } from "../../api/types";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { cn } from "../../lib/cn";
-
-const COLUMNS: { key: ApplicationStatus; label: string; colorClass: string }[] = [
-  { key: "wishlist", label: "Wishlist", colorClass: "text-ink-400" },
-  { key: "applied", label: "Applied", colorClass: "text-ink-400" },
-  { key: "interview", label: "Interview", colorClass: "text-warn-500" },
-  { key: "offer", label: "Offer", colorClass: "text-ok-600" },
-  { key: "rejected", label: "Rejected", colorClass: "text-brand-500" },
-];
-
-const STAGE_BORDER: Record<ApplicationStatus, string> = {
-  wishlist: "border-l-ink-400",
-  applied: "border-l-ink-400",
-  interview: "border-l-warn-500",
-  offer: "border-l-ok-600",
-  rejected: "border-l-brand-500",
-};
+import { COLUMNS, STAGE_BORDER } from "./stages";
 
 export default function Board({ onOpen }: { onOpen: (id: string) => void }) {
   const queryClient = useQueryClient();

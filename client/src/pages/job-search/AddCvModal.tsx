@@ -39,7 +39,7 @@ export default function AddCvModal({ onClose }: { onClose: () => void }) {
   });
 
   return (
-    <Modal title="Add a CV" onClose={onClose} size="md">
+    <Modal title="Add a CV" onClose={onClose} size="md" sheetOnSm>
       <p className="-mt-3 mb-4 text-sm text-ink-400">
         Upload a file you already have — nothing is built or edited here
       </p>

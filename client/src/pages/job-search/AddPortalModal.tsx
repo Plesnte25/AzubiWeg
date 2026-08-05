@@ -19,7 +19,7 @@ export default function AddPortalModal({ onClose }: { onClose: () => void }) {
   });
 
   return (
-    <Modal title="Add a portal" onClose={onClose} size="sm">
+    <Modal title="Add a portal" onClose={onClose} size="sm" sheetOnSm>
       <p className="-mt-3 mb-4 text-sm text-ink-400">Save a job board you check regularly</p>
       <form
         className="space-y-3"
