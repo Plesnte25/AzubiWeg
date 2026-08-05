@@ -148,12 +148,15 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full ecosystem plan and feature s
   best-effort autofill from a pasted posting URL; checklist redesigned around
   search, an urgency-first "Up Next" panel, and category filters.)
 - ~~**V3 — Learning Progress Hub**~~ ✅ CEFR syllabus, day-by-day roadmap,
-  self-tests, gamification, activity tracking. The **salary & cost planner**
-  and **Germany knowledge base** were also scoped here but haven't shipped —
-  carried forward, unscheduled.
-- **V4 — Applications, deeper** — Ausbildung opportunity discovery (search/
-  filters/bookmarks feeding the kanban), cover letter assistant, Europass CV
-  template, automated ATS checks, dashboard upgrades (certificates, GitHub
-  activity).
-- **V5 — Infrastructure & polish** — vocab PDF export and CLI, GitHub Actions
-  CI, calendar integration, grammar micro-lessons.
+  self-tests, gamification, activity tracking.
+- **Now** (reprioritized 2026-08-05, cutting across strict version order —
+  see [docs/ROADMAP.md](docs/ROADMAP.md#phasing) for the full breakdown):
+  app-wide bug-fixing pass (**top priority**), vocab PDF export + CLI (the
+  last of V1's scope), dashboard upgrades (certificates, GitHub activity,
+  pulled forward from V4), and the rest of V5 (GitHub Actions CI, calendar
+  integration, grammar micro-lessons). Worked interleaved, no strict order.
+- **Long run, unscheduled** — deliberately deferred, not dropped: the rest of
+  V4 (Ausbildung opportunity discovery, cover letter assistant, Europass CV
+  template, ATS checks), the **salary & cost planner**, the **Germany
+  knowledge base**, and the bureaucracy checklist's guided explanatory
+  content.

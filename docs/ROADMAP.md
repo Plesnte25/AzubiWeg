@@ -11,11 +11,11 @@ sketches the next features in enough detail to start implementation from.
 |---|---|---|---|
 | 1 | Deutsch Vault | **Mostly built** (V1) | Vocab manager with enrichment, pronunciation audio, grammar data, SM-2 spaced revision, Obsidian two-way sync, search. Missing: vocab PDF export, CLI. |
 | 2 | Ausbildung Opportunity Tracker | **Partially built** (V2) | We track applications *after* they're made (kanban + stats, merged into the Job Search page), plus on-demand notifications (stale applications, portal check reminders) and best-effort autofill from a pasted posting URL. Job *discovery* — listing search, filters by salary/German level, bookmarks — doesn't exist yet. Planned for V4. |
-| 3 | Bureaucracy Companion | **Partially built** (V2) | Document checklist seeded with ~24 non-EU Ausbildung items, file attachments, expiry reminders, search, category filters, and an urgency-first "Up Next" view. Missing: guided explanatory content per topic (moves into the knowledge base). |
+| 3 | Bureaucracy Companion | **Partially built** (V2) | Document checklist seeded with ~24 non-EU Ausbildung items, file attachments, expiry reminders, search, category filters, and an urgency-first "Up Next" view. Missing: guided explanatory content per topic (moves into the knowledge base) — long-run, deliberately deferred. |
 | 4 | European Resume Builder | **Retired, replaced with a simpler model** (V2) | Originally a form + live PDF preview (German Lebenslauf / ATS-friendly English templates, multiple CVs per account). Replaced 2026-07-31: a CV is now just a file you already have, uploaded and tagged, living on a shelf beside the application kanban — no in-app builder to keep in sync with a PDF export. Missing (if ever revisited): Europass template, cover letters, automated ATS checks (V4). |
-| 5 | Salary & Cost Planner | **Missing** | City comparison, taxes, rent, budget, savings projections. Carried forward from V3, not yet started. |
+| 5 | Salary & Cost Planner | **Missing — long-run, deliberately deferred** | City comparison, taxes, rent, budget, savings projections. Carried forward from V3, not yet started. |
 | 6 | Deutschland Dashboard | **Built** (V2/V3) | Dashboard shows documents needing attention, application stats, syllabus/roadmap progress, study streaks, badges, and activity history. Missing: certificates, GitHub activity (V4). |
-| 7 | Germany Knowledge Base | **Missing** | Guides for visa, Anmeldung, blocked account, insurance, housing, FAQs. Carried forward from V3, not yet started; a community-wiki model with contributions is a possible later evolution. |
+| 7 | Germany Knowledge Base | **Missing — long-run, deliberately deferred** | Guides for visa, Anmeldung, blocked account, insurance, housing, FAQs. Carried forward from V3, not yet started; a community-wiki model with contributions is a possible later evolution. |
 
 **V3 (Learning Progress Hub) shipped**: CEFR syllabus (174 items, A1→B1), a
 generated day-by-day 182-day roadmap, study-source registry (YouTube/Nicos
@@ -85,11 +85,25 @@ next thing to study.
 
 ## Phasing
 
-- ~~**V3** — Learning Progress Hub~~ ✅ shipped. Salary & cost planner and
-  Germany knowledge base were originally scoped here too but didn't ship yet —
-  carried forward, unscheduled.
-- **V4** — Ausbildung opportunity discovery (search/filters/bookmarks feeding the
-  kanban); cover letter assistant; Europass template; ATS checks;
-  dashboard upgrades (certificates, GitHub activity).
-- **V5** — vocab PDF export; vocabulary CLI; GitHub Actions CI; calendar
-  integration; grammar micro-lessons.
+- ~~**V3** — Learning Progress Hub~~ ✅ shipped.
+- **Now** — reprioritized 2026-08-05, cutting across strict version order to
+  pull forward what matters most instead of shipping V4 then V5 in sequence:
+  1. **App-wide bug-fixing pass** — top priority, ahead of any new feature work.
+     No fixed list yet; starts with a systematic sweep across the whole app to
+     build one (Vocabulary's mobile touch-scroll issue, set aside earlier, is
+     the one known item going in).
+  2. Vocab PDF export + vocabulary CLI — the last piece of module 1 (Deutsch
+     Vault)'s V1 scope.
+  3. Dashboard upgrades — certificates, GitHub activity (pulled forward out of
+     V4's scope below).
+  4. The rest of V5 — GitHub Actions CI, calendar integration, grammar
+     micro-lessons.
+
+  No strict order between 1–4 — worked interleaved, not sequentially.
+- **Long run, unscheduled** — deliberately deferred, not dropped:
+  - The rest of V4: Ausbildung opportunity discovery (search/filters/bookmarks
+    feeding the kanban), cover letter assistant, Europass CV template,
+    automated ATS checks.
+  - Salary & Cost Planner (module 5) — carried forward from V3.
+  - Germany Knowledge Base (module 7) — carried forward from V3.
+  - Bureaucracy Companion's guided explanatory content per topic (module 3).
