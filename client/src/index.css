@@ -295,6 +295,23 @@ body {
   overflow-x: hidden;
 }
 
+/* iOS Safari needs the -webkit- prefixed versions of these two properties
+   alongside the unprefixed ones, or a 3D flip card's `backface-visibility:
+   hidden` silently fails to hide the rotated-away face — especially when
+   nested inside a scrollable (overflow-x-auto) ancestor, as VocabTile.tsx's
+   flip tiles are inside MobileShelfRow.tsx's shelf row. Tailwind's
+   arbitrary-value classes (`[backface-visibility:hidden]`) can't emit a
+   second vendor-prefixed property from one token, hence these named classes. */
+.flip-card-3d {
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+}
+
+.flip-card-face {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
 body {
   margin: 0;
   background-color: var(--color-paper);

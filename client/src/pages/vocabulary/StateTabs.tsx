@@ -1,8 +1,11 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
+import { ChevronDown } from "lucide-react";
+import { createPortal } from "react-dom";
 import type { Word } from "../../api/types";
 import { cn } from "../../lib/cn";
 import { STATE_COLORS } from "../../lib/vocab";
+import { GROUP_OPTIONS, type GroupBy } from "./shelves";
 import type { VocabFilters } from "./useVocabFacets";
 
 const STATE_TABS: { key: VocabFilters["state"]; label: string; color: string }[] = [
@@ -19,6 +22,84 @@ interface StateTabsProps {
   stateCounts: Record<string, number>;
   value: VocabFilters["state"];
   onChange: (state: VocabFilters["state"]) => void;
+  groupBy: GroupBy;
+  onGroupByChange: (groupBy: GroupBy) => void;
+}
+
+/** Small popover anchored to the "All" chip's caret, listing the
+ * Wortart/A-Z/Woche grouping modes — a separate tap target from the chip
+ * itself (which keeps just clearing the state filter, unchanged), so the
+ * two orthogonal concerns (state filter vs. shelf grouping) stay
+ * independent. Portaled + `fixed`-positioned off the caret's own rect
+ * rather than a plain `absolute` child, since the row it lives in is
+ * horizontally scrollable (`overflow-x-auto` implies `overflow-y: auto`
+ * too, which would clip a normally-positioned dropdown). */
+function GroupByDropdown({
+  anchorRef,
+  groupBy,
+  onGroupByChange,
+  onClose,
+}: {
+  anchorRef: React.RefObject<HTMLButtonElement | null>;
+  groupBy: GroupBy;
+  onGroupByChange: (groupBy: GroupBy) => void;
+  onClose: () => void;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    const rect = anchorRef.current?.getBoundingClientRect();
+    if (rect) setPos({ top: rect.bottom + 6, left: rect.left });
+  }, [anchorRef]);
+
+  useEffect(() => {
+    function onPointerDown(e: PointerEvent) {
+      const target = e.target as Node;
+      if (menuRef.current?.contains(target) || anchorRef.current?.contains(target)) return;
+      onClose();
+    }
+    function onKeyDown(e: KeyboardEvent | globalThis.KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown as (e: globalThis.KeyboardEvent) => void);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown as (e: globalThis.KeyboardEvent) => void);
+    };
+  }, [anchorRef, onClose]);
+
+  if (!pos) return null;
+
+  return createPortal(
+    <div
+      ref={menuRef}
+      role="menu"
+      aria-label="Group by"
+      className="fixed z-50 flex flex-col gap-0.5 rounded-xl border border-hairline bg-card p-1 shadow-lg"
+      style={{ top: pos.top, left: pos.left }}
+    >
+      {GROUP_OPTIONS.map((opt) => (
+        <button
+          key={opt.key}
+          role="menuitemradio"
+          aria-checked={groupBy === opt.key}
+          className={cn(
+            "rounded-lg px-3 py-1.5 text-left text-sm font-medium transition-colors",
+            groupBy === opt.key ? "bg-brand-600 text-white" : "text-ink-600 hover:bg-paper hover:text-ink-900",
+          )}
+          onClick={() => {
+            onGroupByChange(opt.key);
+            onClose();
+          }}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>,
+    document.body,
+  );
 }
 
 /** The page's primary navigation — practice-readiness state (All/Due/New/
@@ -27,9 +108,16 @@ interface StateTabsProps {
  * mutually-exclusive options is the textbook case for radio semantics (not
  * `aria-current`, which is for wayfinding). Roving tabindex + arrow-key
  * navigation matches how screen readers already expect a radio group to
- * behave, no new interaction pattern for users to learn. */
-export default function StateTabs({ allWords, stateCounts, value, onChange }: StateTabsProps) {
+ * behave, no new interaction pattern for users to learn.
+ *
+ * The "All" chip also carries a caret that opens a Wortart/A-Z/Woche
+ * grouping dropdown (`GroupByDropdown` above) — shared by every breakpoint
+ * from this one component, replacing what used to be a standalone
+ * `SegmentedControl` row duplicated per breakpoint. */
+export default function StateTabs({ allWords, stateCounts, value, onChange, groupBy, onGroupByChange }: StateTabsProps) {
   const btnRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const caretRef = useRef<HTMLButtonElement>(null);
+  const [groupByOpen, setGroupByOpen] = useState(false);
 
   function onKeyDown(e: KeyboardEvent<HTMLButtonElement>, index: number) {
     let next: number | null = null;
@@ -54,29 +142,51 @@ export default function StateTabs({ allWords, stateCounts, value, onChange }: St
         const active = value === tab.key;
         const count = tab.key === "all" ? allWords.length : (stateCounts[tab.key] ?? 0);
         return (
-          <button
-            key={tab.key}
-            ref={(el) => {
-              btnRefs.current[i] = el;
-            }}
-            role="radio"
-            aria-checked={active}
-            tabIndex={active ? 0 : -1}
-            onKeyDown={(e) => onKeyDown(e, i)}
-            className={cn(
-              "flex shrink-0 snap-start items-center gap-1 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors",
-              active ? "border-transparent text-white" : "border-hairline text-ink-600 hover:bg-paper",
+          <div key={tab.key} className="flex shrink-0 snap-start items-center gap-1">
+            <button
+              ref={(el) => {
+                btnRefs.current[i] = el;
+              }}
+              role="radio"
+              aria-checked={active}
+              tabIndex={active ? 0 : -1}
+              onKeyDown={(e) => onKeyDown(e, i)}
+              className={cn(
+                "flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                tab.key === "all" && "rounded-r-none",
+                active ? "border-transparent text-white" : "border-hairline text-ink-600 hover:bg-paper",
+              )}
+              style={active ? { backgroundColor: tab.color } : undefined}
+              onClick={() => onChange(tab.key)}
+            >
+              {!active && <span className="size-1.5 rounded-full" style={{ backgroundColor: tab.color }} aria-hidden="true" />}
+              {tab.label}
+              <span className="tabular-nums opacity-80">{count}</span>
+              <span className="sr-only">, {count} words</span>
+            </button>
+            {tab.key === "all" && (
+              <button
+                ref={caretRef}
+                type="button"
+                title="Group by"
+                aria-haspopup="menu"
+                aria-expanded={groupByOpen}
+                className={cn(
+                  "grid h-[26px] shrink-0 place-items-center rounded-r-full border border-l-0 px-1.5 transition-colors",
+                  active ? "border-transparent text-white" : "border-hairline text-ink-600 hover:bg-paper",
+                )}
+                style={active ? { backgroundColor: tab.color } : undefined}
+                onClick={() => setGroupByOpen((o) => !o)}
+              >
+                <ChevronDown className="size-3.5" aria-hidden="true" />
+              </button>
             )}
-            style={active ? { backgroundColor: tab.color } : undefined}
-            onClick={() => onChange(tab.key)}
-          >
-            {!active && <span className="size-1.5 rounded-full" style={{ backgroundColor: tab.color }} aria-hidden="true" />}
-            {tab.label}
-            <span className="tabular-nums opacity-80">{count}</span>
-            <span className="sr-only">, {count} words</span>
-          </button>
+          </div>
         );
       })}
+      {groupByOpen && (
+        <GroupByDropdown anchorRef={caretRef} groupBy={groupBy} onGroupByChange={onGroupByChange} onClose={() => setGroupByOpen(false)} />
+      )}
     </div>
   );
 }

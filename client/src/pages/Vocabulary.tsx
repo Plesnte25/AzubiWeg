@@ -5,9 +5,7 @@ import { api, playWordAudio } from "../api/client";
 import type { Themenfeld, Word } from "../api/types";
 import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
-import { SegmentedControl } from "../components/ui/SegmentedControl";
 import { SkeletonCard } from "../components/ui/Skeleton";
-import { WORTART_COLORS, WORTART_ORDER } from "../lib/vocab";
 import { AddWordsDialog } from "./vocabulary/AddWordsDialog";
 import { AnalyticsModal } from "./vocabulary/AnalyticsModal";
 import AnalyticsSheet from "./vocabulary/AnalyticsSheet";
@@ -19,60 +17,11 @@ import ReviewActions from "./vocabulary/ReviewActions";
 import ReviewModal from "./vocabulary/ReviewModal";
 import SearchModal from "./vocabulary/SearchModal";
 import { Shelf } from "./vocabulary/Shelf";
+import { buildShelves, byHeadword, type GroupBy } from "./vocabulary/shelves";
 import StateTabs from "./vocabulary/StateTabs";
 import VocabularyMobile from "./vocabulary/VocabularyMobile";
 import { glidePageTo } from "../lib/useShelfPan";
 import { DEFAULT_FILTERS, useVocabFacets, type VocabFilters } from "./vocabulary/useVocabFacets";
-
-type GroupBy = "wortart" | "az" | "woche";
-const GROUP_OPTIONS: { key: GroupBy; label: string }[] = [
-  { key: "wortart", label: "Wortart" },
-  { key: "az", label: "A–Z" },
-  { key: "woche", label: "Woche" },
-];
-
-interface ShelfGroup {
-  id: string;
-  title: string;
-  titleColor?: string;
-  glyph?: string;
-  words: Word[];
-}
-
-const byHeadword = (a: Word, b: Word) => a.sortKey.localeCompare(b.sortKey);
-
-function buildShelves(words: Word[], groupBy: GroupBy): ShelfGroup[] {
-  if (groupBy === "wortart") {
-    return WORTART_ORDER.map((w) => ({
-      id: `wortart-${w}`,
-      title: w,
-      glyph: "●",
-      titleColor: WORTART_COLORS[w],
-      words: words.filter((word) => word.wortart === w).sort(byHeadword),
-    })).filter((s) => s.words.length > 0);
-  }
-  if (groupBy === "woche") {
-    const map = new Map<string, Word[]>();
-    for (const w of words) {
-      const key = w.lesson ?? "";
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(w);
-    }
-    return [...map.entries()]
-      .map(([key, ws]) => ({ id: `woche-${key || "none"}`, title: key || "No lesson", words: ws.sort(byHeadword) }))
-      .sort((a, b) => (a.title === "No lesson" ? 1 : b.title === "No lesson" ? -1 : a.title.localeCompare(b.title)));
-  }
-  // az
-  const map = new Map<string, Word[]>();
-  for (const w of words) {
-    const letter = (w.sortKey[0] ?? "#").toUpperCase();
-    if (!map.has(letter)) map.set(letter, []);
-    map.get(letter)!.push(w);
-  }
-  return [...map.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([letter, ws]) => ({ id: `az-${letter}`, title: letter, words: ws.sort(byHeadword) }));
-}
 
 export default function Vocabulary() {
   const queryClient = useQueryClient();
@@ -99,10 +48,9 @@ export default function Vocabulary() {
   const problemWords = useMemo(() => filtered.filter((w) => w.leech).sort(byHeadword), [filtered]);
   const showProblemShelf = problemWords.length > 0 && filters.state !== "leech";
 
-  // sm/md Netflix shelves: reuse the same "woche" grouping + a pinned
-  // "Due today" shelf first (see plan's D1 — real word.lesson data, no
-  // fabricated "Week N — Theme" labels).
-  const mobileShelves = useMemo(() => buildShelves(filtered, "woche"), [filtered]);
+  // sm/md Netflix shelves share the same grouping + expand state as lg's
+  // `Shelf` list (only the presentation differs) — VocabularyMobile prepends
+  // its own pinned "Due today" shelf on top of this.
   const dueTodayWords = useMemo(() => filtered.filter((w) => w.state === "due").sort(byHeadword), [filtered]);
 
   const del = useMutation({
@@ -218,13 +166,22 @@ export default function Vocabulary() {
         onChange={(e) => onFilterChange({ search: e.target.value })}
       />
 
-      <StateTabs allWords={allWords} stateCounts={stateCounts} value={filters.state} onChange={(state) => onFilterChange({ state })} />
+      <StateTabs
+        allWords={allWords}
+        stateCounts={stateCounts}
+        value={filters.state}
+        onChange={(state) => onFilterChange({ state })}
+        groupBy={groupBy}
+        onGroupByChange={setGroupBy}
+      />
 
       <VocabularyMobile
         allWords={allWords}
         filtered={filtered}
         dueTodayWords={dueTodayWords}
-        mobileShelves={mobileShelves}
+        shelves={shelves}
+        expandedShelves={expandedShelves}
+        onToggleExpand={toggleShelfExpand}
         reviewCount={dueCount + newCount}
         onOpenReview={() => openPractice()}
         onOpenAnalytics={() => setShowAnalytics(true)}
@@ -271,14 +228,11 @@ export default function Vocabulary() {
             onOpenAnalytics={() => setShowAnalytics(true)}
           />
 
-          <div className={`flex flex-wrap items-center gap-2 ${hasActiveCustomization ? "justify-between" : "justify-end"}`}>
-            {hasActiveCustomization && (
-              <button className="text-xs font-medium text-ink-400 hover:text-ink-900" onClick={() => setFilters(DEFAULT_FILTERS)}>
-                Clear filters
-              </button>
-            )}
-            <SegmentedControl options={GROUP_OPTIONS} value={groupBy} onChange={setGroupBy} />
-          </div>
+          {hasActiveCustomization && (
+            <button className="text-xs font-medium text-ink-400 hover:text-ink-900" onClick={() => setFilters(DEFAULT_FILTERS)}>
+              Clear filters
+            </button>
+          )}
 
           {!data ? (
             <div className="space-y-3">
