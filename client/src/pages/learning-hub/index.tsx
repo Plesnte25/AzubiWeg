@@ -4,8 +4,11 @@ import { useSearchParams } from "react-router-dom";
 import { api } from "../../api/client";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { CarouselDots } from "../../components/ui/CarouselDots";
+import { PillTabs } from "../../components/ui/PillTabs";
 import { Skeleton } from "../../components/ui/Skeleton";
-import { LearningRail, type Destination } from "./LearningRail";
+import { DESTINATION_ROWS, type Destination } from "./destinations";
+import { LearningRail } from "./LearningRail";
 import { ProgressPage } from "./ProgressPage";
 import { RoadmapPage } from "./RoadmapPage";
 import { SelfTestsPage } from "./SelfTestsPage";
@@ -18,6 +21,10 @@ const DESTINATIONS: Destination[] = ["today", "roadmap", "syllabus", "sources", 
 // Self-tests all stay fully open pre-activation (see the handoff's "Roadmap
 // activation gate" section — Self-tests and Syllabus never depend on it).
 const NEEDS_ROADMAP = new Set<Destination>(["roadmap", "progress"]);
+
+// Same active color for every destination — unlike the vocab/job-search
+// pill rows, the Learning Hub sub-nav mockup doesn't color-code by section.
+const PILL_ITEMS = DESTINATION_ROWS.map((r) => ({ key: r.key, label: r.label, color: "var(--color-brand-500)" }));
 
 function useCustomDateState() {
   const [date, setDate] = useState("");
@@ -82,9 +89,19 @@ export default function LearningHub() {
   const fullBleed = destination === "test" && testRunning;
 
   return (
-    <div className="flex items-start gap-4">
+    <div className="lg:flex lg:items-start lg:gap-4">
       {!fullBleed && <LearningRail destination={destination} onNavigate={navigate} />}
-      <div className="min-w-0 flex-1 space-y-3.5">
+      <div className="min-w-0 space-y-3.5 lg:flex-1">
+        {!fullBleed && (
+          <div className="lg:hidden">
+            <PillTabs items={PILL_ITEMS} value={destination} onChange={navigate} ariaLabel="Learning Hub section" />
+            <CarouselDots
+              count={PILL_ITEMS.length}
+              activeIndex={DESTINATION_ROWS.findIndex((r) => r.key === destination)}
+              className="mt-2 md:hidden"
+            />
+          </div>
+        )}
         {destination === "test" ? (
           <SelfTestsPage onRunningChange={setTestRunning} onNavigate={navigate} />
         ) : statusLoading ? (

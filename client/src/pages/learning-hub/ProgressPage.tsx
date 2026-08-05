@@ -67,7 +67,13 @@ function MinutesChart({ labels, previous, current, period }: { labels: string[];
   const barsPerLabel = Math.max(1, Math.round(current.length / 5));
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 150 }} role="img" aria-label="Minutes logged per day">
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="xMidYMid meet"
+      className="h-auto w-full"
+      role="img"
+      aria-label="Minutes logged per day"
+    >
       {gridLines.map((g) => {
         const y = plotH - g * plotH;
         return (
@@ -143,7 +149,7 @@ export function ProgressPage({ onNavigate }: { onNavigate: (d: Destination) => v
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-5">
         {[
           { label: "Tasks kept", value: `${kpis.tasksKept.value}/${kpis.tasksKept.total}`, delta: tasksDelta },
           { label: "Minutes", value: String(kpis.minutes.value), delta: minutesDelta },
@@ -185,7 +191,7 @@ export function ProgressPage({ onNavigate }: { onNavigate: (d: Destination) => v
               </div>
             ))}
           </div>
-          <div className="mt-4 grid gap-4 border-t border-hairline pt-3 sm:grid-cols-2">
+          <div className="mt-4 grid gap-4 border-t border-hairline pt-3 md:grid-cols-2">
             <div>
               <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400">Weak areas · under 60%</p>
               <div className="mt-1.5 space-y-1">

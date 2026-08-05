@@ -1,37 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "../../api/client";
+import { GROUPS, type Destination } from "./destinations";
 
-export type Destination = "today" | "roadmap" | "syllabus" | "sources" | "test" | "progress";
-
-interface DestinationRow {
-  key: Destination;
-  label: string;
-}
-
-const GROUPS: { label: string; rows: DestinationRow[] }[] = [
-  {
-    label: "Plan",
-    rows: [
-      { key: "today", label: "Today" },
-      { key: "roadmap", label: "Roadmap" },
-    ],
-  },
-  {
-    label: "Learn",
-    rows: [
-      { key: "syllabus", label: "Syllabus" },
-      { key: "sources", label: "Sources" },
-    ],
-  },
-  {
-    label: "Check",
-    rows: [
-      { key: "test", label: "Self-tests" },
-      { key: "progress", label: "Progress" },
-    ],
-  },
-];
+// re-exported so existing `import type { Destination } from "./LearningRail"`
+// call sites elsewhere in the hub don't all need updating
+export type { Destination };
 
 const READINESS_LABEL: Record<string, string> = {
   "not started": "not started",
@@ -70,7 +44,7 @@ export function LearningRail({ destination, onNavigate }: { destination: Destina
   };
 
   return (
-    <div className="flex w-[212px] shrink-0 flex-col gap-3 self-start lg:sticky lg:top-5">
+    <div className="hidden w-[212px] shrink-0 flex-col gap-3 self-start lg:flex lg:sticky lg:top-5">
       {/* Day counter */}
       <div className="rounded-2xl bg-ink-900 p-4 text-white">
         <p className="text-[10px] font-bold tracking-[0.1em] text-ink-400">LEARNING HUB</p>
