@@ -142,7 +142,7 @@ function LogTimeDialog({ tasks, onClose }: { tasks: RoadmapTask[]; onClose: () =
   }
 
   return (
-    <Modal title="Log study time" onClose={onClose} size="sm">
+    <Modal title="Log study time" onClose={onClose} size="sm" sheetOnSm>
       <div className="space-y-3">
         <div>
           <label className="text-xs font-medium text-ink-600">Task</label>
@@ -259,9 +259,9 @@ export function TodayPage({ onNavigate }: { onNavigate: (d: Destination) => void
               color: "text-ok-600",
             },
           ].map((cell, i) => (
-            <div key={cell.label} className={`flex-1 px-4 py-3.5 ${i < 4 ? "border-r border-[var(--color-hairline)]" : ""}`}>
-              <p className={`text-[21px] font-bold ${cell.color}`}>{cell.value}</p>
-              <p className="mt-1 text-[11px] text-ink-400">{cell.label}</p>
+            <div key={cell.label} className={`flex-1 px-2.5 py-3 md:px-4 md:py-3.5 ${i < 4 ? "border-r border-[var(--color-hairline)]" : ""}`}>
+              <p className={`text-[17px] font-bold md:text-[21px] ${cell.color}`}>{cell.value}</p>
+              <p className="mt-1 text-[10px] text-ink-400 md:text-[11px]">{cell.label}</p>
             </div>
           ))}
         </div>

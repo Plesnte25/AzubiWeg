@@ -205,9 +205,9 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
 
   if (phase === "entry") {
     return (
-      <div className="flex min-h-[330px] flex-col rounded-[18px] bg-ink-900 p-7 text-white">
+      <div className="flex min-h-[330px] flex-col rounded-[18px] bg-ink-900 p-5 text-white md:p-7">
         <p className="text-[10px] font-bold uppercase tracking-[0.09em] text-ink-400">Self-test</p>
-        <h1 className="mt-1 text-[26px] font-bold">Test yourself</h1>
+        <h1 className="mt-1 text-[22px] font-bold md:text-[26px]">Test yourself</h1>
         <p className="mt-2 max-w-[56ch] text-[13.5px] text-ink-400">
           Grammar, real-life situations and your own vocabulary. Adapts to recent scores, never repeats a recent question, never touches your review
           schedule.

@@ -383,7 +383,7 @@ export function SourcesPage() {
         <div className="space-y-3">
           <div className="rounded-[13px] border border-hairline p-3.5">
             <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400">Source progress</p>
-            <div className="mt-2 space-y-3">
+            <div className="mt-2 grid gap-3 md:grid-cols-2 lg:grid-cols-1">
               {sources.length === 0 ? (
                 <p className="text-sm text-ink-400">No sources yet.</p>
               ) : (

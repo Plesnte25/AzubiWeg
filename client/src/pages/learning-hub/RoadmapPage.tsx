@@ -99,7 +99,7 @@ function AddTaskDialog({ date, onClose }: { date: string; onClose: () => void })
     },
   });
   return (
-    <Modal title={`Add task — ${fmtDate(date)}`} onClose={onClose} size="sm">
+    <Modal title={`Add task — ${fmtDate(date)}`} onClose={onClose} size="sm" sheetOnSm>
       <div className="space-y-3">
         <input
           autoFocus
@@ -300,23 +300,23 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
   const matchedDone = matchedStation?.items.filter((i) => i.completedAt !== null).length ?? 0;
 
   return (
-    <div className="rounded-[18px] border border-hairline bg-card p-5">
+    <div className="rounded-[18px] border border-hairline bg-card p-4 md:p-5">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h1 className="text-[19px] font-bold">
+          <h1 className="text-[17px] font-bold md:text-[19px]">
             Roadmap · week {data.week} of {data.totalWeeks}
           </h1>
-          <p className="text-[13px] text-ink-600">
+          <p className="text-[12px] text-ink-600 md:text-[13px]">
             {fmtDate(data.weekStart)} – {fmtDate(data.weekEnd)}
             {data.theme && ` · ${data.theme}`} · {data.thisWeek.done} of {data.thisWeek.total} tasks kept
           </p>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           <Button size="sm" variant="outline" onClick={() => setWeek((w) => (w ?? data.week) - 1)}>
-            <ChevronLeft className="size-3.5" aria-hidden="true" /> Week {data.week - 1}
+            <ChevronLeft className="size-3.5" aria-hidden="true" /> <span className="hidden md:inline">Week {data.week - 1}</span>
           </Button>
           <Button size="sm" variant="outline" onClick={() => setWeek((w) => (w ?? data.week) + 1)}>
-            Week {data.week + 1} <ChevronRight className="size-3.5" aria-hidden="true" />
+            <span className="hidden md:inline">Week {data.week + 1}</span> <ChevronRight className="size-3.5" aria-hidden="true" />
           </Button>
           <Button size="sm" variant={week === undefined || week === currentWeek ? "primary" : "outline"} onClick={() => setWeek(currentWeek)}>
             Today
@@ -328,7 +328,7 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
       </div>
 
       {/* 26-week program strip */}
-      <div className="mt-4 rounded-[13px] border border-hairline bg-paper p-3">
+      <div className="mt-4 rounded-[13px] border border-hairline bg-paper p-2.5 md:p-3">
         <div className="flex h-[26px] items-end gap-px">
           {data.weeksOverview.map((w) => {
             const height = Math.max(3, Math.round((w.taskCount / maxTasks) * 26));

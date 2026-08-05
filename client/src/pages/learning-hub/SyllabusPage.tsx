@@ -57,7 +57,7 @@ function AddItemDialog({ level, theme, onClose }: { level: CefrLevel; theme: str
     },
   });
   return (
-    <Modal title={`Add item — ${theme}`} onClose={onClose} size="sm">
+    <Modal title={`Add item — ${theme}`} onClose={onClose} size="sm" sheetOnSm>
       <div className="space-y-3">
         <input
           autoFocus
@@ -86,7 +86,7 @@ function AddStationDialog({ level, afterTheme, onClose }: { level: CefrLevel; af
     },
   });
   return (
-    <Modal title="Add custom station" onClose={onClose} size="sm">
+    <Modal title="Add custom station" onClose={onClose} size="sm" sheetOnSm>
       <div className="space-y-3">
         <input
           autoFocus
@@ -220,19 +220,19 @@ export function SyllabusPage() {
   const fillPercent = stations.length === 0 ? 0 : (Math.max(0, currentIdx) / stations.length) * 100;
 
   return (
-    <div className="rounded-[18px] border border-hairline bg-card p-5">
+    <div className="rounded-[18px] border border-hairline bg-card p-4 md:p-5">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h1 className="text-[19px] font-bold">
+          <h1 className="text-[17px] font-bold md:text-[19px]">
             {LEVEL_LABELS[level]} route · {stations.length} stations
           </h1>
-          <p className="text-[13px] text-ink-600">
+          <p className="text-[12px] text-ink-600 md:text-[13px]">
             {doneItems} of {levelItems.length} items
             {activeStation && ` · you are at station ${resolvedActiveIdx + 1}`}
             {data.routePace.itemsPerWeek > 0 && ` · ${data.routePace.itemsPerWeek} items a week`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1 rounded-full border border-hairline bg-paper p-1">
             {LEVELS.map((l) => {
               const lp = data.levels.find((x) => x.level === l);
@@ -278,9 +278,65 @@ export function SyllabusPage() {
         </div>
       ) : (
         <>
-          {/* route line — click-and-drag panning (useShelfPan) plus arrow buttons
-              at both ends for a discrete nudge, not a native scrollbar */}
-          <div className="mt-5 flex items-center gap-1.5">
+          {/* sm/md: vertical stepper — a deliberate change from lg's horizontal
+              winding path (more of the route visible without horizontal
+              panning on a narrow screen). Same station-status logic/bead
+              styling as the lg version below, just laid out top-to-bottom;
+              visual language borrowed from RoadmapPage's DayRow timeline for
+              consistency across the hub. */}
+          <div className="relative mt-5 lg:hidden">
+            {stations.map((s, i) => {
+              const status = i < currentIdx ? "done" : i === currentIdx ? "current" : "ahead";
+              const done = s.items.filter((it) => it.completedAt !== null).length;
+              const isLast = i === stations.length - 1;
+              return (
+                <button
+                  key={s.theme + i}
+                  onClick={() => setSelectedStation(s.theme)}
+                  className="relative flex w-full items-start gap-3 pb-5 text-left last:pb-0"
+                >
+                  {!isLast && (
+                    <span
+                      className={`absolute bottom-[-2px] left-[10px] top-[22px] w-[2px] -translate-x-1/2 ${
+                        status === "done" ? "bg-ok-600" : "bg-[var(--color-hairline)]"
+                      }`}
+                    />
+                  )}
+                  <span className="relative z-10 grid h-[22px] w-5 shrink-0 place-items-center">
+                    <span
+                      className={`grid place-items-center rounded-full border-4 border-card text-[10px] font-bold text-white ${
+                        status === "done"
+                          ? "size-4 bg-ok-600"
+                          : status === "current"
+                            ? "size-[22px] bg-brand-500 shadow-[0_0_0_4px_var(--color-brand-50)]"
+                            : "size-3.5 border-2 bg-card text-transparent"
+                      }`}
+                      style={status === "ahead" ? { borderColor: "var(--color-hairline)" } : undefined}
+                    >
+                      {status === "current" ? i + 1 : ""}
+                    </span>
+                  </span>
+                  <span className="min-w-0 flex-1 pt-0.5">
+                    <span
+                      className={`block truncate text-[13px] ${status === "current" ? "font-bold" : status === "ahead" ? "text-ink-400" : "text-ink-600"}`}
+                    >
+                      {s.theme}
+                    </span>
+                    <span
+                      className={`block text-[11px] ${status === "done" ? "text-ok-600" : status === "current" ? "font-semibold text-brand-500" : "text-ink-400"}`}
+                    >
+                      {done}/{s.items.length}
+                      {status === "current" ? " · here" : ""}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* lg: click-and-drag panning (useShelfPan) plus arrow buttons at
+              both ends for a discrete nudge, not a native scrollbar */}
+          <div className="mt-5 hidden items-center gap-1.5 lg:flex">
             <button
               onClick={() => glideBy(-260)}
               className="grid size-6 shrink-0 place-items-center rounded-full border border-hairline text-ink-400 hover:border-brand-400 hover:text-brand-500"
