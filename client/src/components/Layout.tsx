@@ -24,7 +24,7 @@ export default function Layout() {
           where FabNav floats over content instead of reserving space. */}
       <main
         className={cn(
-          "pb-16 md:pb-0 md:pl-[72px] lg:pl-0",
+          "pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-[72px] lg:pl-0",
           isDashboard ? "px-4 py-4 lg:h-dvh lg:min-h-[760px] lg:py-3" : "mx-auto max-w-6xl px-4 py-6",
         )}
       >

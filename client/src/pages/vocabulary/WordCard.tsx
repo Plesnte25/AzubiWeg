@@ -27,7 +27,7 @@ export function WordCard({ word, onToggleLeech, onDelete, onPlayAudio, audioPlay
     >
       <div
         className={cn(
-          "relative h-full w-full cursor-pointer rounded-[14px] transition-transform duration-300 [transform-style:preserve-3d]",
+          "flip-card-3d relative h-full w-full cursor-pointer rounded-[14px] transition-transform duration-300",
           flipped && "[transform:rotateY(180deg)]",
         )}
         style={
@@ -38,7 +38,7 @@ export function WordCard({ word, onToggleLeech, onDelete, onPlayAudio, audioPlay
         onClick={() => setFlipped((f) => !f)}
       >
         {/* front */}
-        <div className="absolute inset-0 flex flex-col rounded-[14px] border border-hairline bg-card p-3 [backface-visibility:hidden]">
+        <div className="flip-card-face absolute inset-0 flex flex-col rounded-[14px] border border-hairline bg-card p-3">
           <div className="flex items-center gap-1.5">
             <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: stateColor }} aria-hidden="true" />
             <span className="text-[10px] font-bold tracking-wide" style={{ color: wortartColor }}>
@@ -84,7 +84,7 @@ export function WordCard({ word, onToggleLeech, onDelete, onPlayAudio, audioPlay
         </div>
 
         {/* back */}
-        <div className="absolute inset-0 flex flex-col rounded-[14px] border border-hairline bg-ink-900 p-3 text-ink-50 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+        <div className="flip-card-face absolute inset-0 flex flex-col rounded-[14px] border border-hairline bg-ink-900 p-3 text-ink-50 [transform:rotateY(180deg)]">
           <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto text-xs">
             {word.meaning && <p>{word.meaning}</p>}
             {word.example && <p className="italic text-ink-50/70">{word.example}</p>}

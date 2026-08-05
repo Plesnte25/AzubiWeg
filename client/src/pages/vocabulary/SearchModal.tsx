@@ -60,7 +60,7 @@ export default function SearchModal({ words, onClose }: SearchModalProps) {
               <div key={w.id} className="flex items-center gap-2.5 overflow-hidden rounded-lg px-2.5 py-2 text-sm">
                 <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: STATE_COLORS[w.state] }} aria-hidden="true" />
                 <span className="shrink-0 font-medium text-ink-900">{articleFront(w.headword, w.genus)}</span>
-                {w.meaning && <span className="min-w-0 flex-1 truncate text-ink-400">{w.meaning}</span>}
+                {w.meaning && <span className="min-w-0 flex-1 line-clamp-2 text-ink-400">{w.meaning}</span>}
               </div>
             ))
           )}

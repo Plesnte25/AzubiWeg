@@ -42,7 +42,7 @@ export default function ReviewModal({ words, onClose }: ReviewModalProps) {
   });
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/40 p-4 backdrop-blur-[6px] lg:hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4 backdrop-blur-[6px] lg:hidden">
       <div className="w-full max-w-sm">
         {!loading && current && (
           <div className="mb-2 flex items-center gap-2">

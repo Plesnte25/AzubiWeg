@@ -3,22 +3,25 @@ import { Flag } from "lucide-react";
 import type { Word } from "../../api/types";
 import { articleFront } from "../../lib/vocab";
 
-type Tint = "neutral" | "leech" | "learned" | "mastered";
+type Tint = "neutral" | "leech" | "learning" | "mastered";
 
 // Tailwind 4 statically scans source for literal class-name tokens, so each
 // variant is spelled out in full here rather than built at runtime (e.g. via
 // `.replace("text-", "bg-")`) — a computed string wouldn't be picked up.
+// `learning`'s dot references the same `--color-state-learning` token
+// StateTabs/MasteryStrip use, so it stays in sync rather than drifting to
+// its own color (it previously aliased the blue `info` token by mistake).
 const TINT_CLASSES: Record<Tint, { bg: string; text: string; dot: string }> = {
   neutral: { bg: "bg-ink-50", text: "text-ink-600", dot: "bg-ink-400" },
   leech: { bg: "bg-danger-50", text: "text-danger-700", dot: "bg-danger-600" },
-  learned: { bg: "bg-info-50", text: "text-info-600", dot: "bg-info-600" },
+  learning: { bg: "bg-ink-50", text: "text-ink-600", dot: "bg-[var(--color-state-learning)]" },
   mastered: { bg: "bg-ok-50", text: "text-ok-600", dot: "bg-ok-600" },
 };
 
 function tintFor(word: Word): Tint {
   if (word.leech) return "leech";
   if (word.state === "mastered") return "mastered";
-  if (word.state === "learning") return "learned";
+  if (word.state === "learning") return "learning";
   return "neutral";
 }
 
@@ -37,10 +40,10 @@ export default function VocabTile({ word }: { word: Word }) {
       onClick={() => setFlipped((f) => !f)}
     >
       <div
-        className={`relative h-full w-full rounded-[14px] transition-transform duration-300 [transform-style:preserve-3d] ${flipped ? "[transform:rotateY(180deg)]" : ""}`}
+        className={`flip-card-3d relative h-full w-full rounded-[14px] transition-transform duration-300 ${flipped ? "[transform:rotateY(180deg)]" : ""}`}
       >
         {/* front */}
-        <div className={`absolute inset-0 flex flex-col rounded-[14px] border border-hairline p-2.5 [backface-visibility:hidden] ${tint.bg}`}>
+        <div className={`flip-card-face absolute inset-0 flex flex-col rounded-[14px] border border-hairline p-2.5 ${tint.bg}`}>
           <div className="flex justify-end">
             {word.leech ? (
               <Flag className="size-3.5 text-danger-600" aria-hidden="true" />
@@ -55,7 +58,7 @@ export default function VocabTile({ word }: { word: Word }) {
         </div>
 
         {/* back */}
-        <div className="absolute inset-0 flex flex-col justify-center gap-1 rounded-[14px] border border-hairline bg-ink-900 p-2.5 text-center [backface-visibility:hidden] [transform:rotateY(180deg)]">
+        <div className="flip-card-face absolute inset-0 flex flex-col justify-center gap-1 rounded-[14px] border border-hairline bg-ink-900 p-2.5 text-center [transform:rotateY(180deg)]">
           {word.ipa && <p className="truncate text-[10px]" style={{ color: "var(--color-wortart-wendung)" }}>/{word.ipa}/</p>}
           {word.meaning && <p className="line-clamp-2 text-xs font-medium text-white">{word.meaning}</p>}
           <p className="truncate text-[10px] text-ink-50/70">

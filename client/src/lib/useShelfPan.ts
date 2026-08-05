@@ -34,6 +34,13 @@ export function useShelfPan(rowRef: RefObject<HTMLDivElement | null>) {
 
     function onPointerDown(e: PointerEvent) {
       if (!el) return;
+      // Touch already gets native scrolling (both the row's own
+      // overflow-x-auto and the page's vertical scroll) — this drag-to-pan
+      // affordance is mouse-only. Letting it run for touch pointers too
+      // means a finger that drifts even slightly horizontally during a
+      // vertical swipe crosses the drag threshold below and setPointerCapture
+      // hijacks the gesture from the browser's native touch-scroll.
+      if (e.pointerType === "touch") return;
       dragging = true;
       draggedRef.current = false;
       startX = e.clientX;
