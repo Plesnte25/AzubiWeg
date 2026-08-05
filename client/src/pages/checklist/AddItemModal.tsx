@@ -28,7 +28,7 @@ export default function AddItemModal({
   });
 
   return (
-    <Modal title="Add checklist item" onClose={onClose} size="sm">
+    <Modal title="Add checklist item" onClose={onClose} size="sm" sheetOnSm>
       <p className="-mt-3 mb-4 text-sm text-ink-400">Added to {CATEGORY_LABEL[category]}</p>
       <form
         className="space-y-3"
