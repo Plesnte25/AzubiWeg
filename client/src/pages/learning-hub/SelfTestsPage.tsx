@@ -226,8 +226,9 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
             </button>
           ))}
         </div>
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <Button
+            className="shrink-0"
             loading={start.isPending}
             onClick={() => {
               setStartError(null);

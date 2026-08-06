@@ -108,27 +108,29 @@ function AddSourceRow() {
 
   return (
     <div className="rounded-[14px] border border-hairline bg-card p-3">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center">
         <input
-          className="min-w-0 flex-[2] rounded-lg border border-hairline bg-paper px-3 py-1.5 text-sm placeholder:text-ink-400"
+          className="min-w-0 rounded-lg border border-hairline bg-paper px-3 py-1.5 text-sm placeholder:text-ink-400 md:flex-[2]"
           placeholder="Add a source — paste a URL (YouTube, DW, course…)"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
         />
-        <input
-          className="min-w-0 flex-1 rounded-lg border border-hairline bg-paper px-3 py-1.5 text-sm placeholder:text-ink-400"
-          placeholder="Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <Button
-          size="sm"
-          disabled={!url.trim() && !title.trim()}
-          loading={add.isPending}
-          onClick={() => add.mutate()}
-        >
-          Add →
-        </Button>
+        <div className="flex gap-2 md:contents">
+          <input
+            className="min-w-0 flex-1 rounded-lg border border-hairline bg-paper px-3 py-1.5 text-sm placeholder:text-ink-400"
+            placeholder="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <Button
+            size="sm"
+            disabled={!url.trim() && !title.trim()}
+            loading={add.isPending}
+            onClick={() => add.mutate()}
+          >
+            Add →
+          </Button>
+        </div>
       </div>
       {error && <p className="mt-2 text-xs text-danger-600">{error}</p>}
     </div>
