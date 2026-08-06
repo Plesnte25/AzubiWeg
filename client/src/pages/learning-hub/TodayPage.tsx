@@ -268,7 +268,7 @@ export function TodayPage({ onNavigate }: { onNavigate: (d: Destination) => void
       )}
 
       <div className="grid gap-3.5 lg:grid-cols-[minmax(0,1fr)_316px]">
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           {!activated ? (
             <div className="rounded-[18px] border border-hairline bg-card p-4">
               <h3 className="font-semibold">Vocab &amp; syllabus</h3>
@@ -350,7 +350,7 @@ export function TodayPage({ onNavigate }: { onNavigate: (d: Destination) => void
           )}
         </div>
 
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           {activated && week && (
             <div className="rounded-[18px] border border-hairline bg-card p-4">
               <RoadmapWeekStrip
