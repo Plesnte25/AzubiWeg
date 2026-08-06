@@ -20,11 +20,15 @@ export default function Layout() {
           at lg+) to fit proportionally without scrolling; every other page
           keeps the centered reading-width layout — both unrelated to the
           sidebar removal, carried over as-is. pb-16 clears BottomTabBar
-          (sm); md:pl-[72px] clears IconRail (md); both drop out at lg,
-          where FabNav floats over content instead of reserving space. */}
+          (sm); md:pl-20 clears IconRail (md, w-16) plus the same 16px
+          breathing gap the page already has on every other side — pl-16
+          alone would leave content flush against the rail with zero gap,
+          while the right/bottom edges keep their normal px-4 margin; both
+          drop out at lg, where FabNav floats over content instead of
+          reserving space. */}
       <main
         className={cn(
-          "pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-[72px] lg:pl-0",
+          "pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-20 lg:pl-0",
           isDashboard ? "px-4 py-4 lg:h-dvh lg:min-h-[760px] lg:py-3" : "mx-auto max-w-6xl px-4 py-6",
         )}
       >

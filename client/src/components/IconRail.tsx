@@ -42,7 +42,7 @@ export default function IconRail({ onOpenAccount }: { onOpenAccount: () => void 
 
   return (
     <nav
-      className="fixed inset-y-0 left-0 z-40 hidden w-[72px] flex-col items-center gap-2 border-r border-hairline bg-card py-4 md:flex lg:hidden"
+      className="fixed inset-y-0 left-0 z-40 hidden w-16 flex-col items-center gap-2 border-r border-hairline bg-card py-4 md:flex lg:hidden"
       aria-label="Primary"
     >
       {NAV_DESTINATIONS.map((dest) => {
