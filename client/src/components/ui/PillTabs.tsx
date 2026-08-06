@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { KeyboardEvent } from "react";
 import { cn } from "../../lib/cn";
 
@@ -25,6 +25,16 @@ interface PillTabsProps {
  * that component's vocab-specific grouping dropdown. */
 export function PillTabs({ items, value, onChange, ariaLabel, className }: PillTabsProps) {
   const btnRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Keep the active pill in view even when `value` changes from outside this
+  // component (e.g. a "Start a test" button elsewhere navigating here) —
+  // keyboard nav already focuses the new button, but focus alone doesn't
+  // guarantee scroll-into-view on a custom overflow-x-auto strip like this.
+  useEffect(() => {
+    const activeIndex = items.findIndex((it) => it.key === value);
+    btnRefs.current[activeIndex]?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   function onKeyDown(e: KeyboardEvent<HTMLButtonElement>, index: number) {
     let next: number | null = null;
