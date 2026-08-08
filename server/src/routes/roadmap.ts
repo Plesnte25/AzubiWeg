@@ -492,7 +492,10 @@ async function reviewForRange(userId: string, start: Date, end: Date) {
       select: { id: true, title: true },
     }),
     prisma.roadmapTask.findMany({
-      where: { day: { userId, date: { gte: start, lt: end } } },
+      where: {
+        day: { userId },
+        OR: [{ day: { date: { gte: start, lt: end } } }, { completedAt: { gte: start, lt: end } }],
+      },
       select: { skill: true, completedAt: true, minutesSpent: true, day: { select: { date: true } } },
     }),
     prisma.selfTestResult.findMany({
@@ -509,7 +512,13 @@ async function reviewForRange(userId: string, start: Date, end: Date) {
     wordsAdded,
     reviewsCount,
     syllabusCompletions,
-    roadmapTasks: roadmapTasks.map((t) => ({ skill: t.skill, completedAt: t.completedAt, minutesSpent: t.minutesSpent, date: t.day.date })),
+    roadmapTasks: roadmapTasks.map((t) => ({
+      skill: t.skill,
+      completedAt: t.completedAt,
+      minutesSpent: t.minutesSpent,
+      scheduledInRange: t.day.date >= start && t.day.date < end,
+      completedInRange: t.completedAt !== null && t.completedAt >= start && t.completedAt < end,
+    })),
     selfTestBreakdowns,
   });
 }
@@ -692,7 +701,7 @@ roadmapRouter.get("/progress", async (req, res) => {
       },
       testAvg: { value: testAvg, deltaPoints: testAvg !== null && prevTestAvg !== null ? testAvg - prevTestAvg : null },
       syllabusPercent: { value: syllabusPercentNow, deltaPoints: syllabusPercentNow - syllabusPercentThen },
-      streak: { current: computeDayStreak(learningTimestamps, today), best: computeBestStreak(learningTimestamps) },
+      streak: { current: computeDayStreak(learningTimestamps, new Date()), best: computeBestStreak(learningTimestamps) },
     },
     chart: {
       labels: Array.from({ length: days }, (_, i) => addDaysUTC(rangeStart, i).toISOString().slice(0, 10)),
