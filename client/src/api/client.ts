@@ -249,6 +249,7 @@ export const api = {
     description?: string | null;
     afterTheme?: string | null;
   }) => request<{ item: SyllabusItem }>("/api/learning/syllabus/item", { method: "POST", body: JSON.stringify(data) }),
+  deleteSyllabusItem: (id: string) => request<void>(`/api/learning/syllabus/${id}`, { method: "DELETE" }),
   replanRoute: (level: CefrLevel) =>
     request<{ moved: number; studyDays: number }>("/api/learning/syllabus/replan", { method: "POST", body: JSON.stringify({ level }) }),
 

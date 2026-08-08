@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api, downloadFile, fetchFileBlobUrl, uploadFile } from "../api/client";
 import type { UploadedFileMeta } from "../api/types";
@@ -64,10 +65,16 @@ export function Attachments({
   files,
   parent,
   onChanged,
+  renderTrigger,
 }: {
   files: UploadedFileMeta[];
   parent: AttachmentParent;
   onChanged: () => void;
+  /** Swap the default "+ notes" text button for a custom trigger (e.g. a
+   * circular icon button embedded in a composer) — the hidden file input,
+   * upload mutation, error state, and FileChip list all stay unchanged;
+   * only what's clicked to open the file picker changes. */
+  renderTrigger?: (opts: { onClick: () => void; uploading: boolean }) => ReactNode;
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -102,14 +109,18 @@ export function Attachments({
           e.target.value = "";
         }}
       />
-      <button
-        className="rounded border border-hairline px-2 py-0.5 text-xs text-ink-600 hover:bg-paper"
-        disabled={uploading}
-        onClick={() => fileInput.current?.click()}
-        title="Attach notes (PDF, photo, or .txt)"
-      >
-        {uploading ? "Uploading…" : "+ notes"}
-      </button>
+      {renderTrigger ? (
+        renderTrigger({ onClick: () => fileInput.current?.click(), uploading })
+      ) : (
+        <button
+          className="rounded border border-hairline px-2 py-0.5 text-xs text-ink-600 hover:bg-paper"
+          disabled={uploading}
+          onClick={() => fileInput.current?.click()}
+          title="Attach notes (PDF, photo, or .txt)"
+        >
+          {uploading ? "Uploading…" : "+ notes"}
+        </button>
+      )}
       {error && <span className="text-xs text-danger-600">{error}</span>}
     </div>
   );
