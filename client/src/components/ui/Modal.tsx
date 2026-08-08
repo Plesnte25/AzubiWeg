@@ -69,7 +69,7 @@ export function Modal({ title, onClose, size = "md", desktopOnly, sheetOnSm, chi
         desktopOnly
           ? "fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto bg-ink-900/40 p-4 sm:py-12 lg:flex"
           : sheetOnSm
-            ? "fixed inset-0 z-50 flex flex-col overflow-y-auto bg-card md:items-start md:justify-center md:bg-ink-900/40 md:p-4 md:py-12"
+            ? "fixed inset-0 z-50 flex flex-col overflow-y-auto bg-card md:flex-row md:items-start md:justify-center md:bg-ink-900/40 md:p-4 md:py-12"
             : "fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink-900/40 p-4 sm:py-12"
       }
       onMouseDown={(e) => {
