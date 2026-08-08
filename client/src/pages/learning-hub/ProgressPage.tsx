@@ -4,6 +4,11 @@ import { api } from "../../api/client";
 import type { ProgressPeriod, RoadmapSkill } from "../../api/types";
 import { Skeleton } from "../../components/ui/Skeleton";
 import type { Destination } from "./LearningRail";
+import taskIcon from "../../assets/icons/task.png";
+import clockIcon from "../../assets/icons/clock.png";
+import quizIcon from "../../assets/icons/quiz.png";
+import learningIcon from "../../assets/icons/learning.png";
+import fireIcon from "../../assets/icons/fire.png";
 
 const PERIODS: { key: ProgressPeriod; label: string }[] = [
   { key: "7d", label: "7d" },
@@ -112,7 +117,7 @@ export function ProgressPage({ onNavigate }: { onNavigate: (d: Destination) => v
 
   if (isLoading || !data) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-4 pb-6">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-64 w-full" />
@@ -127,10 +132,10 @@ export function ProgressPage({ onNavigate }: { onNavigate: (d: Destination) => v
   const syllabusDelta = deltaText(kpis.syllabusPercent.deltaPoints, " pts", true);
 
   return (
-    <div className="space-y-3.5">
+    <div className="space-y-4 pb-6">
       <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-[19px] font-bold">Progress</h1>
+        <div className="min-w-0">
+          <h1 className="text-[21px] font-bold tracking-[-0.02em] sm:text-[23px] md:text-[27px] lg:text-[29px]">Progress</h1>
           <p className="text-[13px] text-ink-600">
             {fmtShort(data.rangeStart)} – {fmtShort(data.rangeEnd)}
             {period !== "all" && " · compared with the previous period"}
@@ -149,23 +154,30 @@ export function ProgressPage({ onNavigate }: { onNavigate: (d: Destination) => v
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-5">
+      <div className="grid grid-cols-5 gap-1.5 sm:gap-2 md:gap-2.5">
         {[
-          { label: "Tasks kept", value: `${kpis.tasksKept.value}/${kpis.tasksKept.total}`, delta: tasksDelta },
-          { label: "Minutes", value: String(kpis.minutes.value), delta: minutesDelta },
-          { label: "Test avg", value: kpis.testAvg.value !== null ? `${kpis.testAvg.value}%` : "—", delta: testDelta },
-          { label: "Syllabus", value: `${kpis.syllabusPercent.value}%`, delta: syllabusDelta },
-          { label: "Streak", value: `${kpis.streak.current}d`, delta: { text: `best ${kpis.streak.best}d`, cls: "text-ink-400" } },
+          { label: "Tasks kept", icon: taskIcon, value: `${kpis.tasksKept.value}/${kpis.tasksKept.total}`, delta: tasksDelta },
+          { label: "Minutes", icon: clockIcon, value: String(kpis.minutes.value), delta: minutesDelta },
+          { label: "Test avg", icon: quizIcon, value: kpis.testAvg.value !== null ? `${kpis.testAvg.value}%` : "—", delta: testDelta },
+          { label: "Syllabus", icon: learningIcon, value: `${kpis.syllabusPercent.value}%`, delta: syllabusDelta },
+          { label: "Streak", icon: fireIcon, value: `${kpis.streak.current}d`, delta: { text: `best ${kpis.streak.best}d`, cls: "text-ink-400" } },
         ].map((k) => (
-          <div key={k.label} className="rounded-[13px] border border-hairline bg-card p-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-ink-400">{k.label}</p>
-            <p className="mt-1 text-[21px] font-bold">{k.value}</p>
-            <p className={`mt-0.5 text-[10.5px] font-medium ${k.delta.cls}`}>{k.delta.text}</p>
+          <div
+            key={k.label}
+            title={k.label}
+            className="flex flex-col items-center gap-1 rounded-[13px] border border-hairline bg-card p-2 text-center transition-colors hover:border-brand-300 md:flex-row md:items-start md:gap-2.5 md:p-3 md:text-left"
+          >
+            <img src={k.icon} alt="" className="size-4 shrink-0 md:size-5" />
+            <div className="min-w-0">
+              <p className="hidden text-[10px] font-bold uppercase tracking-[0.08em] text-ink-400 md:block">{k.label}</p>
+              <p className="text-[13px] font-bold leading-tight sm:text-[14.5px] md:text-[21px]">{k.value}</p>
+              <p className={`hidden text-[10.5px] font-medium md:block ${k.delta.cls}`}>{k.delta.text}</p>
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="rounded-2xl border border-hairline bg-card p-4">
+      <div className="rounded-2xl border border-hairline bg-card p-4 transition-colors hover:border-brand-300">
         <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400">Minutes logged per day</p>
         <div className="mt-3">
           <MinutesChart labels={data.chart.labels} previous={data.chart.previous} current={data.chart.current} period={period} />
@@ -174,7 +186,7 @@ export function ProgressPage({ onNavigate }: { onNavigate: (d: Destination) => v
       </div>
 
       <div className="grid gap-3.5 lg:grid-cols-[minmax(0,1fr)_236px]">
-        <div className="rounded-2xl border border-hairline bg-card p-4">
+        <div className="rounded-2xl border border-hairline bg-card p-4 transition-colors hover:border-brand-300">
           <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400">Completion by skill</p>
           <div className="mt-2 space-y-2">
             {data.bySkill.map((s) => (
@@ -226,7 +238,7 @@ export function ProgressPage({ onNavigate }: { onNavigate: (d: Destination) => v
         </div>
 
         <div className="space-y-3">
-          <div className="rounded-[13px] border border-hairline bg-card p-3.5">
+          <div className="rounded-[13px] border border-hairline bg-card p-3.5 transition-colors hover:border-brand-300">
             <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400">Study streak</p>
             <div className="mt-2 grid grid-cols-7 gap-1">
               {data.streakGrid.map((cell) => {
@@ -251,7 +263,7 @@ export function ProgressPage({ onNavigate }: { onNavigate: (d: Destination) => v
             </button>
           </div>
 
-          <div className="rounded-[13px] border border-hairline p-3.5">
+          <div className="rounded-[13px] border border-hairline p-3.5 transition-colors hover:border-brand-300">
             <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400">Time coverage</p>
             <p className="mt-1.5 text-xs text-ink-600">
               {data.timeCoverage.tasksWithLoggedTime} of {data.timeCoverage.tasksCompleted} completed tasks had time logged. Minutes are self-reported, so

@@ -67,13 +67,26 @@ export function aggregateReview(input: {
   wordsAdded: number;
   reviewsCount: number;
   syllabusCompletions: { id: string; title: string }[];
-  roadmapTasks: { skill: RoadmapSkill | null; completedAt: Date | null; minutesSpent: number | null; date: Date }[];
+  roadmapTasks: {
+    skill: RoadmapSkill | null;
+    completedAt: Date | null;
+    minutesSpent: number | null;
+    /** Task's own scheduled day falls in the queried range — drives the
+     * "did I do what was planned for this window" metrics. */
+    scheduledInRange: boolean;
+    /** Task was actually completed within the queried range, regardless of
+     * when it was scheduled — drives the "how much time did I actually
+     * spend in this window" metrics, so backlog tasks completed late don't
+     * lose or misattribute their minutes to the wrong period. */
+    completedInRange: boolean;
+  }[];
   selfTestBreakdowns: { topic: string; correct: number; total: number }[];
 }): ReviewSummary {
-  const completedTasks = input.roadmapTasks.filter((t) => t.completedAt !== null);
+  const scheduledTasks = input.roadmapTasks.filter((t) => t.scheduledInRange);
+  const completedInRangeTasks = input.roadmapTasks.filter((t) => t.completedInRange);
 
   const skillTotals = new Map<RoadmapSkill, { done: number; total: number }>();
-  for (const t of input.roadmapTasks) {
+  for (const t of scheduledTasks) {
     if (!t.skill) continue;
     const entry = skillTotals.get(t.skill) ?? { done: 0, total: 0 };
     entry.total += 1;
@@ -82,9 +95,9 @@ export function aggregateReview(input: {
   }
 
   const dailySkillTotals = new Map<string, { date: string; skill: RoadmapSkill; minutes: number }>();
-  for (const t of input.roadmapTasks) {
+  for (const t of completedInRangeTasks) {
     if (!t.skill || !t.minutesSpent) continue;
-    const date = t.date.toISOString().slice(0, 10);
+    const date = t.completedAt!.toISOString().slice(0, 10);
     const key = `${date}|${t.skill}`;
     const entry = dailySkillTotals.get(key) ?? { date, skill: t.skill, minutes: 0 };
     entry.minutes += t.minutesSpent;
@@ -97,12 +110,12 @@ export function aggregateReview(input: {
     vocabAdded: input.wordsAdded,
     vocabReviewed: input.reviewsCount,
     grammarCompleted: input.syllabusCompletions,
-    tasksCompleted: completedTasks.length,
-    tasksTotal: input.roadmapTasks.length,
+    tasksCompleted: scheduledTasks.filter((t) => t.completedAt !== null).length,
+    tasksTotal: scheduledTasks.length,
     bySkill: [...skillTotals.entries()].map(([skill, v]) => ({ skill, ...v })),
     weakAreas,
-    loggedMinutes: completedTasks.reduce((sum, t) => sum + (t.minutesSpent ?? 0), 0),
-    tasksWithLoggedTime: completedTasks.filter((t) => t.minutesSpent !== null).length,
+    loggedMinutes: completedInRangeTasks.reduce((sum, t) => sum + (t.minutesSpent ?? 0), 0),
+    tasksWithLoggedTime: completedInRangeTasks.filter((t) => t.minutesSpent !== null).length,
     dailyMinutesBySkill: [...dailySkillTotals.values()],
   };
 }
