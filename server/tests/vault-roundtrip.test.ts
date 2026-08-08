@@ -125,9 +125,22 @@ describe("format helpers", () => {
 });
 
 describe("inbox parsing", () => {
-  it("skips comment placeholder and blank lines", () => {
+  it("skips comment placeholder and blank lines once the GO marker is present", () => {
+    const content =
+      "Zug\nGO\n\n<!-- type one German word per line above, then run: vocab enrich-inbox -->\n";
+    expect(parseInboxFile(content)).toEqual(["Zug"]);
+  });
+
+  it("is a no-op with no GO marker, no matter how the sync lands mid-typing", () => {
     const content =
       "Zug\n\n<!-- type one German word per line above, then run: vocab enrich-inbox -->\n";
-    expect(parseInboxFile(content)).toEqual(["Zug"]);
+    expect(parseInboxFile(content)).toEqual([]);
+  });
+
+  it("treats a comment torn across two physical lines as no words, not garbage cards", () => {
+    // mirrors the 2026-08-08 corruption: a status comment split mid-word
+    const content =
+      "GO\n<!-- last processed 2026-08-08 19:12 -- 1 added: die Eltern\\\n-- 1 need review: die Eltern\\ -->\n";
+    expect(parseInboxFile(content)).toEqual([]);
   });
 });
