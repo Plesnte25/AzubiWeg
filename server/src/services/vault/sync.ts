@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 import { prisma } from "../../db.js";
-import { BATCH_DELAY_MS, delay, enrichResolved, resolveWord } from "../enrichment/index.js";
+import { BATCH_DELAY_MS, delay, enrichResolved, resolveWordSafe } from "../enrichment/index.js";
 import {
   FLASHCARD_TAG_LINE,
   type Card,
@@ -261,9 +261,15 @@ class VaultSyncService {
     vaultPath: string,
     word: string,
     lesson: string | null = null,
-  ): Promise<{ headword: string; typed: string; found: boolean; merged: boolean }> {
+  ): Promise<{
+    headword: string;
+    typed: string;
+    found: boolean;
+    merged: boolean;
+    rejected: "loanword" | "not-german" | null;
+  }> {
     const { master, audioDir } = vaultFiles(vaultPath);
-    const res = await resolveWord(word);
+    const { res, transient } = await resolveWordSafe(word);
     const headKey = res.headword.toLowerCase();
 
     if (headKey !== word.toLowerCase()) {
@@ -273,23 +279,28 @@ class VaultSyncService {
         await this.applyToVault(userId, vaultPath, (cards) =>
           mergeFormNote(cards, word, res.headword, res.formNote),
         );
-        return { headword: res.headword, typed: word, found: true, merged: true };
+        return { headword: res.headword, typed: word, found: true, merged: true, rejected: null };
       }
     }
 
-    // strip found/headword/typed before this reaches Card.fields — those
-    // aren't CardFields and Prisma rejects them once reconcile() spreads
-    // card.fields into a Word upsert (same trap words.ts's non-vault path
-    // already guards against with the same destructure)
-    const { found, headword: _headword, typed: _typed, ...cardFields } = await enrichResolved(
-      res,
-      audioDir,
-      lesson,
-    );
+    // strip found/headword/typed/rejected before this reaches Card.fields —
+    // those aren't CardFields and Prisma rejects them once reconcile()
+    // spreads card.fields into a Word upsert (same trap words.ts's non-vault
+    // path already guards against with the same destructure)
+    const {
+      found,
+      headword: _headword,
+      typed: _typed,
+      rejected,
+      ...cardFields
+    } = await enrichResolved(res, audioDir, lesson, transient);
+    if (rejected) {
+      return { headword: res.headword, typed: word, found: false, merged: false, rejected };
+    }
     await this.applyToVault(userId, vaultPath, (cards) =>
       upsertEnrichedCard(cards, word, res.headword, cardFields),
     );
-    return { headword: res.headword, typed: word, found, merged: false };
+    return { headword: res.headword, typed: word, found, merged: false, rejected: null };
   }
 
   /** Port of cmd_enrich_inbox: enrich every raw word, then reset the file. */
@@ -311,8 +322,14 @@ class VaultSyncService {
         const words = parseInboxFile(await readFile(inbox, "utf-8"));
         const added: string[] = [];
         const review: string[] = [];
+        const rejected: string[] = [];
         for (const word of words) {
           const result = await this.enrichIntoVault(userId, vaultPath, word);
+          if (result.rejected) {
+            rejected.push(result.headword);
+            await delay(BATCH_DELAY_MS);
+            continue;
+          }
           added.push(
             result.headword.toLowerCase() === word.toLowerCase()
               ? result.headword
@@ -324,7 +341,7 @@ class VaultSyncService {
         if (words.length || !existsSync(inbox)) {
           // Never leave the file at 0 bytes — see note above. The status
           // comment shows up on the phone after the next sync.
-          const placeholder = buildInboxPlaceholder(added, review);
+          const placeholder = buildInboxPlaceholder(added, review, rejected);
           this.lastWriteHash.set(inbox, sha256(placeholder));
           await atomicWrite(inbox, placeholder);
         }
@@ -339,8 +356,21 @@ class VaultSyncService {
 
   async startWatcher(userId: string, vaultPath: string): Promise<void> {
     await this.stopWatcher(userId);
-    const { master, inbox } = vaultFiles(vaultPath);
-    const watcher = chokidar.watch([master, inbox], {
+    const { master } = vaultFiles(vaultPath);
+    // Only master.md -- that path is a pure, idempotent reconcile (see
+    // reconcile()'s own doc comment: "the vault always wins"), safe to
+    // re-trigger from any source at any time. inbox.md is deliberately NOT
+    // watched here: add_word.py on the desktop is the sole inbox-processing
+    // engine. This server only gets the vault via a 5-minute rclone-bisync
+    // leg against the same OneDrive backend the desktop's Remotely Save
+    // plugin targets, so a chokidar watcher here was a second engine racing
+    // the desktop one on the same inbox.md with no real cross-machine lock
+    // (acquireEnrichLock's flock only coordinates processes on the same
+    // filesystem). processInbox() is still reachable via the manual "sync
+    // now" endpoint and link() -- both go through parseInboxFile()'s "GO"
+    // marker gate, which is what actually makes any remaining entry point
+    // safe, not this watcher's absence by itself.
+    const watcher = chokidar.watch([master], {
       ignoreInitial: true,
       awaitWriteFinish: { stabilityThreshold: 2000, pollInterval: 200 },
     });
@@ -349,11 +379,7 @@ class VaultSyncService {
         const content = existsSync(filePath) ? await readFile(filePath, "utf-8") : "";
         // echo suppression: skip events caused by our own writes
         if (this.lastWriteHash.get(filePath) === sha256(content)) return;
-        if (filePath === master) {
-          await this.syncFromVault(userId, vaultPath);
-        } else {
-          await this.processInbox(userId, vaultPath);
-        }
+        await this.syncFromVault(userId, vaultPath);
       } catch (err) {
         console.error(`vault watcher error for ${filePath}:`, err);
       }

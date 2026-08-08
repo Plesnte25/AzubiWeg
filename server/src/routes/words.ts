@@ -81,16 +81,27 @@ wordsRouter.post("/", async (req, res) => {
   const audioDir = user.vaultPath ? vaultFiles(user.vaultPath).audioDir : appAudioDir(user.id);
 
   const added: unknown[] = [];
+  const rejected: { word: string; reason: "loanword" | "not-german" }[] = [];
   for (const [i, word] of words.entries()) {
     let sortKey: string;
     if (user.vaultPath) {
       // resolution + lemma merging + typed-form dedupe all live in the
       // vault sync service (same behavior as the Python script)
       const result = await vaultSync.enrichIntoVault(user.id, user.vaultPath, word, lesson ?? null);
+      if (result.rejected) {
+        rejected.push({ word, reason: result.rejected });
+        if (i < words.length - 1) await delay(BATCH_DELAY_MS);
+        continue;
+      }
       sortKey = result.headword.toLowerCase();
     } else {
-      const { found: _found, headword, typed: _typed, ...fields } =
+      const { found: _found, headword, typed: _typed, rejected: whyRejected, ...fields } =
         await enrichWord(word, audioDir, lesson ?? null);
+      if (whyRejected) {
+        rejected.push({ word, reason: whyRejected });
+        if (i < words.length - 1) await delay(BATCH_DELAY_MS);
+        continue;
+      }
       const card = makeCard(headword, fields, null);
       sortKey = card.sortKey;
       await prisma.word.upsert({
@@ -131,7 +142,7 @@ wordsRouter.post("/", async (req, res) => {
     if (i < words.length - 1) await delay(BATCH_DELAY_MS);
   }
   const newlyUnlockedBadges = await prisma.$transaction((tx) => checkAndAwardBadges(tx, user.id));
-  res.status(201).json({ words: added, newlyUnlockedBadges });
+  res.status(201).json({ words: added, rejected, newlyUnlockedBadges });
 });
 
 const patchSchema = z.object({

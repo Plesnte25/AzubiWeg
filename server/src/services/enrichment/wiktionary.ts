@@ -7,15 +7,28 @@
 const USER_AGENT = "AzubiWeg/1.0 (personal study tool)";
 const REQUEST_TIMEOUT_MS = 10_000;
 
+/**
+ * A network-level failure (timeout/DNS/connection), not a genuine "no such
+ * entry" result. Thrown by the leaf fetchers below; callers that need to
+ * tell "not found" apart from "couldn't check" (enrichResolved()) catch it
+ * explicitly -- a bad network day must never look the same as a word that
+ * genuinely isn't German, mirroring add_word.py's _TransientError.
+ */
+export class TransientLookupError extends Error {}
+
 /** Retries on HTTP 429 — Wiktionary rate-limits under normal batch use. */
 async function getWithRetry(url: string): Promise<Response> {
   let delay = 2000;
   let res!: Response;
   for (let attempt = 0; attempt < 4; attempt++) {
-    res = await fetch(url, {
-      headers: { "User-Agent": USER_AGENT },
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
+    try {
+      res = await fetch(url, {
+        headers: { "User-Agent": USER_AGENT },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+    } catch (e) {
+      throw new TransientLookupError(e instanceof Error ? e.message : String(e));
+    }
     if (res.status !== 429) return res;
     await new Promise((r) => setTimeout(r, delay));
     delay *= 2;
@@ -38,15 +51,21 @@ export interface Resolution {
   typed: string;
   formNote: string | null;
   meaning: string | null;
+  source: "wiktionary" | "translation";
 }
 
 type DefinitionEntry = { partOfSpeech?: string; definitions?: { definition?: string }[] };
 
-/** German part-of-speech blocks for an exact page title, or null. */
+/**
+ * German part-of-speech blocks for an exact page title, or null if the page
+ * (or its German section) doesn't exist. Throws TransientLookupError on a
+ * network-level failure -- that's a "couldn't check" the caller must not
+ * treat the same as null.
+ */
 export async function fetchDefinitionEntries(word: string): Promise<DefinitionEntry[] | null> {
   const url = `https://en.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(word)}`;
+  const res = await getWithRetry(url);
   try {
-    const res = await getWithRetry(url);
     if (!res.ok) return null;
     const data = (await res.json()) as Record<string, DefinitionEntry[]>;
     return data.de?.length ? data.de : null;
@@ -222,7 +241,7 @@ function firstFormHit(entries: DefinitionEntry[]): [string, string] | null {
  * like 'weiß' (adjective 'white' + verb form of 'wissen') keep their own
  * headword and meaning but still get the form note.
  */
-export async function resolveWord(word: string): Promise<Resolution> {
+async function resolveWordViaWiktionary(word: string): Promise<Resolution> {
   const typed = word;
   let entries: DefinitionEntry[] | null = null;
   let resolved = word;
@@ -233,7 +252,7 @@ export async function resolveWord(word: string): Promise<Resolution> {
       break;
     }
   }
-  if (!entries) return { headword: word, typed, formNote: null, meaning: null };
+  if (!entries) return { headword: word, typed, formNote: null, meaning: null, source: "wiktionary" };
 
   const visited = new Set([resolved.toLowerCase()]);
   let formNote: string | null = null;
@@ -242,17 +261,65 @@ export async function resolveWord(word: string): Promise<Resolution> {
     const meaning = meaningFromEntries(entries);
     const formHit = firstFormHit(entries);
     if (formHit && !formNote) formNote = `${typed} = ${formHit[1]}`;
-    if (meaning !== null) return { headword: resolved, typed, formNote, meaning };
-    if (!formHit) return { headword: resolved, typed, formNote, meaning: null };
+    if (meaning !== null) return { headword: resolved, typed, formNote, meaning, source: "wiktionary" };
+    if (!formHit) return { headword: resolved, typed, formNote, meaning: null, source: "wiktionary" };
     const lemma = formHit[0];
-    if (visited.has(lemma.toLowerCase())) return { headword: resolved, typed, formNote, meaning: null };
+    if (visited.has(lemma.toLowerCase()))
+      return { headword: resolved, typed, formNote, meaning: null, source: "wiktionary" };
     visited.add(lemma.toLowerCase());
     const nextEntries = await fetchDefinitionEntries(lemma);
-    if (!nextEntries) return { headword: resolved, typed, formNote, meaning: null };
+    if (!nextEntries) return { headword: resolved, typed, formNote, meaning: null, source: "wiktionary" };
     resolved = lemma;
     entries = nextEntries;
   }
-  return { headword: resolved, typed, formNote, meaning: meaningFromEntries(entries) };
+  return {
+    headword: resolved,
+    typed,
+    formNote,
+    meaning: meaningFromEntries(entries),
+    source: "wiktionary",
+  };
+}
+
+/**
+ * Free, unofficial fallback for whenever Wiktionary has no usable meaning --
+ * same "no API key" pattern as add_word.py's _translate_literal. Last
+ * resort, not a replacement for the dictionary lookup: a literal
+ * translation has no part-of-speech/nuance/example.
+ */
+async function translateLiteral(word: string): Promise<string | null> {
+  if (!word) return null;
+  const params = new URLSearchParams({ client: "gtx", sl: "de", tl: "en", dt: "t", q: word });
+  let translated: string;
+  try {
+    const res = await getWithRetry(`https://translate.googleapis.com/translate_a/single?${params}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as [[string, string][]];
+    translated = data[0].map((chunk) => chunk[0]).join("");
+  } catch (e) {
+    if (e instanceof TransientLookupError) throw e;
+    return null;
+  }
+  translated = translated.trim();
+  // If the service just echoes the word back, it doesn't know it either --
+  // not information gained, so keep treating it as not-found.
+  if (!translated || translated.toLowerCase() === word.trim().toLowerCase()) return null;
+  return translated;
+}
+
+/**
+ * Finds the Wiktionary entry for a typed word, falling back to a literal
+ * machine translation when Wiktionary has no usable meaning at all (see
+ * translateLiteral). Meanings from either source read as plain text --
+ * "don't auto-overwrite this" is tracked separately via Resolution.source,
+ * not a visible annotation.
+ */
+export async function resolveWord(word: string): Promise<Resolution> {
+  const res = await resolveWordViaWiktionary(word);
+  if (res.meaning) return res;
+  const translated = await translateLiteral(res.headword);
+  if (translated) return { ...res, meaning: translated, source: "translation" };
+  return res;
 }
 
 /** Raw wikitext from de.wiktionary — source for IPA, audio, gender, grammar, example. */
@@ -348,6 +415,70 @@ export function extractExample(wikitext: string | null): string | null {
   }
   if (!cleaned.length) return null;
   return cleaned.reduce((a, b) => (b.length < a.length ? b : a));
+}
+
+// English loanword detection, port of add_word.py's _looks_like_english_
+// loanword. Requires the word's own {{Herkunft}} (etymology) section to
+// make an actual borrowing claim -- never spelling alone, and never a bare
+// mention of "englisch" alone, so native cognates that just happen to look
+// English (Winter, Name) aren't flagged, only genuine imports (Computer,
+// Taxi, E-Mail, hi, hey, Hobby, okay).
+//
+// (?<!\w) blocks matching "englisch" inside "altenglisch"/"mittelenglisch"
+// (Old/Middle English cognate mentions, not a borrowing claim). {{en.}} is
+// Wiktionary's own template abbreviation for "englisch" (seen on E-Mail's
+// entry, which doesn't spell the word out at all).
+const LOANWORD_MARKERS_RE =
+  /(?<!\w)englisch\b|anglizismus|\{\{en\.?\}\}|\{\{Entlehnung[^}]*\|en\}\}|\{\{bor\|de\|en/gi;
+
+// A bare mention of "englisch" is NOT itself a borrowing claim -- German
+// etymology prose constantly cites English as a *cognate* in Germanic-
+// family comparisons ("essen": "...verwandt mit altfriesisch, altnordisch,
+// englisch eat, niederländisch..."; "klein": "...(daraus englisch
+// clean)"; "Katze": "(vergleiche englisch cat)"; "und": "vergleiche
+// niederländisch en, englisch and"). Confirmed live against these exact
+// words during the Python port (2026-08-08) -- an earlier, simpler version
+// flagged essen/Fernsehen/fliegen/Katze/klein/und as loanwords, which they
+// are not. A real borrowing claim uses a borrowing verb ("von englisch",
+// "entlehnt aus englisch", "übernommen von englisch") in the SAME clause
+// as the mention; a comparison uses "vergleiche"/"verwandt"/"daraus"
+// instead. "Übersetzung von englisch X" is also excluded -- that's a
+// calque (Fernsehen was coined to match the English *concept*
+// "television", but the German word itself is native-formed, not
+// imported).
+const BORROW_VERB_RE = /\b(von|vom|aus|entlehn\w*|übernomm\w*)\b/i;
+const NOT_BORROWING_RE = /vergleiche|vgl\.?|daraus|verwandt|übersetzung/i;
+
+/** Pulls the {{Herkunft}} section out of raw German Wiktionary wikitext. */
+export function extractHerkunftSection(wikitext: string | null): string | null {
+  if (!wikitext) return null;
+  const m = wikitext.match(/\{\{Herkunft\}\}([\s\S]*?)(?=\n\{\{|$)/);
+  return m ? m[1]! : null;
+}
+
+export function looksLikeEnglishLoanword(wikitext: string | null): boolean {
+  const section = extractHerkunftSection(wikitext);
+  if (!section) return false;
+  for (const m of section.matchAll(LOANWORD_MARKERS_RE)) {
+    const token = m[0];
+    const start = m.index!;
+    const end = start + token.length;
+    if (token.startsWith("{{") || token.toLowerCase() === "anglizismus") return true;
+    // isolate the ";"/"."-delimited clause this mention sits in -- German
+    // etymology prose packs multiple distinct claims (own derivation, then
+    // a separate cognate list) into one sentence
+    const clauseStart = Math.max(section.lastIndexOf(";", start), section.lastIndexOf(".", start)) + 1;
+    const endCandidates = [section.indexOf(";", end), section.indexOf(".", end)].filter((i) => i !== -1);
+    const clauseEnd = endCandidates.length ? Math.min(...endCandidates) : section.length;
+    const clause = section.slice(clauseStart, clauseEnd);
+    if (NOT_BORROWING_RE.test(clause)) continue;
+    const beforeInClause = section.slice(clauseStart, start).replace(/^[\s:]+|[\s:]+$/g, "");
+    // a borrowing verb earlier in the same clause, or "englisch" being the
+    // clause's very first content (terse style: "englisch hey" as the
+    // entire etymology, no linking verb at all)
+    if (!beforeInClause || BORROW_VERB_RE.test(beforeInClause)) return true;
+  }
+  return false;
 }
 
 export function buildGrammarNote(wikitext: string | null): string | null {

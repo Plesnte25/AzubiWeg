@@ -3,6 +3,7 @@ import {
   candidateTitles,
   cleanDefinition,
   extractLemma,
+  looksLikeEnglishLoanword,
   meaningFromEntries,
 } from "../src/services/enrichment/wiktionary.js";
 
@@ -98,5 +99,96 @@ describe("candidateTitles", () => {
     expect(candidateTitles("Bist")).toEqual(["Bist", "bist"]);
     expect(candidateTitles("Hallo!")).toEqual(["Hallo!", "hallo!", "Hallo", "hallo"]);
     expect(candidateTitles("Auf Wiedersehen")).toContain("auf Wiedersehen");
+  });
+});
+
+// Herkunft (etymology) section text captured from live de.wiktionary.org
+// lookups during the Python port (2026-08-08), trimmed to what the
+// borrowing-marker regex keys on.
+const COMPUTER_HERKUNFT =
+  "{{Herkunft}}\n:in der zweiten Hälfte des zwanzigsten Jahrhunderts übernommen vom gleichbedeutenden [[englisch]]en Wort ''{{Ü|en|computer}},'' welches auf ''to {{Ü|en|compute}}'' „[[rechnen]]“ zurückgeht.\n{{Synonyme}}";
+const EMAIL_HERKUNFT =
+  "{{Herkunft}}\n:von gleichbedeutend {{en.}} ''[[e-mail]],'' Abkürzung für ''electronic mail'' „elektronische Post“, ins Deutsche übernommen in der zweiten Hälfte des 20. Jahrhunderts.\n{{Synonyme}}";
+const RESTAURANT_HERKUNFT =
+  "{{Herkunft}}\n:im 19. Jahrhundert von französisch ''{{Ü|fr|restaurant}}'' entlehnt\n{{Synonyme}}";
+// "altenglisch" (Old English) is a cognate-language mention, not a
+// borrowing claim -- this is the exact false positive the (?<!\w) word
+// boundary in looksLikeEnglishLoanword exists to avoid (found live against
+// "Name"'s real Herkunft section during the Python port).
+const NAME_HERKUNFT =
+  "{{Herkunft}}\n:verwandte [[germanische]] Wörter: [[altfriesisch]] ''{{Ü|ofs|noma}}'', [[altenglisch]] ''{{Ü|ang|nama}}'', [[altnordisch]] ''{{Ü|non|nafn}}''.\n{{Synonyme}}";
+const WINTER_HERKUNFT =
+  "{{Herkunft}}\n:von mittelhochdeutsch ''winter, winder'', althochdeutsch ''wintar'', germanisch *''went-r-'' „Winter“.\n{{Synonyme}}";
+// Found live against these exact words while tuning the heuristic
+// (2026-08-08) -- a bare mention of "englisch" in a cognate-comparison list
+// or calque note is not a borrowing claim; see the block comment above
+// BORROW_VERB_RE in wiktionary.ts for the full reasoning.
+const ESSEN_HERKUNFT =
+  "{{Herkunft}}\n:von mittelhochdeutsch ''eʒʒen''; etymologisch verwandt mit altfriesisch ''īta,'' altnordisch ''eta,'' englisch ''eat,'' niederländisch ''eten.''\n{{Synonyme}}";
+const FERNSEHEN_HERKUNFT =
+  "{{Herkunft}}\n:Anfang des 20. Jahrhunderts als Übersetzung von englisch ''television'' gebildet.\n{{Synonyme}}";
+const FLIEGEN_HERKUNFT =
+  "{{Herkunft}}\n:von althochdeutsch ''fliogan'', zu urgermanisch *''fleug-a-'', vergleiche englisch ''fly''.\n{{Synonyme}}";
+const KATZE_HERKUNFT =
+  "{{Herkunft}}\n:von althochdeutsch ''kazza'', von westgermanisch ''kattōn-'' (vergleiche englisch ''cat'').\n{{Synonyme}}";
+const KLEIN_HERKUNFT =
+  "{{Herkunft}}\n:auf westgermanisch *klaini– zurück, welches sich auch in altenglisch ''clæne'' 'rein' (daraus englisch ''clean'' 'sauber') bezeugen lässt.\n{{Synonyme}}";
+const UND_HERKUNFT =
+  "{{Herkunft}}\n:aus protogermanisch *unda; vergleiche niederländisch ''en,'' englisch ''and'' - möglicherweise verwandt mit altindisch ''atha''.\n{{Synonyme}}";
+const HOBBY_HERKUNFT = "{{Herkunft}}\n:im 20. Jahrhundert entlehnt aus englisch ''hobby''.\n{{Synonyme}}";
+const HEY_HERKUNFT = "{{Herkunft}}\n:englisch ''hey''\n{{Synonyme}}";
+
+describe("looksLikeEnglishLoanword", () => {
+  it("flags genuine English loanwords via their Herkunft section", () => {
+    expect(looksLikeEnglishLoanword(COMPUTER_HERKUNFT)).toBe(true);
+  });
+
+  it("catches the {{en.}} abbreviation template, not just the spelled-out word", () => {
+    expect(looksLikeEnglishLoanword(EMAIL_HERKUNFT)).toBe(true);
+  });
+
+  it("does not flag a loanword borrowed from a different language", () => {
+    expect(looksLikeEnglishLoanword(RESTAURANT_HERKUNFT)).toBe(false);
+  });
+
+  it("does not flag a native word whose Herkunft only mentions Old English as a cognate", () => {
+    expect(looksLikeEnglishLoanword(NAME_HERKUNFT)).toBe(false);
+  });
+
+  it("does not flag a native Germanic word with no English mention at all", () => {
+    expect(looksLikeEnglishLoanword(WINTER_HERKUNFT)).toBe(false);
+  });
+
+  it("does not flag a cross-language cognate list ('verwandt mit ... englisch')", () => {
+    expect(looksLikeEnglishLoanword(ESSEN_HERKUNFT)).toBe(false);
+  });
+
+  it("does not flag a calque ('Übersetzung von englisch X' -- the German word is native-formed)", () => {
+    expect(looksLikeEnglishLoanword(FERNSEHEN_HERKUNFT)).toBe(false);
+  });
+
+  it("does not flag a 'vergleiche englisch' cognate comparison", () => {
+    expect(looksLikeEnglishLoanword(FLIEGEN_HERKUNFT)).toBe(false);
+    expect(looksLikeEnglishLoanword(KATZE_HERKUNFT)).toBe(false);
+  });
+
+  it("does not flag a 'daraus englisch' descendant note", () => {
+    expect(looksLikeEnglishLoanword(KLEIN_HERKUNFT)).toBe(false);
+  });
+
+  it("does not flag 'vergleiche ... verwandt mit' even when englisch appears mid-list", () => {
+    expect(looksLikeEnglishLoanword(UND_HERKUNFT)).toBe(false);
+  });
+
+  it("flags a real borrowing verb ('entlehnt aus englisch')", () => {
+    expect(looksLikeEnglishLoanword(HOBBY_HERKUNFT)).toBe(true);
+  });
+
+  it("flags terse-style entries with no linking verb ('englisch hey' as the whole etymology)", () => {
+    expect(looksLikeEnglishLoanword(HEY_HERKUNFT)).toBe(true);
+  });
+
+  it("returns false for missing wikitext", () => {
+    expect(looksLikeEnglishLoanword(null)).toBe(false);
   });
 });
