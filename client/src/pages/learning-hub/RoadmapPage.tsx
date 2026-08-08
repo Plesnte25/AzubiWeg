@@ -1,33 +1,35 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { CalendarDays, ChevronDown, Plus, X } from "lucide-react";
+import { createPortal } from "react-dom";
 import { api } from "../../api/client";
-import type { MovedTask, RoadmapTask, RoadmapWeekDay } from "../../api/types";
+import type { MovedTask, RoadmapCalendarDay, RoadmapDayStatus, RoadmapTask, RoadmapWeekDay } from "../../api/types";
 import { Button } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
 import { Skeleton } from "../../components/ui/Skeleton";
+import RoadmapWeekStrip from "../../components/RoadmapWeekStrip";
+import { SKILL_COLORS, SKILL_LABELS } from "../../lib/skills";
 import type { Destination } from "./LearningRail";
 import { invalidateHub } from "./queryHelpers";
 import { deriveStations } from "./stations";
 import { TaskDetailDrawer } from "./TaskDetailDrawer";
-
-const SKILL_LABEL: Record<string, string> = {
-  grammar: "Grammar",
-  vocab: "Vocab",
-  listening: "Listening",
-  speaking: "Speaking",
-  writing: "Writing",
-  reading: "Reading",
-  bureaucracy: "Context",
-  milestone: "Milestone",
-  reflection: "Rest",
-};
 
 function fmtDay(iso: string) {
   return new Date(iso.slice(0, 10) + "T00:00:00").toLocaleDateString(undefined, { weekday: "short" });
 }
 function fmtDate(iso: string) {
   return new Date(iso.slice(0, 10) + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function weekDaysFromRoadmapWeek(days: RoadmapWeekDay[]): RoadmapCalendarDay[] {
+  return days.map((d) => ({
+    date: d.date,
+    dayOffset: d.dayOffset,
+    theme: d.theme,
+    totalTasks: d.tasks.length,
+    completedTasks: d.tasks.filter((t) => t.completedAt !== null).length,
+    status: d.status,
+  }));
 }
 
 const tokenize = (s: string) => new Set(s.toLowerCase().replace(/[^a-z0-9äöüß]+/g, " ").split(" ").filter(Boolean));
@@ -65,7 +67,7 @@ function TaskChip({
     <div
       draggable={draggable}
       onDragStart={(e) => e.dataTransfer.setData("text/plain", task.id)}
-      className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm ${
+      className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition-colors hover:border-brand-300 ${
         draggable ? "cursor-grab border-warn-tint-200 bg-card active:cursor-grabbing" : "border-hairline bg-card"
       }`}
     >
@@ -78,7 +80,17 @@ function TaskChip({
       <button className="min-w-0 flex-1 truncate text-left hover:text-brand-500" onClick={onOpen}>
         <span className={done ? "text-ink-400 line-through" : ""}>{task.title}</span>
       </button>
-      {task.skill && <span className="shrink-0 text-[10px] text-ink-400">{SKILL_LABEL[task.skill]}</span>}
+      {task.skill && (
+        <span
+          className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+          style={{
+            backgroundColor: `color-mix(in srgb, ${SKILL_COLORS[task.skill]} 16%, transparent)`,
+            color: SKILL_COLORS[task.skill],
+          }}
+        >
+          {SKILL_LABELS[task.skill]}
+        </span>
+      )}
       {onDropped && (
         <button onClick={onDropped} title="Drop this task" className="shrink-0 text-xs text-ink-400 hover:text-warn-500">
           ✕
@@ -88,7 +100,7 @@ function TaskChip({
   );
 }
 
-function AddTaskDialog({ date, onClose }: { date: string; onClose: () => void }) {
+function useAddTask(date: string, onClose: () => void) {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const save = useMutation({
@@ -98,8 +110,14 @@ function AddTaskDialog({ date, onClose }: { date: string; onClose: () => void })
       onClose();
     },
   });
+  return { title, setTitle, save };
+}
+
+/** lg: unchanged centered dialog via the shared Modal component. */
+function AddTaskDialog({ date, onClose }: { date: string; onClose: () => void }) {
+  const { title, setTitle, save } = useAddTask(date, onClose);
   return (
-    <Modal title={`Add task — ${fmtDate(date)}`} onClose={onClose} size="sm" sheetOnSm>
+    <Modal title={`Add task — ${fmtDate(date)}`} onClose={onClose} size="sm" desktopOnly>
       <div className="space-y-3">
         <input
           autoFocus
@@ -116,14 +134,92 @@ function AddTaskDialog({ date, onClose }: { date: string; onClose: () => void })
   );
 }
 
-const BEAD: Record<string, string> = {
-  done: "size-[11px] bg-ink-900 border-2 border-card",
-  overdue: "size-[11px] bg-ink-900 border-2 border-card",
-  today: "size-[17px] bg-brand-500 border-[3px] border-card shadow-[0_0_0_3px_var(--color-brand-50)]",
+/** Below lg: centered "flashcard" card over a blurred backdrop, matching
+ * TodayPage's LogTimeCard / vocabulary/ReviewModal.tsx's shell — no
+ * separate title-bar chrome, just the card with a small corner close
+ * button, replacing the previous sheetOnSm full-screen takeover. */
+function AddTaskCard({ date, onClose }: { date: string; onClose: () => void }) {
+  const { title, setTitle, save } = useAddTask(date, onClose);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4 backdrop-blur-[6px] lg:hidden">
+      <div className="relative w-full max-w-sm rounded-2xl border border-hairline bg-card p-5 shadow-xl">
+        <button className="absolute right-3 top-3 grid size-7 place-items-center rounded-full hover:bg-paper" onClick={onClose} title="Close">
+          <X className="size-4" aria-hidden="true" />
+        </button>
+        <h2 className="mb-3 text-base font-semibold">Add task — {fmtDate(date)}</h2>
+        <div className="space-y-3">
+          <input
+            autoFocus
+            className="w-full rounded-lg border border-hairline bg-paper px-3 py-2 text-sm"
+            placeholder="Task title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <Button className="w-full" disabled={!title.trim()} loading={save.isPending} onClick={() => save.mutate()}>
+            Add task
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+const BEAD: Record<RoadmapDayStatus, string> = {
+  done: "size-[11px] bg-ink-900 border-2 border-paper",
+  overdue: "size-[11px] bg-ink-900 border-2 border-paper",
+  today: "size-[17px] bg-brand-500 border-[3px] border-paper shadow-[0_0_0_3px_var(--color-brand-50)]",
   upcoming: "size-[9px] bg-card border-2 border-[var(--color-hairline)]",
 };
 
-function DayRow({
+/** The road: a bead + connecting line per day, redone from scratch after
+ * the previous version (a single line spanning the whole list, computed
+ * from JS-tracked isFirst/isLast + inline top/bottom pixel offsets) drifted
+ * out of alignment under variable row heights. This version has no
+ * cross-row math at all — each day owns a small rail column that's a flex
+ * item of its own row, so it auto-stretches (align-items: stretch, the flex
+ * default) to exactly that row's real rendered height, collapsed or
+ * expanded, with zero JS involved. The line is two segments (fixed-height
+ * above the bead, flex-1 below it) *within that same stretched column*, so
+ * it always reaches exactly this row's own top and bottom — nothing to get
+ * out of sync. The tradeoff: the line has a small visible break at each
+ * gap between day cards (a common, deliberate look in real timeline UIs,
+ * e.g. GitHub's commit graph) rather than one unbroken line — that's the
+ * price of a design with no shared cross-row state to drift. */
+function DayRail({ status, isFirst, isLast }: { status: RoadmapDayStatus; isFirst: boolean; isLast: boolean }) {
+  const tone = status === "upcoming" ? "bg-[var(--color-hairline)]" : "bg-ink-900";
+  return (
+    <div className="flex w-5 shrink-0 flex-col items-center self-stretch" aria-hidden="true">
+      <div className={`w-0.5 shrink-0 ${isFirst ? "bg-transparent" : tone}`} style={{ height: 18 }} />
+      <div className="flex h-9 shrink-0 items-center justify-center">
+        <span className={`shrink-0 rounded-full ${BEAD[status]}`} />
+      </div>
+      <div className={`w-0.5 flex-1 ${isLast ? "bg-transparent" : tone}`} />
+    </div>
+  );
+}
+
+/** One day's plan — a collapsible card (today starts open, every other day
+ * starts collapsed to a brief header: date, status, done-count, progress
+ * bar). The add-task button stays a sibling of the collapse toggle, not
+ * nested inside it — matching TodayPage's CollapsibleSection's same
+ * nested-button concern for its "Reschedule all" action. Drag-and-drop
+ * reschedule targets the whole card, so it still works while collapsed. */
+function DayCard({
   day,
   isFirst,
   isLast,
@@ -137,6 +233,7 @@ function DayRow({
   onOpenTask: (task: RoadmapTask) => void;
 }) {
   const queryClient = useQueryClient();
+  const [open, setOpen] = useState(day.status === "today");
   const toggle = useMutation({
     mutationFn: ({ id, completed }: { id: string; completed: boolean }) => api.toggleRoadmapTask(id, completed),
     onSuccess: () => invalidateHub(queryClient),
@@ -168,60 +265,64 @@ function DayRow({
         ? "border-[1.5px] border-ink-900 bg-card"
         : "border-hairline bg-card";
 
-  // Each row owns its own line segment (spanning its own full height, not a
-  // percentage guess across the whole list) so alignment can never drift
-  // when rows have wildly different heights (a day with 30+ carried-over
-  // tasks next to a plain rest day) — the previous single full-height
-  // gradient div assumed every row was the same height to compute where its
-  // color transition should land, which broke the moment that stopped being
-  // true. The first/last row's segment is trimmed to start/end exactly at
-  // its own bead instead of running past it.
-  const lineColor = day.status === "upcoming" ? "bg-[var(--color-hairline)]" : "bg-ink-900";
-  const lineStyle: React.CSSProperties = isFirst ? { top: 18, bottom: 0 } : isLast ? { top: 0, height: 18 } : { top: 0, bottom: 0 };
-
   return (
-    <div className="relative flex gap-3">
-      <div className="w-[52px] shrink-0 pt-3.5 text-right">
-        <p className="text-[11.5px] text-ink-400">{fmtDay(day.date)}</p>
-        <p className="text-[13px] font-bold">{fmtDate(day.date).split(" ")[1]}</p>
-      </div>
-      <div className={`absolute left-[52px] w-[2px] -translate-x-1/2 ${lineColor}`} style={lineStyle} />
-      <span
-        className={`absolute left-[52px] top-[18px] z-10 -translate-x-1/2 -translate-y-1/2 rounded-full ${BEAD[day.status] ?? BEAD.upcoming}`}
-      />
-      <div className={`mb-2.5 min-w-0 flex-1 rounded-2xl border p-3.5 ${cardClass}`} onDragOver={onDragOver} onDrop={onDrop}>
-        <div className="mb-2 flex items-center justify-between">
-          <div className="flex items-baseline gap-2">
-            {day.status === "overdue" && <span className="text-[11px] font-semibold text-warn-700">overdue</span>}
-            {day.status === "today" && <span className="text-[11px] font-semibold text-brand-500">today</span>}
-            {!isRest && (
-              <span className="text-xs text-ink-400">
-                {done}/{activeTasks.length} done
-              </span>
-            )}
-          </div>
-          <button onClick={() => onAddTask(day.date.slice(0, 10))} title="Add a task" className="text-ink-400 hover:text-ink-900">
-            <Plus className="size-3.5" aria-hidden="true" />
-          </button>
-        </div>
-        {!isRest &&
-          (activeTasks.length <= 12 ? (
-            <div className="mb-2 flex gap-1">
-              {activeTasks.map((t) => (
-                <div key={t.id} className={`h-1 flex-1 rounded-full ${t.completedAt !== null ? "bg-ink-900" : "bg-hairline"}`} />
-              ))}
-            </div>
-          ) : (
-            // too many tasks for a legible segment-per-task row (e.g. a day that
-            // absorbed a big backlog pull) — fall back to one proportional bar
-            <div className="mb-2 h-1 overflow-hidden rounded-full bg-hairline">
-              <div className="h-full rounded-full bg-ink-900" style={{ width: `${(done / activeTasks.length) * 100}%` }} />
-            </div>
-          ))}
+    <div className="flex gap-3">
+      <DayRail status={day.status} isFirst={isFirst} isLast={isLast} />
+      <div
+        className={`min-w-0 flex-1 rounded-[18px] border p-3.5 transition-colors hover:border-brand-300 ${cardClass}`}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+      >
+      <div className="flex items-center justify-between gap-2">
         {isRest ? (
-          <p className="text-sm text-ink-400">Rest day.</p>
+          <div className="flex min-w-0 flex-1 items-baseline gap-2">
+            <span className="text-[13px] font-bold">
+              {fmtDay(day.date)}, {fmtDate(day.date)}
+            </span>
+          </div>
         ) : (
-          <div className="space-y-1.5">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+          >
+            <ChevronDown className={`size-3.5 shrink-0 text-ink-400 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+            <span className="truncate text-[13px] font-bold">
+              {fmtDay(day.date)}, {fmtDate(day.date)}
+            </span>
+            {day.status === "overdue" && <span className="shrink-0 text-[11px] font-semibold text-warn-700">overdue</span>}
+            {day.status === "today" && <span className="shrink-0 text-[11px] font-semibold text-brand-500">today</span>}
+            <span className="shrink-0 text-xs text-ink-400">
+              {done}/{activeTasks.length} done
+            </span>
+          </button>
+        )}
+        <button onClick={() => onAddTask(day.date.slice(0, 10))} title="Add a task" className="shrink-0 text-ink-400 hover:text-ink-900">
+          <Plus className="size-3.5" aria-hidden="true" />
+        </button>
+      </div>
+
+      {!isRest &&
+        (activeTasks.length <= 12 ? (
+          <div className="mt-2 flex gap-1">
+            {activeTasks.map((t) => (
+              <div key={t.id} className={`h-1 flex-1 rounded-full ${t.completedAt !== null ? "bg-ink-900" : "bg-hairline"}`} />
+            ))}
+          </div>
+        ) : (
+          // too many tasks for a legible segment-per-task row (e.g. a day that
+          // absorbed a big backlog pull) — fall back to one proportional bar
+          <div className="mt-2 h-1 overflow-hidden rounded-full bg-hairline">
+            <div className="h-full rounded-full bg-ink-900" style={{ width: `${(done / activeTasks.length) * 100}%` }} />
+          </div>
+        ))}
+
+      {isRest ? (
+        <p className="mt-2 text-sm text-ink-400">Rest day.</p>
+      ) : (
+        open && (
+          <div className="mt-2.5 space-y-1.5">
             {activeTasks.map((t) => (
               <TaskChip
                 key={t.id}
@@ -233,7 +334,8 @@ function DayRow({
               />
             ))}
           </div>
-        )}
+        )
+      )}
       </div>
     </div>
   );
@@ -249,6 +351,11 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
   const { data: syllabus } = useQuery({ queryKey: ["learning", "syllabus"], queryFn: api.learningSyllabus });
   const [addTaskDate, setAddTaskDate] = useState<string | null>(null);
   const [openTask, setOpenTask] = useState<RoadmapTask | null>(null);
+  // openTask is a snapshot captured at click time — after a mutation inside
+  // the drawer invalidates ["roadmap", "week"] and it refetches, that
+  // snapshot goes stale unless re-derived from the freshly-fetched days on
+  // every render (same fix as TodayPage's identical openTask pattern).
+  const liveOpenTask = openTask && (data?.days.flatMap((d) => d.tasks).find((t) => t.id === openTask.id) ?? openTask);
   const [pendingUndo, setPendingUndo] = useState<MovedTask[] | null>(null);
 
   useEffect(() => {
@@ -283,15 +390,28 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
 
   if (isLoading || !data) {
     return (
-      <div className="space-y-3">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-96 w-full" />
+      <div className="space-y-4 pb-6">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 space-y-1.5">
+            <Skeleton className="h-6 w-52" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+          <Skeleton className="h-9 w-20 shrink-0 rounded-full" />
+        </div>
+        <Skeleton className="h-24 w-full rounded-[18px]" />
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_288px]">
+          <div className="space-y-3.5">
+            <Skeleton className="h-16 w-full rounded-[18px]" />
+            <Skeleton className="h-16 w-full rounded-[18px]" />
+            <Skeleton className="h-16 w-full rounded-[18px]" />
+          </div>
+          <Skeleton className="h-64 w-full rounded-[18px]" />
+        </div>
       </div>
     );
   }
 
   const currentWeek = data.weeksOverview.find((w) => w.isCurrentWeek)?.week ?? data.week;
-  const maxTasks = Math.max(1, ...data.weeksOverview.map((w) => w.taskCount));
 
   const activeLevel = syllabus?.levels.find((l) => l.percent < 100)?.level ?? syllabus?.levels[syllabus.levels.length - 1]?.level;
   const levelItems = syllabus?.items.filter((i) => i.level === activeLevel) ?? [];
@@ -300,24 +420,34 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
   const matchedDone = matchedStation?.items.filter((i) => i.completedAt !== null).length ?? 0;
 
   return (
-    <div className="rounded-[18px] border border-hairline bg-card p-4 md:p-5">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-[17px] font-bold md:text-[19px]">
+    <div className="space-y-4 pb-6">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-[23px] font-bold tracking-[-0.02em]">
             Roadmap · week {data.week} of {data.totalWeeks}
           </h1>
-          <p className="text-[12px] text-ink-600 md:text-[13px]">
+          <p className="text-[13px] text-ink-600">
             {fmtDate(data.weekStart)} – {fmtDate(data.weekEnd)}
             {data.theme && ` · ${data.theme}`} · {data.thisWeek.done} of {data.thisWeek.total} tasks kept
           </p>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          <Button size="sm" variant="outline" onClick={() => setWeek((w) => (w ?? data.week) - 1)}>
-            <ChevronLeft className="size-3.5" aria-hidden="true" /> <span className="hidden md:inline">Week {data.week - 1}</span>
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setWeek((w) => (w ?? data.week) + 1)}>
-            <span className="hidden md:inline">Week {data.week + 1}</span> <ChevronRight className="size-3.5" aria-hidden="true" />
-          </Button>
+        <div className="flex shrink-0 items-center gap-2 lg:hidden">
+          <button
+            className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline bg-card hover:border-brand-400"
+            onClick={() => setWeek(currentWeek)}
+            title="Jump to current week"
+          >
+            <CalendarDays className="size-4" aria-hidden="true" />
+          </button>
+          <button
+            className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-600 text-white hover:bg-brand-700"
+            onClick={() => setAddTaskDate(new Date().toISOString().slice(0, 10))}
+            title="Add a task"
+          >
+            <Plus className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+        <div className="hidden shrink-0 gap-1.5 lg:flex">
           <Button size="sm" variant={week === undefined || week === currentWeek ? "primary" : "outline"} onClick={() => setWeek(currentWeek)}>
             Today
           </Button>
@@ -327,40 +457,23 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
         </div>
       </div>
 
-      {/* 26-week program strip */}
-      <div className="mt-4 rounded-[13px] border border-hairline bg-paper p-2.5 md:p-3">
-        <div className="flex h-[26px] items-end gap-px">
-          {data.weeksOverview.map((w) => {
-            const height = Math.max(3, Math.round((w.taskCount / maxTasks) * 26));
-            const color = w.isCurrentWeek
-              ? "bg-brand-500"
-              : w.isExamWeek
-                ? "bg-ink-900"
-                : w.week < currentWeek
-                  ? "bg-[var(--color-hairline)]"
-                  : "bg-card";
-            return (
-              <button
-                key={w.week}
-                title={`Week ${w.week}${w.isExamWeek ? " · exam week" : ""}`}
-                onClick={() => setWeek(w.week)}
-                className={`flex-1 rounded-[1px] ${color}`}
-                style={{ height }}
-              />
-            );
-          })}
-        </div>
-        <div className="mt-1.5 flex justify-between text-[10.5px] text-ink-400">
-          <span>Week 1</span>
-          <span>exam weeks</span>
-          <span>Week {data.totalWeeks}</span>
-        </div>
+      <div className="rounded-[18px] border border-hairline bg-card p-4">
+        <RoadmapWeekStrip
+          // data.weekStart is a program week anchored to roadmapStartedAt, not
+          // necessarily a calendar Monday — RoadmapWeekStrip doesn't require
+          // that, it just renders 7 days forward from whatever it's given.
+          weekStart={data.weekStart.slice(0, 10)}
+          days={weekDaysFromRoadmapWeek(data.days)}
+          selectedDate={null}
+          onSelectDay={() => {}}
+          onShiftWeek={(delta) => setWeek((w) => (w ?? data.week) + delta)}
+        />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_288px]">
-        <div className="relative min-w-0">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_288px]">
+        <div className="min-w-0 space-y-3.5">
           {data.days.map((day, i) => (
-            <DayRow
+            <DayCard
               key={day.dayOffset}
               day={day}
               isFirst={i === 0}
@@ -371,8 +484,8 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
           ))}
         </div>
 
-        <div className="space-y-3">
-          <div className="rounded-[13px] border border-hairline p-3.5">
+        <div className="flex min-w-0 flex-col gap-3.5 md:grid md:grid-cols-3 lg:flex lg:flex-col">
+          <div className="rounded-[18px] border border-hairline bg-card p-3.5 transition-colors hover:border-brand-300">
             <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400">This week</p>
             <p className="mt-1 text-lg font-bold">
               {data.thisWeek.done} <span className="text-sm font-normal text-ink-400">of {data.thisWeek.total}</span>
@@ -381,9 +494,26 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
               <div className="rounded-full bg-ink-900" style={{ width: `${data.thisWeek.total === 0 ? 0 : (data.thisWeek.done / data.thisWeek.total) * 100}%` }} />
             </div>
             {weekReview && <p className="mt-2 text-xs text-ink-400">{weekReview.loggedMinutes} min logged</p>}
+
+            {data.theme && (
+              <>
+                <div className="my-3 border-t border-hairline" />
+                <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400">Week theme</p>
+                <p className="mt-1 text-sm font-medium">{data.theme}</p>
+                {matchedStation && (
+                  <p className="mt-1 text-xs text-ink-600">
+                    Station in the {activeLevel?.toUpperCase()} route. Closes when {matchedStation.items.length} of {matchedStation.items.length} items are
+                    done — {matchedDone} done now.
+                  </p>
+                )}
+                <button onClick={() => onNavigate("syllabus")} className="mt-1.5 text-xs font-semibold text-brand-500 hover:underline">
+                  Open in syllabus →
+                </button>
+              </>
+            )}
           </div>
 
-          <div className="rounded-[13px] border border-warn-tint-100 bg-warn-tint-50 p-3.5">
+          <div className="rounded-[18px] border border-warn-tint-100 bg-warn-tint-50 p-3.5 transition-colors hover:border-warn-tint-200">
             <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-warn-700">Late across the plan</p>
             <p className="mt-1 text-lg font-bold text-warn-700">{data.lateAcrossPlan}</p>
             {pendingUndo ? (
@@ -404,23 +534,7 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
             )}
           </div>
 
-          {data.theme && (
-            <div className="rounded-[13px] border border-hairline p-3.5">
-              <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400">Week theme</p>
-              <p className="mt-1 text-sm font-medium">{data.theme}</p>
-              {matchedStation && (
-                <p className="mt-1 text-xs text-ink-600">
-                  Station in the {activeLevel?.toUpperCase()} route. Closes when {matchedStation.items.length} of {matchedStation.items.length} items are
-                  done — {matchedDone} done now.
-                </p>
-              )}
-              <button onClick={() => onNavigate("syllabus")} className="mt-1.5 text-xs font-semibold text-brand-500 hover:underline">
-                Open in syllabus →
-              </button>
-            </div>
-          )}
-
-          <div className="rounded-[13px] border border-hairline p-3.5">
+          <div className="rounded-[18px] border border-hairline bg-card p-3.5 transition-colors hover:border-brand-300">
             <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400">Pace</p>
             <div className="mt-1.5 space-y-1 text-sm">
               <div className="flex justify-between">
@@ -440,8 +554,13 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
         </div>
       </div>
 
-      {addTaskDate && <AddTaskDialog date={addTaskDate} onClose={() => setAddTaskDate(null)} />}
-      {openTask && <TaskDetailDrawer task={openTask} onClose={() => setOpenTask(null)} onNavigate={onNavigate} />}
+      {addTaskDate && (
+        <>
+          <AddTaskDialog date={addTaskDate} onClose={() => setAddTaskDate(null)} />
+          <AddTaskCard date={addTaskDate} onClose={() => setAddTaskDate(null)} />
+        </>
+      )}
+      {liveOpenTask && <TaskDetailDrawer task={liveOpenTask} onClose={() => setOpenTask(null)} onNavigate={onNavigate} />}
     </div>
   );
 }
