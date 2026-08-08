@@ -94,7 +94,7 @@ export default function LearningHub() {
       <div className="min-w-0 space-y-3.5 lg:flex-1">
         {!fullBleed && (
           <div className="lg:hidden">
-            <PillTabs items={PILL_ITEMS} value={destination} onChange={navigate} ariaLabel="Learning Hub section" />
+            <PillTabs items={PILL_ITEMS} value={destination} onChange={(key) => navigate(key as Destination)} ariaLabel="Learning Hub section" />
             <CarouselDots
               count={PILL_ITEMS.length}
               activeIndex={DESTINATION_ROWS.findIndex((r) => r.key === destination)}
