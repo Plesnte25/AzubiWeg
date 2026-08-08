@@ -135,6 +135,23 @@ learningRouter.patch("/syllabus/:id", async (req, res) => {
   res.json({ item: { ...rest, roadmapDayOffset: roadmapTasks[0]?.day.dayOffset ?? null } });
 });
 
+// A linked RoadmapTask (if any) is detached, not deleted — schema.prisma's
+// onDelete: SetNull on that relation already handles it; the task itself
+// survives, same as an ordinary reseed/replan already does today.
+learningRouter.delete("/syllabus/:id", async (req, res) => {
+  const item = await prisma.syllabusItem.findFirst({
+    where: { id: req.params.id, userId: req.userId },
+    include: { files: true },
+  });
+  if (!item) return res.status(404).json({ error: "Syllabus item not found" });
+
+  for (const file of item.files) {
+    await deleteStoredFile(req.userId, file.storedName);
+  }
+  await prisma.syllabusItem.delete({ where: { id: item.id } });
+  res.status(204).end();
+});
+
 const createItemSchema = z.object({
   level: LEVEL,
   category: z.enum(["grammar", "vocab_theme", "skill"]),
