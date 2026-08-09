@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Flag } from "lucide-react";
 import type { Word } from "../../api/types";
-import { articleFront } from "../../lib/vocab";
 
 type Tint = "neutral" | "leech" | "learning" | "mastered";
 
@@ -52,7 +51,7 @@ export default function VocabTile({ word }: { word: Word }) {
             )}
           </div>
           <div className="mt-auto min-w-0">
-            <p className="truncate text-sm font-bold text-ink-900">{articleFront(word.headword, word.genus)}</p>
+            <p className="truncate text-sm font-bold text-ink-900">{word.headword}</p>
             <p className={`truncate text-[10px] font-medium ${tint.text}`}>{word.wortart}</p>
           </div>
         </div>

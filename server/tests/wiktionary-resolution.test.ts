@@ -3,6 +3,7 @@ import {
   candidateTitles,
   cleanDefinition,
   extractLemma,
+  isSpellingCognate,
   looksLikeEnglishLoanword,
   meaningFromEntries,
 } from "../src/services/enrichment/wiktionary.js";
@@ -190,5 +191,61 @@ describe("looksLikeEnglishLoanword", () => {
 
   it("returns false for missing wikitext", () => {
     expect(looksLikeEnglishLoanword(null)).toBe(false);
+  });
+});
+
+describe("isSpellingCognate", () => {
+  it("flags international words spelled/meaning the same as English, regardless of true origin", () => {
+    expect(isSpellingCognate("Museum", "(Noun) museum")).toBe(true);
+    expect(isSpellingCognate("Pilot", "(Noun) pilot")).toBe(true);
+    expect(isSpellingCognate("Theater", "(Noun) theater")).toBe(true);
+    expect(isSpellingCognate("Information", "(Noun) information")).toBe(true);
+  });
+
+  it("flags native Germanic cognates too -- confirmed 2026-08-08 as the intended wider rule", () => {
+    expect(isSpellingCognate("Winter", "(Noun) winter")).toBe(true);
+    expect(isSpellingCognate("Name", "(Noun) name")).toBe(true);
+    expect(isSpellingCognate("Hand", "(Noun) hand")).toBe(true);
+    expect(isSpellingCognate("Wind", "(Noun) wind")).toBe(true);
+    expect(isSpellingCognate("Sport", "(Noun) sport, sports")).toBe(true);
+  });
+
+  it("does not flag a word whose gloss isn't spelling-close (Telefon/telephone)", () => {
+    expect(isSpellingCognate("Telefon", "(Noun) telephone")).toBe(false);
+  });
+
+  it("does not flag 'Hallo'/'Hello' -- exact match only, no edit-distance tolerance", () => {
+    // found live during the Python port: allowing a 1-char typo tolerance
+    // wrongly flagged this common, distinct greeting
+    expect(isSpellingCognate("Hallo!", "Hello!")).toBe(false);
+  });
+
+  it("is safe against false friends -- compares against the word's own resolved meaning, not a wordlist", () => {
+    expect(isSpellingCognate("Gift", "(Noun) poison")).toBe(false);
+    expect(isSpellingCognate("Rat", "(Noun) advice, counsel")).toBe(false);
+  });
+
+  it("does not flag an unrelated word with a different meaning entirely", () => {
+    expect(isSpellingCognate("Zentrum", "(Noun) center, centre")).toBe(false);
+    expect(isSpellingCognate("Katze", "(Noun) house cat, Felis silvestris catus")).toBe(false);
+  });
+
+  it("does not flag a word whose gloss is a self-referential grammatical cross-reference", () => {
+    // found live on the real vault: the headword trivially "matches
+    // itself" inside "gerund of X"/"plural of X" cross-reference text,
+    // which isn't a translation at all
+    expect(isSpellingCognate("Sprechen", '(Noun) gerund of sprechen: "speaking"')).toBe(false);
+    expect(
+      isSpellingCognate("Wiederholen", "(Noun) gerund of wiederholen; (Noun) gerund of wiederholen"),
+    ).toBe(false);
+    expect(isSpellingCognate("Zahlen", "(Noun) gerund of zahlen; (Noun) plural of Zahl")).toBe(false);
+  });
+
+  it("only checks the first (primary) sense, not secondary senses", () => {
+    expect(isSpellingCognate("Guten Tag.", "Hello.; Good day.")).toBe(false);
+  });
+
+  it("returns false for a null meaning", () => {
+    expect(isSpellingCognate("Museum", null)).toBe(false);
   });
 });

@@ -8,7 +8,7 @@ import {
   extractExample,
   extractIpa,
   getDeWikitext,
-  looksLikeEnglishLoanword,
+  isEnglishCognate,
   resolveWord,
 } from "./wiktionary.js";
 
@@ -79,7 +79,7 @@ export async function enrichResolved(
     headword: res.headword,
     typed: res.typed,
   };
-  if (!transient && res.meaning && looksLikeEnglishLoanword(wikitext)) {
+  if (!transient && res.meaning && isEnglishCognate(res.headword, res.meaning, wikitext)) {
     return { ...empty, meaning: res.meaning, found: true, rejected: "loanword" };
   }
   if (!transient && !res.meaning) {
