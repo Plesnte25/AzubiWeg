@@ -129,7 +129,9 @@ export function PracticeOverlay({ words, onClose }: PracticeOverlayProps) {
                 {current.srDue === null && <Badge variant="brand">new card</Badge>}
               </div>
 
-              <div className="mt-3 text-[38px] font-semibold leading-tight">{articleFront(current.headword, current.genus)}</div>
+              <div className="mt-3 text-[38px] font-semibold leading-tight">
+                {revealed ? articleFront(current.headword, current.genus) : current.headword}
+              </div>
 
               {revealed ? (
                 <div className="mt-5 space-y-2 border-t border-hairline pt-5 text-left text-sm">

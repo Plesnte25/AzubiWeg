@@ -53,9 +53,7 @@ export function WordCard({ word, onToggleLeech, onDelete, onPlayAudio, audioPlay
           </div>
 
           <div className="mt-2 min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold" style={word.genus ? { color: GENUS_COLORS[word.genus] } : undefined}>
-              {articleFront(word.headword, word.genus)}
-            </p>
+            <p className="truncate text-sm font-semibold">{word.headword}</p>
             {word.ipa && <p className="truncate text-xs text-ink-400">/{word.ipa}/</p>}
             {word.themenfeld[0] && (
               <p className="mt-1 truncate text-[11px] text-ink-400">{THEMENFELD_LABELS[word.themenfeld[0]]}</p>
@@ -86,6 +84,12 @@ export function WordCard({ word, onToggleLeech, onDelete, onPlayAudio, audioPlay
         {/* back */}
         <div className="flip-card-face absolute inset-0 flex flex-col rounded-[14px] border border-hairline bg-ink-900 p-3 text-ink-50 [transform:rotateY(180deg)]">
           <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto text-xs">
+            <p
+              className="text-sm font-semibold"
+              style={word.genus ? { color: GENUS_COLORS[word.genus] } : undefined}
+            >
+              {articleFront(word.headword, word.genus)}
+            </p>
             {word.meaning && <p>{word.meaning}</p>}
             {word.example && <p className="italic text-ink-50/70">{word.example}</p>}
             {word.grammar && <p className="text-ink-50/70">{word.grammar}</p>}

@@ -417,12 +417,13 @@ export function extractExample(wikitext: string | null): string | null {
   return cleaned.reduce((a, b) => (b.length < a.length ? b : a));
 }
 
-// English loanword detection, port of add_word.py's _looks_like_english_
-// loanword. Requires the word's own {{Herkunft}} (etymology) section to
-// make an actual borrowing claim -- never spelling alone, and never a bare
-// mention of "englisch" alone, so native cognates that just happen to look
-// English (Winter, Name) aren't flagged, only genuine imports (Computer,
-// Taxi, E-Mail, hi, hey, Hobby, okay).
+// English loanword/cognate detection, port of add_word.py. Two independent
+// signals, either is enough to exclude a word (see isEnglishCognate below):
+// looksLikeEnglishLoanword (the word's own etymology says it was borrowed
+// from English) and isSpellingCognate (spelled/means the same as English
+// regardless of true origin -- Museum, Theater, Pilot, Information, and
+// now also native cognates like Winter/Name/Hand/Wind/Sport, confirmed
+// 2026-08-08 as the intended wider rule).
 //
 // (?<!\w) blocks matching "englisch" inside "altenglisch"/"mittelenglisch"
 // (Old/Middle English cognate mentions, not a borrowing claim). {{en.}} is
@@ -479,6 +480,49 @@ export function looksLikeEnglishLoanword(wikitext: string | null): boolean {
     if (!beforeInClause || BORROW_VERB_RE.test(beforeInClause)) return true;
   }
   return false;
+}
+
+/**
+ * True when the resolved meaning is spelled exactly the same as the
+ * headword itself (case-insensitive, trailing punctuation ignored) --
+ * "spelled and means the same as English" regardless of which language
+ * actually lent it to which. Exact match only, no typo/edit-distance
+ * tolerance -- tried allowing a 1-character difference for longer words
+ * during the Python port's tuning and it produced a real false positive
+ * ("Hallo" vs "Hello," a common, distinct greeting one letter-swap from
+ * its English cousin, not something worth dropping); every confirmed
+ * example is an exact match anyway. Compares the headword against its OWN
+ * resolved translation, never a generic English wordlist, so a false
+ * friend like "Gift" (German: poison) can never match English "gift" --
+ * its real gloss is "poison," not "gift." Strips "gerund/plural/
+ * inflection of <word>"-style grammatical cross-references first --
+ * found live against Sprechen ("gerund of sprechen: 'speaking'") and
+ * Zahlen ("gerund of zahlen; plural of Zahl") on the real vault: without
+ * this, the headword trivially "matches itself" inside its own
+ * cross-reference text, a false positive unrelated to the actual
+ * translation.
+ */
+const FORM_OF_CROSSREF_RE =
+  /\b(?:gerund|plural|inflection|form|agent noun|female equivalent|diminutive|augmentative|verbal noun|infinitive)\s+of\s+\S+[:;,]?\s*/gi;
+
+export function isSpellingCognate(headword: string, meaning: string | null): boolean {
+  if (!meaning) return false;
+  const text = meaning.replace(/^\([\w\s]+\)\s*/, "").trim();
+  let firstSense = text.split(";", 1)[0]!;
+  firstSense = firstSense.replace(FORM_OF_CROSSREF_RE, "");
+  const tokens = firstSense.match(/[A-Za-zÀ-ÖØ-öø-ÿ]+/g) ?? [];
+  const target = headword.replace(/[.!?]+$/, "").toLowerCase();
+  if (target.length < 2) return false;
+  return tokens.some((tok) => tok.toLowerCase() === target);
+}
+
+/** Combines both loanword/cognate signals -- either is enough to exclude a word. */
+export function isEnglishCognate(
+  headword: string,
+  meaning: string | null,
+  wikitext: string | null,
+): boolean {
+  return isSpellingCognate(headword, meaning) || looksLikeEnglishLoanword(wikitext);
 }
 
 export function buildGrammarNote(wikitext: string | null): string | null {
