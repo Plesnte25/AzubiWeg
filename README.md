@@ -8,10 +8,11 @@ a German vocabulary manager with spaced-repetition review, kept in **two-way syn
 with my Obsidian vault**. **V2** adds the application side: a Job Search page
 (kanban application tracker + a CV shelf, with best-effort autofill from a pasted
 posting URL) and a document checklist for the Ausbildung visa process. **V3** adds
-a Learning Progress Hub — a CEFR syllabus, a day-by-day study roadmap, self-tests,
-and gamification — feeding a richer dashboard.
+a Learning Progress Hub — a CEFR syllabus, a day-by-day study roadmap, and
+self-tests — feeding a richer dashboard.
 
 ![Dashboard](docs/screenshots/10-dashboard-v2.png)
+![Dashboard — mobile](docs/screenshots/11-dashboard-mobile.png)
 
 ## What V1 does
 
@@ -19,6 +20,7 @@ and gamification — feeding a richer dashboard.
 - **Vocabulary manager** — search, filter by lesson, expand for full detail
   (meaning, IPA, grammar, example, pronunciation audio).
   ![Vocabulary](docs/screenshots/3-vocabulary.png)
+  ![Vocabulary — mobile](docs/screenshots/12-vocabulary-mobile.png)
 - **Automatic enrichment** — type `Zug, Bahnhof, fahren` and the backend fetches
   meaning (en.wiktionary), IPA + gender/plural/verb forms + an example sentence
   (de.wiktionary wikitext), and pronunciation audio (Wikimedia Commons recording,
@@ -69,6 +71,7 @@ snapshot). Reviews done in the app and in Obsidian update the same
 - **CEFR syllabus** — 174 seeded topics (grammar/vocab/skill) across A1, A2, and
   B1. Checking items off drives per-level completion percentage and "what's
   next" suggestions.
+  ![Syllabus](docs/screenshots/13-syllabus.png)
 - **Day-by-day roadmap** — a 182-day (26-week) study plan to Goethe-exam
   readiness, generated live from syllabus progress, with a calendar view and
   overdue backlog.
@@ -77,8 +80,8 @@ snapshot). Reviews done in the app and in Obsidian update the same
   expose a progress API.
 - **Self-tests & Goethe readiness** — a 163-question bank built from syllabus
   topics and vocab/SRS data, with weekly/monthly readiness rollups.
-- **Gamification & activity tracking** — points, 15 badges, and day-streaks
-  computed from real activity, feeding the dashboard's activity history.
+- **Activity tracking** — day-streaks and study-time history computed from
+  real activity, feeding the dashboard's activity chart.
 - **Notifications & portals** — on-demand reminders (stale applications,
   expiring documents) and quick-link bookmarks to platforms like GoAusbildung,
   since none of them offer account sync or public APIs.
@@ -127,8 +130,8 @@ cd server && npm test
 
 Covers the vault sync's byte-identical round-trip, SRS scheduling parity with
 the Obsidian plugin, and pure-logic suites for applications, checklist
-reminders, and the Learning Hub (roadmap generation, quizzes, gamification,
-activity tracking).
+reminders, and the Learning Hub (roadmap generation, quizzes, activity
+tracking).
 
 ## Deployment
 
@@ -148,7 +151,8 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full ecosystem plan and feature s
   best-effort autofill from a pasted posting URL; checklist redesigned around
   search, an urgency-first "Up Next" panel, and category filters.)
 - ~~**V3 — Learning Progress Hub**~~ ✅ CEFR syllabus, day-by-day roadmap,
-  self-tests, gamification, activity tracking.
+  self-tests, activity tracking. (2026-08-08: gamification — points, badges —
+  removed in favor of the plain activity/streak tracking above.)
 - **Now** (reprioritized 2026-08-05, cutting across strict version order —
   see [docs/ROADMAP.md](docs/ROADMAP.md#phasing) for the full breakdown):
   app-wide bug-fixing pass (**top priority**), vocab PDF export + CLI (the
