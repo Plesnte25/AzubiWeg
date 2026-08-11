@@ -6,7 +6,7 @@ import type { CefrLevel } from "../../api/types";
 import { Button } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
 import { Skeleton } from "../../components/ui/Skeleton";
-import { useShelfPan } from "../../lib/useShelfPan";
+import { glidePageTo, useShelfPan } from "../../lib/useShelfPan";
 import { SKILL_COLORS } from "../../lib/skills";
 import { invalidateHub } from "./queryHelpers";
 import { deriveStations, stationStatus } from "./stations";
@@ -116,7 +116,7 @@ function SearchModal({
   onToggle,
   onClose,
 }: {
-  items: { id: string; title: string; theme: string | null; completedAt: string | null }[];
+  items: { id: string; title: string; description: string | null; theme: string | null; completedAt: string | null }[];
   onToggle: (id: string, completed: boolean) => void;
   onClose: () => void;
 }) {
@@ -137,10 +137,18 @@ function SearchModal({
             <p className="p-4 text-sm text-ink-400">No items match "{query}".</p>
           ) : (
             matches.map((item) => (
-              <div key={item.id} className="flex items-center gap-2.5 px-3 py-2 text-sm">
-                <input type="checkbox" className="accent-brand-500" checked={item.completedAt !== null} onChange={(e) => onToggle(item.id, e.target.checked)} />
-                <span className={item.completedAt !== null ? "text-ink-400 line-through" : ""}>{item.title}</span>
-                <span className="ml-auto text-xs text-ink-400">{item.theme}</span>
+              <div key={item.id} className="flex items-start gap-2.5 px-3 py-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 accent-brand-500"
+                  checked={item.completedAt !== null}
+                  onChange={(e) => onToggle(item.id, e.target.checked)}
+                />
+                <div className="min-w-0 flex-1">
+                  <span className={`block ${item.completedAt !== null ? "text-ink-400 line-through" : ""}`}>{item.title}</span>
+                  {item.description && <span className="mt-0.5 block truncate text-xs text-ink-400">{item.description}</span>}
+                </div>
+                <span className="mt-0.5 shrink-0 text-xs text-ink-400">{item.theme}</span>
               </div>
             ))
           )}
@@ -196,7 +204,11 @@ export function SyllabusPage() {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["learning", "syllabus"], queryFn: api.learningSyllabus });
   const [userLevel, setUserLevel] = useState<CefrLevel | null>(null);
-  const [selectedStation, setSelectedStation] = useState<string | null>(null);
+  // undefined = not yet auto-opened for this level (the default-open effect
+  // below should act); null = the user explicitly closed it, or nothing's
+  // current — leave it closed. Kept distinct so closing the panel doesn't
+  // immediately get reopened by the same effect that opens it on load.
+  const [selectedStation, setSelectedStation] = useState<string | null | undefined>(undefined);
   const [showSearch, setShowSearch] = useState(false);
   const [showPace, setShowPace] = useState(false);
   const [showAddItem, setShowAddItem] = useState(false);
@@ -204,6 +216,16 @@ export function SyllabusPage() {
   const [replanError, setReplanError] = useState<string | null>(null);
   const routeRowRef = useRef<HTMLDivElement>(null);
   const { glideBy } = useShelfPan(routeRowRef);
+  const panelWrapperRef = useRef<HTMLDivElement>(null);
+  // Only true right after a real station click (see handleStationSelect) —
+  // never set by the default-open-on-load or level-switch effects, so
+  // loading the page doesn't yank the scroll position around.
+  const scrollToPanelRef = useRef(false);
+
+  function handleStationSelect(theme: string) {
+    scrollToPanelRef.current = true;
+    setSelectedStation(theme);
+  }
 
   // default to the level actually in progress, not always A1 — only once
   // the user hasn't explicitly picked a level pill themselves
@@ -213,6 +235,31 @@ export function SyllabusPage() {
   useEffect(() => {
     routeRowRef.current?.scrollTo({ left: 0 });
   }, [level]);
+
+  // Computed with safe fallbacks (not gated behind the isLoading/!data early
+  // return below) purely so the scroll-to-panel effect right after it can be
+  // a normal, unconditionally-called hook — recomputed identically once data
+  // actually loads.
+  const levelItems = (data?.items ?? []).filter((i) => i.level === level).sort((a, b) => a.sortOrder - b.sortOrder);
+  const stations = deriveStations(levelItems);
+  let currentIdx = stations.findIndex((s) => stationStatus(s) === "current");
+  if (currentIdx === -1) currentIdx = stations.length; // all done — no station is "current"
+
+  // sm/md only: bring the detail panel into view once it mounts from a real
+  // click (StationRoute's vertical orientation no longer centers the
+  // clicked node itself — see StationRoute.tsx's handleSelect — since the
+  // path can be much taller than the viewport there, and centering the node
+  // used to scroll the panel, anchored right below the header, off-screen).
+  // lg keeps its own horizontal-strip centering untouched.
+  useEffect(() => {
+    if (!selectedStation || !scrollToPanelRef.current) return;
+    scrollToPanelRef.current = false;
+    if (window.innerWidth >= 1024) return;
+    const el = panelWrapperRef.current;
+    if (!el) return;
+    const target = window.scrollY + el.getBoundingClientRect().top - 16;
+    glidePageTo(Math.max(0, target));
+  }, [selectedStation]);
 
   const invalidate = () => invalidateHub(queryClient);
   const toggle = useMutation({
@@ -245,17 +292,16 @@ export function SyllabusPage() {
     );
   }
 
-  const levelItems = data.items.filter((i) => i.level === level).sort((a, b) => a.sortOrder - b.sortOrder);
-  const stations = deriveStations(levelItems);
-
-  // resolve "current" — first station that isn't fully done/skipped
-  let currentIdx = stations.findIndex((s) => stationStatus(s) === "current");
-  if (currentIdx === -1) currentIdx = stations.length; // all done — no station is "current"
-
-  // the station shown in the detail modal — purely a function of an
-  // explicit click (onSelect from StationRoute), never auto-selected; the
-  // modal stays closed until one is picked
-  const openStation = selectedStation ? (stations.find((s) => s.theme === selectedStation) ?? null) : null;
+  // the station shown in the detail modal — a plain render-time derivation,
+  // not state written by an effect, so there's no dependency-array staleness
+  // to worry about: `selectedStation === undefined` (never explicitly
+  // touched yet for this level) falls back to whichever station is
+  // currently in progress, every render, including right after a level
+  // switch or re-clicking the same level pill. `null` (the user explicitly
+  // closed it) and a real theme string (clicked, or picked a different one)
+  // both always win over that fallback.
+  const effectiveSelectedStation = selectedStation === undefined ? (currentIdx < stations.length ? stations[currentIdx]?.theme : null) : selectedStation;
+  const openStation = effectiveSelectedStation ? (stations.find((s) => s.theme === effectiveSelectedStation) ?? null) : null;
   const openIdx = openStation ? stations.findIndex((s) => s.theme === openStation.theme) : -1;
   const openIsPreview = openIdx > currentIdx;
   const openCurrentItem = openStation?.items.find((i) => i.completedAt === null && i.skippedAt === null) ?? openStation?.items[openStation.items.length - 1];
@@ -301,93 +347,57 @@ export function SyllabusPage() {
 
   return (
     <div className="space-y-4 pb-6">
-      <div className="relative">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div className="min-w-0">
-            <h1 className="text-[21px] font-bold tracking-[-0.02em] sm:text-[23px] md:text-[27px] lg:text-[29px]">
-              {LEVEL_LABELS[level]} route · {stations.length} stations
-            </h1>
-            <p className="text-[13px] text-ink-600">
-              {doneItems} of {levelItems.length} items
-              {data.routePace.itemsPerWeek > 0 && ` · ${data.routePace.itemsPerWeek} items a week`}
-            </p>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-[21px] font-bold tracking-[-0.02em] sm:text-[23px] md:text-[27px] lg:text-[29px]">
+            {LEVEL_LABELS[level]} route · {stations.length} stations
+          </h1>
+          <p className="text-[13px] text-ink-600">
+            {doneItems} of {levelItems.length} items
+            {data.routePace.itemsPerWeek > 0 && ` · ${data.routePace.itemsPerWeek} items a week`}
+          </p>
+        </div>
+        <div className="flex w-full items-center justify-between gap-2 sm:w-auto">
+          <div className="flex gap-1 rounded-full border border-hairline bg-paper p-1">
+            {LEVELS.map((l) => {
+              const lp = data.levels.find((x) => x.level === l);
+              return (
+                <button
+                  key={l}
+                  onClick={() => {
+                    setUserLevel(l);
+                    setSelectedStation(undefined);
+                  }}
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    l === level ? "bg-ink-900 text-white" : lp && lp.percent >= 100 ? "text-ok-600" : "text-ink-400"
+                  }`}
+                >
+                  {LEVEL_LABELS[l]}
+                  {lp && lp.percent >= 100 ? " ✓" : ""}
+                </button>
+              );
+            })}
           </div>
-          <div className="flex w-full items-center justify-between gap-2 sm:w-auto">
-            <div className="flex gap-1 rounded-full border border-hairline bg-paper p-1">
-              {LEVELS.map((l) => {
-                const lp = data.levels.find((x) => x.level === l);
-                return (
-                  <button
-                    key={l}
-                    onClick={() => {
-                      setUserLevel(l);
-                      setSelectedStation(null);
-                    }}
-                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      l === level ? "bg-ink-900 text-white" : lp && lp.percent >= 100 ? "text-ok-600" : "text-ink-400"
-                    }`}
-                  >
-                    {LEVEL_LABELS[l]}
-                    {lp && lp.percent >= 100 ? " ✓" : ""}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline bg-card hover:border-brand-400"
-                onClick={() => setShowSearch(true)}
-                title="Search items"
-              >
-                <Search className="size-4" aria-hidden="true" />
-              </button>
-              <button
-                className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline bg-card hover:border-brand-400"
-                onClick={() => setShowPace(true)}
-                title="Route pace"
-              >
-                <Info className="size-4" aria-hidden="true" />
-              </button>
-            </div>
+          <div className="flex items-center gap-2">
+            <button
+              className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline bg-card hover:border-brand-400"
+              onClick={() => setShowSearch(true)}
+              title="Search items"
+            >
+              <Search className="size-4" aria-hidden="true" />
+            </button>
+            <button
+              className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline bg-card hover:border-brand-400"
+              onClick={() => setShowPace(true)}
+              title="Route pace"
+            >
+              <Info className="size-4" aria-hidden="true" />
+            </button>
           </div>
         </div>
-
-        {/* the station-detail panel is anchored right below the header (not
-            a centered dialog portaled to document.body) — it's a plain
-            child of this relative wrapper, positioned absolute so it drops
-            in right under the h1/controls row and scrolls with the page */}
-        {openStation && (
-          <div className="absolute inset-x-0 top-full z-30 mt-2">
-            <StationDetailModal
-              station={openStation}
-              resolvedIdx={openIdx}
-              isPreview={openIsPreview}
-              skipped={stationStatus(openStation) === "skipped"}
-              currentItemId={!openIsPreview && stationStatus(openStation) === "current" ? openCurrentItem?.id : undefined}
-              onToggleItem={(id, completed) => toggle.mutate({ id, completed })}
-              onDeleteItem={(id) => deleteItem.mutate(id)}
-              onSkip={() => {
-                const skipped = stationStatus(openStation) === "skipped";
-                if (skipped) {
-                  skipStation.mutate({ theme: openStation.theme, skipped: false });
-                  return;
-                }
-                if (confirm(`Skip station "${openStation.theme}"? Its items stay open but the route moves past it.`)) {
-                  skipStation.mutate({ theme: openStation.theme, skipped: true });
-                }
-              }}
-              onAddItem={() => setShowAddItem(true)}
-              onChanged={invalidate}
-              onClose={() => setSelectedStation(null)}
-            />
-          </div>
-        )}
       </div>
 
-      {/* everything below the header blurs (and stops accepting clicks)
-          while the detail panel is open, so a station can't be clicked
-          through the blur and the panel reads as clearly in-focus */}
-      <div className={openStation ? "space-y-4 pointer-events-none blur-sm transition-[filter]" : "space-y-4 transition-[filter]"}>
+      <div className="space-y-4">
         {/* A winding curved path with checkpoint nodes, not a straight line —
             RoadmapPage's day-list used to have its own connecting line/bead
             visual but that depended on runtime-measured, variable row heights
@@ -400,7 +410,7 @@ export function SyllabusPage() {
             technique. */}
         <div className="rounded-[18px] border border-hairline bg-card p-4 lg:hidden">
           {itemMix}
-          <StationRoute stations={stations} currentIdx={currentIdx} orientation="vertical" seed={level} onSelect={setSelectedStation} />
+          <StationRoute stations={stations} currentIdx={currentIdx} orientation="vertical" seed={level} onSelect={handleStationSelect} />
         </div>
 
         {/* lg: item mix stays fixed at the top of this card — only the path
@@ -426,7 +436,7 @@ export function SyllabusPage() {
                 orientation="horizontal"
                 seed={level}
                 scrollContainerRef={routeRowRef}
-                onSelect={setSelectedStation}
+                onSelect={handleStationSelect}
               />
             </div>
             <button
@@ -438,6 +448,39 @@ export function SyllabusPage() {
             </button>
           </div>
         </div>
+
+        {/* the station-detail panel sits in normal document flow, right
+            below the path and above "+ Custom station" — not an overlay on
+            top of the path. It used to be absolutely positioned right under
+            the header, but now that the in-progress station opens by
+            default (not just on click), that positioning meant the panel
+            permanently covered the entire path underneath it. */}
+        {openStation && (
+          <div ref={panelWrapperRef}>
+            <StationDetailModal
+              station={openStation}
+              resolvedIdx={openIdx}
+              isPreview={openIsPreview}
+              skipped={stationStatus(openStation) === "skipped"}
+              currentItemId={!openIsPreview && stationStatus(openStation) === "current" ? openCurrentItem?.id : undefined}
+              onToggleItem={(id, completed) => toggle.mutate({ id, completed })}
+              onDeleteItem={(id) => deleteItem.mutate(id)}
+              onSkip={() => {
+                const skipped = stationStatus(openStation) === "skipped";
+                if (skipped) {
+                  skipStation.mutate({ theme: openStation.theme, skipped: false });
+                  return;
+                }
+                if (confirm(`Skip station "${openStation.theme}"? Its items stay open but the route moves past it.`)) {
+                  skipStation.mutate({ theme: openStation.theme, skipped: true });
+                }
+              }}
+              onAddItem={() => setShowAddItem(true)}
+              onChanged={invalidate}
+              onClose={() => setSelectedStation(null)}
+            />
+          </div>
+        )}
 
         <button
           onClick={() => setShowAddStation(true)}

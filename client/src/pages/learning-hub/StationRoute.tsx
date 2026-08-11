@@ -1,6 +1,6 @@
 import { useMemo, type RefObject } from "react";
 import { Check, Lock, MapPin } from "lucide-react";
-import { glidePageTo, glideScrollLeft } from "../../lib/useShelfPan";
+import { glideScrollLeft } from "../../lib/useShelfPan";
 import type { Station } from "./stations";
 import { horizontalRouteLayout, verticalRouteLayout } from "./routeGeometry";
 
@@ -19,10 +19,15 @@ interface StationRouteProps {
   onSelect: (theme: string) => void;
 }
 
-// matches glideScrollLeft/glidePageTo's own default duration in
-// useShelfPan.ts — onSelect (which opens the detail panel) fires only after
-// the centering glide finishes, so "road centers the station, then the
-// panel opens" reads as a real sequence, not simultaneous
+// matches glideScrollLeft's own default duration in useShelfPan.ts —
+// horizontal (lg) still centers the clicked station in the strip before
+// onSelect (which opens the detail panel) fires, so that sequence reads as
+// "road centers the station, then the panel opens," not simultaneous.
+// Vertical (sm/md) no longer does any of its own scrolling here — the page
+// can be much taller than the viewport there, and centering the clicked
+// *node* used to scroll the header (and the detail panel that renders right
+// below it) off-screen; SyllabusPage.tsx now scrolls to bring the *panel*
+// into view once it mounts instead (see its own effect).
 const GLIDE_DURATION = 320;
 
 /**
@@ -59,17 +64,15 @@ export function StationRoute({ stations, currentIdx, orientation, seed, scrollCo
       ? { aspectRatio: `${layout.size.width} / ${layout.size.height}` }
       : { width: layout.size.width, height: layout.size.height };
 
-  function handleSelect(theme: string, buttonEl: HTMLButtonElement, x: number) {
+  function handleSelect(theme: string, x: number) {
     if (orientation === "horizontal" && scrollContainerRef?.current) {
       const container = scrollContainerRef.current;
       const target = Math.max(0, Math.min(x - container.clientWidth / 2, container.scrollWidth - container.clientWidth));
       glideScrollLeft(container, target);
-    } else if (orientation === "vertical") {
-      const rect = buttonEl.getBoundingClientRect();
-      const target = window.scrollY + rect.top + rect.height / 2 - window.innerHeight / 2;
-      glidePageTo(Math.max(0, target));
+      setTimeout(() => onSelect(theme), GLIDE_DURATION);
+      return;
     }
-    setTimeout(() => onSelect(theme), GLIDE_DURATION);
+    onSelect(theme);
   }
 
   return (
@@ -107,7 +110,7 @@ export function StationRoute({ stations, currentIdx, orientation, seed, scrollCo
         return (
           <button
             key={s.theme + i}
-            onClick={(e) => handleSelect(s.theme, e.currentTarget, pos.x)}
+            onClick={() => handleSelect(s.theme, pos.x)}
             style={{ left: `${(pos.x / layout.size.width) * 100}%`, top: `${(pos.y / layout.size.height) * 100}%` }}
             className="group absolute flex w-[104px] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1 rounded-xl text-center transition-transform hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
             aria-label={`Station ${i + 1} of ${stations.length}: ${s.theme}, ${done}/${s.items.length} items${status === "current" ? ", current" : ""}`}
