@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
-import { BookOpen, Plus, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BookOpen, LayoutGrid, List, Plus, Search } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { api, playWordAudio } from "../api/client";
 import type { Themenfeld, Word } from "../api/types";
 import { Button } from "../components/ui/Button";
@@ -20,8 +21,45 @@ import { Shelf } from "./vocabulary/Shelf";
 import { buildShelves, byHeadword, type GroupBy } from "./vocabulary/shelves";
 import StateTabs from "./vocabulary/StateTabs";
 import VocabularyMobile from "./vocabulary/VocabularyMobile";
+import { WordDictionaryList } from "./vocabulary/WordDictionaryList";
 import { glidePageTo } from "../lib/useShelfPan";
 import { DEFAULT_FILTERS, useVocabFacets, type VocabFilters } from "./vocabulary/useVocabFacets";
+
+type ViewMode = "tile" | "list";
+
+/** Single shared Tile/List toggle, one instance in the header at every
+ * breakpoint — replaces the old per-shelf "See all" links entirely: Tile
+ * mode's shelves are always a fixed-cap horizontal-scroll row now, and List
+ * mode is the "browse everything" affordance instead (a flat, alphabetical,
+ * evenly-spaced dictionary view — see WordDictionaryList.tsx). */
+function ViewModeToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMode) => void }) {
+  return (
+    <div className="flex items-center gap-0.5 rounded-full border border-hairline bg-card p-0.5">
+      <button
+        type="button"
+        title="Tile view"
+        aria-pressed={value === "tile"}
+        onClick={() => onChange("tile")}
+        className={`grid size-8 place-items-center rounded-full transition-colors ${
+          value === "tile" ? "bg-ink-900 text-white" : "text-ink-400 hover:text-ink-900"
+        }`}
+      >
+        <LayoutGrid className="size-4" aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        title="List view"
+        aria-pressed={value === "list"}
+        onClick={() => onChange("list")}
+        className={`grid size-8 place-items-center rounded-full transition-colors ${
+          value === "list" ? "bg-ink-900 text-white" : "text-ink-400 hover:text-ink-900"
+        }`}
+      >
+        <List className="size-4" aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
 
 export default function Vocabulary() {
   const queryClient = useQueryClient();
@@ -38,7 +76,9 @@ export default function Vocabulary() {
   const [practiceWords, setPracticeWords] = useState<Word[] | undefined | null>(null);
   const [audioPlayingId, setAudioPlayingId] = useState<string | null>(null);
   const [ringingId, setRingingId] = useState<string | null>(null);
-  const [expandedShelves, setExpandedShelves] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<ViewMode>("tile");
+  // page-wide, not per-shelf — only one tile/card is ever flipped at a time
+  const [flippedWordId, setFlippedWordId] = useState<string | null>(null);
   const cardRefs = useRef(new Map<string, HTMLDivElement>());
 
   const onFilterChange = (patch: Partial<VocabFilters>) => setFilters((f) => ({ ...f, ...patch }));
@@ -72,13 +112,8 @@ export default function Vocabulary() {
     if (confirm(`Delete "${word.headword}"? This also removes it from your vault.`)) del.mutate(word);
   }
 
-  function toggleShelfExpand(id: string) {
-    setExpandedShelves((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  function onToggleFlip(id: string) {
+    setFlippedWordId((cur) => (cur === id ? null : id));
   }
 
   const registerCardRef = (id: string, el: HTMLDivElement | null) => {
@@ -87,25 +122,27 @@ export default function Vocabulary() {
   };
 
   function handleJump(word: Word) {
-    const shelf = shelves.find((s) => s.words.some((w) => w.id === word.id));
-    const index = shelf?.words.findIndex((w) => w.id === word.id) ?? -1;
-    const needsExpand = shelf !== undefined && index >= 5 && !expandedShelves.has(shelf.id);
-    if (shelf && needsExpand) setExpandedShelves((prev) => new Set(prev).add(shelf.id));
-
-    setTimeout(
-      () => {
-        const el = cardRefs.current.get(word.id);
-        if (el) glidePageTo(el.getBoundingClientRect().top + window.scrollY - 140);
-        setRingingId(word.id);
-        setTimeout(() => setRingingId((id) => (id === word.id ? null : id)), 1600);
-      },
-      needsExpand ? 60 : 0,
-    );
+    const el = cardRefs.current.get(word.id);
+    if (el) glidePageTo(el.getBoundingClientRect().top + window.scrollY - 140);
+    setRingingId(word.id);
+    setTimeout(() => setRingingId((id) => (id === word.id ? null : id)), 1600);
   }
 
   function openPractice(words?: Word[]) {
     setPracticeWords(words ?? undefined);
   }
+
+  // Dashboard's "Start today's revision" CTA links here with ?startReview=1
+  // to jump straight into the flashcard queue instead of just landing on the
+  // page — strip the param right after so a refresh doesn't re-trigger it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("startReview") === "1") {
+      openPractice();
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleDrillTheme(themenfeld: string) {
     setShowAnalytics(false);
@@ -127,26 +164,29 @@ export default function Vocabulary() {
             {allWords.length} words · {dueCount} due
           </p>
         </div>
-        <div className="flex items-center gap-2 lg:hidden">
-          <button
-            className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline bg-card hover:border-brand-400"
-            onClick={() => setShowSearch(true)}
-            title="Search"
-          >
-            <Search className="size-4" aria-hidden="true" />
-          </button>
-          <button
-            className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-600 text-white hover:bg-brand-700"
-            onClick={() => setShowAdd(true)}
-            title="Add words"
-          >
-            <Plus className="size-4" aria-hidden="true" />
-          </button>
-        </div>
-        <div className="hidden lg:block">
-          <Button leftIcon={<Plus className="size-4" aria-hidden="true" />} onClick={() => setShowAdd(true)}>
-            Add words
-          </Button>
+        <div className="flex items-center gap-2">
+          <ViewModeToggle value={viewMode} onChange={setViewMode} />
+          <div className="flex items-center gap-2 lg:hidden">
+            <button
+              className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline bg-card hover:border-brand-400"
+              onClick={() => setShowSearch(true)}
+              title="Search"
+            >
+              <Search className="size-4" aria-hidden="true" />
+            </button>
+            <button
+              className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-600 text-white hover:bg-brand-700"
+              onClick={() => setShowAdd(true)}
+              title="Add words"
+            >
+              <Plus className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+          <div className="hidden lg:block">
+            <Button leftIcon={<Plus className="size-4" aria-hidden="true" />} onClick={() => setShowAdd(true)}>
+              Add words
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -173,6 +213,7 @@ export default function Vocabulary() {
         onChange={(state) => onFilterChange({ state })}
         groupBy={groupBy}
         onGroupByChange={setGroupBy}
+        hideGroupBy={viewMode === "list"}
       />
 
       <VocabularyMobile
@@ -180,8 +221,11 @@ export default function Vocabulary() {
         filtered={filtered}
         dueTodayWords={dueTodayWords}
         shelves={shelves}
-        expandedShelves={expandedShelves}
-        onToggleExpand={toggleShelfExpand}
+        viewMode={viewMode}
+        flippedWordId={flippedWordId}
+        onToggleFlip={onToggleFlip}
+        onPlayAudio={handlePlayAudio}
+        audioPlayingId={audioPlayingId}
         reviewCount={dueCount + newCount}
         onOpenReview={() => openPractice()}
         onOpenAnalytics={() => setShowAnalytics(true)}
@@ -239,6 +283,8 @@ export default function Vocabulary() {
               <SkeletonCard className="h-40" />
               <SkeletonCard className="h-40" />
             </div>
+          ) : viewMode === "list" ? (
+            <WordDictionaryList words={filtered} onPlayAudio={handlePlayAudio} audioPlayingId={audioPlayingId} />
           ) : filtered.length === 0 ? (
             <EmptyState
               icon={BookOpen}
@@ -264,8 +310,8 @@ export default function Vocabulary() {
                   title="Problem words"
                   titleColor="var(--color-state-problem)"
                   words={problemWords}
-                  expanded={expandedShelves.has("problem-words")}
-                  onToggleExpand={() => toggleShelfExpand("problem-words")}
+                  flippedWordId={flippedWordId}
+                  onToggleFlip={onToggleFlip}
                   onPractice={openPractice}
                   onToggleLeech={(w) => toggleLeech.mutate(w)}
                   onDelete={handleDelete}
@@ -283,8 +329,8 @@ export default function Vocabulary() {
                   titleColor={shelf.titleColor}
                   glyph={shelf.glyph}
                   words={shelf.words}
-                  expanded={expandedShelves.has(shelf.id)}
-                  onToggleExpand={() => toggleShelfExpand(shelf.id)}
+                  flippedWordId={flippedWordId}
+                  onToggleFlip={onToggleFlip}
                   onPractice={openPractice}
                   onToggleLeech={(w) => toggleLeech.mutate(w)}
                   onDelete={handleDelete}
@@ -298,7 +344,7 @@ export default function Vocabulary() {
           )}
         </div>
 
-        <AzScrubber words={filtered} onJump={handleJump} />
+        {viewMode === "tile" && <AzScrubber words={filtered} onJump={handleJump} />}
       </div>
 
       {showAdd && <AddWordsDialog onClose={() => setShowAdd(false)} />}

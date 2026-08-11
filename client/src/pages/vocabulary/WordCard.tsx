@@ -1,11 +1,20 @@
-import { useState } from "react";
+import { useRef } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { Flag, Trash2, Volume2 } from "lucide-react";
 import type { Word } from "../../api/types";
 import { cn } from "../../lib/cn";
 import { articleFront, GENUS_COLORS, STATE_COLORS, STATE_LABELS, THEMENFELD_LABELS, WORTART_COLORS } from "../../lib/vocab";
 
+// see VocabTile.tsx's identical constant for why this exists — a plain
+// onClick can get silently swallowed by the browser resolving a small-drift
+// touch as a scroll gesture inside this card's horizontally-scrollable shelf
+// row.
+const TAP_MOVE_THRESHOLD = 4;
+
 interface WordCardProps {
   word: Word;
+  flipped: boolean;
+  onToggleFlip: () => void;
   onToggleLeech: (word: Word) => void;
   onDelete: (word: Word) => void;
   onPlayAudio: (word: Word) => void;
@@ -14,10 +23,20 @@ interface WordCardProps {
   cardRef?: (el: HTMLDivElement | null) => void;
 }
 
-export function WordCard({ word, onToggleLeech, onDelete, onPlayAudio, audioPlaying, ringing, cardRef }: WordCardProps) {
-  const [flipped, setFlipped] = useState(false);
+export function WordCard({ word, flipped, onToggleFlip, onToggleLeech, onDelete, onPlayAudio, audioPlaying, ringing, cardRef }: WordCardProps) {
   const stateColor = STATE_COLORS[word.state];
   const wortartColor = WORTART_COLORS[word.wortart];
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+
+  function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    startRef.current = { x: e.clientX, y: e.clientY };
+  }
+  function onPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
+    const start = startRef.current;
+    startRef.current = null;
+    if (!start) return;
+    if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < TAP_MOVE_THRESHOLD) onToggleFlip();
+  }
 
   return (
     <div
@@ -35,7 +54,8 @@ export function WordCard({ word, onToggleLeech, onDelete, onPlayAudio, audioPlay
             ? { boxShadow: "0 0 0 3px var(--color-wortart-wendung), 0 0 0 6px rgb(236 72 153 / 0.15)" }
             : undefined
         }
-        onClick={() => setFlipped((f) => !f)}
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
       >
         {/* front */}
         <div className="flip-card-face absolute inset-0 flex flex-col rounded-[14px] border border-hairline bg-card p-3">
@@ -70,6 +90,7 @@ export function WordCard({ word, onToggleLeech, onDelete, onPlayAudio, audioPlay
                   audioPlaying && "border-transparent text-white",
                 )}
                 style={audioPlaying ? { backgroundColor: stateColor } : undefined}
+                onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
                   onPlayAudio(word);
@@ -106,6 +127,7 @@ export function WordCard({ word, onToggleLeech, onDelete, onPlayAudio, audioPlay
                 "grid size-7 place-items-center rounded-full border border-white/20 hover:bg-white/10",
                 word.leech && "border-transparent bg-danger-600",
               )}
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleLeech(word);
@@ -116,6 +138,7 @@ export function WordCard({ word, onToggleLeech, onDelete, onPlayAudio, audioPlay
             <button
               title="Remove word"
               className="grid size-7 place-items-center rounded-full border border-white/20 hover:bg-white/10"
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(word);

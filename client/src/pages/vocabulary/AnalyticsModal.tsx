@@ -1,5 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import type { ReactNode } from "react";
+import { Bug } from "lucide-react";
+import sevenDaysIcon from "../../assets/icons/7-days.png";
+import clockIcon from "../../assets/icons/clock.png";
+import deadlineIcon from "../../assets/icons/deadline.png";
 import { api } from "../../api/client";
 import type { CefrLevel, Word } from "../../api/types";
 import { Badge } from "../../components/ui/Badge";
@@ -86,13 +91,21 @@ export function AnalyticsModal({ words, onClose, onDrillTheme, desktopOnly }: An
           )}
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <KpiTile label="Today" value={stats?.reviewsToday} />
-            <KpiTile label="Last 7 days" value={stats?.reviewsThisWeek} />
-            <KpiTile label="Due now" value={dueNow} />
-            <KpiTile label="Problem words" value={problemWords} />
+            <KpiTile label="Today" value={stats?.reviewsToday} icon={<img src={clockIcon} alt="" className="size-5 shrink-0" />} />
+            <KpiTile
+              label="Last 7 days"
+              value={stats?.reviewsThisWeek}
+              icon={<img src={sevenDaysIcon} alt="" className="size-5 shrink-0" />}
+            />
+            <KpiTile label="Due now" value={dueNow} icon={<img src={deadlineIcon} alt="" className="size-5 shrink-0" />} />
+            <KpiTile
+              label="Problem words"
+              value={problemWords}
+              icon={<Bug className="size-5 shrink-0 text-danger-600" aria-hidden="true" />}
+            />
           </div>
 
-          <div>
+          <div className="rounded-lg border border-hairline bg-card p-3 shadow-xs">
             <p className="mb-1.5 text-xs font-bold tracking-wide text-ink-400">REVIEWS · LAST 14 DAYS</p>
             {historyLoading ? (
               <SkeletonCard className="h-20" />
@@ -114,7 +127,7 @@ export function AnalyticsModal({ words, onClose, onDrillTheme, desktopOnly }: An
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div>
+            <div className="rounded-lg border border-hairline bg-card p-3 shadow-xs">
               <p className="mb-1.5 text-xs font-bold tracking-wide text-ink-400">GRADE MIX</p>
               {statsLoading || !stats ? (
                 <SkeletonText lines={3} />
@@ -141,7 +154,7 @@ export function AnalyticsModal({ words, onClose, onDrillTheme, desktopOnly }: An
                 </div>
               )}
             </div>
-            <div>
+            <div className="rounded-lg border border-hairline bg-card p-3 shadow-xs">
               <p className="mb-1.5 text-xs font-bold tracking-wide text-ink-400">MASTERY BY LEVEL</p>
               <div className="space-y-1.5">
                 {masteryByLevel.map((l) => (
@@ -157,7 +170,7 @@ export function AnalyticsModal({ words, onClose, onDrillTheme, desktopOnly }: An
             </div>
           </div>
 
-          <div>
+          <div className="rounded-lg border border-hairline bg-card p-3 shadow-xs">
             <p className="mb-1.5 text-xs font-bold tracking-wide text-ink-400">WEAKEST THEMENFELDER</p>
             {weakestThemenfelder.length === 0 ? (
               <p className="text-xs text-ink-400">Not enough data yet.</p>
@@ -188,7 +201,7 @@ export function AnalyticsModal({ words, onClose, onDrillTheme, desktopOnly }: An
           ) : (
             <ul className="space-y-1.5">
               {history.entries.slice(0, 30).map((e) => (
-                <li key={e.id} className="rounded-lg border border-hairline bg-card px-3 py-2 text-sm">
+                <li key={e.id} className="rounded-lg border border-hairline bg-card px-3 py-2 text-sm shadow-xs">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">{e.headword}</span>
                     <Badge variant={GRADE_VARIANT[e.grade]} className="capitalize">
@@ -209,11 +222,14 @@ export function AnalyticsModal({ words, onClose, onDrillTheme, desktopOnly }: An
   );
 }
 
-function KpiTile({ label, value }: { label: string; value: number | undefined }) {
+function KpiTile({ label, value, icon }: { label: string; value: number | undefined; icon: ReactNode }) {
   return (
-    <div className="rounded-lg border border-hairline bg-card p-2 text-center">
-      <p className="text-base font-semibold">{value ?? "–"}</p>
-      <p className="text-[10px] text-ink-400">{label}</p>
+    <div className="flex items-center gap-2.5 rounded-lg border border-hairline bg-card p-2.5 shadow-xs">
+      {icon}
+      <div className="min-w-0">
+        <p className="text-base font-semibold leading-tight">{value ?? "–"}</p>
+        <p className="truncate text-[10px] text-ink-400">{label}</p>
+      </div>
     </div>
   );
 }

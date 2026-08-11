@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Award, PartyPopper, X } from "lucide-react";
+import { PartyPopper, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import type { Word } from "../../api/types";
 import { Button } from "../../components/ui/Button";
@@ -37,12 +37,17 @@ export default function ReviewModal({ words, onClose }: ReviewModalProps) {
     };
   }, [onClose]);
 
-  const { loading, current, total, remaining, progressPercent, revealed, setRevealed, done, newBadges, grade } = useReviewSession({
+  const { loading, current, total, remaining, progressPercent, revealed, setRevealed, done, grade } = useReviewSession({
     words,
   });
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4 backdrop-blur-[6px] lg:hidden">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4 backdrop-blur-[6px] lg:hidden"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="w-full max-w-sm">
         {!loading && current && (
           <div className="mb-2 flex items-center gap-2">
@@ -75,12 +80,6 @@ export default function ReviewModal({ words, onClose }: ReviewModalProps) {
                 </p>
               ) : (
                 <p className="mt-1 text-sm text-ink-600">Nothing due right now.</p>
-              )}
-              {newBadges.length > 0 && (
-                <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-brand-700">
-                  <Award className="size-4" aria-hidden="true" />
-                  New badge{newBadges.length === 1 ? "" : "s"}: {newBadges.map((b) => b.label).join(", ")}
-                </p>
               )}
               <Button variant="primary" className="mt-5 w-full" onClick={onClose}>
                 Back to vault

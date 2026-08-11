@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
-import { Award, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { api } from "../../api/client";
 import type { CefrLevel, Themenfeld } from "../../api/types";
 import { Button } from "../../components/ui/Button";
@@ -130,13 +130,6 @@ export function AddWordsDialog({ onClose }: AddWordsDialogProps) {
           <p className="flex items-center gap-1.5 text-sm text-ok-700">
             <CheckCircle2 className="size-4" aria-hidden="true" />
             Added {add.data.words.map((w) => w?.headword).join(", ")}
-          </p>
-        )}
-        {add.isSuccess && add.data.newlyUnlockedBadges.length > 0 && (
-          <p className="flex items-center gap-1.5 text-sm text-brand-700">
-            <Award className="size-4" aria-hidden="true" />
-            New badge{add.data.newlyUnlockedBadges.length === 1 ? "" : "s"}:{" "}
-            {add.data.newlyUnlockedBadges.map((b) => b.label).join(", ")}
           </p>
         )}
       </form>

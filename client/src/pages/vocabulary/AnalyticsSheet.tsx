@@ -1,5 +1,9 @@
 import { useEffect } from "react";
+import { Bug } from "lucide-react";
 import { createPortal } from "react-dom";
+import dictionaryIcon from "../../assets/icons/dictionary.png";
+import deadlineIcon from "../../assets/icons/deadline.png";
+import goodFeedbackIcon from "../../assets/icons/good-feedback.png";
 import type { Word } from "../../api/types";
 
 interface AnalyticsSheetProps {
@@ -57,14 +61,18 @@ export default function AnalyticsSheet({ words, onClose }: AnalyticsSheetProps) 
 
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
           {[
-            ["Total words", words.length],
-            ["Due today", dueToday],
-            ["Mastered", mastered],
-            ["Leeches", leeches],
-          ].map(([label, value]) => (
-            <div key={label} className="rounded-xl border border-hairline bg-paper p-3 text-center md:p-3.5">
-              <p className="text-lg font-semibold text-ink-900 md:text-xl">{value}</p>
-              <p className="text-[11px] text-ink-400 md:text-xs">{label}</p>
+            { label: "Total words", value: words.length, icon: <img src={dictionaryIcon} alt="" className="size-5" /> },
+            { label: "Due today", value: dueToday, icon: <img src={deadlineIcon} alt="" className="size-5" /> },
+            { label: "Mastered", value: mastered, icon: <img src={goodFeedbackIcon} alt="" className="size-5" /> },
+            { label: "Leeches", value: leeches, icon: <Bug className="size-5 text-danger-600" aria-hidden="true" /> },
+          ].map((tile) => (
+            <div
+              key={tile.label}
+              className="flex flex-col items-center gap-1 rounded-xl border border-hairline bg-paper p-3 text-center shadow-xs md:p-3.5"
+            >
+              {tile.icon}
+              <p className="text-lg font-semibold text-ink-900 md:text-xl">{tile.value}</p>
+              <p className="text-[11px] text-ink-400 md:text-xs">{tile.label}</p>
             </div>
           ))}
         </div>

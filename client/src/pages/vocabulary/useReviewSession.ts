@@ -25,10 +25,10 @@ export function orderQueue(due: Word[], fresh: Word[], order: QueueOrder): Word[
 
 /**
  * The review-session state machine (queue ordering, grading, cache
- * invalidation, mid-session leech toggling, badge accumulation) — shared by
- * `PracticeOverlay` (lg, full-screen chrome) and `ReviewModal` (sm/md,
- * centered blurred-backdrop chrome). Extracted so this real, moderately
- * complex machine doesn't drift if copy-pasted between the two.
+ * invalidation, mid-session leech toggling) — shared by `PracticeOverlay`
+ * (lg, full-screen chrome) and `ReviewModal` (sm/md, centered
+ * blurred-backdrop chrome). Extracted so this real, moderately complex
+ * machine doesn't drift if copy-pasted between the two.
  */
 export function useReviewSession({ words }: { words?: Word[] }) {
   const queryClient = useQueryClient();
@@ -44,7 +44,6 @@ export function useReviewSession({ words }: { words?: Word[] }) {
   const [queue, setQueue] = useState<Word[] | null>(words ?? null);
   const [revealed, setRevealed] = useState(false);
   const [done, setDone] = useState<Record<Grade, number>>({ hard: 0, good: 0, easy: 0 });
-  const [newBadges, setNewBadges] = useState<{ label: string }[]>([]);
 
   useEffect(() => {
     if (words === undefined && data && queue === null) setQueue(orderQueue(data.due, data.fresh, order));
@@ -53,11 +52,10 @@ export function useReviewSession({ words }: { words?: Word[] }) {
 
   const grade = useMutation({
     mutationFn: ({ wordId, g }: { wordId: string; g: Grade }) => api.gradeWord(wordId, g),
-    onSuccess: (res, { g }) => {
+    onSuccess: (_res, { g }) => {
       setDone((d) => ({ ...d, [g]: d[g] + 1 }));
       setQueue((q) => (q ? q.slice(1) : q));
       setRevealed(false);
-      if (res.newlyUnlockedBadges.length > 0) setNewBadges((b) => [...b, ...res.newlyUnlockedBadges]);
       queryClient.invalidateQueries({ queryKey: ["words"] });
       queryClient.invalidateQueries({ queryKey: ["reviews", "history"] });
       queryClient.invalidateQueries({ queryKey: ["reviews", "weak-words"] });
@@ -101,7 +99,6 @@ export function useReviewSession({ words }: { words?: Word[] }) {
     order,
     changeOrder,
     done,
-    newBadges,
     grade,
     toggleLeech,
     checkForMore,

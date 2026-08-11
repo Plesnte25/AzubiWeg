@@ -4,14 +4,18 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import MobileShelfRow from "./MobileShelfRow";
 import ReviewActions from "./ReviewActions";
 import type { ShelfGroup } from "./shelves";
+import { WordDictionaryList } from "./WordDictionaryList";
 
 interface VocabularyMobileProps {
   allWords: Word[];
   filtered: Word[];
   dueTodayWords: Word[];
   shelves: ShelfGroup[];
-  expandedShelves: Set<string>;
-  onToggleExpand: (id: string) => void;
+  viewMode: "tile" | "list";
+  flippedWordId: string | null;
+  onToggleFlip: (id: string) => void;
+  onPlayAudio: (word: Word) => void;
+  audioPlayingId: string | null;
   reviewCount: number;
   onOpenReview: () => void;
   onOpenAnalytics: () => void;
@@ -20,20 +24,24 @@ interface VocabularyMobileProps {
 /** sm/md Netflix-style vault — the top-level composer for this breakpoint
  * range, mounted unconditionally alongside lg's existing tree (each
  * self-gates visibility via `lg:hidden` on this root vs. `hidden lg:...` on
- * the lg-only elements), sharing the same fetched data/mutations, shelf
- * grouping, and expand state from `Vocabulary.tsx` — same principle
- * `Dashboard.tsx` already uses for its own `lg:hidden` vs `hidden ... lg:grid`
- * split. "See all" expands a shelf's own row in place (mirroring lg's
- * `Shelf.tsx` expand behavior) rather than navigating to a separate view.
- * Shelf grouping is picked via the dropdown on `StateTabs`' "All" chip, one
- * level up — shared verbatim with lg, not owned by this component. */
+ * the lg-only elements), sharing the same fetched data/mutations and shelf
+ * grouping from `Vocabulary.tsx` — same principle `Dashboard.tsx` already
+ * uses for its own `lg:hidden` vs `hidden ... lg:grid` split. This is Tile
+ * mode only — List mode (`WordDictionaryList`) is rendered by
+ * `Vocabulary.tsx` in place of this component entirely, since a flat list
+ * doesn't need a separate mobile variant. Shelf grouping is picked via the
+ * dropdown on `StateTabs`' "All" chip, one level up — shared verbatim with
+ * lg, not owned by this component. */
 export default function VocabularyMobile({
   allWords,
   filtered,
   dueTodayWords,
   shelves,
-  expandedShelves,
-  onToggleExpand,
+  viewMode,
+  flippedWordId,
+  onToggleFlip,
+  onPlayAudio,
+  audioPlayingId,
   reviewCount,
   onOpenReview,
   onOpenAnalytics,
@@ -45,8 +53,10 @@ export default function VocabularyMobile({
 
   return (
     <div className="lg:hidden">
-      <div className="space-y-5 pb-[calc(3.5rem+4rem+env(safe-area-inset-bottom))] md:pb-4">
-        {filtered.length === 0 ? (
+      <div className="space-y-5 pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:pb-4">
+        {viewMode === "list" ? (
+          <WordDictionaryList words={filtered} onPlayAudio={onPlayAudio} audioPlayingId={audioPlayingId} />
+        ) : filtered.length === 0 ? (
           <EmptyState
             icon={BookOpen}
             title={allWords.length === 0 ? "No words yet" : "No words found"}
@@ -58,8 +68,10 @@ export default function VocabularyMobile({
               key={shelf.id}
               title={shelf.title}
               words={shelf.words}
-              expanded={expandedShelves.has(shelf.id)}
-              onToggleExpand={() => onToggleExpand(shelf.id)}
+              flippedWordId={flippedWordId}
+              onToggleFlip={onToggleFlip}
+              onPlayAudio={onPlayAudio}
+              audioPlayingId={audioPlayingId}
             />
           ))
         )}
