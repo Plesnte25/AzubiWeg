@@ -14,14 +14,16 @@ sketches the next features in enough detail to start implementation from.
 | 3 | Bureaucracy Companion | **Partially built** (V2) | Document checklist seeded with ~24 non-EU Ausbildung items, file attachments, expiry reminders, search, category filters, and an urgency-first "Up Next" view. Missing: guided explanatory content per topic (moves into the knowledge base) — long-run, deliberately deferred. |
 | 4 | European Resume Builder | **Retired, replaced with a simpler model** (V2) | Originally a form + live PDF preview (German Lebenslauf / ATS-friendly English templates, multiple CVs per account). Replaced 2026-07-31: a CV is now just a file you already have, uploaded and tagged, living on a shelf beside the application kanban — no in-app builder to keep in sync with a PDF export. Missing (if ever revisited): Europass template, cover letters, automated ATS checks (V4). |
 | 5 | Salary & Cost Planner | **Missing — long-run, deliberately deferred** | City comparison, taxes, rent, budget, savings projections. Carried forward from V3, not yet started. |
-| 6 | Deutschland Dashboard | **Built** (V2/V3) | Dashboard shows documents needing attention, application stats, syllabus/roadmap progress, study streaks, badges, and activity history. Missing: certificates, GitHub activity (V4). |
+| 6 | Deutschland Dashboard | **Built** (V2/V3) | Dashboard shows documents needing attention, application stats, syllabus/roadmap progress, study streaks, and activity history. Missing: certificates, GitHub activity (V4). |
 | 7 | Germany Knowledge Base | **Missing — long-run, deliberately deferred** | Guides for visa, Anmeldung, blocked account, insurance, housing, FAQs. Carried forward from V3, not yet started; a community-wiki model with contributions is a possible later evolution. |
 
 **V3 (Learning Progress Hub) shipped**: CEFR syllabus (174 items, A1→B1), a
 generated day-by-day 182-day roadmap, study-source registry (YouTube/Nicos
 Weg/Duolingo), self-test quizzes (163-question bank), weekly/monthly review
-and Goethe-readiness rollups, gamification (points, 15 badges, streaks), and
-session-based activity tracking. See the [README](../README.md#what-v3-adds)
+and Goethe-readiness rollups, day-streaks, and session-based activity
+tracking (gamification — points, 15 badges — shipped in V3 and was later
+removed, 2026-08-08, in favor of this plain activity/streak tracking). See
+the [README](../README.md#what-v3-adds)
 for the user-facing feature list. What's left from the original V3 scope —
 the salary & cost planner and the Germany knowledge base — carries forward
 (see Phasing below).
