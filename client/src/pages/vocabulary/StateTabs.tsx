@@ -24,6 +24,9 @@ interface StateTabsProps {
   onChange: (state: VocabFilters["state"]) => void;
   groupBy: GroupBy;
   onGroupByChange: (groupBy: GroupBy) => void;
+  /** List mode is inherently flat A-Z — the Wortart/A-Z/Woche grouping
+   * dropdown on the "All" chip doesn't apply there. */
+  hideGroupBy?: boolean;
 }
 
 /** Small popover anchored to the "All" chip's caret, listing the
@@ -114,7 +117,7 @@ function GroupByDropdown({
  * grouping dropdown (`GroupByDropdown` above) — shared by every breakpoint
  * from this one component, replacing what used to be a standalone
  * `SegmentedControl` row duplicated per breakpoint. */
-export default function StateTabs({ allWords, stateCounts, value, onChange, groupBy, onGroupByChange }: StateTabsProps) {
+export default function StateTabs({ allWords, stateCounts, value, onChange, groupBy, onGroupByChange, hideGroupBy }: StateTabsProps) {
   const btnRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const caretRef = useRef<HTMLButtonElement>(null);
   const [groupByOpen, setGroupByOpen] = useState(false);
@@ -140,7 +143,9 @@ export default function StateTabs({ allWords, stateCounts, value, onChange, grou
     >
       {STATE_TABS.map((tab, i) => {
         const active = value === tab.key;
-        const count = tab.key === "all" ? allWords.length : (stateCounts[tab.key] ?? 0);
+        const isAll = tab.key === "all";
+        const showCaret = isAll && !hideGroupBy;
+        const count = isAll ? allWords.length : (stateCounts[tab.key] ?? 0);
         return (
           <div key={tab.key} className="flex shrink-0 snap-start items-center gap-1">
             <button
@@ -153,10 +158,14 @@ export default function StateTabs({ allWords, stateCounts, value, onChange, grou
               onKeyDown={(e) => onKeyDown(e, i)}
               className={cn(
                 "flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors",
-                tab.key === "all" && "rounded-r-none",
-                active ? "border-transparent text-white" : "border-hairline text-ink-600 hover:bg-paper",
+                showCaret && "rounded-r-none",
+                isAll && active
+                  ? "border-transparent bg-ink-900 text-white"
+                  : active
+                    ? "border-transparent text-white"
+                    : "border-hairline text-ink-600 hover:bg-paper",
               )}
-              style={active ? { backgroundColor: tab.color } : undefined}
+              style={active && !isAll ? { backgroundColor: tab.color } : undefined}
               onClick={() => onChange(tab.key)}
             >
               {!active && <span className="size-1.5 rounded-full" style={{ backgroundColor: tab.color }} aria-hidden="true" />}
@@ -164,7 +173,7 @@ export default function StateTabs({ allWords, stateCounts, value, onChange, grou
               <span className="tabular-nums opacity-80">{count}</span>
               <span className="sr-only">, {count} words</span>
             </button>
-            {tab.key === "all" && (
+            {showCaret && (
               <button
                 ref={caretRef}
                 type="button"
@@ -173,9 +182,8 @@ export default function StateTabs({ allWords, stateCounts, value, onChange, grou
                 aria-expanded={groupByOpen}
                 className={cn(
                   "grid h-[26px] shrink-0 place-items-center rounded-r-full border border-l-0 px-1.5 transition-colors",
-                  active ? "border-transparent text-white" : "border-hairline text-ink-600 hover:bg-paper",
+                  active ? "border-l border-l-white/20 bg-ink-900 text-white" : "border-hairline text-ink-600 hover:bg-paper",
                 )}
-                style={active ? { backgroundColor: tab.color } : undefined}
                 onClick={() => setGroupByOpen((o) => !o)}
               >
                 <ChevronDown className="size-3.5" aria-hidden="true" />

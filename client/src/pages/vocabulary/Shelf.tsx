@@ -5,10 +5,9 @@ import { Button } from "../../components/ui/Button";
 import { useShelfPan } from "../../lib/useShelfPan";
 import { WordCard } from "./WordCard";
 
-// only gates whether "See all"/collapse controls show at all — the
-// collapsed row itself always renders every word, just horizontally
-// (Practice N / See all N already cover the "jump to grid" cases)
-const SHOW_EXPAND_CONTROLS_ABOVE = 5;
+// only gates whether the scroll-nudge chevrons show at all — below this,
+// the row already fits without needing them
+const SHOW_SCROLL_CONTROLS_ABOVE = 5;
 const CARD_WIDTH = 178;
 
 interface ShelfProps {
@@ -17,8 +16,8 @@ interface ShelfProps {
   titleColor?: string;
   glyph?: string;
   words: Word[];
-  expanded: boolean;
-  onToggleExpand: () => void;
+  flippedWordId: string | null;
+  onToggleFlip: (id: string) => void;
   onPractice?: (words: Word[]) => void;
   onToggleLeech: (word: Word) => void;
   onDelete: (word: Word) => void;
@@ -34,8 +33,8 @@ export function Shelf({
   titleColor,
   glyph,
   words,
-  expanded,
-  onToggleExpand,
+  flippedWordId,
+  onToggleFlip,
   onPractice,
   onToggleLeech,
   onDelete,
@@ -51,7 +50,7 @@ export function Shelf({
   const practiceable = words.filter((w) => w.state === "due" || w.state === "new");
 
   return (
-    <div id={id} className="rounded-xl border border-hairline bg-card p-3">
+    <div id={id} className="rounded-xl border border-hairline bg-card p-3 shadow-xs">
       <div className="mb-2.5 flex flex-wrap items-center gap-2">
         {glyph && (
           <span className="text-sm font-bold" style={titleColor ? { color: titleColor } : undefined}>
@@ -76,15 +75,7 @@ export function Shelf({
               Practice {practiceable.length}
             </Button>
           )}
-          {words.length > SHOW_EXPAND_CONTROLS_ABOVE && (
-            <button
-              className="hidden rounded-full px-2 py-1 text-xs font-medium text-ink-600 transition-colors hover:bg-paper hover:text-ink-900 lg:inline-block"
-              onClick={onToggleExpand}
-            >
-              {expanded ? "Collapse" : `See all ${words.length}`}
-            </button>
-          )}
-          {!expanded && words.length > SHOW_EXPAND_CONTROLS_ABOVE && (
+          {words.length > SHOW_SCROLL_CONTROLS_ABOVE && (
             <span className="hidden gap-1 lg:flex">
               <button
                 title="Scroll left"
@@ -105,32 +96,24 @@ export function Shelf({
         </div>
       </div>
 
-      {/* below lg there's no "collapsed horizontal row" mode at all — sm
-          gets a 2-column grid, md a 3-column grid, always, regardless of
-          the expanded toggle (which only exists for lg's desktop-width
-          collapse/scroll affordance) */}
-      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:hidden">
-        {words.map((w) => (
-          <WordCard
-            key={w.id}
-            word={w}
-            onToggleLeech={onToggleLeech}
-            onDelete={onDelete}
-            onPlayAudio={onPlayAudio}
-            audioPlaying={audioPlayingId === w.id}
-            ringing={ringingId === w.id}
-            cardRef={(el) => registerCardRef(w.id, el)}
-          />
-        ))}
-      </div>
-
       <div className="hidden lg:block">
-        {expanded ? (
-          <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(176px, 1fr))" }}>
-            {words.map((w) => (
+        <div ref={rowRef} className="flex touch-pan-x gap-2.5 overflow-x-auto [scroll-behavior:auto] [scrollbar-width:none]">
+          {words.map((w) => (
+            <div
+              key={w.id}
+              className="shrink-0"
+              style={{ width: CARD_WIDTH }}
+              onClickCapture={(e) => {
+                if (draggedRef.current) {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }
+              }}
+            >
               <WordCard
-                key={w.id}
                 word={w}
+                flipped={flippedWordId === w.id}
+                onToggleFlip={() => onToggleFlip(w.id)}
                 onToggleLeech={onToggleLeech}
                 onDelete={onDelete}
                 onPlayAudio={onPlayAudio}
@@ -138,35 +121,9 @@ export function Shelf({
                 ringing={ringingId === w.id}
                 cardRef={(el) => registerCardRef(w.id, el)}
               />
-            ))}
-          </div>
-        ) : (
-          <div ref={rowRef} className="flex gap-2.5 overflow-x-auto [scroll-behavior:auto] [scrollbar-width:none]">
-            {words.map((w) => (
-              <div
-                key={w.id}
-                className="shrink-0"
-                style={{ width: CARD_WIDTH }}
-                onClickCapture={(e) => {
-                  if (draggedRef.current) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                  }
-                }}
-              >
-                <WordCard
-                  word={w}
-                  onToggleLeech={onToggleLeech}
-                  onDelete={onDelete}
-                  onPlayAudio={onPlayAudio}
-                  audioPlaying={audioPlayingId === w.id}
-                  ringing={ringingId === w.id}
-                  cardRef={(el) => registerCardRef(w.id, el)}
-                />
-              </div>
-            ))}
-          </div>
-        )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

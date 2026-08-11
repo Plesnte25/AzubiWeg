@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Award, Flag, PartyPopper, Volume2, X } from "lucide-react";
+import { Flag, PartyPopper, Volume2, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { playWordAudio } from "../../api/client";
 import type { Word } from "../../api/types";
@@ -37,7 +37,6 @@ export function PracticeOverlay({ words, onClose }: PracticeOverlayProps) {
     order,
     changeOrder,
     done,
-    newBadges,
     grade,
     toggleLeech,
     checkForMore,
@@ -45,7 +44,7 @@ export function PracticeOverlay({ words, onClose }: PracticeOverlayProps) {
   } = useReviewSession({ words });
 
   return createPortal(
-    <div className="fixed inset-0 z-40 hidden flex-col bg-paper lg:flex">
+    <div className="fixed inset-0 z-[60] hidden flex-col bg-paper lg:flex">
       <div className="h-[3px] w-full bg-hairline">
         <div className="h-full bg-brand-500 transition-[width] duration-300" style={{ width: `${progressPercent}%` }} />
       </div>
@@ -92,12 +91,6 @@ export function PracticeOverlay({ words, onClose }: PracticeOverlayProps) {
             ) : (
               <p className="mt-1 text-sm text-ink-600">Nothing due right now. Komm morgen wieder!</p>
             )}
-            {newBadges.length > 0 && (
-              <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-brand-700">
-                <Award className="size-4" aria-hidden="true" />
-                New badge{newBadges.length === 1 ? "" : "s"}: {newBadges.map((b) => b.label).join(", ")}
-              </p>
-            )}
             <div className="mt-5 flex justify-center gap-2">
               <Button variant="primary" onClick={onClose}>
                 Back to vault
@@ -111,12 +104,6 @@ export function PracticeOverlay({ words, onClose }: PracticeOverlayProps) {
           </Card>
         ) : (
           <div className="w-full max-w-lg">
-            {newBadges.length > 0 && (
-              <p className="mb-3 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-center text-sm text-brand-700">
-                <Award className="mr-1 inline size-4" aria-hidden="true" />
-                New badge{newBadges.length === 1 ? "" : "s"}: {newBadges.map((b) => b.label).join(", ")}
-              </p>
-            )}
             <Card padding="lg" className="text-center">
               <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs">
                 <span className="font-bold" style={{ color: WORTART_COLORS[current.wortart] }}>
