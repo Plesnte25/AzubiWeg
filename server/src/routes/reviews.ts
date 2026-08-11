@@ -2,7 +2,6 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
-import { checkAndAwardBadges } from "../services/gamification/engine.js";
 import { computeReviewStats, computeWeakWords } from "../services/reviews/history.js";
 import { schedule } from "../services/srs.js";
 import { withComputedFields } from "../services/vocab/classify.js";
@@ -127,7 +126,6 @@ reviewsRouter.post("/:wordId", async (req, res) => {
   await prisma.reviewLog.create({
     data: { wordId: word.id, grade, intervalAfter: next.interval },
   });
-  const newlyUnlockedBadges = await prisma.$transaction((tx) => checkAndAwardBadges(tx, req.userId));
 
   res.json({
     next,
@@ -136,6 +134,5 @@ reviewsRouter.post("/:wordId", async (req, res) => {
         where: { userId_sortKey: { userId: req.userId, sortKey: word.sortKey } },
       }),
     ),
-    newlyUnlockedBadges,
   });
 });

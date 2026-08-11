@@ -2,7 +2,6 @@ import type { RoadmapSkill } from "@prisma/client";
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
-import { BADGE_DEFAULTS } from "../services/gamification/badge-defaults.js";
 import { computeDayStreak, localDateKey } from "../services/learning/activity.js";
 import { addDaysUTC, dayStatus } from "../services/learning/roadmap.js";
 import { skillPerformance } from "../services/learning/review.js";
@@ -61,8 +60,6 @@ dashboardRouter.get("/", async (req, res) => {
     totalLearningMinutesAgg,
     user,
     weekDays,
-    badgeCount,
-    recentBadges,
   ] = await Promise.all([
     prisma.word.count({ where: { userId: req.userId } }),
     prisma.word.count({ where: { userId: req.userId, srDue: { lte: endOfToday } } }),
@@ -128,7 +125,7 @@ dashboardRouter.get("/", async (req, res) => {
     }),
     prisma.selfTestResult.count({ where: { userId: req.userId } }),
     prisma.dailyActiveMinutes.aggregate({ where: { userId: req.userId }, _sum: { minutes: true } }),
-    prisma.user.findUniqueOrThrow({ where: { id: req.userId }, select: { roadmapStartedAt: true, points: true } }),
+    prisma.user.findUniqueOrThrow({ where: { id: req.userId }, select: { roadmapStartedAt: true } }),
     prisma.roadmapDay.findMany({
       where: { userId: req.userId, date: { gte: weekStart, lt: weekEnd } },
       select: {
@@ -138,13 +135,6 @@ dashboardRouter.get("/", async (req, res) => {
         tasks: { select: { completedAt: true, title: true }, orderBy: { sortOrder: "asc" } },
       },
       orderBy: { date: "asc" },
-    }),
-    prisma.userBadge.count({ where: { userId: req.userId } }),
-    prisma.userBadge.findMany({
-      where: { userId: req.userId },
-      orderBy: { unlockedAt: "desc" },
-      take: 5,
-      select: { badgeKey: true, unlockedAt: true },
     }),
   ]);
 
@@ -263,8 +253,6 @@ dashboardRouter.get("/", async (req, res) => {
         }
       : null;
 
-  const badgeLabelByKey = new Map<string, string>(BADGE_DEFAULTS.map((b) => [b.key, b.label]));
-
   res.json({
     totalWords,
     dueToday,
@@ -295,14 +283,5 @@ dashboardRouter.get("/", async (req, res) => {
     },
     roadmapToday,
     roadmapWeekStrip,
-    gamification: {
-      points: user.points,
-      badgeCount,
-      recentBadges: recentBadges.map((b) => ({
-        key: b.badgeKey,
-        label: badgeLabelByKey.get(b.badgeKey) ?? b.badgeKey,
-        unlockedAt: b.unlockedAt,
-      })),
-    },
   });
 });

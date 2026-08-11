@@ -79,11 +79,6 @@ export interface DashboardData {
     nextIncompleteTitle: string | null;
   } | null;
   roadmapWeekStrip: { date: string; dayOffset: number; status: RoadmapDayStripStatus }[];
-  gamification: {
-    points: number;
-    badgeCount: number;
-    recentBadges: { key: string; label: string; unlockedAt: string }[];
-  };
 }
 
 export interface VaultStatus {
@@ -526,13 +521,6 @@ export interface Portal {
   url: string;
   lastCheckedAt: string | null;
   createdAt: string;
-}
-
-export interface UnlockedBadge {
-  key: string;
-  label: string;
-  description: string;
-  points: number;
 }
 
 export interface ActivitySummary {

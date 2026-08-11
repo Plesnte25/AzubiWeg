@@ -46,7 +46,6 @@ import type {
   SyllabusItem,
   SyllabusResponse,
   TopicBreakdown,
-  UnlockedBadge,
   UploadedFileMeta,
   User,
   VaultStatus,
@@ -122,7 +121,7 @@ export const api = {
   words: () => request<{ words: Word[] }>("/api/words"),
   wordsMeta: () => request<{ lessons: { lesson: string; count: number }[] }>("/api/words/meta"),
   addWords: (words: string[], lesson?: string, classification?: { themenfeld?: Themenfeld[]; level?: CefrLevel }) =>
-    request<{ words: Word[]; newlyUnlockedBadges: UnlockedBadge[] }>("/api/words", {
+    request<{ words: Word[] }>("/api/words", {
       method: "POST",
       body: JSON.stringify({ words, ...(lesson ? { lesson } : {}), ...classification }),
     }),
@@ -138,10 +137,10 @@ export const api = {
 
   reviewQueue: () => request<{ due: Word[]; fresh: Word[] }>("/api/reviews/queue"),
   gradeWord: (wordId: string, grade: Grade) =>
-    request<{ next: { due: string; interval: number; ease: number }; word: Word; newlyUnlockedBadges: UnlockedBadge[] }>(
-      `/api/reviews/${wordId}`,
-      { method: "POST", body: JSON.stringify({ grade }) },
-    ),
+    request<{ next: { due: string; interval: number; ease: number }; word: Word }>(`/api/reviews/${wordId}`, {
+      method: "POST",
+      body: JSON.stringify({ grade }),
+    }),
   reviewHistory: (limit?: number) =>
     request<{ entries: ReviewHistoryEntry[] }>(`/api/reviews/history${limit ? `?limit=${limit}` : ""}`),
   reviewWeakWords: (limit?: number) =>
