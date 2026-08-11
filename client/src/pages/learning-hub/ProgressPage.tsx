@@ -29,10 +29,6 @@ const SKILL_LABEL: Record<RoadmapSkill, string> = {
   reflection: "Rest",
 };
 
-function fmtShort(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
 function deltaText(value: number | null | undefined, suffix: string, goodWhenPositive = true) {
   if (value === null || value === undefined || value === 0) return { text: "—", cls: "text-ink-400" };
   const positive = value > 0;
@@ -136,10 +132,6 @@ export function ProgressPage({ onNavigate }: { onNavigate: (d: Destination) => v
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div className="min-w-0">
           <h1 className="text-[21px] font-bold tracking-[-0.02em] sm:text-[23px] md:text-[27px] lg:text-[29px]">Progress</h1>
-          <p className="text-[13px] text-ink-600">
-            {fmtShort(data.rangeStart)} – {fmtShort(data.rangeEnd)}
-            {period !== "all" && " · compared with the previous period"}
-          </p>
         </div>
         <div className="flex gap-1 rounded-lg border border-hairline bg-card p-1">
           {PERIODS.map((p) => (
