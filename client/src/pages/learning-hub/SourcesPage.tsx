@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ExternalLink, Trash2 } from "lucide-react";
+import { Bookmark, ChevronDown, ExternalLink, Trash2 } from "lucide-react";
+import streamingIcon from "../../assets/icons/streaming.png";
+import taskIcon from "../../assets/icons/task.png";
 import { api } from "../../api/client";
 import type { ActivityFeedFilter, RoadmapSkill, StudySource, StudySourceType } from "../../api/types";
 import { Attachments } from "../../components/Attachments";
@@ -59,8 +61,12 @@ function ContinueHero({ source }: { source: StudySource }) {
 
   return (
     <div className="flex items-center gap-4 rounded-2xl bg-ink-900 p-4 text-white">
-      <div className="h-[60px] w-[88px] shrink-0 overflow-hidden rounded-[9px] bg-[var(--color-surface-dark-1)]">
-        {thumbId && <img src={youTubeThumbUrl(thumbId)} alt="" className="size-full object-cover" />}
+      <div className="grid h-[60px] w-[88px] shrink-0 place-items-center overflow-hidden rounded-[9px] bg-[var(--color-surface-dark-1)]">
+        {thumbId ? (
+          <img src={youTubeThumbUrl(thumbId)} alt="" className="size-full object-cover" />
+        ) : (
+          <img src={streamingIcon} alt="" className="size-7 opacity-70" />
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[10px] font-bold tracking-[0.09em] text-ink-400">CONTINUE WHERE YOU STOPPED</p>
@@ -367,13 +373,20 @@ export function SourcesPage() {
 
           <div className="flex rounded-2xl border border-hairline bg-card">
             {[
-              { value: String(activeCount), label: "active sources" },
-              { value: String(lessonsDone), label: "lessons done" },
-              { value: String(linksData?.links.length ?? 0), label: "saved links" },
+              { value: String(activeCount), label: "active sources", icon: <img src={streamingIcon} alt="" className="size-4" /> },
+              { value: String(lessonsDone), label: "lessons done", icon: <img src={taskIcon} alt="" className="size-4" /> },
+              {
+                value: String(linksData?.links.length ?? 0),
+                label: "saved links",
+                icon: <Bookmark className="size-4 text-ink-400" aria-hidden="true" />,
+              },
             ].map((cell, i, arr) => (
-              <div key={cell.label} className={`flex-1 px-3.5 py-3 ${i < arr.length - 1 ? "border-r border-hairline" : ""}`}>
-                <p className="text-[18px] font-bold">{cell.value}</p>
-                <p className="mt-0.5 text-[10.5px] text-ink-400">{cell.label}</p>
+              <div key={cell.label} className={`flex flex-1 items-center gap-2.5 px-3.5 py-3 ${i < arr.length - 1 ? "border-r border-hairline" : ""}`}>
+                {cell.icon}
+                <div className="min-w-0">
+                  <p className="text-[18px] font-bold">{cell.value}</p>
+                  <p className="mt-0.5 truncate text-[10.5px] text-ink-400">{cell.label}</p>
+                </div>
               </div>
             ))}
           </div>
