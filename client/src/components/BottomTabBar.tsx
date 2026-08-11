@@ -44,7 +44,7 @@ export default function BottomTabBar({ onOpenAccount }: { onOpenAccount: () => v
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 flex h-16 border-t border-hairline bg-card md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex min-h-16 border-t border-hairline bg-card md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Primary"
     >

@@ -6,6 +6,7 @@ import { ChevronDown, Clock, Play, X } from "lucide-react";
 import { api } from "../../api/client";
 import type { RoadmapTask, RoadmapTaskType } from "../../api/types";
 import { Button } from "../../components/ui/Button";
+import { DurationPicker } from "../../components/ui/DurationPicker";
 import { Modal } from "../../components/ui/Modal";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { SKILL_COLORS, SKILL_LABELS } from "../../lib/skills";
@@ -46,21 +47,22 @@ function PlanRow({
   });
 
   return (
-    <div className="flex items-center gap-3 border-t border-hairline py-3 first:border-t-0">
+    <div className="flex items-start gap-3 border-t border-hairline py-3 first:border-t-0">
       <button
         onClick={() => toggle.mutate(!done)}
-        className={`grid size-4 shrink-0 place-items-center rounded-[5px] border text-[10px] text-white ${
+        className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-[5px] border text-[10px] text-white ${
           done ? "border-ink-900 bg-ink-900" : "border-hairline"
         }`}
       >
         {done && "✓"}
       </button>
-      <button className="min-w-0 flex-1 truncate text-left text-[13.5px] font-medium hover:text-brand-500" onClick={() => onOpen(task)}>
-        <span className={done ? "text-ink-400 line-through" : ""}>{task.title}</span>
+      <button className="min-w-0 flex-1 text-left hover:text-brand-500" onClick={() => onOpen(task)}>
+        <span className={`block truncate text-[13.5px] font-medium ${done ? "text-ink-400 line-through" : ""}`}>{task.title}</span>
+        {task.description && <span className="mt-0.5 block truncate text-xs text-ink-400">{task.description}</span>}
       </button>
       {task.skill && (
         <span
-          className="shrink-0 rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold"
+          className="mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold"
           style={{
             backgroundColor: `color-mix(in srgb, ${SKILL_COLORS[task.skill]} 16%, transparent)`,
             color: SKILL_COLORS[task.skill],
@@ -70,12 +72,12 @@ function PlanRow({
         </span>
       )}
       {late !== undefined && (
-        <span className="shrink-0 text-[11.5px] font-medium text-warn-500">
+        <span className="mt-0.5 shrink-0 text-[11.5px] font-medium text-warn-500">
           {late} day{late === 1 ? "" : "s"} late
         </span>
       )}
       {cta && !done && (
-        <button onClick={() => onNavigate(cta.to)} className="shrink-0 text-[12px] font-semibold text-brand-500 hover:underline">
+        <button onClick={() => onNavigate(cta.to)} className="mt-0.5 shrink-0 text-[12px] font-semibold text-brand-500 hover:underline">
           {cta.label}
         </button>
       )}
@@ -261,14 +263,9 @@ function LogTimeDialog({ tasks, onClose }: { tasks: RoadmapTask[]; onClose: () =
         </div>
         <div>
           <label className="text-xs font-medium text-ink-600">Minutes</label>
-          <input
-            type="number"
-            min={1}
-            max={600}
-            className="mt-1 w-full rounded-lg border border-hairline bg-paper px-2.5 py-1.5 text-sm"
-            value={minutes}
-            onChange={(e) => setMinutes(e.target.value)}
-          />
+          <div className="mt-1 flex justify-center">
+            <DurationPicker value={Number(minutes) || 0} onChange={(n) => setMinutes(String(n))} max={180} />
+          </div>
         </div>
         <Button className="w-full" loading={save.isPending} onClick={() => save.mutate()}>
           Save
@@ -314,14 +311,9 @@ function LogTimeCard({ tasks, onClose }: { tasks: RoadmapTask[]; onClose: () => 
             </div>
             <div>
               <label className="text-xs font-medium text-ink-600">Minutes</label>
-              <input
-                type="number"
-                min={1}
-                max={600}
-                className="mt-1 w-full rounded-lg border border-hairline bg-paper px-2.5 py-1.5 text-sm"
-                value={minutes}
-                onChange={(e) => setMinutes(e.target.value)}
-              />
+              <div className="mt-1 flex justify-center">
+                <DurationPicker value={Number(minutes) || 0} onChange={(n) => setMinutes(String(n))} max={180} />
+              </div>
             </div>
             <Button className="w-full" loading={save.isPending} onClick={() => save.mutate()}>
               Save
