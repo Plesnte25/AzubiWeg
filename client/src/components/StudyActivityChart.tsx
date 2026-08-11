@@ -122,7 +122,8 @@ export default function StudyActivityChart({
           ).map(([m, label]) => (
             <button
               key={m}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setMode(m);
                 setHover(null);
               }}

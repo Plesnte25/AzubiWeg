@@ -67,22 +67,23 @@ function TaskChip({
     <div
       draggable={draggable}
       onDragStart={(e) => e.dataTransfer.setData("text/plain", task.id)}
-      className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition-colors hover:border-brand-300 ${
+      className={`flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition-colors hover:border-brand-300 ${
         draggable ? "cursor-grab border-warn-tint-200 bg-card active:cursor-grabbing" : "border-hairline bg-card"
       }`}
     >
       <button
         onClick={() => onToggle(!done)}
-        className={`grid size-3.5 shrink-0 place-items-center rounded border text-[8px] text-white ${done ? "border-ink-900 bg-ink-900" : "border-hairline"}`}
+        className={`mt-0.5 grid size-3.5 shrink-0 place-items-center rounded border text-[8px] text-white ${done ? "border-ink-900 bg-ink-900" : "border-hairline"}`}
       >
         {done && "✓"}
       </button>
-      <button className="min-w-0 flex-1 truncate text-left hover:text-brand-500" onClick={onOpen}>
-        <span className={done ? "text-ink-400 line-through" : ""}>{task.title}</span>
+      <button className="min-w-0 flex-1 text-left hover:text-brand-500" onClick={onOpen}>
+        <span className={`block truncate ${done ? "text-ink-400 line-through" : ""}`}>{task.title}</span>
+        {task.description && <span className="mt-0.5 block truncate text-xs font-normal text-ink-400">{task.description}</span>}
       </button>
       {task.skill && (
         <span
-          className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+          className="mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
           style={{
             backgroundColor: `color-mix(in srgb, ${SKILL_COLORS[task.skill]} 16%, transparent)`,
             color: SKILL_COLORS[task.skill],
@@ -92,7 +93,7 @@ function TaskChip({
         </span>
       )}
       {onDropped && (
-        <button onClick={onDropped} title="Drop this task" className="shrink-0 text-xs text-ink-400 hover:text-warn-500">
+        <button onClick={onDropped} title="Drop this task" className="mt-0.5 shrink-0 text-xs text-ink-400 hover:text-warn-500">
           ✕
         </button>
       )}
@@ -247,7 +248,10 @@ function DayCard({
     onSuccess: () => invalidateHub(queryClient),
   });
 
-  const activeTasks = day.tasks.filter((t) => !t.droppedAt);
+  // Deutschland-Context ("bureaucracy") tasks are real roadmap content but
+  // stay confined to the Checklist page — not shown (or counted) in this
+  // day's visible task list/progress.
+  const activeTasks = day.tasks.filter((t) => !t.droppedAt && t.skill !== "bureaucracy");
   const isRest = activeTasks.length === 0;
   const done = activeTasks.filter((t) => t.completedAt !== null).length;
 

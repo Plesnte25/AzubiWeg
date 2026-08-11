@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import { Clock, Plus, X } from "lucide-react";
 import { api } from "../../api/client";
 import type { RoadmapTask, RoadmapTaskType } from "../../api/types";
 import { Attachments } from "../../components/Attachments";
 import AudioRecorder from "../../components/AudioRecorder";
 import { Button } from "../../components/ui/Button";
+import { CircleIconButton } from "../../components/ui/CircleIconButton";
+import { DurationPicker } from "../../components/ui/DurationPicker";
 import type { Destination } from "./LearningRail";
 import { invalidateHub } from "./queryHelpers";
 
@@ -58,6 +60,8 @@ function TaskDetailBody({
   invalidate: () => void;
   onDone: () => void;
 }) {
+  const [showMinutes, setShowMinutes] = useState(minutesDraft !== "");
+
   return (
     <div className="space-y-4">
       {task.description && <p className="text-sm text-ink-600">{task.description}</p>}
@@ -74,11 +78,10 @@ function TaskDetailBody({
         </button>
       )}
 
-      <div>
-        <label className="text-xs font-medium text-ink-600">Notes</label>
+      <div className="rounded-[10px] bg-paper p-2.5">
         <textarea
-          className="mt-1 w-full rounded-lg border border-hairline bg-paper px-3 py-2 text-sm"
-          rows={4}
+          className="w-full resize-none border-0 bg-transparent text-sm outline-none"
+          rows={3}
           placeholder="Notes, reflections, self-rating…"
           value={journalDraft}
           onChange={(e) => setJournalDraft(e.target.value)}
@@ -86,27 +89,45 @@ function TaskDetailBody({
             if (journalDraft !== (task.journalEntry ?? "")) update.mutate({ journalEntry: journalDraft || null });
           }}
         />
-      </div>
-
-      <div className="flex items-center gap-2 text-sm">
-        <label className="text-ink-600">Minutes spent</label>
-        <input
-          type="number"
-          min={0}
-          max={1440}
-          className="w-20 rounded-lg border border-hairline bg-paper px-2 py-1 text-sm"
-          value={minutesDraft}
-          onChange={(e) => setMinutesDraft(e.target.value)}
-          onBlur={() => {
-            const n = minutesDraft === "" ? null : Number(minutesDraft);
-            if (n !== task.minutesSpent) update.mutate({ minutesSpent: n });
-          }}
-        />
+        {showMinutes && (
+          <div className="mt-2 flex justify-center border-t border-hairline pt-3">
+            <DurationPicker
+              value={minutesDraft === "" ? 0 : Number(minutesDraft)}
+              onChange={(n) => setMinutesDraft(String(n))}
+              max={180}
+            />
+          </div>
+        )}
+        <div className="mt-1.5 flex items-center gap-1.5">
+          <Attachments
+            files={task.files}
+            parent={{ roadmapTaskId: task.id }}
+            onChanged={invalidate}
+            renderTrigger={({ onClick, uploading }) => (
+              <CircleIconButton icon={<Plus className="size-3.5" aria-hidden="true" />} title="Attach a file" onClick={onClick} disabled={uploading} />
+            )}
+          />
+          <CircleIconButton
+            icon={<Clock className="size-3.5" aria-hidden="true" />}
+            title="Log minutes spent"
+            active={showMinutes}
+            onClick={() => {
+              setShowMinutes((wasOpen) => {
+                if (wasOpen) {
+                  const n = minutesDraft === "" ? null : Number(minutesDraft);
+                  if (n !== task.minutesSpent) update.mutate({ minutesSpent: n });
+                }
+                return !wasOpen;
+              });
+            }}
+          />
+          {!showMinutes && task.minutesSpent !== null && (
+            <span className="text-xs font-medium text-ink-600">{task.minutesSpent} min</span>
+          )}
+        </div>
       </div>
 
       {task.skill === "speaking" && <AudioRecorder roadmapTaskId={task.id} onUploaded={invalidate} />}
-
-      <Attachments files={task.files} parent={{ roadmapTaskId: task.id }} onChanged={invalidate} />
 
       <Button variant="outline" className="w-full" onClick={onDone}>
         Done

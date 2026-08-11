@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Plus, SkipForward, Trash2, Undo2, X } from "lucide-react";
 import { api } from "../../api/client";
 import type { SyllabusItem } from "../../api/types";
 import { Attachments } from "../../components/Attachments";
+import { CircleIconButton } from "../../components/ui/CircleIconButton";
 import type { Station } from "./stations";
 
 /** Merges the 3 legacy fields into one editable value (nothing already
@@ -14,34 +14,6 @@ import type { Station } from "./stations";
  * themselves aren't dropped (older rows may still carry real content). */
 function mergedNotebookValue(item: SyllabusItem): string {
   return [item.examples, item.exceptions, item.commonMistakes].filter(Boolean).join("\n\n");
-}
-
-/** A small circular icon-button, matching this session's established
- * search/info/CTA idiom (Vocabulary.tsx, TodayPage.tsx) — used here both for
- * the modal's own +Item/Skip header actions and as the file-attach trigger
- * embedded in the notes composer below. */
-function CircleIconButton({
-  icon,
-  title,
-  onClick,
-  disabled,
-}: {
-  icon: ReactNode;
-  title: string;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      onClick={onClick}
-      disabled={disabled}
-      className="grid size-8 shrink-0 place-items-center rounded-full border border-hairline bg-card hover:border-brand-400 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      {icon}
-    </button>
-  );
 }
 
 /** One borderless composer for an item's free-text notes plus file
@@ -180,9 +152,12 @@ export function StationDetailModal({
                 >
                   {item.completedAt !== null && "✓"}
                 </button>
-                <span className={`flex-1 text-[13px] ${item.completedAt !== null ? "text-ink-400 line-through" : ""}`}>{item.title}</span>
-                {isCurrent && <span className="rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-semibold text-white">on today</span>}
-                {item.skippedAt && <span className="text-[10px] text-ink-400">skipped</span>}
+                <div className="min-w-0 flex-1">
+                  <span className={`block text-[13px] ${item.completedAt !== null ? "text-ink-400 line-through" : ""}`}>{item.title}</span>
+                  {item.description && <span className="mt-0.5 block truncate text-xs text-ink-400">{item.description}</span>}
+                </div>
+                {isCurrent && <span className="shrink-0 rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-semibold text-white">on today</span>}
+                {item.skippedAt && <span className="shrink-0 text-[10px] text-ink-400">skipped</span>}
                 {!isPreview && (
                   <button
                     onClick={() => {

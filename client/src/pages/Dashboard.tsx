@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Award, Check, CheckCircle2, Hand } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, CheckCircle2, Hand, Zap } from "lucide-react";
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import applyIcon from "../assets/icons/apply.png";
 import clipboardIcon from "../assets/icons/clipboard.png";
 import studyTimeIcon from "../assets/icons/clock (1).png";
@@ -21,7 +21,7 @@ import streamingIcon from "../assets/icons/streaming.png";
 import taskIcon from "../assets/icons/task.png";
 import wishlistIcon from "../assets/icons/wishlist.png";
 import { api, getUser } from "../api/client";
-import type { CefrLevel, RoadmapSkill, SyllabusItem } from "../api/types";
+import type { CefrLevel, RoadmapSkill, RoadmapTask, SyllabusItem } from "../api/types";
 import CoursesAccordion, { LEVEL_TITLES, type ThemeCourse } from "../components/CoursesAccordion";
 import LinearSkillBars from "../components/LinearSkillBars";
 import MiniBarChart from "../components/MiniBarChart";
@@ -30,23 +30,27 @@ import SegmentedSkillBar from "../components/SegmentedSkillBar";
 import SkillPerformanceRadar from "../components/SkillPerformanceRadar";
 import SkillProgressGauges from "../components/SkillProgressGauges";
 import StudyActivityChart from "../components/StudyActivityChart";
-import { Badge } from "../components/ui/Badge";
 import { Card } from "../components/ui/Card";
 import { Skeleton, SkeletonCard } from "../components/ui/Skeleton";
 import { cn } from "../lib/cn";
 import { quoteOfTheDay } from "../lib/quotes";
 import { DISPLAY_SKILLS, DISPLAY_SKILL_LABELS_COMPACT, SKILL_COLORS, SKILL_LABELS, displaySkill } from "../lib/skills";
+import { TaskDetailDrawer } from "./learning-hub/TaskDetailDrawer";
+import { invalidateHub } from "./learning-hub/queryHelpers";
 
 /** Card chrome (border/radius/own bg) below `lg`, unchanged from the classic
  * per-tile card look; at `lg:` the chrome is stripped since the 5 tiles then
  * share one outer bordered/divided row instead (see the stats row below). */
 function Tile({ label, value, icon, accent }: { label: string; value: string | number; icon?: ReactNode; accent?: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-1 rounded-xl border border-hairline bg-card p-2 text-center lg:flex-row lg:items-center lg:justify-start lg:gap-2.5 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:text-left">
+    <div
+      title={label}
+      className="flex flex-col items-center justify-center gap-1 rounded-xl border border-hairline bg-card p-2 text-center lg:flex-row lg:items-center lg:justify-start lg:gap-2.5 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:text-left"
+    >
       {icon}
       <div className="min-w-0">
         <div className={`text-base font-bold leading-tight lg:text-2xl ${accent ? "text-brand-600" : "text-ink-900"}`}>{value}</div>
-        <div className="text-[10px] leading-tight text-ink-600 lg:mt-0.5 lg:text-sm">{label}</div>
+        <span className="sr-only">{label}</span>
       </div>
     </div>
   );
@@ -65,9 +69,31 @@ function Tile({ label, value, icon, accent }: { label: string; value: string | n
  * of what's rendered underneath — `pointer-events-none` keeps it from
  * blocking clicks/hover on the real content. Content area has no scroll of
  * its own; each chart is expected to size itself to fit exactly. */
-function Quadrant({ icon, title, className, children }: { icon: string; title: string; className?: string; children: ReactNode }) {
+function Quadrant({
+  icon,
+  title,
+  className,
+  children,
+  onClick,
+}: {
+  icon: string;
+  title: string;
+  className?: string;
+  children: ReactNode;
+  /** Optional — a plain div onClick (not a nested <a>) so children that are
+   * themselves interactive (e.g. Study Time's hour/week/month toggle) can
+   * still work; they just need to stopPropagation in their own handler. */
+  onClick?: () => void;
+}) {
   return (
-    <div className={cn("relative flex min-h-0 flex-col overflow-hidden p-3", className)}>
+    <div
+      className={cn(
+        "relative flex min-h-0 flex-col overflow-hidden p-3",
+        onClick && "cursor-pointer transition-colors hover:bg-paper",
+        className,
+      )}
+      onClick={onClick}
+    >
       <h3 className="sr-only">{title}</h3>
       <img src={icon} alt="" className="pointer-events-none absolute -left-4 -top-4 z-20 h-28 w-28 opacity-10 grayscale" />
       <div className="relative z-10 min-h-0 flex-1 overflow-hidden">{children}</div>
@@ -75,44 +101,67 @@ function Quadrant({ icon, title, className, children }: { icon: string; title: s
   );
 }
 
-type Tone = "neutral" | "warning" | "danger";
-
-const TONE_CLASSES: Record<Tone, string> = {
-  neutral: "border-hairline bg-card",
-  warning: "border-warning-100 bg-warning-50",
-  danger: "border-danger-100 bg-danger-50",
-};
-
-function TaskListItem({ to, title, meta, tone = "neutral" }: { to: string; title: ReactNode; meta?: string; tone?: Tone }) {
+/** A gradient-filled, icon-led CTA that stands out from the rest of the
+ * task list — this is the one action-oriented shortcut ("start reviewing
+ * right now"), not just another informational row. Links with
+ * ?startReview=1 so Vocabulary.tsx jumps straight into the flashcard queue
+ * instead of just landing on the page in its default state. */
+function StartRevisionCta({ dueToday }: { dueToday: number }) {
   return (
     <Link
-      to={to}
-      className={`block rounded-lg border p-3 text-sm transition-colors hover:border-brand-200 ${TONE_CLASSES[tone]}`}
+      to="/vocabulary?startReview=1"
+      className="flex items-center gap-3 rounded-lg bg-gradient-to-r from-brand-500 to-brand-600 p-3 text-white shadow-sm transition-transform hover:scale-[1.01]"
     >
-      <div className="font-medium text-ink-900">{title}</div>
-      {meta && <div className="mt-0.5 text-xs text-ink-600">{meta}</div>}
+      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/20">
+        <Zap className="size-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <div className="text-sm font-semibold">Start today's revision</div>
+        <div className="text-xs text-white/80">
+          {dueToday} word{dueToday === 1 ? "" : "s"} due
+        </div>
+      </div>
     </Link>
   );
 }
 
-/** One roadmap task, tagged with its section's dedicated color (reading, writing, grammar, …). */
-function SkillTaskRow({ task }: { task: { id: string; title: string; skill: RoadmapSkill | null; completedAt: string | null } }) {
+/** One roadmap task, tagged with its section's dedicated color (reading,
+ * writing, grammar, …) — a checkbox toggles completion in place, the title
+ * opens the full TaskDetailDrawer, mirroring Learning Hub's Today page
+ * `PlanRow`. */
+function SkillTaskRow({ task, onOpen }: { task: RoadmapTask; onOpen: (task: RoadmapTask) => void }) {
+  const queryClient = useQueryClient();
   const color = task.skill ? SKILL_COLORS[task.skill] : "var(--color-ink-400)";
   const label = task.skill ? SKILL_LABELS[task.skill] : "General";
   const done = task.completedAt !== null;
+  const toggle = useMutation({
+    mutationFn: (completed: boolean) => api.toggleRoadmapTask(task.id, completed),
+    onSuccess: () => invalidateHub(queryClient),
+  });
   return (
     <div
-      className={`rounded-lg border border-hairline bg-card py-2 pl-3 pr-3 text-sm ${done ? "opacity-60" : ""}`}
+      className={`flex items-start gap-2.5 rounded-lg border border-hairline bg-card py-2 pl-3 pr-3 text-sm ${done ? "opacity-60" : ""}`}
       style={{ borderLeftWidth: 4, borderLeftColor: color }}
     >
-      <div className="flex items-start justify-between gap-2">
-        <span className={`font-medium text-ink-900 ${done ? "line-through" : ""}`}>{task.title}</span>
-        {done && <Check className="mt-0.5 size-3.5 shrink-0 text-ok-600" aria-hidden="true" />}
-      </div>
-      <div className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-600">
-        <span className="size-1.5 rounded-full" style={{ backgroundColor: color }} />
-        {label}
-      </div>
+      <button
+        onClick={() => toggle.mutate(!done)}
+        className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-[5px] border text-[10px] text-white ${
+          done ? "border-ink-900 bg-ink-900" : "border-hairline"
+        }`}
+      >
+        {done && "✓"}
+      </button>
+      <button className="min-w-0 flex-1 text-left" onClick={() => onOpen(task)}>
+        <div className="flex items-start justify-between gap-2">
+          <span className={`font-medium text-ink-900 hover:text-brand-500 ${done ? "line-through" : ""}`}>{task.title}</span>
+          {done && <Check className="mt-0.5 size-3.5 shrink-0 text-ok-600" aria-hidden="true" />}
+        </div>
+        {task.description && <p className="mt-0.5 truncate text-xs text-ink-400">{task.description}</p>}
+        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-600">
+          <span className="size-1.5 rounded-full" style={{ backgroundColor: color }} />
+          {label}
+        </div>
+      </button>
     </div>
   );
 }
@@ -166,6 +215,7 @@ function buildThemeCourses(items: SyllabusItem[]): Record<CefrLevel, ThemeCourse
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const { data, isLoading } = useQuery({ queryKey: ["dashboard"], queryFn: api.dashboard });
   const { data: hourlyActivity } = useQuery({
     queryKey: ["activity", "hourly"],
@@ -185,6 +235,7 @@ export default function Dashboard() {
 
   const [weekStart, setWeekStart] = useState(() => isoDate(mondayOf(new Date())));
   const [calSelected, setCalSelected] = useState<string | null>(null);
+  const [openTask, setOpenTask] = useState<RoadmapTask | null>(null);
   const weekEndDate = new Date(weekStart + "T00:00:00");
   weekEndDate.setDate(weekEndDate.getDate() + 6);
   const monthsNeeded = Array.from(new Set([weekStart.slice(0, 7), isoDate(weekEndDate).slice(0, 7)]));
@@ -255,7 +306,18 @@ export default function Dashboard() {
 
   const selectedDay = calSelected && selectedDayQuery.data ? selectedDayQuery.data.day : null;
 
-  const noTasksAtAll = data.dueToday === 0 && (todayFull?.tasks.length ?? 0) === 0 && data.expiringDocuments.length === 0;
+  // openTask is a snapshot captured at click time — re-derive the live copy
+  // from the freshly-fetched lists on every render so its checkbox/fields
+  // never go stale after a mutation invalidates ["roadmap", "today"/"day"]
+  // (same pattern as Learning Hub's Today page).
+  const liveOpenTask =
+    openTask &&
+    (todayFull?.tasks.find((t) => t.id === openTask.id) ??
+      todayFull?.backlog.flatMap((g) => g.tasks).find((t) => t.id === openTask.id) ??
+      selectedDay?.tasks.find((t) => t.id === openTask.id) ??
+      openTask);
+
+  const noTasksAtAll = data.dueToday === 0 && (todayFull?.tasks.length ?? 0) === 0;
 
   const firstName = getUser()?.name?.trim().split(/\s+/)[0];
   const quote = quoteOfTheDay();
@@ -286,6 +348,7 @@ export default function Dashboard() {
   });
 
   return (
+    <>
     <div className="flex flex-col gap-3 md:h-[calc(100dvh-2rem)] md:min-h-0 lg:h-full lg:min-h-0">
       <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
         <div>
@@ -296,10 +359,6 @@ export default function Dashboard() {
           <p className="mt-0.5 text-sm text-ink-600">{quote}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="brand" size="md">
-            <Award className="size-3.5" aria-hidden="true" />
-            {data.gamification.points} pts
-          </Badge>
           {data.dueToday === 0 && (
             <span className="flex items-center gap-1.5 text-sm text-ink-600">
               <CheckCircle2 className="size-4 text-ok-600" aria-hidden="true" />
@@ -342,36 +401,17 @@ export default function Dashboard() {
           don't fit below lg — see the hidden lg:grid block further down. */}
       <div className="flex min-h-0 flex-col gap-3 md:flex-1 md:justify-evenly lg:hidden">
         <Card padding="sm" className="flex flex-col">
-          <p className="mb-2 flex shrink-0 items-center gap-1.5 text-sm font-medium text-ink-600">
+          <Link to="/learning?view=today" className="mb-2 flex shrink-0 items-center gap-1.5 text-sm font-medium text-ink-600 hover:text-brand-600">
             <img src={clipboardIcon} alt="" className="size-4" />
             Today's tasks
-          </p>
+          </Link>
           {noTasksAtAll ? (
             <p className="text-sm text-ink-600">Nothing on your plate right now — enjoy the breather.</p>
           ) : (
             <div className="max-h-64 space-y-2 overflow-y-auto">
               {[
-                ...(data.dueToday > 0
-                  ? [
-                      <TaskListItem
-                        key="due"
-                        to="/vocabulary"
-                        title="Start today's revision"
-                        meta={`${data.dueToday} word${data.dueToday === 1 ? "" : "s"} due`}
-                        tone="warning"
-                      />,
-                    ]
-                  : []),
-                ...(todayFull?.tasks.map((t) => <SkillTaskRow key={t.id} task={t} />) ?? []),
-                ...data.expiringDocuments.map((d) => (
-                  <TaskListItem
-                    key={d.id}
-                    to="/checklist"
-                    title={d.title}
-                    meta={d.expiry === "expired" ? "expired" : `due by ${d.expiresAt.slice(0, 10)}`}
-                    tone={d.expiry === "expired" ? "danger" : "warning"}
-                  />
-                )),
+                ...(data.dueToday > 0 ? [<StartRevisionCta key="due" dueToday={data.dueToday} />] : []),
+                ...(todayFull?.tasks.map((t) => <SkillTaskRow key={t.id} task={t} onOpen={setOpenTask} />) ?? []),
               ]}
             </div>
           )}
@@ -393,30 +433,34 @@ export default function Dashboard() {
           <div className="mt-4">
             <LinearSkillBars skills={data.learning.skillProgress} />
           </div>
-          <Link to="/learning" className="mt-3 inline-block text-sm font-medium text-brand-700 hover:underline">
+          <Link to="/learning?view=syllabus" className="mt-3 inline-block text-sm font-medium text-brand-700 hover:underline">
             Resume →
           </Link>
         </Card>
 
         <div className="grid grid-cols-2 gap-3 md:shrink-0">
-          <Card padding="sm">
-            <p className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-ink-600">
-              <img src={goodFeedbackIcon} alt="" className="size-4" />
-              Performance
-            </p>
-            <div className="h-14">
-              <MiniBarChart bars={perfBars} max={100} />
-            </div>
-          </Card>
-          <Card padding="sm">
-            <p className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-ink-600">
-              <img src={studyTimeIcon} alt="" className="size-4" />
-              Study time
-            </p>
-            <div className="h-14">
-              <MiniBarChart bars={weeklyTotals} />
-            </div>
-          </Card>
+          <Link to="/learning?view=progress">
+            <Card padding="sm" interactive>
+              <p className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-ink-600">
+                <img src={goodFeedbackIcon} alt="" className="size-4" />
+                Performance
+              </p>
+              <div className="h-14">
+                <MiniBarChart bars={perfBars} max={100} />
+              </div>
+            </Card>
+          </Link>
+          <Link to="/learning?view=progress">
+            <Card padding="sm" interactive>
+              <p className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-ink-600">
+                <img src={studyTimeIcon} alt="" className="size-4" />
+                Study time
+              </p>
+              <div className="h-14">
+                <MiniBarChart bars={weeklyTotals} />
+              </div>
+            </Card>
+          </Link>
         </div>
       </div>
 
@@ -440,10 +484,20 @@ export default function Dashboard() {
           </Card>
 
           <div className="grid min-h-0 flex-[2] grid-cols-1 divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-card lg:grid-cols-2 lg:grid-rows-[1fr_1.1fr] lg:divide-y-0">
-            <Quadrant icon={goodFeedbackIcon} title="Performance" className="lg:border-b lg:border-r lg:border-hairline">
+            <Quadrant
+              icon={goodFeedbackIcon}
+              title="Performance"
+              className="lg:border-b lg:border-r lg:border-hairline"
+              onClick={() => navigate("/learning?view=progress")}
+            >
               <SkillPerformanceRadar data={data.learning.skillPerformance} />
             </Quadrant>
-            <Quadrant icon={studyTimeIcon} title="Study Time" className="lg:border-b lg:border-hairline">
+            <Quadrant
+              icon={studyTimeIcon}
+              title="Study Time"
+              className="lg:border-b lg:border-hairline"
+              onClick={() => navigate("/learning?view=progress")}
+            >
               <StudyActivityChart
                 hourly={hourlyActivity?.hours ?? []}
                 weekly={weekly?.dailyMinutesBySkill ?? []}
@@ -492,12 +546,17 @@ export default function Dashboard() {
 
           <div className="flex min-h-0 flex-1 flex-col p-3">
             <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
-              <p className="flex items-center gap-1.5 text-sm font-medium text-ink-600">
-                <img src={clipboardIcon} alt="" className="size-4" />
-                {selectedDay
-                  ? new Date(calSelected!).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })
-                  : "Today's Tasks"}
-              </p>
+              {selectedDay ? (
+                <p className="flex items-center gap-1.5 text-sm font-medium text-ink-600">
+                  <img src={clipboardIcon} alt="" className="size-4" />
+                  {new Date(calSelected!).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
+                </p>
+              ) : (
+                <Link to="/learning?view=today" className="flex items-center gap-1.5 text-sm font-medium text-ink-600 hover:text-brand-600">
+                  <img src={clipboardIcon} alt="" className="size-4" />
+                  Today's Tasks
+                </Link>
+              )}
               {selectedDay && (
                 <button className="text-xs text-brand-700 hover:underline" onClick={() => setCalSelected(null)}>
                   Back to today
@@ -511,7 +570,7 @@ export default function Dashboard() {
                 ) : (
                   <div className="space-y-2">
                     {selectedDay.tasks.map((t) => (
-                      <SkillTaskRow key={t.id} task={t} />
+                      <SkillTaskRow key={t.id} task={t} onOpen={setOpenTask} />
                     ))}
                   </div>
                 )
@@ -519,24 +578,8 @@ export default function Dashboard() {
                 <p className="text-sm text-ink-600">Nothing on your plate right now — enjoy the breather.</p>
               ) : (
                 <div className="space-y-2">
-                  {data.dueToday > 0 && (
-                    <TaskListItem
-                      to="/vocabulary"
-                      title="Start today's revision"
-                      meta={`${data.dueToday} word${data.dueToday === 1 ? "" : "s"} due`}
-                      tone="warning"
-                    />
-                  )}
-                  {todayFull?.tasks.map((t) => <SkillTaskRow key={t.id} task={t} />)}
-                  {data.expiringDocuments.map((d) => (
-                    <TaskListItem
-                      key={d.id}
-                      to="/checklist"
-                      title={d.title}
-                      meta={d.expiry === "expired" ? "expired" : `due by ${d.expiresAt.slice(0, 10)}`}
-                      tone={d.expiry === "expired" ? "danger" : "warning"}
-                    />
-                  ))}
+                  {data.dueToday > 0 && <StartRevisionCta dueToday={data.dueToday} />}
+                  {todayFull?.tasks.map((t) => <SkillTaskRow key={t.id} task={t} onOpen={setOpenTask} />)}
                 </div>
               )}
             </div>
@@ -577,5 +620,9 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+    {liveOpenTask && (
+      <TaskDetailDrawer task={liveOpenTask} onClose={() => setOpenTask(null)} onNavigate={(d) => navigate(`/learning?view=${d}`)} />
+    )}
+    </>
   );
 }
