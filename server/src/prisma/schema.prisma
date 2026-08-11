@@ -47,22 +47,6 @@ model User {
   activityPings      ActivityPing[]
   dailyActiveMinutes DailyActiveMinutes[]
   hourlyActiveMinutes HourlyActiveMinutes[]
-  // stored (not derived, unlike most stats here) per explicit request — kept
-  // in sync by always writing it in the same transaction as the badge/bonus
-  // event that earned it (services/gamification)
-  points             Int                  @default(0)
-  badges             UserBadge[]
-}
-
-model UserBadge {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  // key into services/gamification/badge-defaults.ts's static list
-  badgeKey   String
-  unlockedAt DateTime @default(now())
-
-  @@unique([userId, badgeKey])
 }
 
 // short-lived — folded into DailyActiveMinutes within a day, never outlives
@@ -476,10 +460,6 @@ model RoadmapDay {
   date           DateTime      @db.Date
   theme          String?
   tasks          RoadmapTask[]
-  // stamped once, the first time every task on this day is completedAt !=
-  // null; never cleared by later unchecking a task — a fact, not a toggle.
-  // Gates the one-time +5 point "day complete" bonus (services/gamification).
-  bonusAwardedAt DateTime?
 
   @@unique([userId, dayOffset])
   @@index([userId, date])
