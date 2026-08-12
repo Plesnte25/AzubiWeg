@@ -12,7 +12,6 @@ a Learning Progress Hub — a CEFR syllabus, a day-by-day study roadmap, and
 self-tests — feeding a richer dashboard.
 
 ![Dashboard](docs/screenshots/10-dashboard-v2.png)
-![Dashboard — mobile](docs/screenshots/11-dashboard-mobile.png)
 
 ## What V1 does
 
@@ -20,7 +19,6 @@ self-tests — feeding a richer dashboard.
 - **Vocabulary manager** — search, filter by lesson, expand for full detail
   (meaning, IPA, grammar, example, pronunciation audio).
   ![Vocabulary](docs/screenshots/3-vocabulary.png)
-  ![Vocabulary — mobile](docs/screenshots/12-vocabulary-mobile.png)
 - **Automatic enrichment** — type `Zug, Bahnhof, fahren` and the backend fetches
   meaning (en.wiktionary), IPA + gender/plural/verb forms + an example sentence
   (de.wiktionary wikitext), and pronunciation audio (Wikimedia Commons recording,
