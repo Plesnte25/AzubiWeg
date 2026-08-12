@@ -26,9 +26,7 @@ self-tests — feeding a richer dashboard.
 - **Daily revision** — SM-2 spaced repetition, byte-compatible with the
   [Obsidian Spaced Repetition plugin](https://github.com/st3v3nmw/obsidian-spaced-repetition)'s
   scheduling (verified against real plugin output).
-  ![Review](docs/screenshots/6-review-revealed.png)
-- **Obsidian vault sync** — the killer feature:
-  ![Settings](docs/screenshots/7-settings.png)
+- **Obsidian vault sync** — the killer feature.
 
 ### How the vault sync works
 
@@ -53,7 +51,6 @@ snapshot). Reviews done in the app and in Obsidian update the same
   required. Auto-logged timeline per application (status changes, notes,
   interviews), portal quick-links with stale-check reminders, and stats: response
   rate, interview rate, average days to response, applications per week.
-  ![Job Search](docs/screenshots/9-job-search.png)
 - **Document checklist** — seeded with ~24 items a non-EU Ausbildung applicant
   actually needs (Zeugnisse + apostille + certified translations, B1/B2
   certificate, §16a visa paperwork, VIDEX, Sperrkonto *or* salary proof,
@@ -62,7 +59,6 @@ snapshot). Reviews done in the app and in Obsidian update the same
   completion rings — urgency leads, categories filter the list rather than
   containing it. Each item carries status, **file attachments**, and a deadline
   badge that drives a "documents needing attention" section on the dashboard.
-  ![Checklist](docs/screenshots/8-checklist.png)
 
 ## What V3 adds
 
