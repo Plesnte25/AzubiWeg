@@ -122,24 +122,24 @@ roadmapRouter.patch("/exam-target", async (req, res) => {
 
 const activateSchema = z.object({ startDate: z.iso.date().optional() });
 
-roadmapRouter.post("/activate", async (req, res) => {
-  const parsed = activateSchema.safeParse(req.body ?? {});
-  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+/** Generates and activates a user's roadmap at `startedAt`. Idempotent no-op
+ * if already activated (unlike the route, which 409s on a direct hit) —
+ * shared with scripts/seed-demo.ts so the demo account is built the exact
+ * same way a real activation would build it. */
+export async function activateRoadmapForUser(userId: string, startedAt: Date): Promise<void> {
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  if (user.roadmapStartedAt) return;
 
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
-  if (user.roadmapStartedAt) return res.status(409).json({ error: "Roadmap already activated" });
-
-  const startedAt = parsed.data.startDate ? toDate(parsed.data.startDate) : todayLocal();
   // ensures the syllabus exists first, then generates this user's Mon/Tue/Wed
   // grammar/vocab tasks from it — a fresh activation may already have some of
   // those syllabus items completed, which lands as already-completed here
-  const plan = await buildPlanForUser(user.id);
+  const plan = await buildPlanForUser(userId);
 
   await prisma.$transaction([
     ...plan.map((day) =>
       prisma.roadmapDay.create({
         data: {
-          userId: user.id,
+          userId,
           dayOffset: day.dayOffset,
           date: addDaysUTC(startedAt, day.dayOffset),
           theme: day.theme,
@@ -148,10 +148,21 @@ roadmapRouter.post("/activate", async (req, res) => {
       }),
     ),
     prisma.user.update({
-      where: { id: user.id },
+      where: { id: userId },
       data: { roadmapStartedAt: startedAt, roadmapVersion: ROADMAP_VERSION },
     }),
   ]);
+}
+
+roadmapRouter.post("/activate", async (req, res) => {
+  const parsed = activateSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
+  if (user.roadmapStartedAt) return res.status(409).json({ error: "Roadmap already activated" });
+
+  const startedAt = parsed.data.startDate ? toDate(parsed.data.startDate) : todayLocal();
+  await activateRoadmapForUser(user.id, startedAt);
   res.status(201).json({ startedAt });
 });
 

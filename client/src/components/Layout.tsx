@@ -4,6 +4,7 @@ import { useActivityHeartbeat } from "../hooks/useActivityHeartbeat";
 import { cn } from "../lib/cn";
 import AccountSheet from "./AccountSheet";
 import BottomTabBar from "./BottomTabBar";
+import DemoBanner from "./DemoBanner";
 import FabNav from "./FabNav";
 import IconRail from "./IconRail";
 
@@ -26,6 +27,8 @@ export default function Layout() {
           while the right/bottom edges keep their normal px-4 margin; both
           drop out at lg, where FabNav floats over content instead of
           reserving space. */}
+      <DemoBanner />
+
       <main
         className={cn(
           "pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-20 lg:pl-0",
