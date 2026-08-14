@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
-import { DEFAULT_CHECKLIST_ITEMS } from "../services/checklist/defaults.js";
+import { ensureChecklistSeeded } from "../services/checklist/seed.js";
 import { expiryStatus } from "../services/reminders.js";
 import { deleteStoredFile } from "./files.js";
 
@@ -25,25 +25,7 @@ const STATUS = z.enum(["todo", "in_progress", "done", "not_applicable"]);
 const toDate = (s: string) => new Date(s + "T00:00:00Z");
 
 checklistRouter.get("/", async (req, res) => {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
-  if (!user.checklistSeededAt) {
-    // seed once per user; the stamp (not the item count) guards re-seeding,
-    // so deleting all items later doesn't bring the defaults back
-    await prisma.$transaction([
-      prisma.checklistItem.createMany({
-        data: DEFAULT_CHECKLIST_ITEMS.map((item, i) => ({
-          userId: user.id,
-          ...item,
-          isDefault: true,
-          sortOrder: i,
-        })),
-      }),
-      prisma.user.update({
-        where: { id: user.id },
-        data: { checklistSeededAt: new Date() },
-      }),
-    ]);
-  }
+  await ensureChecklistSeeded(req.userId);
 
   const items = await prisma.checklistItem.findMany({
     where: { userId: req.userId },

@@ -332,3 +332,42 @@ ssh <vps> 'sudo /opt/azubiweg/repo/deploy/deploy.sh'
 See [`deploy/deploy.sh`](../deploy/deploy.sh) — pulls, rebuilds both
 workspaces, runs pending Prisma migrations, redeploys the client build, and
 restarts the service.
+
+## 13. Temporary public demo mode (PageSpeed Insights / GTmetrix)
+
+The site is already fully public at the network level (Caddy has no basic
+auth/IP allowlist, `robots.txt` allows all crawlers) — the only gate is the
+client's own login screen, which an external crawler with no stored token
+always hits. Demo mode lets such a crawler transparently get a real session
+for one fixed, seeded demo account instead, so it renders the actual
+populated app.
+
+**Turn on**, from an SSH session as the sudo-capable admin user:
+
+```bash
+ssh <vps>
+sudo -u azubiweg sed -i '/^DEMO_MODE_ENABLED=/d' /opt/azubiweg/.env
+echo 'DEMO_MODE_ENABLED=true' | sudo -u azubiweg tee -a /opt/azubiweg/.env
+sudo -u azubiweg bash -c 'cd /opt/azubiweg/repo/server && set -a && source /opt/azubiweg/.env && set +a && npm run seed:demo'
+sudo systemctl restart azubiweg
+```
+
+`seed:demo` is idempotent — safe to run every time, even if the demo account
+already exists. Now run PageSpeed Insights / GTmetrix against
+`https://azubiweg.duckdns.org/`.
+
+**Turn back off**:
+
+```bash
+ssh <vps>
+sudo -u azubiweg sed -i 's/^DEMO_MODE_ENABLED=.*/DEMO_MODE_ENABLED=false/' /opt/azubiweg/.env
+sudo systemctl restart azubiweg
+```
+
+No rebuild or `deploy.sh` run needed either way — `EnvironmentFile=` is read
+fresh on every service start, so this is env-only. Note that any demo token
+already handed out before turning it off stays valid for its own lifetime
+(`DEMO_TOKEN_EXPIRES_IN`, default 24h) — disabling the flag only stops *new*
+tokens being issued, since JWTs here aren't revocable. That's a low-risk
+window: the demo account only ever holds synthetic seed data, and the app is
+unauthenticated-network-reachable regardless.

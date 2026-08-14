@@ -9,6 +9,7 @@
     "build": "tsc",
     "db:start": "tsx scripts/dev-db.ts",
     "db:migrate": "prisma migrate dev",
+    "seed:demo": "tsx scripts/seed-demo.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

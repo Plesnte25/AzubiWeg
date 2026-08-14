@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions } from "jsonwebtoken";
 import { config } from "../config.js";
 
 export interface AuthPayload {
@@ -29,8 +29,8 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-export function signToken(userId: string): string {
+export function signToken(userId: string, opts?: { expiresIn?: SignOptions["expiresIn"] }): string {
   return jwt.sign({ userId } satisfies AuthPayload, config.jwtSecret, {
-    expiresIn: "30d",
+    expiresIn: opts?.expiresIn ?? "30d",
   });
 }

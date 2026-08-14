@@ -1,9 +1,9 @@
-import { lazy, StrictMode, Suspense } from "react";
+import { lazy, StrictMode, Suspense, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createBrowserRouter, Navigate, Outlet, RouterProvider } from "react-router-dom";
 import "./index.css";
-import { getToken } from "./api/client";
+import { api, getToken, setSession } from "./api/client";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
@@ -26,8 +26,37 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1 } },
 });
 
+// Real users with a stored token skip straight to "authed" — no network
+// round-trip, no behavior change. A visitor with no token at all (including
+// an external crawler like PageSpeed Insights/GTmetrix hitting the site
+// fresh) gets one attempt at the temporary public demo-login endpoint before
+// falling back to the normal /login redirect; see api.demoLogin and
+// DEPLOYMENT.md for how that's toggled server-side.
 function RequireAuth() {
-  return getToken() ? <Outlet /> : <Navigate to="/login" replace />;
+  const [status, setStatus] = useState<"checking" | "authed" | "unauthed">(
+    getToken() ? "authed" : "checking",
+  );
+
+  useEffect(() => {
+    if (getToken()) return;
+    let cancelled = false;
+    api
+      .demoLogin()
+      .then((res) => {
+        if (cancelled) return;
+        setSession(res.token, res.user, true);
+        setStatus("authed");
+      })
+      .catch(() => {
+        if (!cancelled) setStatus("unauthed");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (status === "checking") return <p className="text-ink-400">Loading…</p>;
+  return status === "authed" ? <Outlet /> : <Navigate to="/login" replace />;
 }
 
 const router = createBrowserRouter([

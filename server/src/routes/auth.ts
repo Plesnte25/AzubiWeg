@@ -1,6 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { config } from "../config.js";
 import { prisma } from "../db.js";
 import { signToken } from "../middleware/auth.js";
 
@@ -52,5 +53,22 @@ authRouter.post("/login", async (req, res) => {
   res.json({
     token: signToken(user.id),
     user: { id: user.id, email: user.email, name: user.name, vaultPath: user.vaultPath },
+  });
+});
+
+// Temporary public "demo mode" for external site-analysis tools (PageSpeed
+// Insights, GTmetrix) that crawl unauthenticated — see DEPLOYMENT.md. Only
+// live when DEMO_MODE_ENABLED=true on the server; otherwise 404s exactly
+// like a route that doesn't exist, rather than a deliberate-looking reject.
+authRouter.post("/demo-login", async (req, res) => {
+  if (!config.demoModeEnabled) return res.status(404).end();
+
+  const user = await prisma.user.findUnique({ where: { email: config.demoUserEmail } });
+  if (!user) return res.status(404).end(); // seed:demo hasn't been run yet
+
+  res.json({
+    token: signToken(user.id, { expiresIn: config.demoTokenExpiresIn }),
+    user: { id: user.id, email: user.email, name: user.name, vaultPath: user.vaultPath },
+    isDemo: true,
   });
 });

@@ -66,14 +66,24 @@ export function getToken(): string | null {
   return localStorage.getItem("token");
 }
 
-export function setSession(token: string, user: User) {
+export function setSession(token: string, user: User, isDemo = false) {
   localStorage.setItem("token", token);
   localStorage.setItem("user", JSON.stringify(user));
+  if (isDemo) localStorage.setItem("isDemo", "1");
+  else localStorage.removeItem("isDemo");
 }
 
 export function clearSession() {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
+  localStorage.removeItem("isDemo");
+}
+
+// Set only via the demo-login fallback in RequireAuth (main.tsx) — drives
+// DemoBanner so a visitor who lands on the public demo mid-window isn't
+// confused into thinking they're in a private, logged-in account.
+export function isDemoSession(): boolean {
+  return localStorage.getItem("isDemo") === "1";
 }
 
 export function getUser(): User | null {
@@ -114,6 +124,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  // 404s when the server isn't running in temporary public demo mode — see
+  // RequireAuth in main.tsx, which is the only caller.
+  demoLogin: () =>
+    request<{ token: string; user: User; isDemo: true }>("/api/auth/demo-login", { method: "POST" }),
 
   // Faceting/search/grouping all happen client-side now (the shelves UI
   // needs the whole set in memory for cross-filtered facet counts anyway)
