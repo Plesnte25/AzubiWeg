@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { Bug } from "lucide-react";
 import { createPortal } from "react-dom";
-import dictionaryIcon from "../../assets/icons/dictionary.png";
-import deadlineIcon from "../../assets/icons/deadline.png";
-import goodFeedbackIcon from "../../assets/icons/good-feedback.png";
+import dictionaryIcon from "../../assets/icons/dictionary.webp";
+import deadlineIcon from "../../assets/icons/deadline.webp";
+import goodFeedbackIcon from "../../assets/icons/good-feedback.webp";
 import type { Word } from "../../api/types";
 
 interface AnalyticsSheetProps {

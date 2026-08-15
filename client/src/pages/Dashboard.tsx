@@ -1,25 +1,25 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, CheckCircle2, Hand, Zap } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import applyIcon from "../assets/icons/apply.png";
-import clipboardIcon from "../assets/icons/clipboard.png";
-import studyTimeIcon from "../assets/icons/clock (1).png";
-import clockIcon from "../assets/icons/clock.png";
-import dictionaryIcon from "../assets/icons/dictionary.png";
-import fireIcon from "../assets/icons/fire.png";
-import goodFeedbackIcon from "../assets/icons/good-feedback.png";
-import jobInterviewIcon from "../assets/icons/job-interview.png";
-import jobOfferIcon from "../assets/icons/job-offer.png";
-import learningIcon from "../assets/icons/learning.png";
-import onlineCertificateIcon from "../assets/icons/online-certificate.png";
-import quizIcon from "../assets/icons/quiz.png";
-import rejectIcon from "../assets/icons/reject.png";
-import riseIcon from "../assets/icons/rise.png";
-import streamingIcon from "../assets/icons/streaming.png";
-import taskIcon from "../assets/icons/task.png";
-import wishlistIcon from "../assets/icons/wishlist.png";
+import applyIcon from "../assets/icons/apply.webp";
+import clipboardIcon from "../assets/icons/clipboard.webp";
+import studyTimeIcon from "../assets/icons/clock (1).webp";
+import clockIcon from "../assets/icons/clock.webp";
+import dictionaryIcon from "../assets/icons/dictionary.webp";
+import fireIcon from "../assets/icons/fire.webp";
+import goodFeedbackIcon from "../assets/icons/good-feedback.webp";
+import jobInterviewIcon from "../assets/icons/job-interview.webp";
+import jobOfferIcon from "../assets/icons/job-offer.webp";
+import learningIcon from "../assets/icons/learning.webp";
+import onlineCertificateIcon from "../assets/icons/online-certificate.webp";
+import quizIcon from "../assets/icons/quiz.webp";
+import rejectIcon from "../assets/icons/reject.webp";
+import riseIcon from "../assets/icons/rise.webp";
+import streamingIcon from "../assets/icons/streaming.webp";
+import taskIcon from "../assets/icons/task.webp";
+import wishlistIcon from "../assets/icons/wishlist.webp";
 import { api, getUser } from "../api/client";
 import type { CefrLevel, RoadmapSkill, RoadmapTask, SyllabusItem } from "../api/types";
 import CoursesAccordion, { LEVEL_TITLES, type ThemeCourse } from "../components/CoursesAccordion";
@@ -27,7 +27,9 @@ import LinearSkillBars from "../components/LinearSkillBars";
 import MiniBarChart from "../components/MiniBarChart";
 import RoadmapWeekStrip from "../components/RoadmapWeekStrip";
 import SegmentedSkillBar from "../components/SegmentedSkillBar";
-import SkillPerformanceRadar from "../components/SkillPerformanceRadar";
+// chart.js/react-chartjs-2 aren't needed for first paint (the radar isn't
+// the LCP element) — lazy-loaded to keep it out of the eager entry bundle.
+const SkillPerformanceRadar = lazy(() => import("../components/SkillPerformanceRadar"));
 import SkillProgressGauges from "../components/SkillProgressGauges";
 import StudyActivityChart from "../components/StudyActivityChart";
 import { Card } from "../components/ui/Card";
@@ -95,7 +97,7 @@ function Quadrant({
       onClick={onClick}
     >
       <h3 className="sr-only">{title}</h3>
-      <img src={icon} alt="" className="pointer-events-none absolute -left-4 -top-4 z-20 h-28 w-28 opacity-10 grayscale" />
+      <img src={icon} alt="" width={112} height={112} className="pointer-events-none absolute -left-4 -top-4 z-20 h-28 w-28 opacity-10 grayscale" />
       <div className="relative z-10 min-h-0 flex-1 overflow-hidden">{children}</div>
     </div>
   );
@@ -145,6 +147,7 @@ function SkillTaskRow({ task, onOpen }: { task: RoadmapTask; onOpen: (task: Road
     >
       <button
         onClick={() => toggle.mutate(!done)}
+        aria-label={done ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
         className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-[5px] border text-[10px] text-white ${
           done ? "border-ink-900 bg-ink-900" : "border-hairline"
         }`}
@@ -317,7 +320,15 @@ export default function Dashboard() {
       selectedDay?.tasks.find((t) => t.id === openTask.id) ??
       openTask);
 
-  const noTasksAtAll = data.dueToday === 0 && (todayFull?.tasks.length ?? 0) === 0;
+  // todayFull resolves independently of (usually slightly after) the main
+  // dashboard query above, which is what clears the page's top-level
+  // skeleton — without distinguishing "still loading" from "confirmed
+  // empty" here, the Today's Tasks card below flashes the empty-state
+  // message and then jumps to the real list once todayFull arrives,
+  // both a layout shift and, briefly, a wrong answer for anyone who does
+  // have tasks.
+  const todayLoading = todayFull === undefined;
+  const noTasksAtAll = !todayLoading && data.dueToday === 0 && todayFull.tasks.length === 0;
 
   const firstName = getUser()?.name?.trim().split(/\s+/)[0];
   const quote = quoteOfTheDay();
@@ -373,25 +384,34 @@ export default function Dashboard() {
           itself stacks icon-over-value below lg and switches to lg's
           horizontal chromeless look via its own responsive classes. */}
       <div className="grid shrink-0 grid-cols-4 gap-2 md:grid-cols-5 md:gap-3 lg:gap-0 lg:divide-x lg:divide-hairline lg:rounded-xl lg:border lg:border-hairline lg:bg-card">
-        <Tile label="Day streak" value={data.streak} accent icon={<img src={fireIcon} alt="" className="size-5 lg:size-6" />} />
+        <Tile
+          label="Day streak"
+          value={data.streak}
+          accent
+          icon={<img src={fireIcon} alt="" width={24} height={24} className="size-5 lg:size-6" />}
+        />
         <Tile
           label="Learning Hrs"
           value={`${(data.totalLearningMinutes / 60).toFixed(1)}h`}
-          icon={<img src={clockIcon} alt="" className="size-5 lg:size-6" />}
+          icon={<img src={clockIcon} alt="" width={24} height={24} className="size-5 lg:size-6" />}
         />
         <Tile
           label="Vocab due / total"
           value={`${data.dueToday} / ${data.totalWords}`}
           accent={data.dueToday > 0}
-          icon={<img src={dictionaryIcon} alt="" className="size-5 lg:size-6" />}
+          icon={<img src={dictionaryIcon} alt="" width={24} height={24} className="size-5 lg:size-6" />}
         />
         <Tile
           label="Quizzes completed"
           value={data.quizzesCompleted}
-          icon={<img src={quizIcon} alt="" className="size-5 lg:size-6" />}
+          icon={<img src={quizIcon} alt="" width={24} height={24} className="size-5 lg:size-6" />}
         />
         <div className="hidden md:contents">
-          <Tile label="Active courses" value={activeCoursesCount} icon={<img src={streamingIcon} alt="" className="size-5 lg:size-6" />} />
+          <Tile
+            label="Active courses"
+            value={activeCoursesCount}
+            icon={<img src={streamingIcon} alt="" width={24} height={24} className="size-5 lg:size-6" />}
+          />
         </div>
       </div>
 
@@ -402,10 +422,12 @@ export default function Dashboard() {
       <div className="flex min-h-0 flex-col gap-3 md:flex-1 md:justify-evenly lg:hidden">
         <Card padding="sm" className="flex flex-col">
           <Link to="/learning?view=today" className="mb-2 flex shrink-0 items-center gap-1.5 text-sm font-medium text-ink-600 hover:text-brand-600">
-            <img src={clipboardIcon} alt="" className="size-4" />
+            <img src={clipboardIcon} alt="" width={16} height={16} className="size-4" />
             Today's tasks
           </Link>
-          {noTasksAtAll ? (
+          {todayLoading ? (
+            <Skeleton className="h-16" />
+          ) : noTasksAtAll ? (
             <p className="text-sm text-ink-600">Nothing on your plate right now — enjoy the breather.</p>
           ) : (
             <div className="max-h-64 space-y-2 overflow-y-auto">
@@ -442,7 +464,7 @@ export default function Dashboard() {
           <Link to="/learning?view=progress">
             <Card padding="sm" interactive>
               <p className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-ink-600">
-                <img src={goodFeedbackIcon} alt="" className="size-4" />
+                <img src={goodFeedbackIcon} alt="" width={16} height={16} className="size-4" />
                 Performance
               </p>
               <div className="h-14">
@@ -453,7 +475,7 @@ export default function Dashboard() {
           <Link to="/learning?view=progress">
             <Card padding="sm" interactive>
               <p className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-ink-600">
-                <img src={studyTimeIcon} alt="" className="size-4" />
+                <img src={studyTimeIcon} alt="" width={16} height={16} className="size-4" />
                 Study time
               </p>
               <div className="h-14">
@@ -490,7 +512,9 @@ export default function Dashboard() {
               className="lg:border-b lg:border-r lg:border-hairline"
               onClick={() => navigate("/learning?view=progress")}
             >
-              <SkillPerformanceRadar data={data.learning.skillPerformance} />
+              <Suspense fallback={<div className="h-full w-full" />}>
+                <SkillPerformanceRadar data={data.learning.skillPerformance} />
+              </Suspense>
             </Quadrant>
             <Quadrant
               icon={studyTimeIcon}
@@ -538,7 +562,7 @@ export default function Dashboard() {
 
           <div className="shrink-0 p-3">
             <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-ink-600">
-              <img src={taskIcon} alt="" className="size-4" />
+              <img src={taskIcon} alt="" width={16} height={16} className="size-4" />
               Tasks Completed
             </p>
             <SegmentedSkillBar segments={skillSegments} />
@@ -548,12 +572,12 @@ export default function Dashboard() {
             <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
               {selectedDay ? (
                 <p className="flex items-center gap-1.5 text-sm font-medium text-ink-600">
-                  <img src={clipboardIcon} alt="" className="size-4" />
+                  <img src={clipboardIcon} alt="" width={16} height={16} className="size-4" />
                   {new Date(calSelected!).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
                 </p>
               ) : (
                 <Link to="/learning?view=today" className="flex items-center gap-1.5 text-sm font-medium text-ink-600 hover:text-brand-600">
-                  <img src={clipboardIcon} alt="" className="size-4" />
+                  <img src={clipboardIcon} alt="" width={16} height={16} className="size-4" />
                   Today's Tasks
                 </Link>
               )}
@@ -574,6 +598,8 @@ export default function Dashboard() {
                     ))}
                   </div>
                 )
+              ) : todayLoading ? (
+                <Skeleton className="h-16" />
               ) : noTasksAtAll ? (
                 <p className="text-sm text-ink-600">Nothing on your plate right now — enjoy the breather.</p>
               ) : (
@@ -607,7 +633,7 @@ export default function Dashboard() {
                   aria-label={`${label}: ${count}`}
                   className="relative grid place-items-center rounded-full p-1.5 hover:bg-paper"
                 >
-                  <img src={icon} alt="" className="size-[18px]" />
+                  <img src={icon} alt="" width={18} height={18} className="size-[18px]" />
                   {count > 0 && (
                     <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-[var(--color-danger-solid)] px-1 text-[10px] font-bold leading-4 text-white">
                       {count}

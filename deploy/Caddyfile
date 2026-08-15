@@ -9,9 +9,12 @@
 		# every rebuild), so it's safe to cache those forever.
 		@hashed path /assets/*
 		header @hashed Cache-Control "public, max-age=31536000, immutable"
-		# fonts/icons/favicon aren't hashed — cache them, but not forever, so a
-		# future swap doesn't stay stale for a year on return visits.
-		@staticmedia path /fonts/* /icons.svg /favicon.svg
+		# icons.svg/favicon.svg aren't hashed — cache them, but not forever, so
+		# a future swap doesn't stay stale for a year on return visits. Fonts
+		# used to live here too, unhashed under /fonts/*; they're now imported
+		# through Vite (src/assets/fonts/) and content-hashed into /assets/*
+		# above instead, so there's nothing left to serve at /fonts/*.
+		@staticmedia path /icons.svg /favicon.svg
 		header @staticmedia Cache-Control "public, max-age=604800"
 		try_files {path} /index.html
 		file_server

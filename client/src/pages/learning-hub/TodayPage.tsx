@@ -13,11 +13,11 @@ import { SKILL_COLORS, SKILL_LABELS } from "../../lib/skills";
 import type { Destination } from "./LearningRail";
 import { invalidateHub } from "./queryHelpers";
 import { TaskDetailDrawer } from "./TaskDetailDrawer";
-import toDoListIcon from "../../assets/icons/to-do-list.png";
-import deadlineIcon from "../../assets/icons/deadline.png";
-import calendarDeadlineIcon from "../../assets/icons/calendar-deadline-date.png";
-import sevenDaysIcon from "../../assets/icons/7-days.png";
-import examIcon from "../../assets/icons/exam.png";
+import toDoListIcon from "../../assets/icons/to-do-list.webp";
+import deadlineIcon from "../../assets/icons/deadline.webp";
+import calendarDeadlineIcon from "../../assets/icons/calendar-deadline-date.webp";
+import sevenDaysIcon from "../../assets/icons/7-days.webp";
+import examIcon from "../../assets/icons/exam.webp";
 
 const MAX_VISIBLE = 5;
 

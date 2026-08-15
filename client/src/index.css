@@ -1,21 +1,23 @@
 @import "tailwindcss";
 
-/* self-hosted Inter for UI body text (no Google Fonts CDN round-trip) */
+/* self-hosted Inter for UI body text (no Google Fonts CDN round-trip) —
+   WOFF2, imported from src/assets so Vite content-hashes the filename and
+   it's cacheable forever via Caddy's @hashed /assets/* rule. */
 @font-face {
   font-family: "Inter";
-  src: url("/fonts/Inter-Regular.ttf") format("truetype");
+  src: url("./assets/fonts/Inter-Regular.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: "Inter";
-  src: url("/fonts/Inter-Medium.ttf") format("truetype");
+  src: url("./assets/fonts/Inter-Medium.woff2") format("woff2");
   font-weight: 500;
   font-display: swap;
 }
 @font-face {
   font-family: "Inter";
-  src: url("/fonts/Inter-Bold.ttf") format("truetype");
+  src: url("./assets/fonts/Inter-Bold.woff2") format("woff2");
   font-weight: 600 700;
   font-display: swap;
 }
