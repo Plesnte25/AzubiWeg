@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import type { RoadmapDailySkillMinutes } from "../api/types";
-import annualIcon from "../assets/icons/annual.png";
-import hourglassIcon from "../assets/icons/hourglass.png";
-import scheduleIcon from "../assets/icons/schedule.png";
+import annualIcon from "../assets/icons/annual.webp";
+import hourglassIcon from "../assets/icons/hourglass.webp";
+import scheduleIcon from "../assets/icons/schedule.webp";
 import { cn } from "../lib/cn";
 import { DISPLAY_SKILL_LABELS, DISPLAY_SKILL_LABELS_COMPACT, DISPLAY_SKILLS, SKILL_COLORS, displaySkill } from "../lib/skills";
 

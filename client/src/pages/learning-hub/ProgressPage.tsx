@@ -4,11 +4,11 @@ import { api } from "../../api/client";
 import type { ProgressPeriod, RoadmapSkill } from "../../api/types";
 import { Skeleton } from "../../components/ui/Skeleton";
 import type { Destination } from "./LearningRail";
-import taskIcon from "../../assets/icons/task.png";
-import clockIcon from "../../assets/icons/clock.png";
-import quizIcon from "../../assets/icons/quiz.png";
-import learningIcon from "../../assets/icons/learning.png";
-import fireIcon from "../../assets/icons/fire.png";
+import taskIcon from "../../assets/icons/task.webp";
+import clockIcon from "../../assets/icons/clock.webp";
+import quizIcon from "../../assets/icons/quiz.webp";
+import learningIcon from "../../assets/icons/learning.webp";
+import fireIcon from "../../assets/icons/fire.webp";
 
 const PERIODS: { key: ProgressPeriod; label: string }[] = [
   { key: "7d", label: "7d" },

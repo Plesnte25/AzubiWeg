@@ -79,25 +79,27 @@ watermark treatment is only for the 4 cards above.
 
 ## Icon set
 
-Flat PNG icons in `client/src/assets/icons/` (not emoji, not a line-icon
-library, for card/tile identity specifically):
+Flat icons in `client/src/assets/icons/` (not emoji, not a line-icon
+library, for card/tile identity specifically) — `.webp`, not `.png`
+(converted for PageSpeed's image-delivery audit, same resolution, ~50%
+smaller):
 
 | File | Used for |
 |---|---|
-| `fire.png` | Stat tile: Day streak |
-| `clock.png` | Stat tile: Learning Hrs |
-| `dictionary.png` | Stat tile: Vocab due/total |
-| `quiz.png` | Stat tile: Quizzes completed |
-| `streaming.png` | Stat tile: Active courses |
-| `hourglass.png` / `schedule.png` / `annual.png` | Study Time toggle: Hour / Weekly / Monthly |
-| `clock (1).png` | Study Time watermark |
-| `good-feedback.png` | Performance watermark |
-| `rise.png` | My Progress watermark |
-| `online-certificate.png` | My Courses watermark (top-left) |
-| `learning.png` | My Courses watermark (bottom-right) |
-| `task.png` | Tasks Completed header |
-| `clipboard.png` | Today's Tasks header |
-| `wishlist.png` / `apply.png` / `job-interview.png` / `job-offer.png` / `reject.png` | Jobs-pipeline row: Wishlist / Applied / Interview / Offer / Rejected |
+| `fire.webp` | Stat tile: Day streak |
+| `clock.webp` | Stat tile: Learning Hrs |
+| `dictionary.webp` | Stat tile: Vocab due/total |
+| `quiz.webp` | Stat tile: Quizzes completed |
+| `streaming.webp` | Stat tile: Active courses |
+| `hourglass.webp` / `schedule.webp` / `annual.webp` | Study Time toggle: Hour / Weekly / Monthly |
+| `clock (1).webp` | Study Time watermark |
+| `good-feedback.webp` | Performance watermark |
+| `rise.webp` | My Progress watermark |
+| `online-certificate.webp` | My Courses watermark (top-left) |
+| `learning.webp` | My Courses watermark (bottom-right) |
+| `task.webp` | Tasks Completed header |
+| `clipboard.webp` | Today's Tasks header |
+| `wishlist.webp` / `apply.webp` / `job-interview.webp` / `job-offer.webp` / `reject.webp` | Jobs-pipeline row: Wishlist / Applied / Interview / Offer / Rejected |
 
 All 5 job-pipeline icons are real files now (no lucide placeholders left in
 that row).

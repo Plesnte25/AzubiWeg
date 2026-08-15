@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bookmark, ChevronDown, ExternalLink, Trash2 } from "lucide-react";
-import streamingIcon from "../../assets/icons/streaming.png";
-import taskIcon from "../../assets/icons/task.png";
+import streamingIcon from "../../assets/icons/streaming.webp";
+import taskIcon from "../../assets/icons/task.webp";
 import { api } from "../../api/client";
 import type { ActivityFeedFilter, RoadmapSkill, StudySource, StudySourceType } from "../../api/types";
 import { Attachments } from "../../components/Attachments";
