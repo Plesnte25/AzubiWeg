@@ -59,6 +59,7 @@ export interface AttachmentParent {
   syllabusItemId?: string;
   studySourceId?: string;
   roadmapTaskId?: string;
+  noteId?: string;
 }
 
 export function Attachments({

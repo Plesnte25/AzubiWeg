@@ -6,6 +6,7 @@ import type { CefrLevel, Themenfeld } from "../../api/types";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
+import { Textarea } from "../../components/ui/Textarea";
 import { THEMENFELD_LABELS, THEMENFELD_ORDER } from "../../lib/vocab";
 
 const LEVEL_OPTIONS: { value: "auto" | CefrLevel; label: string }[] = [
@@ -61,8 +62,8 @@ export function AddWordsDialog({ onClose }: AddWordsDialogProps) {
       <form onSubmit={submit} className="space-y-4">
         <div>
           <p className="mb-1.5 text-sm text-ink-600">Meaning, pronunciation &amp; audio are fetched automatically.</p>
-          <textarea
-            className="h-24 w-full resize-none rounded-md border border-hairline bg-card px-3 py-2 text-sm outline-none focus:border-brand-400"
+          <Textarea
+            className="h-24"
             placeholder={"e.g. Zug, Bahnhof, fahren\n(comma or newline separated)"}
             value={wordsInput}
             onChange={(e) => setWordsInput(e.target.value)}

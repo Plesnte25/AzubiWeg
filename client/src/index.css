@@ -334,12 +334,6 @@ body {
   background-color: var(--color-brand-100);
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-brand-700);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
 /* buttons and links feel alive without per-page classes */
 button,
 a {

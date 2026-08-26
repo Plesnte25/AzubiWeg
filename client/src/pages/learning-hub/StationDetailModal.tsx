@@ -5,6 +5,7 @@ import { api } from "../../api/client";
 import type { SyllabusItem } from "../../api/types";
 import { Attachments } from "../../components/Attachments";
 import { CircleIconButton } from "../../components/ui/CircleIconButton";
+import { Textarea } from "../../components/ui/Textarea";
 import type { Station } from "./stations";
 
 /** Merges the 3 legacy fields into one editable value (nothing already
@@ -30,9 +31,10 @@ function NotesComposer({ item, onChanged }: { item: SyllabusItem; onChanged: () 
   });
 
   return (
-    <div className="mt-2 rounded-[10px] bg-paper p-2.5">
-      <textarea
-        className="w-full resize-none border-0 bg-transparent text-xs outline-none"
+    <div className="mt-2">
+      <Textarea
+        variant="ghost"
+        className="text-xs"
         rows={2}
         placeholder="Type a note…"
         value={draft}
@@ -40,17 +42,17 @@ function NotesComposer({ item, onChanged }: { item: SyllabusItem; onChanged: () 
         onBlur={() => {
           if (draft !== mergedNotebookValue(item)) update.mutate(draft);
         }}
+        footer={
+          <Attachments
+            files={item.files}
+            parent={{ syllabusItemId: item.id }}
+            onChanged={onChanged}
+            renderTrigger={({ onClick, uploading }) => (
+              <CircleIconButton icon={<Plus className="size-3.5" aria-hidden="true" />} title="Attach a file" onClick={onClick} disabled={uploading} />
+            )}
+          />
+        }
       />
-      <div className="mt-1.5">
-        <Attachments
-          files={item.files}
-          parent={{ syllabusItemId: item.id }}
-          onChanged={onChanged}
-          renderTrigger={({ onClick, uploading }) => (
-            <CircleIconButton icon={<Plus className="size-3.5" aria-hidden="true" />} title="Attach a file" onClick={onClick} disabled={uploading} />
-          )}
-        />
-      </div>
     </div>
   );
 }

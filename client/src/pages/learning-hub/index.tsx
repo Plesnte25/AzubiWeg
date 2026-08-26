@@ -9,6 +9,7 @@ import { PillTabs } from "../../components/ui/PillTabs";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { DESTINATION_ROWS, type Destination } from "./destinations";
 import { LearningRail } from "./LearningRail";
+import { NotesPage } from "./NotesPage";
 import { ProgressPage } from "./ProgressPage";
 import { RoadmapPage } from "./RoadmapPage";
 import { SelfTestsPage } from "./SelfTestsPage";
@@ -16,7 +17,7 @@ import { SourcesPage } from "./SourcesPage";
 import { SyllabusPage } from "./SyllabusPage";
 import { TodayPage } from "./TodayPage";
 
-const DESTINATIONS: Destination[] = ["today", "roadmap", "syllabus", "sources", "test", "progress"];
+const DESTINATIONS: Destination[] = ["today", "roadmap", "syllabus", "sources", "notes", "test", "progress"];
 // Roadmap and Progress read the day-by-day plan; Today/Syllabus/Sources/
 // Self-tests all stay fully open pre-activation (see the handoff's "Roadmap
 // activation gate" section — Self-tests and Syllabus never depend on it).
@@ -117,6 +118,7 @@ export default function LearningHub() {
             {destination === "roadmap" && <RoadmapPage onNavigate={navigate} />}
             {destination === "syllabus" && <SyllabusPage />}
             {destination === "sources" && <SourcesPage />}
+            {destination === "notes" && <NotesPage onNavigate={navigate} />}
             {destination === "progress" && <ProgressPage onNavigate={navigate} />}
           </>
         )}

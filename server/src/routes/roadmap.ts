@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
+import { deleteStoredFile } from "./files.js";
 import { requireAuth } from "../middleware/auth.js";
 import { computeBestStreak, computeDayStreak, localDateKey } from "../services/learning/activity.js";
 import { setRoadmapTaskCompletion } from "../services/learning/completion-sync.js";
@@ -26,7 +27,7 @@ const TASK_INCLUDE = {
     include: {
       files: true,
       // just enough to show "From syllabus: A1 > Theme" on a linked task
-      syllabusItem: { select: { level: true, theme: true } },
+      syllabusItem: { select: { level: true, theme: true, description: true } },
     },
   },
 };
@@ -39,7 +40,7 @@ async function buildPlanForUser(userId: string): Promise<DefaultRoadmapDay[]> {
   await ensureSyllabusSeeded(userId);
   const rows: SyllabusRowForGeneration[] = await prisma.syllabusItem.findMany({
     where: { userId },
-    select: { id: true, level: true, category: true, sortOrder: true, title: true, description: true, completedAt: true },
+    select: { id: true, level: true, category: true, sortOrder: true, title: true, description: true, completedAt: true, skill: true },
   });
   return buildUserRoadmapPlan(rows);
 }
@@ -164,6 +165,39 @@ roadmapRouter.post("/activate", async (req, res) => {
   const startedAt = parsed.data.startDate ? toDate(parsed.data.startDate) : todayLocal();
   await activateRoadmapForUser(user.id, startedAt);
   res.status(201).json({ startedAt });
+});
+
+/** Wipes the whole 182-day plan (every RoadmapDay/RoadmapTask and any files
+ * attached to a task) and unsets roadmapStartedAt so the user can reactivate
+ * from a new date via the normal /activate flow. Deleting RoadmapDay rows
+ * cascades to RoadmapTask and then to UploadedFile in the DB, but never
+ * touches bytes on disk — those are unlinked explicitly first, same as
+ * DELETE /syllabus/:id does. Nothing else (syllabus completion, vocab/SRS,
+ * self-test history, streaks) has an FK into RoadmapDay/RoadmapTask, so this
+ * can't touch them. */
+roadmapRouter.post("/reset", async (req, res) => {
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
+  if (!user.roadmapStartedAt) return res.status(409).json({ error: "Roadmap not activated" });
+
+  const days = await prisma.roadmapDay.findMany({
+    where: { userId: req.userId },
+    select: { tasks: { select: { id: true } } },
+  });
+  const taskIds = days.flatMap((d) => d.tasks.map((t) => t.id));
+  const files = await prisma.uploadedFile.findMany({
+    where: { roadmapTaskId: { in: taskIds } },
+    select: { storedName: true },
+  });
+  for (const file of files) {
+    await deleteStoredFile(req.userId, file.storedName);
+  }
+
+  await prisma.$transaction([
+    prisma.roadmapDay.deleteMany({ where: { userId: req.userId } }),
+    prisma.user.update({ where: { id: req.userId }, data: { roadmapStartedAt: null, roadmapVersion: 0 } }),
+  ]);
+
+  res.json({ reset: true });
 });
 
 roadmapRouter.get("/today", async (req, res) => {
@@ -395,7 +429,7 @@ roadmapRouter.patch("/tasks/:id", async (req, res) => {
     }
     return tx.roadmapTask.findUniqueOrThrow({
       where: { id: existing.id },
-      include: { files: true, syllabusItem: { select: { level: true, theme: true } } },
+      include: { files: true, syllabusItem: { select: { level: true, theme: true, description: true } } },
     });
   });
   res.json({ task });
@@ -427,7 +461,7 @@ roadmapRouter.post("/tasks", async (req, res) => {
       title: parsed.data.title,
       description: parsed.data.description ?? null,
     },
-    include: { files: true, syllabusItem: { select: { level: true, theme: true } } },
+    include: { files: true, syllabusItem: { select: { level: true, theme: true, description: true } } },
   });
   res.status(201).json({ task });
 });
@@ -493,7 +527,7 @@ roadmapRouter.get("/journal/:skill", async (req, res) => {
     include: {
       day: { select: { date: true, theme: true } },
       files: true,
-      syllabusItem: { select: { level: true, theme: true } },
+      syllabusItem: { select: { level: true, theme: true, description: true } },
     },
     orderBy: { day: { date: "asc" } },
   });

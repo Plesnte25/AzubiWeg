@@ -1,4 +1,5 @@
 import { type ChangeEvent, type ReactNode, useState } from "react";
+import { Textarea } from "../../components/ui/Textarea";
 
 export const inputCls =
   "w-full rounded border border-hairline bg-card px-2.5 py-1.5 text-sm placeholder:text-ink-300";
@@ -28,12 +29,11 @@ export function DebouncedInput({
   const commit = () => {
     if (draft !== value) onCommit(draft);
   };
-  const props = {
-    className: inputCls,
-    value: draft,
-    placeholder,
-    onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setDraft(e.target.value),
-    onBlur: commit,
-  };
-  return textarea ? <textarea rows={4} {...props} /> : <input {...props} />;
+  const onChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setDraft(e.target.value);
+
+  return textarea ? (
+    <Textarea rows={4} value={draft} placeholder={placeholder} onChange={onChange} onBlur={commit} />
+  ) : (
+    <input className={inputCls} value={draft} placeholder={placeholder} onChange={onChange} onBlur={commit} />
+  );
 }

@@ -6,12 +6,15 @@ import { useTheme } from "../hooks/useTheme";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
+import { Modal } from "../components/ui/Modal";
 import { SegmentedControl } from "../components/ui/SegmentedControl";
+import { invalidateHub } from "./learning-hub/queryHelpers";
 
 export default function Settings() {
   const queryClient = useQueryClient();
   const { data: status } = useQuery({ queryKey: ["vault-status"], queryFn: api.vaultStatus });
   const [path, setPath] = useState("");
+  const [confirmingReset, setConfirmingReset] = useState(false);
   const { theme, setTheme } = useTheme();
 
   const invalidateAll = () => {
@@ -26,6 +29,13 @@ export default function Settings() {
   const reclassify = useMutation({
     mutationFn: api.reclassifyWords,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["words"] }),
+  });
+  const resetRoadmap = useMutation({
+    mutationFn: api.resetRoadmap,
+    onSuccess: () => {
+      setConfirmingReset(false);
+      invalidateHub(queryClient);
+    },
   });
 
   return (
@@ -137,6 +147,44 @@ export default function Settings() {
           </p>
         )}
       </Card>
+
+      <Card padding="lg">
+        <h1 className="text-lg font-semibold">Roadmap</h1>
+        <p className="mt-1 text-sm text-ink-600">
+          Restart your 182-day plan from a new date. This deletes every day, task, journal entry,
+          and file attached to a roadmap task — it can't be undone. Your syllabus progress,
+          vocabulary, and self-test history are stored separately and stay untouched.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3 text-danger-600 hover:border-danger-100 hover:bg-danger-50"
+          onClick={() => setConfirmingReset(true)}
+        >
+          Reset plan
+        </Button>
+      </Card>
+
+      {confirmingReset && (
+        <Modal title="Reset your 182-day plan?" onClose={() => setConfirmingReset(false)} size="sm">
+          <p className="text-sm text-ink-600">
+            This permanently deletes every day, task, journal entry, and attached file on your
+            roadmap, and unsets your start date. Your syllabus progress and vocabulary are
+            untouched. This can't be undone.
+          </p>
+          {resetRoadmap.isError && (
+            <p className="mt-2 text-sm text-danger-600">{String(resetRoadmap.error)}</p>
+          )}
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setConfirmingReset(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" loading={resetRoadmap.isPending} onClick={() => resetRoadmap.mutate()}>
+              Reset plan
+            </Button>
+          </div>
+        </Modal>
+      )}
 
       <Card padding="lg" className="text-sm text-ink-600">
         <h2 className="font-medium text-ink-900">How the sync works</h2>

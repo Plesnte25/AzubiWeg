@@ -47,6 +47,7 @@ model User {
   activityPings      ActivityPing[]
   dailyActiveMinutes DailyActiveMinutes[]
   hourlyActiveMinutes HourlyActiveMinutes[]
+  notes              Note[]
 }
 
 // short-lived — folded into DailyActiveMinutes within a day, never outlives
@@ -171,6 +172,8 @@ model UploadedFile {
   // a CV is just an uploaded file with metadata (see Cv below) — one file per CV
   cvId            String?        @unique
   cv              Cv?            @relation(fields: [cvId], references: [id], onDelete: Cascade)
+  noteId          String?
+  note            Note?          @relation(fields: [noteId], references: [id], onDelete: Cascade)
   kind            FileKind       @default(document)
   originalName    String
   // server-generated "<cuid>.<whitelisted ext>" under data/uploads/<userId>/;
@@ -333,6 +336,7 @@ model SyllabusItem {
   skippedAt      DateTime?
   files          UploadedFile[]
   roadmapTasks   RoadmapTask[]
+  notes          Note[]
   createdAt      DateTime         @default(now())
 
   @@index([userId, level, sortOrder])
@@ -516,10 +520,37 @@ model RoadmapTask {
   // services/learning/completion-sync.ts, never independently toggled.
   syllabusItemId String?
   syllabusItem   SyllabusItem?   @relation(fields: [syllabusItemId], references: [id], onDelete: SetNull)
+  notes          Note[]
 
   @@index([dayId])
   @@index([skill])
   @@index([syllabusItemId])
+}
+
+// user's own freeform notes (typed text and/or photos of handwritten notes) —
+// the "Notes" tab. Optionally soft-linked to a SyllabusItem or RoadmapTask for
+// lesson context (SetNull, same pattern as RoadmapTask.syllabusItemId — the
+// linked lesson can be deleted/reseeded without taking the note down with
+// it), and/or tagged with a skill, same precedent as SavedLink.skill. Distinct
+// from RoadmapTask.journalEntry / SyllabusItem's examples-exceptions-
+// commonMistakes "Grammar Notebook" / StudySourceUnit.notes — those are notes
+// about one specific existing item; a Note can stand alone.
+model Note {
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String?
+  body           String?
+  skill          RoadmapSkill?
+  syllabusItemId String?
+  syllabusItem   SyllabusItem? @relation(fields: [syllabusItemId], references: [id], onDelete: SetNull)
+  roadmapTaskId  String?
+  roadmapTask    RoadmapTask?  @relation(fields: [roadmapTaskId], references: [id], onDelete: SetNull)
+  files          UploadedFile[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([userId, createdAt])
 }
 
 // user's own saved links (Sources destination's "Saved links" card) — seeded

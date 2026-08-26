@@ -48,8 +48,19 @@ export interface DefaultRoadmapDay {
  * grammar/vocab are spread across all six days, not just Mon/Tue/Wed
  * (roadmap-generator.ts). SYLLABUS_VERSION is unchanged; syllabus CONTENT
  * didn't change, only how the roadmap slices it into days.
+ *
+ * v6: the 4 always-present daily slots (reading/listening/speaking/writing)
+ * are no longer identical all week — buildRegularWeek's fixed per-week topic
+ * is now overridden per study day, where available, by a live category:
+ * "skill" syllabus item for that skill/level, using the same two-level
+ * distributeEvenly spread grammar/vocab already use (roadmap-generator.ts's
+ * new deriveDailySkillTasks). Falls back to the week's own hand-authored
+ * topic when that skill's pool doesn't cover a given day. The Thursday-pinned
+ * input-resource task and Friday's bureaucracy task are untouched — this only
+ * touches the 4 daily slots. Paired with SYLLABUS_VERSION v5, which greatly
+ * expanded the category:"skill" pool this reads from.
  */
-export const ROADMAP_VERSION = 5;
+export const ROADMAP_VERSION = 6;
 
 interface RegularWeek {
   theme: string;

@@ -1,4 +1,4 @@
-import type { CefrLevel, SyllabusCategory } from "@prisma/client";
+import type { CefrLevel, RoadmapSkill, SyllabusCategory } from "@prisma/client";
 import { DEFAULT_ROADMAP_DAYS, type DefaultRoadmapDay, type DefaultRoadmapTask } from "./roadmap-defaults.js";
 
 export interface SyllabusRowForGeneration {
@@ -9,6 +9,7 @@ export interface SyllabusRowForGeneration {
   title: string;
   description: string | null;
   completedAt: Date | null;
+  skill: RoadmapSkill | null;
 }
 
 /** Which CEFR level's regular weeks fall in which phase — matches the week
@@ -45,7 +46,7 @@ export function distributeEvenly<T>(items: T[], buckets: number): T[][] {
   return result;
 }
 
-function tasksFor(items: SyllabusRowForGeneration[], skill: "grammar" | "vocab", label: string): DefaultRoadmapTask[] {
+function tasksFor(items: SyllabusRowForGeneration[], skill: RoadmapSkill, label: string): DefaultRoadmapTask[] {
   return items.map((item) => ({
     type: skill === "vocab" ? "vocab" : "generic",
     skill,
@@ -126,18 +127,92 @@ export function deriveSyllabusTasks(syllabusRows: SyllabusRowForGeneration[]): M
   return byDayOffset;
 }
 
+/** The 4 always-present daily slots buildRegularWeek puts on every study day
+ * (reading/listening/speaking/writing), keyed by their exact title prefix —
+ * used both to pull the matching syllabus pool and to identify which
+ * hand-authored task in a day to override. Never matches the Thursday-pinned
+ * resource task or Friday's bureaucracy task, whose titles use different
+ * prefixes ("Deutschland Context: …", or the resource's own title). */
+const DAILY_SLOT: Record<"reading" | "listening" | "speaking" | "writing", { label: string; prefix: string }> = {
+  reading: { label: "Reading", prefix: "Reading: " },
+  listening: { label: "Listening", prefix: "Listening: " },
+  speaking: { label: "Speaking", prefix: "Speaking: " },
+  writing: { label: "Writing", prefix: "Writing: " },
+};
+const DAILY_SLOT_PREFIXES = Object.values(DAILY_SLOT).map((s) => s.prefix);
+
 /**
- * Merges the hand-authored roadmap skeleton with syllabus-derived grammar/vocab
- * for each study day of a specific user's live syllabus rows. Generated
+ * Mirrors deriveSyllabusTasks's two-level distributeEvenly split (items →
+ * weeks → days), but scoped to category:"skill" syllabus items, bucketed by
+ * their `skill` field, for the 4 always-present daily slots. Where a day has
+ * a pool item for that skill, it's meant to OVERRIDE (not add to) that day's
+ * hand-authored "Reading: {theme}" / etc. task — done by buildUserRoadmapPlan
+ * below via the DAILY_SLOT_PREFIXES match. Where the pool has nothing for a
+ * given day, the hand-authored week topic stands unchanged (no override
+ * entry is set for that day/skill) — pools are still smaller than every
+ * study day in a phase, so this fallback is the common case for any one day,
+ * not an edge case.
+ */
+export function deriveDailySkillTasks(syllabusRows: SyllabusRowForGeneration[]): Map<number, DefaultRoadmapTask[]> {
+  const byDayOffset = new Map<number, DefaultRoadmapTask[]>();
+
+  for (const phase of PHASE_LEVELS) {
+    const weeksInPhase = phase.weekEnd - phase.weekStart + 1;
+    const levelItems = syllabusRows
+      .filter((r) => r.level === phase.level && r.category === "skill")
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
+    for (const skillKey of Object.keys(DAILY_SLOT) as (keyof typeof DAILY_SLOT)[]) {
+      const pool = levelItems.filter((r) => r.skill === skillKey);
+      const byWeek = distributeEvenly(pool, weeksInPhase);
+
+      for (let w = 0; w < weeksInPhase; w++) {
+        const weekNumber = phase.weekStart + w;
+        const base = (weekNumber - 1) * 7;
+        const byDay = distributeEvenly(byWeek[w] ?? [], STUDY_DAYS);
+
+        for (let d = 0; d < STUDY_DAYS; d++) {
+          const items = byDay[d] ?? [];
+          if (items.length === 0) continue;
+          const existing = byDayOffset.get(base + d) ?? [];
+          byDayOffset.set(base + d, [...existing, ...tasksFor(items, skillKey, DAILY_SLOT[skillKey].label)]);
+        }
+      }
+    }
+  }
+
+  return byDayOffset;
+}
+
+/**
+ * Merges the hand-authored roadmap skeleton with syllabus-derived content for
+ * each study day of a specific user's live syllabus rows. Generated
  * grammar/vocab are prepended so each day reads grammar → vocab → reading →
- * listening → speaking → writing. This — not DEFAULT_ROADMAP_DAYS directly — is
- * what activation/reseed in routes/roadmap.ts materializes.
+ * listening → speaking → writing. The 4 daily reading/listening/speaking/
+ * writing slots are then substituted (not added to) wherever the live
+ * syllabus has a distinct topic for that day, via deriveDailySkillTasks —
+ * matched by skill + the exact DAILY_SLOT_PREFIXES title prefix, so the
+ * Thursday-pinned resource task and Friday's bureaucracy task are never
+ * touched. This — not DEFAULT_ROADMAP_DAYS directly — is what
+ * activation/reseed in routes/roadmap.ts materializes.
  */
 export function buildUserRoadmapPlan(syllabusRows: SyllabusRowForGeneration[]): DefaultRoadmapDay[] {
   const generated = deriveSyllabusTasks(syllabusRows);
+  const dailySkill = deriveDailySkillTasks(syllabusRows);
+
   return DEFAULT_ROADMAP_DAYS.map((day) => {
+    const overrides = dailySkill.get(day.dayOffset) ?? [];
+    const tasks = overrides.length
+      ? day.tasks.map((t) => {
+          const match = overrides.find(
+            (o) => o.skill === t.skill && DAILY_SLOT_PREFIXES.some((p) => t.title.startsWith(p)),
+          );
+          return match ?? t;
+        })
+      : day.tasks;
+
     const extra = generated.get(day.dayOffset);
-    if (!extra) return day;
-    return { ...day, tasks: [...extra, ...day.tasks] };
+    if (!extra) return { ...day, tasks };
+    return { ...day, tasks: [...extra, ...tasks] };
   });
 }

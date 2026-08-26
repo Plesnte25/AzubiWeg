@@ -16,7 +16,9 @@ import type {
   Grade,
   CefrLevel,
   MovedTask,
+  Note,
   NotebookLinkResult,
+  NotesFeedResponse,
   PlaylistFetchOutcome,
   Portal,
   ProgressPeriod,
@@ -359,6 +361,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify(startDate ? { startDate } : {}),
     }),
+  resetRoadmap: () => request<{ reset: boolean }>("/api/learning/roadmap/reset", { method: "POST" }),
   roadmapToday: () => request<RoadmapTodayResponse>("/api/learning/roadmap/today"),
   roadmapBacklog: () => request<RoadmapBacklogResponse>("/api/learning/roadmap/backlog"),
   roadmapDay: (date: string) => request<{ day: RoadmapDayDetail }>(`/api/learning/roadmap/day/${date}`),
@@ -398,6 +401,27 @@ export const api = {
     request<{ moved: MovedTask[]; overDays: number }>("/api/learning/roadmap/backlog/spread", { method: "POST" }),
   roadmapJournal: (skill: RoadmapSkill) =>
     request<{ tasks: RoadmapJournalTask[] }>(`/api/learning/roadmap/journal/${skill}`),
+
+  notesFeed: (q?: string) => request<NotesFeedResponse>(`/api/notes${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+  taskNotes: (roadmapTaskId: string) => request<{ notes: Note[] }>(`/api/notes?roadmapTaskId=${roadmapTaskId}`),
+  createNote: (data: {
+    title?: string | null;
+    body?: string | null;
+    skill?: RoadmapSkill | null;
+    syllabusItemId?: string | null;
+    roadmapTaskId?: string | null;
+  }) => request<{ note: Note }>("/api/notes", { method: "POST", body: JSON.stringify(data) }),
+  updateNote: (
+    id: string,
+    data: Partial<{
+      title: string | null;
+      body: string | null;
+      skill: RoadmapSkill | null;
+      syllabusItemId: string | null;
+      roadmapTaskId: string | null;
+    }>,
+  ) => request<{ note: Note }>(`/api/notes/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteNote: (id: string) => request<void>(`/api/notes/${id}`, { method: "DELETE" }),
   roadmapWeeklyReview: (date?: string) =>
     request<RoadmapWeeklyReview>(`/api/learning/roadmap/review/week${date ? `?date=${date}` : ""}`),
   roadmapMonthlyReview: (month: string) =>
@@ -439,6 +463,7 @@ export async function uploadFile(
     syllabusItemId?: string;
     studySourceId?: string;
     roadmapTaskId?: string;
+    noteId?: string;
   },
 ): Promise<UploadedFileMeta> {
   const token = getToken();
@@ -449,6 +474,7 @@ export async function uploadFile(
   if (opts.syllabusItemId) form.append("syllabusItemId", opts.syllabusItemId);
   if (opts.studySourceId) form.append("studySourceId", opts.studySourceId);
   if (opts.roadmapTaskId) form.append("roadmapTaskId", opts.roadmapTaskId);
+  if (opts.noteId) form.append("noteId", opts.noteId);
   const res = await fetch("/api/files", {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},

@@ -39,6 +39,7 @@ export function LearningRail({ destination, onNavigate }: { destination: Destina
     roadmap: lateCount > 0 ? { text: `${lateCount} late`, tone: "warn" } : null,
     syllabus: syllabus ? { text: `${syllabusPercent}%`, tone: "muted" } : null,
     sources: activeSourceCount > 0 ? { text: String(activeSourceCount), tone: "muted" } : null,
+    notes: null,
     test: null,
     progress: null,
   };

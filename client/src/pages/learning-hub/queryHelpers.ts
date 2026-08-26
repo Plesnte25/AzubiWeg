@@ -8,4 +8,5 @@ export function invalidateHub(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: ["learning"] });
   queryClient.invalidateQueries({ queryKey: ["dashboard"] });
   queryClient.invalidateQueries({ queryKey: ["words"] });
+  queryClient.invalidateQueries({ queryKey: ["notes"] });
 }

@@ -120,6 +120,7 @@ export interface UploadedFileMeta {
   syllabusItemId: string | null;
   studySourceId: string | null;
   roadmapTaskId: string | null;
+  noteId: string | null;
   kind: "document" | "cv_photo" | "audio_recording";
   originalName: string;
   mimeType: string;
@@ -366,11 +367,50 @@ export interface RoadmapTask {
   files: UploadedFileMeta[];
   // set when this task's content is derived from a syllabus topic — the
   // same fact as that SyllabusItem's completion, kept in sync
-  syllabusItem: { level: CefrLevel; theme: string | null } | null;
+  syllabusItem: { level: CefrLevel; theme: string | null; description: string | null } | null;
 }
 
 export interface RoadmapJournalTask extends RoadmapTask {
   day: { date: string; theme: string | null };
+}
+
+// ── Notes tab ──
+
+export interface Note {
+  id: string;
+  title: string | null;
+  body: string | null;
+  skill: RoadmapSkill | null;
+  syllabusItemId: string | null;
+  roadmapTaskId: string | null;
+  files: UploadedFileMeta[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** SyllabusItem's Grammar Notebook (examples/exceptions/commonMistakes),
+ * merged into one `body` string server-side — see notes.ts's
+ * mergedNotebookBody(). */
+export interface SurfacedNotebookEntry {
+  id: string;
+  level: CefrLevel;
+  theme: string | null;
+  title: string;
+  skill: RoadmapSkill | null;
+  body: string;
+  files: UploadedFileMeta[];
+}
+
+export interface SurfacedUnitNote extends StudySourceUnit {
+  sourceId: string;
+  sourceTitle: string;
+}
+
+export interface NotesFeedResponse {
+  notes: Note[];
+  taskJournals: RoadmapJournalTask[];
+  grammarNotebook: SurfacedNotebookEntry[];
+  sourceNotes: SurfacedUnitNote[];
 }
 
 export interface RoadmapStatus {

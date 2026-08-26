@@ -1,4 +1,4 @@
-export type Destination = "today" | "roadmap" | "syllabus" | "sources" | "test" | "progress";
+export type Destination = "today" | "roadmap" | "syllabus" | "sources" | "notes" | "test" | "progress";
 
 export interface DestinationRow {
   key: Destination;
@@ -18,6 +18,7 @@ export const GROUPS: { label: string; rows: DestinationRow[] }[] = [
     rows: [
       { key: "syllabus", label: "Syllabus" },
       { key: "sources", label: "Sources" },
+      { key: "notes", label: "Notes" },
     ],
   },
   {

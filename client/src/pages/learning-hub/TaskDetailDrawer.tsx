@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Clock, Plus, X } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Clock, X } from "lucide-react";
 import { api } from "../../api/client";
 import type { RoadmapTask, RoadmapTaskType } from "../../api/types";
 import { Attachments } from "../../components/Attachments";
 import AudioRecorder from "../../components/AudioRecorder";
+import { NoteComposer } from "../../components/notes/NoteComposer";
+import { NoteEditor } from "../../components/notes/NoteEditor";
 import { Button } from "../../components/ui/Button";
 import { CircleIconButton } from "../../components/ui/CircleIconButton";
 import { DurationPicker } from "../../components/ui/DurationPicker";
@@ -31,14 +33,36 @@ const SKILL_LABEL: Record<string, string> = {
 
 const FOCUSABLE = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
 
+/** This task's own Notes — proper `Note` rows linked via roadmapTaskId
+ * (inheriting the task's skill), not the old single journalEntry field.
+ * Browsable later in the Notes tab under "My notes", filterable by skill. */
+function TaskNotesSection({ task, onChanged }: { task: RoadmapTask; onChanged: () => void }) {
+  const { data, isLoading } = useQuery({ queryKey: ["notes", "task", task.id], queryFn: () => api.taskNotes(task.id) });
+  const notes = data?.notes ?? [];
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-ink-400">Notes{notes.length > 0 ? ` (${notes.length})` : ""}</p>
+      {!isLoading && notes.length > 0 && (
+        <div className="mt-1.5 space-y-2">
+          {notes.map((note) => (
+            <NoteEditor key={note.id} note={note} onChanged={onChanged} />
+          ))}
+        </div>
+      )}
+      <div className="mt-2">
+        <NoteComposer roadmapTaskId={task.id} skill={task.skill} onCreated={onChanged} />
+      </div>
+    </div>
+  );
+}
+
 /** The fields shared by both chrome variants below — description, syllabus
- * breadcrumb, CTA, notes, minutes, audio recorder, attachments, done button.
+ * breadcrumb, CTA, minutes, audio recorder, attachments, notes, done button.
  * Only the header (checkbox/title/skill-badge/close button) and outer shell
  * differ between the slide-over (lg) and the centered card (below lg). */
 function TaskDetailBody({
   task,
-  journalDraft,
-  setJournalDraft,
   minutesDraft,
   setMinutesDraft,
   update,
@@ -49,8 +73,6 @@ function TaskDetailBody({
   onDone,
 }: {
   task: RoadmapTask;
-  journalDraft: string;
-  setJournalDraft: (v: string) => void;
   minutesDraft: string;
   setMinutesDraft: (v: string) => void;
   update: ReturnType<typeof useMutation<unknown, Error, Parameters<typeof api.updateRoadmapTask>[1]>>;
@@ -66,10 +88,13 @@ function TaskDetailBody({
     <div className="space-y-4">
       {task.description && <p className="text-sm text-ink-600">{task.description}</p>}
       {task.syllabusItem && (
-        <p className="text-xs text-ink-400">
-          From syllabus: {task.syllabusItem.level.toUpperCase()}
-          {task.syllabusItem.theme ? ` › ${task.syllabusItem.theme}` : ""}
-        </p>
+        <div>
+          <p className="text-xs text-ink-400">
+            From syllabus: {task.syllabusItem.level.toUpperCase()}
+            {task.syllabusItem.theme ? ` › ${task.syllabusItem.theme}` : ""}
+          </p>
+          {task.syllabusItem.description && <p className="mt-1 text-sm text-ink-600">{task.syllabusItem.description}</p>}
+        </div>
       )}
 
       {cta && !done && (
@@ -78,56 +103,36 @@ function TaskDetailBody({
         </button>
       )}
 
-      <div className="rounded-[10px] bg-paper p-2.5">
-        <textarea
-          className="w-full resize-none border-0 bg-transparent text-sm outline-none"
-          rows={3}
-          placeholder="Notes, reflections, self-rating…"
-          value={journalDraft}
-          onChange={(e) => setJournalDraft(e.target.value)}
-          onBlur={() => {
-            if (journalDraft !== (task.journalEntry ?? "")) update.mutate({ journalEntry: journalDraft || null });
+      <div className="flex items-center gap-1.5 rounded-[10px] bg-paper p-2.5">
+        {showMinutes && (
+          <DurationPicker
+            value={minutesDraft === "" ? 0 : Number(minutesDraft)}
+            onChange={(n) => setMinutesDraft(String(n))}
+            max={180}
+          />
+        )}
+        <CircleIconButton
+          icon={<Clock className="size-3.5" aria-hidden="true" />}
+          title="Log minutes spent"
+          active={showMinutes}
+          onClick={() => {
+            setShowMinutes((wasOpen) => {
+              if (wasOpen) {
+                const n = minutesDraft === "" ? null : Number(minutesDraft);
+                if (n !== task.minutesSpent) update.mutate({ minutesSpent: n });
+              }
+              return !wasOpen;
+            });
           }}
         />
-        {showMinutes && (
-          <div className="mt-2 flex justify-center border-t border-hairline pt-3">
-            <DurationPicker
-              value={minutesDraft === "" ? 0 : Number(minutesDraft)}
-              onChange={(n) => setMinutesDraft(String(n))}
-              max={180}
-            />
-          </div>
-        )}
-        <div className="mt-1.5 flex items-center gap-1.5">
-          <Attachments
-            files={task.files}
-            parent={{ roadmapTaskId: task.id }}
-            onChanged={invalidate}
-            renderTrigger={({ onClick, uploading }) => (
-              <CircleIconButton icon={<Plus className="size-3.5" aria-hidden="true" />} title="Attach a file" onClick={onClick} disabled={uploading} />
-            )}
-          />
-          <CircleIconButton
-            icon={<Clock className="size-3.5" aria-hidden="true" />}
-            title="Log minutes spent"
-            active={showMinutes}
-            onClick={() => {
-              setShowMinutes((wasOpen) => {
-                if (wasOpen) {
-                  const n = minutesDraft === "" ? null : Number(minutesDraft);
-                  if (n !== task.minutesSpent) update.mutate({ minutesSpent: n });
-                }
-                return !wasOpen;
-              });
-            }}
-          />
-          {!showMinutes && task.minutesSpent !== null && (
-            <span className="text-xs font-medium text-ink-600">{task.minutesSpent} min</span>
-          )}
-        </div>
+        {!showMinutes && task.minutesSpent !== null && <span className="text-xs font-medium text-ink-600">{task.minutesSpent} min</span>}
       </div>
 
+      {task.files.length > 0 && <Attachments files={task.files} parent={{ roadmapTaskId: task.id }} onChanged={invalidate} renderTrigger={() => null} />}
+
       {task.skill === "speaking" && <AudioRecorder roadmapTaskId={task.id} onUploaded={invalidate} />}
+
+      <TaskNotesSection task={task} onChanged={invalidate} />
 
       <Button variant="outline" className="w-full" onClick={onDone}>
         Done
@@ -156,7 +161,6 @@ export function TaskDetailDrawer({
   const queryClient = useQueryClient();
   const drawerRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-  const [journalDraft, setJournalDraft] = useState(task.journalEntry ?? "");
   const [minutesDraft, setMinutesDraft] = useState(task.minutesSpent?.toString() ?? "");
   const [visible, setVisible] = useState(false);
 
@@ -209,13 +213,15 @@ export function TaskDetailDrawer({
   });
 
   const done = task.completedAt !== null;
-  const cta = TYPE_CTA[task.type];
+  // most task types get no CTA at all beyond a description/syllabus
+  // breadcrumb; a syllabus-linked "generic" task (e.g. the daily reading/
+  // listening/speaking/writing slots) still has somewhere concrete to learn
+  // more, even without a dedicated task type of its own
+  const cta = TYPE_CTA[task.type] ?? (task.type === "generic" && task.syllabusItem ? { label: "View in Syllabus →", to: "syllabus" as Destination } : undefined);
 
   const body = (
     <TaskDetailBody
       task={task}
-      journalDraft={journalDraft}
-      setJournalDraft={setJournalDraft}
       minutesDraft={minutesDraft}
       setMinutesDraft={setMinutesDraft}
       update={update}

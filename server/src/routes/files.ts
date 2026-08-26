@@ -30,6 +30,7 @@ const uploadSchema = z.object({
   syllabusItemId: z.string().optional(),
   studySourceId: z.string().optional(),
   roadmapTaskId: z.string().optional(),
+  noteId: z.string().optional(),
 });
 
 // translate multer's size-limit error into a 400 instead of the global 500
@@ -47,7 +48,7 @@ const uploadSingle: express.RequestHandler = (req, res, next) => {
 filesRouter.post("/", uploadSingle, async (req, res) => {
   const parsed = uploadSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
-  const { kind, checklistItemId, syllabusItemId, studySourceId, roadmapTaskId } = parsed.data;
+  const { kind, checklistItemId, syllabusItemId, studySourceId, roadmapTaskId, noteId } = parsed.data;
 
   if (!req.file) return res.status(400).json({ error: "No file provided (field name: file)" });
   if (kind === "cv_photo" && !IMAGE_TYPES.has(req.file.mimetype)) {
@@ -61,7 +62,7 @@ filesRouter.post("/", uploadSingle, async (req, res) => {
     return res.status(400).json({ error: "Only PDF, JPEG, PNG, WebP, TXT, or audio (WebM/OGG/MP4) files are allowed" });
   }
 
-  const parents = [checklistItemId, syllabusItemId, studySourceId, roadmapTaskId].filter(Boolean);
+  const parents = [checklistItemId, syllabusItemId, studySourceId, roadmapTaskId, noteId].filter(Boolean);
   if (parents.length > 1) {
     return res.status(400).json({ error: "A file can attach to only one item" });
   }
@@ -89,6 +90,10 @@ filesRouter.post("/", uploadSingle, async (req, res) => {
     });
     if (!task) return res.status(404).json({ error: "Roadmap task not found" });
   }
+  if (noteId) {
+    const note = await prisma.note.findFirst({ where: { id: noteId, userId: req.userId } });
+    if (!note) return res.status(404).json({ error: "Note not found" });
+  }
 
   const dir = uploadsDir(req.userId);
   await mkdir(dir, { recursive: true });
@@ -101,6 +106,7 @@ filesRouter.post("/", uploadSingle, async (req, res) => {
       syllabusItemId: syllabusItemId ?? null,
       studySourceId: studySourceId ?? null,
       roadmapTaskId: roadmapTaskId ?? null,
+      noteId: noteId ?? null,
       kind,
       originalName: req.file.originalname,
       storedName,
