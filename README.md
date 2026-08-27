@@ -149,10 +149,16 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full ecosystem plan and feature s
   removed in favor of the plain activity/streak tracking above.)
 - **Now** (reprioritized 2026-08-05, cutting across strict version order —
   see [docs/ROADMAP.md](docs/ROADMAP.md#phasing) for the full breakdown):
-  app-wide bug-fixing pass (**top priority**), vocab PDF export + CLI (the
-  last of V1's scope), dashboard upgrades (certificates, GitHub activity,
-  pulled forward from V4), and the rest of V5 (GitHub Actions CI, calendar
-  integration, grammar micro-lessons). Worked interleaved, no strict order.
+  app-wide bug-fixing pass (**top priority** — first tranche landed
+  2026-08-27: a unified type/elevation/motion design system across every
+  page; kanban keyboard accessibility, missing ARIA labels, and a chart
+  accessibility gap fixed; Dashboard's sm/md task list no longer clips; a
+  first fix attempt for the long-standing vocabulary touch-scroll issue; and
+  consistent "Show more" pagination for Vocabulary, Checklist, and the Job
+  Search kanban), vocab PDF export + CLI (the last of V1's scope), dashboard
+  upgrades (certificates, GitHub activity, pulled forward from V4), and the
+  rest of V5 (GitHub Actions CI, calendar integration, grammar
+  micro-lessons). Worked interleaved, no strict order.
 - **Long run, unscheduled** — deliberately deferred, not dropped: the rest of
   V4 (Ausbildung opportunity discovery, cover letter assistant, Europass CV
   template, ATS checks), the **salary & cost planner**, the **Germany

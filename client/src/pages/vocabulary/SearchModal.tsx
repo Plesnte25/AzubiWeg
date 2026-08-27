@@ -45,6 +45,7 @@ export default function SearchModal({ words, onClose }: SearchModalProps) {
             autoFocus
             className="min-w-0 flex-1 rounded-md border border-hairline bg-paper px-3 py-2 text-body outline-none focus:border-brand-400"
             placeholder="Search words or meanings…"
+            aria-label="Search words or meanings"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />

@@ -13,7 +13,9 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
   interactive?: boolean;
 }
 
-const paddingClasses = { none: "", sm: "p-3", md: "p-4", lg: "p-6" };
+// tighter on phones, expands at md: — kept one step per level so the visual
+// rhythm between sm/md/lg padding levels stays the same at every breakpoint.
+const paddingClasses = { none: "", sm: "p-2.5 md:p-3", md: "p-3 md:p-4", lg: "p-4 md:p-6" };
 const levelClasses: Record<1 | 2 | 3, string> = {
   1: "border border-hairline",
   2: "shadow-md",

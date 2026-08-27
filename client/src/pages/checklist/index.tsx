@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckSquare, Plus, Search } from "lucide-react";
 import { api } from "../../api/client";
@@ -13,6 +13,10 @@ import { CATEGORY_LABEL } from "./shared";
 import UpNextPanel from "./UpNextPanel";
 
 const FALLBACK_CATEGORY: ChecklistCategory = "other";
+// Rendered, not fetched — UpNextPanel/CategoryGrid need the full set for
+// accurate cross-category counts and deadline surfacing, so this caps DOM
+// rows in the "all items" list only, not the network payload.
+const PAGE_SIZE = 40;
 
 export default function Checklist() {
   const queryClient = useQueryClient();
@@ -20,6 +24,11 @@ export default function Checklist() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<ChecklistCategory | null>(null);
   const [adding, setAdding] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [search, activeCategory]);
 
   const toggleDone = useMutation({
     mutationFn: (item: ChecklistItem) =>
@@ -105,11 +114,22 @@ export default function Checklist() {
         {visible.length === 0 ? (
           <EmptyState icon={CheckSquare} title="No matching items" description="Try a different search or category." />
         ) : (
-          <div className="rounded-lg border border-hairline bg-card">
-            {visible.map((item, i) => (
-              <ItemRow key={item.id} item={item} first={i === 0} />
-            ))}
-          </div>
+          <>
+            <div className="rounded-lg border border-hairline bg-card">
+              {visible.slice(0, visibleCount).map((item, i) => (
+                <ItemRow key={item.id} item={item} first={i === 0} />
+              ))}
+            </div>
+            {visible.length > visibleCount && (
+              <Button
+                variant="outline"
+                className="mt-2 w-full"
+                onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+              >
+                Show more ({visible.length - visibleCount} remaining)
+              </Button>
+            )}
+          </>
         )}
 
         {activeCategory && (

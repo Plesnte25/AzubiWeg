@@ -58,9 +58,9 @@ export default function Settings() {
       <Card padding="lg">
         <h1 className="text-title font-semibold">Obsidian vault</h1>
         <p className="mt-1 text-body text-ink-600">
-          Link your Obsidian vocab vault and the app keeps <code>Vocab/master.md</code> in two-way
+          Link your Obsidian vocab vault and the app keeps <code className="break-all">Vocab/master.md</code> in two-way
           sync: words you add here (and reviews you do here) appear in Obsidian, and vice versa —
-          including words captured on your phone via <code>inbox.md</code>.
+          including words captured on your phone via <code className="break-all">inbox.md</code>.
         </p>
 
         {status?.vaultPath ? (
@@ -70,7 +70,7 @@ export default function Settings() {
                 <span
                   className={`inline-block h-2 w-2 rounded-full ${status.watching ? "bg-ok-600" : "bg-danger-600"}`}
                 />
-                <code className="text-caption">{status.vaultPath}</code>
+                <code className="break-all text-caption">{status.vaultPath}</code>
               </div>
               <p className="mt-1 text-caption text-ink-400">
                 {status.wordCount} words · {status.watching ? "watching for changes" : "watcher stopped"}
@@ -105,6 +105,7 @@ export default function Settings() {
             <Input
               className="min-w-64 flex-1"
               placeholder="/home/you/Documents/Ausbildung 27/German"
+              aria-label="Obsidian vault path"
               value={path}
               onChange={(e) => setPath(e.target.value)}
               required
@@ -190,11 +191,11 @@ export default function Settings() {
         <h2 className="font-medium text-ink-900">How the sync works</h2>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
-            Your vault's <code>master.md</code> stays the source of truth — the app reads and writes the same
-            flashcard format as the Obsidian Spaced Repetition plugin and <code>add_word.py</code>.
+            Your vault's <code className="break-all">master.md</code> stays the source of truth — the app reads and writes the same
+            flashcard format as the Obsidian Spaced Repetition plugin and <code className="break-all">add_word.py</code>.
           </li>
           <li>Reviews done here write the same schedule comments the plugin uses, so both stay in step.</li>
-          <li>A one-time backup of <code>master.md</code> is stored in the app's data folder when you first link.</li>
+          <li>A one-time backup of <code className="break-all">master.md</code> is stored in the app's data folder when you first link.</li>
         </ul>
       </Card>
     </div>

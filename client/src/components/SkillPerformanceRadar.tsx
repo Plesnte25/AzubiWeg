@@ -87,8 +87,10 @@ export default function SkillPerformanceRadar({ data }: { data: SkillPerformance
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(values), resolved]);
 
+  const summary = DISPLAY_SKILLS.map((s, i) => `${DISPLAY_SKILL_LABELS[s]}: ${values[i]}%`).join(", ");
+
   return (
-    <div className="h-full w-full">
+    <div className="h-full w-full" role="img" aria-label={`Skill performance: ${summary}`}>
       <Radar data={chartData} options={options} />
     </div>
   );

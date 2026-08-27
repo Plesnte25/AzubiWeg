@@ -262,7 +262,7 @@ export default function Dashboard() {
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-8 w-32 rounded-full" />
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-4 gap-2 md:grid-cols-5 md:gap-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <SkeletonCard key={i} />
           ))}
@@ -417,7 +417,7 @@ export default function Dashboard() {
           accordion / radar+chart Analytics grid / Schedule column, which
           don't fit below lg — see the hidden lg:grid block further down. */}
       <div className="flex min-h-0 flex-col gap-3 md:flex-1 md:justify-evenly lg:hidden">
-        <Card padding="sm" className="flex flex-col">
+        <Card padding="sm" className="flex flex-col md:min-h-0 md:flex-1">
           <Link to="/learning?view=today" className="mb-2 flex shrink-0 items-center gap-1.5 text-body font-medium text-ink-600 hover:text-brand-600">
             <img src={clipboardIcon} alt="" width={16} height={16} className="size-4" />
             Today's tasks
@@ -427,7 +427,7 @@ export default function Dashboard() {
           ) : noTasksAtAll ? (
             <p className="text-body text-ink-600">Nothing on your plate right now — enjoy the breather.</p>
           ) : (
-            <div className="max-h-64 space-y-2 overflow-y-auto">
+            <div className="max-h-64 min-h-0 flex-1 space-y-2 overflow-y-auto md:max-h-none">
               {[
                 ...(data.dueToday > 0 ? [<StartRevisionCta key="due" dueToday={data.dueToday} />] : []),
                 ...(todayFull?.tasks.map((t) => <SkillTaskRow key={t.id} task={t} onOpen={setOpenTask} />) ?? []),

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Briefcase } from "lucide-react";
 import { api } from "../../api/client";
@@ -10,6 +10,8 @@ import { Skeleton } from "../../components/ui/Skeleton";
 import { COLUMNS, STAGE_BORDER, STAGE_COLOR } from "./stages";
 
 const PILL_ITEMS = COLUMNS.map((c) => ({ key: c.key, label: c.label, color: STAGE_COLOR[c.key] }));
+// Rendered, not fetched — same reasoning as Board.tsx's per-column cap.
+const PAGE_SIZE = 20;
 
 function BoardMobileSkeleton() {
   return (
@@ -31,6 +33,11 @@ function BoardMobileSkeleton() {
 export default function BoardMobile({ onOpen }: { onOpen: (id: string) => void }) {
   const { data, isLoading } = useQuery({ queryKey: ["applications"], queryFn: api.applications });
   const [stage, setStage] = useState<ApplicationStatus>("wishlist");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [stage]);
 
   if (isLoading) return <BoardMobileSkeleton />;
   const applications = data?.applications ?? [];
@@ -42,7 +49,9 @@ export default function BoardMobile({ onOpen }: { onOpen: (id: string) => void }
     rejected: 0,
   };
   for (const a of applications) counts[a.status]++;
-  const items = applications.filter((a) => a.status === stage);
+  const allItems = applications.filter((a) => a.status === stage);
+  const items = allItems.slice(0, visibleCount);
+  const remaining = allItems.length - items.length;
   const activeIndex = COLUMNS.findIndex((c) => c.key === stage);
 
   return (
@@ -79,6 +88,15 @@ export default function BoardMobile({ onOpen }: { onOpen: (id: string) => void }
           ))
         )}
       </div>
+      {remaining > 0 && (
+        <button
+          type="button"
+          onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+          className="mt-2.5 w-full rounded-md border border-dashed border-hairline py-2 text-center text-caption text-ink-400 hover:border-brand-400 hover:text-brand-700"
+        >
+          Show more ({remaining})
+        </button>
+      )}
     </div>
   );
 }

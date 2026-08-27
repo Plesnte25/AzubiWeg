@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   DndContext,
   DragOverlay,
+  KeyboardSensor,
   PointerSensor,
   useDroppable,
   useSensor,
@@ -9,7 +10,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Briefcase } from "lucide-react";
@@ -19,6 +20,12 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { cn } from "../../lib/cn";
 import { COLUMNS, STAGE_BORDER } from "./stages";
+
+// Rendered, not fetched — drag-and-drop reordering needs the true full
+// column to recompute sortOrder correctly, so this caps DOM cards per
+// column, not the network payload. Reorder/keyboard-move only operates on
+// currently-visible cards in a column; "Show more" reveals the rest.
+const PAGE_SIZE = 20;
 
 function BoardSkeleton() {
   return (
@@ -40,10 +47,12 @@ export default function Board({ onOpen }: { onOpen: (id: string) => void }) {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["applications"], queryFn: api.applications });
   const [dragged, setDragged] = useState<Application | null>(null);
+  const [visibleCounts, setVisibleCounts] = useState<Partial<Record<ApplicationStatus, number>>>({});
 
   const sensors = useSensors(
     // distance keeps plain clicks (open detail) from starting a drag
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   const move = useMutation({
@@ -115,6 +124,8 @@ export default function Board({ onOpen }: { onOpen: (id: string) => void }) {
             key={col.key}
             column={col}
             items={applications.filter((a) => a.status === col.key)}
+            visibleCount={visibleCounts[col.key] ?? PAGE_SIZE}
+            onShowMore={() => setVisibleCounts((v) => ({ ...v, [col.key]: (v[col.key] ?? PAGE_SIZE) + PAGE_SIZE }))}
             onOpen={onOpen}
           />
         ))}
@@ -127,19 +138,25 @@ export default function Board({ onOpen }: { onOpen: (id: string) => void }) {
 function Column({
   column,
   items,
+  visibleCount,
+  onShowMore,
   onOpen,
 }: {
   column: (typeof COLUMNS)[number];
   items: Application[];
+  visibleCount: number;
+  onShowMore: () => void;
   onOpen: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.key });
+  const visible = items.slice(0, visibleCount);
+  const remaining = items.length - visible.length;
   return (
     <div className={cn("min-w-0 flex-1", column.key === "rejected" && "opacity-65")}>
       <p className={cn("mb-1.5 flex items-baseline gap-1.5 text-micro font-bold", column.colorClass)}>
         {column.label.toUpperCase()} <span className="font-normal text-ink-300">· {items.length}</span>
       </p>
-      <SortableContext items={items.map((a) => a.id)} strategy={verticalListSortingStrategy}>
+      <SortableContext items={visible.map((a) => a.id)} strategy={verticalListSortingStrategy}>
         <div
           ref={setNodeRef}
           className={cn(
@@ -150,10 +167,19 @@ function Column({
           {items.length === 0 ? (
             <EmptyState icon={Briefcase} title="Empty" className="border-0 bg-transparent p-3 shadow-none" />
           ) : (
-            items.map((app) => <SortableCard key={app.id} app={app} onOpen={onOpen} />)
+            visible.map((app) => <SortableCard key={app.id} app={app} onOpen={onOpen} />)
           )}
         </div>
       </SortableContext>
+      {remaining > 0 && (
+        <button
+          type="button"
+          onClick={onShowMore}
+          className="mt-1.5 w-full rounded-md border border-dashed border-hairline py-1.5 text-center text-micro text-ink-400 hover:border-brand-400 hover:text-brand-700"
+        >
+          Show more ({remaining})
+        </button>
+      )}
     </div>
   );
 }

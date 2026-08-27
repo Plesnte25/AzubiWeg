@@ -140,6 +140,96 @@ grid rows size to content, not equal shares, and silently starved one row
 of height when the grid was flattened from separate cards into one merged
 container.
 
+## Design system: type scale, elevation, shared primitives
+
+Introduced in the design-system pass (2026-08-27) — every page has been
+migrated onto this; don't reintroduce arbitrary `text-[Npx]`/`rounded-[Npx]`
+values or hand-rolled stat tiles/section headers/circular icon buttons.
+
+- **Type scale** — 8 steps in `index.css`'s `@theme` block, `--text-micro`
+  (11px) through `--text-display-lg` (44px), each with its own paired
+  line-height/letter-spacing. Use the Tailwind utilities they generate
+  (`text-micro`, `text-caption`, `text-body`, `text-body-lg`, `text-title`,
+  `text-heading`, `text-display`, `text-display-lg`) instead of `text-sm`/
+  `text-xs`/arbitrary px values. One `text-display`/`text-display-lg` per
+  screen (the single most important number), one `text-heading` (the page
+  title), `text-title` for section heads within a page.
+- **Radius scale** — `--radius-sm` (6px, chips/badges) through `--radius-xl`
+  (20px, top-level cards/panels), plus the unchanged `-md`/`-lg` steps.
+- **Elevation — pick one signal per surface, never both.** `Card`
+  (`client/src/components/ui/Card.tsx`) takes a `level?: 1 | 2 | 3` prop:
+  level 1 (default) is a top-level grouped container — border, no shadow;
+  level 2 is anything that lifts (hover states, the dragged kanban card, the
+  active accordion panel) — `shadow-md`, no border; level 3 is
+  modals/sheets/popovers/the FAB dock — `shadow-lg`, no border. `interactive`
+  gives a level-1 card a level-2 look on hover (2px lift via
+  `hover:-translate-y-0.5` — don't go further, it reads as a toy). `.bg-card`'s
+  own `box-shadow` and the `.surface-raised`/`.surface-overlay` helper
+  classes live in `@layer components` in `index.css`, not as unlayered rules
+  — Tailwind v4's own utilities (`shadow-md`, `shadow-none`, …) live in the
+  `utilities` layer, which always wins over a named layer like `components`,
+  but an *unlayered* rule always wins over every named layer including
+  utilities — so an unlayered `.bg-card { box-shadow: ... }` would silently
+  block any `shadow-*` utility applied alongside it. Keep new surface rules
+  inside `@layer components` for the same reason.
+- **`Card`'s `padding` prop is viewport-aware** (`none`/`sm`/`md`/`lg`, each
+  a touch tighter below `md:` and expanding at `md:` — see the
+  `paddingClasses` map) — pick the prop for the density you want rather than
+  overriding with a one-off `className` padding value.
+- **`Button`'s `shape` prop** (`"rect" | "circle"`) replaces the hand-rolled
+  `grid size-9 place-items-center rounded-full border ...` circular-icon-
+  button pattern that used to be repeated per-page — use `shape="circle"`
+  instead of rebuilding it.
+- **`.tabular`** (`font-variant-numeric: tabular-nums`) — apply to every
+  stat-tile value, score display (`12/20`), gauge/segmented-bar label, and
+  any other place a column of numbers needs to line up. Not for prose.
+- **`.eyebrow`** — small-caps-style label (11px, 600 weight, uppercase,
+  tracked) replacing every sub-11px label; pair with a `text-*` color
+  utility (usually `text-ink-400`) at the call site, since it doesn't set
+  its own color.
+- **Shared primitives** (`client/src/components/ui/` unless noted) — reach
+  for these instead of re-implementing the same pattern per page:
+  - `Stat` — value + label + optional icon/tone/delta, absorbs what used to
+    be three independent stat-tile implementations (Dashboard, TodayPage,
+    ProgressPage). Value gets `.tabular`, label gets `.eyebrow`.
+  - `SectionHeader` — page `<h1>` + optional subtitle + right-slot action,
+    one shared shape instead of five pages disagreeing on heading size.
+  - `Toast` (`toast.success/error/info(message)`) — module-level pub-sub,
+    not a Context provider, so it's callable from anywhere (a mutation's
+    `onError`) with no provider tree required. `<Toaster/>` is mounted once
+    in `main.tsx`; every data-mutating call should have an `onError` that
+    calls `toast.error(...)` — mutations used to fail silently.
+  - `Tooltip` — CSS-only hover/focus tooltip (150ms delay on hover, instant
+    on focus), replacing native `title=""` on icon-only buttons. Icon-only
+    buttons should still carry a real `aria-label` separately (in addition
+    to `title` if you want the mouse-hover-only browser tooltip too) —
+    screen readers don't reliably expose `title`.
+  - `Progress` — thin wrapper unifying `FillBar` (linear) and
+    `DonutProgress` (ring) behind one API; no new rendering logic.
+  - `Skeleton`/`SkeletonCard`/`SkeletonRow`/`SkeletonStat` — shaped loading
+    placeholders matching what's actually coming (a stat tile, a list row, a
+    card), not a generic shimmer block or a spinner-on-blank-page.
+  - `useAnimatedNumber` (`client/src/hooks/`) — rAF count-up, ease-out,
+    ~400ms, fires only when a value *changes*, never on mount (a count-up on
+    every page load is noise, not polish).
+- **Motion** — `--animate-enter` (staggered page-section entrance,
+  `animation-delay: calc(var(--i) * 45ms)` per top-level section, capped at
+  ~6 children) and `--animate-lift` (`Card`'s `interactive` hover). Both CSS
+  keyframes, no JS animation library — the `motion` package stays fully
+  removed (see Charts section above). `prefers-reduced-motion` already
+  neutralises all of it globally; verify that still holds after adding any
+  new animated token.
+- **Lists that can grow long — render-cap, not server pagination.**
+  Vocabulary's List view, Checklist's "All items" list, and the Job Search
+  kanban's columns (desktop `Board.tsx` per-column, mobile `BoardMobile.tsx`
+  per-stage) all fetch their full set unconditionally — other on-page UI
+  needs the full set for correctness (Vocabulary's facet counts, Checklist's
+  `CategoryGrid`/`UpNextPanel` cross-category counts, the kanban's drag-drop
+  reorder math) — and instead cap how many rows/cards are *rendered*, with a
+  "Show more" button revealing the next page. Don't reach for a paginated
+  API endpoint for a list like this without first checking whether something
+  else on the page depends on seeing the whole set.
+
 ## Other conventions
 
 - **`cn()` (`client/src/lib/cn.ts`) wraps `tailwind-merge`.** Conflicting

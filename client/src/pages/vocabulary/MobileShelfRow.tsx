@@ -30,7 +30,10 @@ export default function MobileShelfRow({ title, words, flippedWordId, onToggleFl
           {title} <span className="font-normal text-ink-400">{words.length}</span>
         </span>
       </div>
-      <div ref={rowRef} className="flex touch-pan-x gap-2.5 overflow-x-auto [scroll-behavior:auto] [scrollbar-width:none]">
+      <div
+        ref={rowRef}
+        className="flex touch-pan-x gap-2.5 overflow-x-auto [scroll-behavior:auto] [scrollbar-width:none] [overscroll-behavior-x:contain]"
+      >
         {words.map((w) => (
           <div
             key={w.id}

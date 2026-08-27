@@ -105,7 +105,7 @@ export function Modal({ title, onClose, size = "md", desktopOnly, sheetOnSm, chi
       >
         <div className="mb-4 flex items-start justify-between gap-4">
           <h2 className="text-title font-semibold">{title}</h2>
-          <button className="text-ink-400 hover:text-ink-900" onClick={onClose} title="Close">
+          <button className="text-ink-400 hover:text-ink-900" onClick={onClose} title="Close" aria-label="Close">
             <X className="size-5" aria-hidden="true" />
           </button>
         </div>
