@@ -15,7 +15,7 @@ export default function SegmentedSkillBar({ segments }: { segments: SkillBarSegm
   const withTasks = segments.filter((s) => s.total > 0);
 
   if (withTasks.length === 0) {
-    return <p className="text-sm text-ink-600">No roadmap tasks scheduled this week yet.</p>;
+    return <p className="text-body text-ink-600">No roadmap tasks scheduled this week yet.</p>;
   }
 
   return (
@@ -38,7 +38,7 @@ export default function SegmentedSkillBar({ segments }: { segments: SkillBarSegm
           );
         })}
       </div>
-      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-caption">
         {withTasks.map((s) => (
           <li key={s.skill} className="flex items-center gap-1.5">
             <span className="size-2 rounded-full" style={{ backgroundColor: s.color }} />

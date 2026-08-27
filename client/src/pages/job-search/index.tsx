@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { Button } from "../../components/ui/Button";
+import { Skeleton } from "../../components/ui/Skeleton";
 import ApplicationDetailModal from "./ApplicationDetailModal";
 import ApplicationDetailSheet from "./ApplicationDetailSheet";
 import Board from "./Board";
@@ -27,39 +28,35 @@ export default function JobSearch() {
     <div className="mx-auto max-w-[1320px] px-4 py-4 sm:px-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-xl font-bold tracking-[-0.015em]">Job Search</h1>
-          <p className="text-[12.5px] text-ink-400">
-            {stats
-              ? `${stats.total} application${stats.total === 1 ? "" : "s"} across 5 stages · ${cvCount} CV${cvCount === 1 ? "" : "s"}`
-              : "Loading…"}
-          </p>
+          <h1 className="text-heading font-bold">Job Search</h1>
+          {stats ? (
+            <p className="animate-fade-in text-caption text-ink-400">
+              {stats.total} application{stats.total === 1 ? "" : "s"} across 5 stages · {cvCount} CV{cvCount === 1 ? "" : "s"}
+            </p>
+          ) : (
+            <Skeleton className="mt-1 h-3.5 w-64" />
+          )}
         </div>
         <div className="flex gap-2">
           {/* below lg, CV-adding lives next to the compact CV chip row
-              instead (CvShelfMobile) — no need for a second entry point.
-              Wrapped in a div rather than a className override: Button's
-              base classes always include `inline-flex` unconditionally, and
-              cn() is a plain string-join (not tailwind-merge, see
-              CLAUDE.md), so `hidden` wouldn't reliably win against it. */}
-          <div className="hidden lg:block">
-            <Button variant="outline" onClick={() => setAddingCv(true)}>
-              + New CV
-            </Button>
-          </div>
+              instead (CvShelfMobile) — no need for a second entry point. */}
+          <Button variant="outline" className="hidden lg:inline-flex" onClick={() => setAddingCv(true)}>
+            + New CV
+          </Button>
           <Button onClick={() => setAddingApplication(true)}>+ New application</Button>
         </div>
       </div>
 
       <div className="mb-3 grid gap-3 sm:grid-cols-2">
         <PortalsCard />
-        <div className="rounded-[14px] border border-hairline p-3">
-          <p className="mb-1 text-sm font-medium text-ink-600">Applications per week</p>
+        <div className="rounded-lg border border-hairline p-3">
+          <p className="mb-1 text-body font-medium text-ink-600">Applications per week</p>
           <TrendChart data={stats?.weeklyActivity ?? []} />
         </div>
       </div>
 
       {stats && (
-        <div className="mb-4 flex rounded-[14px] border border-hairline">
+        <div className="mb-4 flex rounded-lg border border-hairline">
           <StatCell label="Active" value={stats.active} />
           <StatCell
             label="Response rate"
@@ -105,8 +102,8 @@ export default function JobSearch() {
 function StatCell({ label, value, last = false }: { label: string; value: string | number; last?: boolean }) {
   return (
     <div className={`flex-1 px-3.5 py-2.5 ${last ? "" : "border-r border-hairline-soft"}`}>
-      <p className="text-lg font-bold">{value}</p>
-      <p className="mt-0.5 text-[10.5px] text-ink-300">{label}</p>
+      <p className="text-title font-bold">{value}</p>
+      <p className="mt-0.5 text-micro text-ink-300">{label}</p>
     </div>
   );
 }

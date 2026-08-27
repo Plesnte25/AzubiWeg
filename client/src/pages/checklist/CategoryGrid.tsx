@@ -42,8 +42,8 @@ export default function CategoryGrid({
               className="mx-auto hidden md:block lg:hidden"
             />
             <DonutProgress segments={segments} max={applicable.length} size={28} strokeWidth={3} className="mx-auto hidden lg:block" />
-            <p className="mt-1.5 truncate text-[10px] font-bold">{cat.label}</p>
-            <p className="text-[9.5px] text-ink-300">
+            <p className="mt-1.5 truncate text-micro font-bold">{cat.label}</p>
+            <p className="text-micro text-ink-300">
               {done}/{applicable.length}
             </p>
           </button>

@@ -19,7 +19,7 @@ export default function CvShelfMobile() {
 
   return (
     <div>
-      <p className="mb-1.5 flex items-baseline gap-2 text-[11px] font-bold text-ink-600">
+      <p className="mb-1.5 flex items-baseline gap-2 text-micro font-bold text-ink-600">
         MY CVs <span className="font-normal text-ink-300">{cvs.length}</span>
       </p>
       <div className="flex touch-pan-x gap-2 overflow-x-auto [scrollbar-width:none]">
@@ -32,8 +32,8 @@ export default function CvShelfMobile() {
             title={`Download ${cv.file.originalName}`}
             onClick={() => downloadFile(cv.file.id, cv.file.originalName)}
           >
-            <span className="block max-w-28 truncate text-[11px] font-semibold">{cv.title}</span>
-            <span className="block text-[9.5px] text-ink-400">{CATEGORY_LABELS[cv.category]}</span>
+            <span className="block max-w-28 truncate text-micro font-semibold">{cv.title}</span>
+            <span className="block text-micro text-ink-400">{CATEGORY_LABELS[cv.category]}</span>
           </button>
         ))}
         <button

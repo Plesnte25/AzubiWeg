@@ -84,7 +84,7 @@ export function DurationPicker({ value, onChange, max = 120 }: DurationPickerPro
           type="number"
           min={0}
           max={1440}
-          className="w-24 rounded-lg border border-hairline bg-card px-2 py-1.5 text-center text-lg font-semibold outline-none focus:border-brand-400"
+          className="w-24 rounded-lg border border-hairline bg-card px-2 py-1.5 text-center text-title font-semibold outline-none focus:border-brand-400"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={() => {
@@ -96,7 +96,7 @@ export function DurationPicker({ value, onChange, max = 120 }: DurationPickerPro
             if (e.key === "Enter") (e.target as HTMLInputElement).blur();
           }}
         />
-        <span className="text-xs text-ink-400">minutes</span>
+        <span className="text-caption text-ink-400">minutes</span>
       </div>
     );
   }
@@ -136,7 +136,7 @@ export function DurationPicker({ value, onChange, max = 120 }: DurationPickerPro
       </svg>
       <button
         type="button"
-        className="text-xs font-medium text-brand-600 hover:underline"
+        className="text-caption font-medium text-brand-600 hover:underline"
         onClick={() => {
           setDraft(String(value));
           setEditing(true);

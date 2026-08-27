@@ -13,14 +13,14 @@ export default function ReviewActions({ reviewCount, onOpenReview, onOpenAnalyti
   return (
     <div className="flex items-center gap-2.5">
       <button
-        className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 md:flex-none md:rounded-full md:px-[18px] md:py-2.5"
+        className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-4 py-3 text-body font-semibold text-white hover:bg-brand-700 md:flex-none md:rounded-full md:px-[18px] md:py-2.5"
         onClick={onOpenReview}
       >
         <span className="truncate">Start review ({reviewCount})</span>
         <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
       </button>
       <button
-        className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl border border-hairline bg-card px-4 py-3 text-sm font-medium text-ink-600 hover:border-brand-400 hover:text-ink-900 md:flex-none md:rounded-full md:px-[18px] md:py-2.5"
+        className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl border border-hairline bg-card px-4 py-3 text-body font-medium text-ink-600 hover:border-brand-400 hover:text-ink-900 md:flex-none md:rounded-full md:px-[18px] md:py-2.5"
         onClick={onOpenAnalytics}
       >
         <BarChart3 className="size-4 shrink-0" aria-hidden="true" />

@@ -42,7 +42,7 @@ function TaskNotesSection({ task, onChanged }: { task: RoadmapTask; onChanged: (
 
   return (
     <div>
-      <p className="text-xs font-semibold text-ink-400">Notes{notes.length > 0 ? ` (${notes.length})` : ""}</p>
+      <p className="text-caption font-semibold text-ink-400">Notes{notes.length > 0 ? ` (${notes.length})` : ""}</p>
       {!isLoading && notes.length > 0 && (
         <div className="mt-1.5 space-y-2">
           {notes.map((note) => (
@@ -86,24 +86,24 @@ function TaskDetailBody({
 
   return (
     <div className="space-y-4">
-      {task.description && <p className="text-sm text-ink-600">{task.description}</p>}
+      {task.description && <p className="text-body text-ink-600">{task.description}</p>}
       {task.syllabusItem && (
         <div>
-          <p className="text-xs text-ink-400">
+          <p className="text-caption text-ink-400">
             From syllabus: {task.syllabusItem.level.toUpperCase()}
             {task.syllabusItem.theme ? ` › ${task.syllabusItem.theme}` : ""}
           </p>
-          {task.syllabusItem.description && <p className="mt-1 text-sm text-ink-600">{task.syllabusItem.description}</p>}
+          {task.syllabusItem.description && <p className="mt-1 text-body text-ink-600">{task.syllabusItem.description}</p>}
         </div>
       )}
 
       {cta && !done && (
-        <button onClick={() => onNavigate(cta.to)} className="text-sm font-semibold text-brand-500 hover:underline">
+        <button onClick={() => onNavigate(cta.to)} className="text-body font-semibold text-brand-500 hover:underline">
           {cta.label}
         </button>
       )}
 
-      <div className="flex items-center gap-1.5 rounded-[10px] bg-paper p-2.5">
+      <div className="flex items-center gap-1.5 rounded-md bg-paper p-2.5">
         {showMinutes && (
           <DurationPicker
             value={minutesDraft === "" ? 0 : Number(minutesDraft)}
@@ -125,7 +125,7 @@ function TaskDetailBody({
             });
           }}
         />
-        {!showMinutes && task.minutesSpent !== null && <span className="text-xs font-medium text-ink-600">{task.minutesSpent} min</span>}
+        {!showMinutes && task.minutesSpent !== null && <span className="tabular text-caption font-medium text-ink-600">{task.minutesSpent} min</span>}
       </div>
 
       {task.files.length > 0 && <Attachments files={task.files} parent={{ roadmapTaskId: task.id }} onChanged={invalidate} renderTrigger={() => null} />}
@@ -248,7 +248,7 @@ export function TaskDetailDrawer({
           aria-modal="true"
           aria-label={task.title}
           tabIndex={-1}
-          className="relative max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-2xl border border-hairline bg-card p-5 shadow-xl outline-none"
+          className="relative max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-xl bg-card p-5 shadow-lg outline-none"
         >
           <button className="absolute right-3 top-3 grid size-7 place-items-center rounded-full hover:bg-paper" onClick={close} title="Close">
             <X className="size-4" aria-hidden="true" />
@@ -257,14 +257,14 @@ export function TaskDetailDrawer({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => toggle.mutate(!done)}
-                className={`grid size-5 shrink-0 place-items-center rounded-[6px] border text-[11px] text-white ${done ? "border-ink-900 bg-ink-900" : "border-hairline"}`}
+                className={`grid size-5 shrink-0 place-items-center rounded-sm border text-micro text-white ${done ? "border-ink-900 bg-ink-900" : "border-hairline"}`}
               >
                 {done && "✓"}
               </button>
-              <h2 className={`text-base font-semibold ${done ? "text-ink-400 line-through" : ""}`}>{task.title}</h2>
+              <h2 className={`text-body-lg font-semibold ${done ? "text-ink-400 line-through" : ""}`}>{task.title}</h2>
             </div>
             {task.skill && (
-              <span className="mt-1.5 inline-block rounded-full bg-paper px-2.5 py-0.5 text-xs font-semibold text-ink-600">
+              <span className="mt-1.5 inline-block rounded-full bg-paper px-2.5 py-0.5 text-caption font-semibold text-ink-600">
                 {SKILL_LABEL[task.skill]}
               </span>
             )}
@@ -286,7 +286,7 @@ export function TaskDetailDrawer({
           aria-modal="true"
           aria-label={task.title}
           tabIndex={-1}
-          className={`flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-hairline bg-card p-5 shadow-xl outline-none transition-transform duration-200 ${
+          className={`flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-hairline bg-card p-5 shadow-lg outline-none transition-transform duration-200 ${
             visible ? "translate-x-0" : "translate-x-full"
           }`}
         >
@@ -295,14 +295,14 @@ export function TaskDetailDrawer({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => toggle.mutate(!done)}
-                  className={`grid size-5 shrink-0 place-items-center rounded-[6px] border text-[11px] text-white ${done ? "border-ink-900 bg-ink-900" : "border-hairline"}`}
+                  className={`grid size-5 shrink-0 place-items-center rounded-sm border text-micro text-white ${done ? "border-ink-900 bg-ink-900" : "border-hairline"}`}
                 >
                   {done && "✓"}
                 </button>
-                <h2 className={`text-lg font-semibold ${done ? "text-ink-400 line-through" : ""}`}>{task.title}</h2>
+                <h2 className={`text-title font-semibold ${done ? "text-ink-400 line-through" : ""}`}>{task.title}</h2>
               </div>
               {task.skill && (
-                <span className="mt-1.5 inline-block rounded-full bg-paper px-2.5 py-0.5 text-xs font-semibold text-ink-600">
+                <span className="mt-1.5 inline-block rounded-full bg-paper px-2.5 py-0.5 text-caption font-semibold text-ink-600">
                   {SKILL_LABEL[task.skill]}
                 </span>
               )}

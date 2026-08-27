@@ -40,7 +40,7 @@ export default function AddCvModal({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal title="Add a CV" onClose={onClose} size="md" sheetOnSm>
-      <p className="-mt-3 mb-4 text-sm text-ink-400">
+      <p className="-mt-3 mb-4 text-body text-ink-400">
         Upload a file you already have — nothing is built or edited here
       </p>
       <form
@@ -61,8 +61,8 @@ export default function AddCvModal({ onClose }: { onClose: () => void }) {
                 category === c.value ? "border-2 border-ink-900 bg-paper" : "border border-hairline bg-card",
               )}
             >
-              <p className="text-sm font-semibold">{c.label}</p>
-              <p className="mt-0.5 text-xs text-ink-400">{c.description}</p>
+              <p className="text-body font-semibold">{c.label}</p>
+              <p className="mt-0.5 text-caption text-ink-400">{c.description}</p>
             </button>
           ))}
         </div>
@@ -78,7 +78,7 @@ export default function AddCvModal({ onClose }: { onClose: () => void }) {
 
         <label
           className={cn(
-            "flex cursor-pointer flex-col items-center gap-1.5 rounded-2xl border-[1.5px] border-dashed px-4 py-7 text-center text-sm",
+            "flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border-[1.5px] border-dashed px-4 py-7 text-center text-body",
             dragOver ? "border-brand-400 bg-brand-50" : "border-hairline bg-paper",
           )}
           onDragOver={(e) => {
@@ -113,7 +113,7 @@ export default function AddCvModal({ onClose }: { onClose: () => void }) {
           />
         </label>
 
-        {error && <p className="text-sm text-danger-600">{error}</p>}
+        {error && <p className="text-body text-danger-600">{error}</p>}
         <div className="flex justify-end gap-2 pt-1">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel

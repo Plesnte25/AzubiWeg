@@ -5,7 +5,9 @@ import { api } from "../../api/client";
 import type { CefrLevel } from "../../api/types";
 import { Button } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
+import { SectionHeader } from "../../components/ui/SectionHeader";
 import { Skeleton } from "../../components/ui/Skeleton";
+import { toast } from "../../components/ui/Toast";
 import { glidePageTo, useShelfPan } from "../../lib/useShelfPan";
 import { SKILL_COLORS } from "../../lib/skills";
 import { invalidateHub } from "./queryHelpers";
@@ -25,13 +27,14 @@ function AddItemDialog({ level, theme, onClose }: { level: CefrLevel; theme: str
       invalidateHub(queryClient);
       onClose();
     },
+    onError: () => toast.error("Couldn't add that item — try again."),
   });
   return (
     <Modal title={`Add item — ${theme}`} onClose={onClose} size="sm" sheetOnSm>
       <div className="space-y-3">
         <input
           autoFocus
-          className="w-full rounded-lg border border-hairline bg-paper px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-hairline bg-paper px-3 py-2 text-body"
           placeholder="Item title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -54,19 +57,20 @@ function AddStationDialog({ level, afterTheme, onClose }: { level: CefrLevel; af
       invalidateHub(queryClient);
       onClose();
     },
+    onError: () => toast.error("Couldn't add that station — try again."),
   });
   return (
     <Modal title="Add custom station" onClose={onClose} size="sm" sheetOnSm>
       <div className="space-y-3">
         <input
           autoFocus
-          className="w-full rounded-lg border border-hairline bg-paper px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-hairline bg-paper px-3 py-2 text-body"
           placeholder="Station name"
           value={theme}
           onChange={(e) => setTheme(e.target.value)}
         />
         <input
-          className="w-full rounded-lg border border-hairline bg-paper px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-hairline bg-paper px-3 py-2 text-body"
           placeholder="First item title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -89,6 +93,7 @@ function ExamTargetControl({ current }: { current: string | null }) {
       invalidateHub(queryClient);
       setEditing(false);
     },
+    onError: () => toast.error("Couldn't set the exam target — try again."),
   });
 
   if (!editing) {
@@ -100,7 +105,7 @@ function ExamTargetControl({ current }: { current: string | null }) {
   }
   return (
     <span className="flex items-center gap-1.5">
-      <input type="date" className="rounded border border-hairline bg-paper px-1.5 py-0.5 text-xs" value={date} onChange={(e) => setDate(e.target.value)} />
+      <input type="date" className="rounded border border-hairline bg-paper px-1.5 py-0.5 text-caption" value={date} onChange={(e) => setDate(e.target.value)} />
       <button onClick={() => save.mutate(date)} className="font-semibold text-brand-500 hover:underline">
         Save
       </button>
@@ -126,18 +131,18 @@ function SearchModal({
     <Modal title="Search items" onClose={onClose} size="sm">
       <input
         autoFocus
-        className="w-full rounded-lg border border-hairline bg-paper px-3 py-2 text-sm"
+        className="w-full rounded-lg border border-hairline bg-paper px-3 py-2 text-body"
         placeholder="Search items"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
       {query.trim() && (
-        <div className="mt-3 max-h-80 divide-y divide-hairline overflow-y-auto rounded-[13px] border border-hairline">
+        <div className="mt-3 max-h-80 divide-y divide-hairline overflow-y-auto rounded-lg border border-hairline">
           {matches.length === 0 ? (
-            <p className="p-4 text-sm text-ink-400">No items match "{query}".</p>
+            <p className="p-4 text-body text-ink-400">No items match "{query}".</p>
           ) : (
             matches.map((item) => (
-              <div key={item.id} className="flex items-start gap-2.5 px-3 py-2 text-sm">
+              <div key={item.id} className="flex items-start gap-2.5 px-3 py-2 text-body">
                 <input
                   type="checkbox"
                   className="mt-0.5 accent-brand-500"
@@ -146,9 +151,9 @@ function SearchModal({
                 />
                 <div className="min-w-0 flex-1">
                   <span className={`block ${item.completedAt !== null ? "text-ink-400 line-through" : ""}`}>{item.title}</span>
-                  {item.description && <span className="mt-0.5 block truncate text-xs text-ink-400">{item.description}</span>}
+                  {item.description && <span className="mt-0.5 block truncate text-caption text-ink-400">{item.description}</span>}
                 </div>
-                <span className="mt-0.5 shrink-0 text-xs text-ink-400">{item.theme}</span>
+                <span className="mt-0.5 shrink-0 text-caption text-ink-400">{item.theme}</span>
               </div>
             ))
           )}
@@ -173,7 +178,7 @@ function RoutePaceModal({
 }) {
   return (
     <Modal title="Route pace" onClose={onClose} size="sm">
-      <div className="space-y-1 text-sm">
+      <div className="space-y-1 text-body">
         <div className="flex justify-between">
           <span className="text-ink-600">Items/week</span>
           <span className="font-medium">{routePace.itemsPerWeek}</span>
@@ -188,14 +193,14 @@ function RoutePaceModal({
         </div>
       </div>
       {routePace.weeksBehindPace !== null && routePace.weeksBehindPace > 0 && (
-        <p className="mt-2 text-xs font-medium text-warn-700">
+        <p className="mt-2 text-caption font-medium text-warn-700">
           {routePace.weeksBehindPace} weeks behind target — add {Math.ceil(routePace.weeksBehindPace * 0.5) || 1} items a week to close the gap.
         </p>
       )}
       <Button size="sm" variant="outline" className="mt-3 w-full" loading={replan.isPending} onClick={() => replan.mutate()}>
         Re-plan the route
       </Button>
-      {replanError && <p className="mt-1 text-xs text-danger-600">{replanError}</p>}
+      {replanError && <p className="mt-1 text-caption text-danger-600">{replanError}</p>}
     </Modal>
   );
 }
@@ -265,14 +270,17 @@ export function SyllabusPage() {
   const toggle = useMutation({
     mutationFn: ({ id, completed }: { id: string; completed: boolean }) => api.toggleSyllabusItem(id, completed),
     onSuccess: invalidate,
+    onError: () => toast.error("Couldn't update that item — try again."),
   });
   const deleteItem = useMutation({
     mutationFn: (id: string) => api.deleteSyllabusItem(id),
     onSuccess: invalidate,
+    onError: () => toast.error("Couldn't delete that item — try again."),
   });
   const skipStation = useMutation({
     mutationFn: ({ theme, skipped }: { theme: string; skipped: boolean }) => api.setStationSkipped(level, theme, skipped),
     onSuccess: invalidate,
+    onError: () => toast.error("Couldn't update that station — try again."),
   });
   const replan = useMutation({
     mutationFn: () => api.replanRoute(level),
@@ -320,7 +328,7 @@ export function SyllabusPage() {
     <div className="mb-4 flex items-stretch gap-2">
       <div className="flex w-4 shrink-0 items-center justify-center">
         <span
-          className="whitespace-nowrap text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400"
+          className="eyebrow whitespace-nowrap text-ink-400"
           style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
         >
           Item mix
@@ -336,7 +344,7 @@ export function SyllabusPage() {
             <div className="h-[6px] flex-1 overflow-hidden rounded-full bg-paper">
               <div className="h-full rounded-full" style={{ width: `${row.total === 0 ? 0 : (row.done / row.total) * 100}%`, backgroundColor: row.color }} />
             </div>
-            <span className="w-10 shrink-0 text-right text-xs text-ink-600">
+            <span className="w-10 shrink-0 text-right text-caption text-ink-600">
               {row.done}/{row.total}
             </span>
           </div>
@@ -347,57 +355,45 @@ export function SyllabusPage() {
 
   return (
     <div className="space-y-4 pb-6">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div className="min-w-0">
-          <h1 className="text-[21px] font-bold tracking-[-0.02em] sm:text-[23px] md:text-[27px] lg:text-[29px]">
-            {LEVEL_LABELS[level]} route · {stations.length} stations
-          </h1>
-          <p className="text-[13px] text-ink-600">
-            {doneItems} of {levelItems.length} items
-            {data.routePace.itemsPerWeek > 0 && ` · ${data.routePace.itemsPerWeek} items a week`}
-          </p>
-        </div>
-        <div className="flex w-full items-center justify-between gap-2 sm:w-auto">
-          <div className="flex gap-1 rounded-full border border-hairline bg-paper p-1">
-            {LEVELS.map((l) => {
-              const lp = data.levels.find((x) => x.level === l);
-              return (
-                <button
-                  key={l}
-                  onClick={() => {
-                    setUserLevel(l);
-                    setSelectedStation(undefined);
-                  }}
-                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                    l === level ? "bg-ink-900 text-white" : lp && lp.percent >= 100 ? "text-ok-600" : "text-ink-400"
-                  }`}
-                >
-                  {LEVEL_LABELS[l]}
-                  {lp && lp.percent >= 100 ? " ✓" : ""}
-                </button>
-              );
-            })}
+      <SectionHeader
+        className="animate-enter"
+        title={`${LEVEL_LABELS[level]} route · ${stations.length} stations`}
+        subtitle={`${doneItems} of ${levelItems.length} items${data.routePace.itemsPerWeek > 0 ? ` · ${data.routePace.itemsPerWeek} items a week` : ""}`}
+        action={
+          <div className="flex w-full items-center justify-between gap-2 sm:w-auto">
+            <div className="flex gap-1 rounded-full border border-hairline bg-paper p-1">
+              {LEVELS.map((l) => {
+                const lp = data.levels.find((x) => x.level === l);
+                return (
+                  <button
+                    key={l}
+                    onClick={() => {
+                      setUserLevel(l);
+                      setSelectedStation(undefined);
+                    }}
+                    className={`rounded-full px-2.5 py-1 text-caption font-semibold ${
+                      l === level ? "bg-ink-900 text-white" : lp && lp.percent >= 100 ? "text-ok-600" : "text-ink-400"
+                    }`}
+                  >
+                    {LEVEL_LABELS[l]}
+                    {lp && lp.percent >= 100 ? " ✓" : ""}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button shape="circle" variant="outline" onClick={() => setShowSearch(true)} title="Search items">
+                <Search className="size-4" aria-hidden="true" />
+              </Button>
+              <Button shape="circle" variant="outline" onClick={() => setShowPace(true)} title="Route pace">
+                <Info className="size-4" aria-hidden="true" />
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline bg-card hover:border-brand-400"
-              onClick={() => setShowSearch(true)}
-              title="Search items"
-            >
-              <Search className="size-4" aria-hidden="true" />
-            </button>
-            <button
-              className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline bg-card hover:border-brand-400"
-              onClick={() => setShowPace(true)}
-              title="Route pace"
-            >
-              <Info className="size-4" aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="space-y-4">
+      <div className="animate-enter space-y-4" style={{ animationDelay: "45ms" }}>
         {/* A winding curved path with checkpoint nodes, not a straight line —
             RoadmapPage's day-list used to have its own connecting line/bead
             visual but that depended on runtime-measured, variable row heights
@@ -408,7 +404,7 @@ export function SyllabusPage() {
             stations.length + the level as a shape seed) is safe in a way the
             DOM-measured one wasn't — the two pages deliberately don't share a
             technique. */}
-        <div className="rounded-[18px] border border-hairline bg-card p-4 lg:hidden">
+        <div className="rounded-xl border border-hairline bg-card p-4 lg:hidden">
           {itemMix}
           <StationRoute stations={stations} currentIdx={currentIdx} orientation="vertical" seed={level} onSelect={handleStationSelect} />
         </div>
@@ -419,7 +415,7 @@ export function SyllabusPage() {
             same overflow-x-hidden/scrollLeft-driven element as the path
             itself, so panning the path also scrolled item mix out of view —
             it's now a fixed sibling above the scrollable region instead. */}
-        <div className="hidden rounded-[18px] border border-hairline bg-card p-4 lg:block">
+        <div className="hidden rounded-xl border border-hairline bg-card p-4 lg:block">
           {itemMix}
           <div className="flex items-center gap-1.5">
             <button
@@ -484,13 +480,13 @@ export function SyllabusPage() {
 
         <button
           onClick={() => setShowAddStation(true)}
-          className="w-full rounded-[13px] border border-dashed border-hairline p-3 text-center text-sm text-ink-400 shadow-md hover:border-brand-400 hover:text-brand-500"
+          className="w-full rounded-lg border border-dashed border-hairline p-3 text-center text-body text-ink-400 hover:border-brand-400 hover:text-brand-500"
         >
           <span className="block font-medium">+ Custom station</span>
-          <span className="mt-0.5 block text-xs">Add your own unit anywhere on the {LEVEL_LABELS[level]} line.</span>
+          <span className="mt-0.5 block text-caption">Add your own unit anywhere on the {LEVEL_LABELS[level]} line.</span>
         </button>
 
-        {levelProgress && levelProgress.percent >= 100 && <p className="text-xs text-ok-600">{LEVEL_LABELS[level]} complete</p>}
+        {levelProgress && levelProgress.percent >= 100 && <p className="text-caption text-ok-600">{LEVEL_LABELS[level]} complete</p>}
       </div>
 
       {showSearch && (

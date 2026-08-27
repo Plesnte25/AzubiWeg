@@ -7,7 +7,10 @@ import { api } from "../../api/client";
 import type { ActivityFeedFilter, RoadmapSkill, StudySource, StudySourceType } from "../../api/types";
 import { Attachments } from "../../components/Attachments";
 import { Button } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
+import { SectionHeader } from "../../components/ui/SectionHeader";
 import { Skeleton } from "../../components/ui/Skeleton";
+import { toast } from "../../components/ui/Toast";
 import { nicosWegCourseIdFromUrl } from "../../lib/nicosweg";
 import { youTubePlaylistIdFromUrl, youTubeThumbUrl, youTubeVideoIdFromUrl, youTubeWatchUrl } from "../../lib/youtube";
 import { invalidateHub } from "./queryHelpers";
@@ -57,11 +60,12 @@ function ContinueHero({ source }: { source: StudySource }) {
   const markDone = useMutation({
     mutationFn: () => (nextUnit ? api.toggleSourceUnit(source.id, nextUnit.id, true) : api.logSourceProgress(source.id, 1)),
     onSuccess: () => invalidateHub(queryClient),
+    onError: () => toast.error("Couldn't mark that done — try again."),
   });
 
   return (
-    <div className="flex items-center gap-4 rounded-2xl bg-ink-900 p-4 text-white">
-      <div className="grid h-[60px] w-[88px] shrink-0 place-items-center overflow-hidden rounded-[9px] bg-[var(--color-surface-dark-1)]">
+    <Card level={2} interactive className="flex items-center gap-4 bg-ink-900 text-white">
+      <div className="grid h-[60px] w-[88px] shrink-0 place-items-center overflow-hidden rounded-md bg-surface-dark-1">
         {thumbId ? (
           <img src={youTubeThumbUrl(thumbId)} alt="" className="size-full object-cover" />
         ) : (
@@ -69,29 +73,29 @@ function ContinueHero({ source }: { source: StudySource }) {
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-bold tracking-[0.09em] text-ink-400">CONTINUE WHERE YOU STOPPED</p>
-        <p className="truncate text-[15px] font-bold">{nextUnit?.title ?? source.title}</p>
-        <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-[var(--color-surface-dark-1)]">
+        <p className="eyebrow text-ink-400">CONTINUE WHERE YOU STOPPED</p>
+        <p className="truncate text-body-lg font-bold">{nextUnit?.title ?? source.title}</p>
+        <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-surface-dark-1">
           <div className="h-full rounded-full bg-brand-500" style={{ width: `${source.percent ?? 0}%` }} />
         </div>
-        <p className="mt-1 text-[11px] text-ink-400">
+        <p className="mt-1 text-micro text-ink-400">
           {source.title} · {source.percent ?? 0}%
         </p>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-1.5">
         {url && (
-          <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs font-semibold text-brand-400 hover:underline">
+          <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-caption font-semibold text-brand-400 hover:underline">
             Watch <ExternalLink className="size-3" aria-hidden="true" />
           </a>
         )}
         <button
           onClick={() => markDone.mutate()}
-          className="rounded-md border border-[var(--color-surface-dark-3)] px-2.5 py-1 text-xs font-medium hover:bg-[var(--color-surface-dark-1)]"
+          className="rounded-md border border-surface-dark-3 px-2.5 py-1 text-caption font-medium hover:bg-surface-dark-1"
         >
           Mark done
         </button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -113,17 +117,17 @@ function AddSourceRow() {
   });
 
   return (
-    <div className="rounded-[14px] border border-hairline bg-card p-3">
+    <div className="rounded-lg border border-hairline bg-card p-3">
       <div className="flex flex-col gap-2 md:flex-row md:items-center">
         <input
-          className="min-w-0 rounded-lg border border-hairline bg-paper px-3 py-1.5 text-sm placeholder:text-ink-400 md:flex-[2]"
+          className="min-w-0 rounded-lg border border-hairline bg-paper px-3 py-1.5 text-body placeholder:text-ink-400 md:flex-[2]"
           placeholder="Add a source — paste a URL (YouTube, DW, course…)"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
         />
         <div className="flex gap-2 md:contents">
           <input
-            className="min-w-0 flex-1 rounded-lg border border-hairline bg-paper px-3 py-1.5 text-sm placeholder:text-ink-400"
+            className="min-w-0 flex-1 rounded-lg border border-hairline bg-paper px-3 py-1.5 text-body placeholder:text-ink-400"
             placeholder="Title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -138,7 +142,7 @@ function AddSourceRow() {
           </Button>
         </div>
       </div>
-      {error && <p className="mt-2 text-xs text-danger-600">{error}</p>}
+      {error && <p className="mt-2 text-caption text-danger-600">{error}</p>}
     </div>
   );
 }
@@ -149,35 +153,38 @@ function SourceProgressRow({ source }: { source: StudySource }) {
   const remove = useMutation({
     mutationFn: () => api.deleteStudySource(source.id),
     onSuccess: () => invalidateHub(queryClient),
+    onError: () => toast.error("Couldn't remove that source — try again."),
   });
   const toggleUnit = useMutation({
     mutationFn: ({ unitId, done }: { unitId: string; done: boolean }) => api.toggleSourceUnit(source.id, unitId, done),
     onSuccess: () => invalidateHub(queryClient),
+    onError: () => toast.error("Couldn't update that lesson — try again."),
   });
   const logProgress = useMutation({
     mutationFn: (delta: number) => api.logSourceProgress(source.id, delta),
     onSuccess: () => invalidateHub(queryClient),
+    onError: () => toast.error("Couldn't log progress — try again."),
   });
 
   return (
     <div>
       <button className="flex w-full items-center justify-between gap-2 text-left" onClick={() => setExpanded((v) => !v)}>
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{source.title}</span>
-        <span className="shrink-0 text-xs text-ink-400">{source.percent === null ? `${source.completedUnits}` : `${source.percent}%`}</span>
+        <span className="min-w-0 flex-1 truncate text-body font-medium">{source.title}</span>
+        <span className="shrink-0 text-caption text-ink-400">{source.percent === null ? `${source.completedUnits}` : `${source.percent}%`}</span>
       </button>
       {source.percent !== null ? (
         <div className="mt-1 h-[5px] overflow-hidden rounded-full bg-paper">
           <div className="h-full rounded-full bg-ink-900" style={{ width: `${source.percent}%` }} />
         </div>
       ) : (
-        <p className="text-[10px] text-ink-400">no total set — count only</p>
+        <p className="text-micro text-ink-400">no total set — count only</p>
       )}
       {expanded && (
         <div className="mt-2 space-y-2 rounded-lg border border-hairline bg-paper p-2">
           {source.units.length > 0 ? (
             <div className="max-h-48 space-y-0.5 overflow-y-auto">
               {source.units.map((u) => (
-                <label key={u.id} className="flex items-center gap-2 rounded px-1 py-0.5 text-xs hover:bg-card">
+                <label key={u.id} className="flex items-center gap-2 rounded px-1 py-0.5 text-caption hover:bg-card">
                   <input type="checkbox" className="accent-brand-500" checked={u.completedAt !== null} onChange={(e) => toggleUnit.mutate({ unitId: u.id, done: e.target.checked })} />
                   <span className={`min-w-0 flex-1 truncate ${u.completedAt !== null ? "text-ink-400 line-through" : ""}`}>{u.title}</span>
                 </label>
@@ -197,7 +204,7 @@ function SourceProgressRow({ source }: { source: StudySource }) {
             <Attachments files={source.files} parent={{ studySourceId: source.id }} onChanged={() => invalidateHub(queryClient)} />
             <button
               onClick={() => confirm(`Delete "${source.title}"?`) && remove.mutate()}
-              className="flex items-center gap-1 text-xs text-ink-400 hover:text-danger-600"
+              className="flex items-center gap-1 text-caption text-ink-400 hover:text-danger-600"
             >
               <Trash2 className="size-3" aria-hidden="true" /> Delete
             </button>
@@ -213,7 +220,11 @@ function SavedLinksCard() {
   const { data } = useQuery({ queryKey: ["learning", "savedLinks"], queryFn: api.savedLinks });
   const [filter, setFilter] = useState<RoadmapSkill | "all">("all");
   const [showAll, setShowAll] = useState(false);
-  const remove = useMutation({ mutationFn: (id: string) => api.deleteSavedLink(id), onSuccess: () => invalidateHub(queryClient) });
+  const remove = useMutation({
+    mutationFn: (id: string) => api.deleteSavedLink(id),
+    onSuccess: () => invalidateHub(queryClient),
+    onError: () => toast.error("Couldn't remove that link — try again."),
+  });
 
   const links = data?.links ?? [];
   const visible = filter === "all" ? links : links.filter((l) => l.skill === filter);
@@ -221,9 +232,9 @@ function SavedLinksCard() {
   const skillsPresent = [...new Set(links.map((l) => l.skill).filter((s): s is RoadmapSkill => !!s))];
 
   return (
-    <div className="rounded-[13px] border border-hairline p-3.5">
+    <div className="rounded-lg border border-hairline p-3.5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400">Saved links · {links.length}</p>
+        <p className="eyebrow text-ink-400">Saved links · {links.length}</p>
         {visible.length > 3 && (
           <button
             onClick={() => setShowAll((v) => !v)}
@@ -235,18 +246,18 @@ function SavedLinksCard() {
         )}
       </div>
       <div className="mt-2 flex flex-wrap gap-1">
-        <button onClick={() => setFilter("all")} className={`rounded-full px-2 py-0.5 text-[11px] ${filter === "all" ? "bg-ink-900 text-white" : "bg-paper text-ink-600"}`}>
+        <button onClick={() => setFilter("all")} className={`rounded-full px-2 py-0.5 text-micro ${filter === "all" ? "bg-ink-900 text-white" : "bg-paper text-ink-600"}`}>
           All
         </button>
         {skillsPresent.map((s) => (
-          <button key={s} onClick={() => setFilter(s)} className={`rounded-full px-2 py-0.5 text-[11px] ${filter === s ? "bg-ink-900 text-white" : "bg-paper text-ink-600"}`}>
+          <button key={s} onClick={() => setFilter(s)} className={`rounded-full px-2 py-0.5 text-micro ${filter === s ? "bg-ink-900 text-white" : "bg-paper text-ink-600"}`}>
             {RESOURCE_SKILL_LABEL[s]}
           </button>
         ))}
       </div>
       <div className="mt-2 divide-y divide-hairline">
         {shown.map((link) => (
-          <div key={link.id} className="group flex items-center gap-2 py-1.5 text-sm">
+          <div key={link.id} className="group flex items-center gap-2 py-1.5 text-body">
             <a href={link.url} target={link.url.startsWith("/") ? undefined : "_blank"} rel="noreferrer" className="min-w-0 flex-1 truncate font-medium text-brand-500 hover:underline">
               {link.title}
             </a>
@@ -267,7 +278,7 @@ function FeedNote({ notes }: { notes: string }) {
   const [expanded, setExpanded] = useState(false);
   const isLong = notes.length > 140 || notes.split("\n").length > 2;
   return (
-    <div className="mt-1 rounded-md bg-paper px-2 py-1 text-xs text-ink-600">
+    <div className="mt-1 rounded-md bg-paper px-2 py-1 text-caption text-ink-600">
       <p className={expanded ? "whitespace-pre-wrap" : "line-clamp-2"}>{notes}</p>
       {isLong && (
         <button onClick={() => setExpanded((v) => !v)} className="mt-0.5 font-medium text-brand-500 hover:underline">
@@ -295,12 +306,12 @@ function ActivityFeedCard() {
   }
 
   return (
-    <div className="rounded-2xl border border-hairline p-4">
+    <div className="rounded-xl border border-hairline p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-ink-400">Activity</p>
+        <p className="eyebrow text-ink-400">Activity</p>
         <div className="flex gap-1">
           {FEED_FILTERS.map((f) => (
-            <button key={f.key} onClick={() => setFilter(f.key)} className={`rounded-full px-2.5 py-0.5 text-xs ${filter === f.key ? "bg-ink-900 text-white" : "bg-paper text-ink-600"}`}>
+            <button key={f.key} onClick={() => setFilter(f.key)} className={`rounded-full px-2.5 py-0.5 text-caption ${filter === f.key ? "bg-ink-900 text-white" : "bg-paper text-ink-600"}`}>
               {f.label}
             </button>
           ))}
@@ -309,16 +320,16 @@ function ActivityFeedCard() {
       {isLoading ? (
         <Skeleton className="mt-3 h-32 w-full" />
       ) : entries.length === 0 ? (
-        <p className="mt-3 text-sm text-ink-400">Nothing logged yet — finish a lesson or save a link to see it here.</p>
+        <p className="mt-3 text-body text-ink-400">Nothing logged yet — finish a lesson or save a link to see it here.</p>
       ) : (
         [...groups.entries()].map(([day, rows]) => (
           <div key={day}>
-            <p className="mt-3 text-[11px] font-bold text-ink-400">{day.toUpperCase()}</p>
+            <p className="mt-3 text-micro font-bold text-ink-400">{day.toUpperCase()}</p>
             {rows.map((e) => (
               <div key={e.id} className="flex gap-3 border-t border-hairline py-2.5 first:border-t-0">
-                <span className="w-[46px] shrink-0 text-[10.5px] text-ink-400">{new Date(e.at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>
+                <span className="w-[46px] shrink-0 text-micro text-ink-400">{new Date(e.at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[12.5px]">
+                  <p className="text-caption">
                     {e.sourceTitle && <span className="font-semibold">{e.sourceTitle} — </span>}
                     {e.title}
                   </p>
@@ -330,7 +341,7 @@ function ActivityFeedCard() {
         ))
       )}
       {hasNextPage && (
-        <button onClick={() => fetchNextPage()} className="mt-3 text-xs font-medium text-brand-500 hover:underline">
+        <button onClick={() => fetchNextPage()} className="mt-3 text-caption font-medium text-brand-500 hover:underline">
           Load earlier activity
         </button>
       )}
@@ -358,20 +369,17 @@ export function SourcesPage() {
 
   return (
     <div className="space-y-3.5">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-[19px] font-bold">Sources</h1>
-          <p className="text-[13px] text-ink-600">
-            {activeCount} active · {lessonsDone} lessons done · {linksData?.links.length ?? 0} saved links
-          </p>
-        </div>
-      </div>
+      <SectionHeader
+        className="animate-enter"
+        title="Sources"
+        subtitle={`${activeCount} active · ${lessonsDone} lessons done · ${linksData?.links.length ?? 0} saved links`}
+      />
 
-      <div className="grid gap-3.5 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="animate-enter grid gap-3.5 lg:grid-cols-[minmax(0,1fr)_300px]" style={{ animationDelay: "45ms" }}>
         <div className="min-w-0 space-y-3">
           {heroSource && <ContinueHero source={heroSource} />}
 
-          <div className="flex rounded-2xl border border-hairline bg-card">
+          <div className="flex rounded-xl border border-hairline bg-card">
             {[
               { value: String(activeCount), label: "active sources", icon: <img src={streamingIcon} alt="" className="size-4" /> },
               { value: String(lessonsDone), label: "lessons done", icon: <img src={taskIcon} alt="" className="size-4" /> },
@@ -384,8 +392,8 @@ export function SourcesPage() {
               <div key={cell.label} className={`flex flex-1 items-center gap-2.5 px-3.5 py-3 ${i < arr.length - 1 ? "border-r border-hairline" : ""}`}>
                 {cell.icon}
                 <div className="min-w-0">
-                  <p className="text-[18px] font-bold">{cell.value}</p>
-                  <p className="mt-0.5 truncate text-[10.5px] text-ink-400">{cell.label}</p>
+                  <p className="tabular text-title font-bold">{cell.value}</p>
+                  <p className="mt-0.5 truncate text-micro text-ink-400">{cell.label}</p>
                 </div>
               </div>
             ))}
@@ -396,11 +404,11 @@ export function SourcesPage() {
         </div>
 
         <div className="space-y-3">
-          <div className="rounded-[13px] border border-hairline p-3.5">
-            <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400">Source progress</p>
+          <div className="rounded-lg border border-hairline p-3.5">
+            <p className="eyebrow text-ink-400">Source progress</p>
             <div className="mt-2 grid gap-3 md:grid-cols-2 lg:grid-cols-1">
               {sources.length === 0 ? (
-                <p className="text-sm text-ink-400">No sources yet.</p>
+                <p className="text-body text-ink-400">No sources yet — add one on the left.</p>
               ) : (
                 sources.map((s) => <SourceProgressRow key={s.id} source={s} />)
               )}

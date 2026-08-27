@@ -51,13 +51,13 @@ export function PracticeOverlay({ words, onClose }: PracticeOverlayProps) {
 
       <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
         <div className="flex items-center gap-3">
-          <span className="text-xs font-bold tracking-wide text-ink-400">PRACTICE</span>
-          {!loading && <span className="text-xs text-ink-400">{remaining} remaining · {total} done</span>}
+          <span className="text-caption font-bold tracking-wide text-ink-400">PRACTICE</span>
+          {!loading && <span className="text-caption text-ink-400">{remaining} remaining · {total} done</span>}
         </div>
         <div className="flex items-center gap-3">
           {!loading && current && (
             <select
-              className="rounded-md border border-hairline bg-card px-2 py-1 text-xs outline-none"
+              className="rounded-md border border-hairline bg-card px-2 py-1 text-caption outline-none"
               value={order}
               onChange={(e) => changeOrder(e.target.value as (typeof ORDERS)[number]["key"])}
             >
@@ -68,7 +68,7 @@ export function PracticeOverlay({ words, onClose }: PracticeOverlayProps) {
               ))}
             </select>
           )}
-          <button className="flex items-center gap-1 text-sm text-ink-600 hover:text-ink-900" onClick={onClose}>
+          <button className="flex items-center gap-1 text-body text-ink-600 hover:text-ink-900" onClick={onClose}>
             Back to vault <X className="size-4" aria-hidden="true" />
           </button>
         </div>
@@ -83,13 +83,13 @@ export function PracticeOverlay({ words, onClose }: PracticeOverlayProps) {
         ) : !current ? (
           <Card padding="lg" className="w-full max-w-md text-center">
             <PartyPopper className="mx-auto size-8 text-brand-500" aria-hidden="true" />
-            <h1 className="mt-2 text-lg font-semibold">Session complete</h1>
+            <h1 className="mt-2 text-title font-semibold">Session complete</h1>
             {total > 0 ? (
-              <p className="mt-1 text-sm text-ink-600">
+              <p className="mt-1 text-body text-ink-600">
                 {total} reviewed — {done.easy} easy · {done.good} good · {done.hard} hard
               </p>
             ) : (
-              <p className="mt-1 text-sm text-ink-600">Nothing due right now. Komm morgen wieder!</p>
+              <p className="mt-1 text-body text-ink-600">Nothing due right now. Komm morgen wieder!</p>
             )}
             <div className="mt-5 flex justify-center gap-2">
               <Button variant="primary" onClick={onClose}>
@@ -105,7 +105,7 @@ export function PracticeOverlay({ words, onClose }: PracticeOverlayProps) {
         ) : (
           <div className="w-full max-w-lg">
             <Card padding="lg" className="text-center">
-              <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs">
+              <div className="flex flex-wrap items-center justify-center gap-1.5 text-caption">
                 <span className="font-bold" style={{ color: WORTART_COLORS[current.wortart] }}>
                   {current.wortart}
                 </span>
@@ -116,12 +116,12 @@ export function PracticeOverlay({ words, onClose }: PracticeOverlayProps) {
                 {current.srDue === null && <Badge variant="brand">new card</Badge>}
               </div>
 
-              <div className="mt-3 text-[38px] font-semibold leading-tight">
+              <div className="mt-3 text-display font-semibold leading-tight">
                 {revealed ? articleFront(current.headword, current.genus) : current.headword}
               </div>
 
               {revealed ? (
-                <div className="mt-5 space-y-2 border-t border-hairline pt-5 text-left text-sm">
+                <div className="mt-5 space-y-2 border-t border-hairline pt-5 text-left text-body">
                   {current.ipa && <p className="text-center text-ink-400">/{current.ipa}/</p>}
                   {current.meaning && <p>{current.meaning}</p>}
                   {current.grammar && (
@@ -137,7 +137,7 @@ export function PracticeOverlay({ words, onClose }: PracticeOverlayProps) {
                     </p>
                   )}
                   {current.srInterval !== null && (
-                    <p className="text-center text-xs text-ink-400">
+                    <p className="text-center text-caption text-ink-400">
                       interval {current.srInterval}d · ease {current.srEase}
                     </p>
                   )}
@@ -189,7 +189,7 @@ export function PracticeOverlay({ words, onClose }: PracticeOverlayProps) {
                   <button
                     key={g}
                     disabled={grade.isPending}
-                    className={`rounded-md border bg-card px-4 py-2.5 text-sm font-medium disabled:opacity-50 ${cls}`}
+                    className={`rounded-md border bg-card px-4 py-2.5 text-body font-medium disabled:opacity-50 ${cls}`}
                     onClick={() => grade.mutate({ wordId: current.id, g })}
                   >
                     {label}

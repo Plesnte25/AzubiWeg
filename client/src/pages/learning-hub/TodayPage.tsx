@@ -2,13 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
-import { ChevronDown, Clock, Play, X } from "lucide-react";
+import { CalendarCheck, ChevronDown, Clock, Play, X } from "lucide-react";
 import { api } from "../../api/client";
 import type { RoadmapTask, RoadmapTaskType } from "../../api/types";
 import { Button } from "../../components/ui/Button";
 import { DurationPicker } from "../../components/ui/DurationPicker";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { toast } from "../../components/ui/Toast";
 import { Modal } from "../../components/ui/Modal";
+import { SectionHeader } from "../../components/ui/SectionHeader";
 import { Skeleton } from "../../components/ui/Skeleton";
+import { Stat } from "../../components/ui/Stat";
 import { SKILL_COLORS, SKILL_LABELS } from "../../lib/skills";
 import type { Destination } from "./LearningRail";
 import { invalidateHub } from "./queryHelpers";
@@ -44,25 +48,26 @@ function PlanRow({
   const toggle = useMutation({
     mutationFn: (completed: boolean) => api.toggleRoadmapTask(task.id, completed),
     onSuccess: () => invalidateHub(queryClient),
+    onError: () => toast.error("Couldn't update that task — try again."),
   });
 
   return (
     <div className="flex items-start gap-3 border-t border-hairline py-3 first:border-t-0">
       <button
         onClick={() => toggle.mutate(!done)}
-        className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-[5px] border text-[10px] text-white ${
+        className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-sm border text-micro text-white ${
           done ? "border-ink-900 bg-ink-900" : "border-hairline"
         }`}
       >
         {done && "✓"}
       </button>
       <button className="min-w-0 flex-1 text-left hover:text-brand-500" onClick={() => onOpen(task)}>
-        <span className={`block truncate text-[13.5px] font-medium ${done ? "text-ink-400 line-through" : ""}`}>{task.title}</span>
-        {task.description && <span className="mt-0.5 block truncate text-xs text-ink-400">{task.description}</span>}
+        <span className={`block truncate text-body font-medium ${done ? "text-ink-400 line-through" : ""}`}>{task.title}</span>
+        {task.description && <span className="mt-0.5 block truncate text-caption text-ink-400">{task.description}</span>}
       </button>
       {task.skill && (
         <span
-          className="mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold"
+          className="mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-micro font-semibold"
           style={{
             backgroundColor: `color-mix(in srgb, ${SKILL_COLORS[task.skill]} 16%, transparent)`,
             color: SKILL_COLORS[task.skill],
@@ -72,12 +77,12 @@ function PlanRow({
         </span>
       )}
       {late !== undefined && (
-        <span className="mt-0.5 shrink-0 text-[11.5px] font-medium text-warn-500">
+        <span className="mt-0.5 shrink-0 text-micro font-medium text-warn-500">
           {late} day{late === 1 ? "" : "s"} late
         </span>
       )}
       {cta && !done && (
-        <button onClick={() => onNavigate(cta.to)} className="mt-0.5 shrink-0 text-[12px] font-semibold text-brand-500 hover:underline">
+        <button onClick={() => onNavigate(cta.to)} className="mt-0.5 shrink-0 text-caption font-semibold text-brand-500 hover:underline">
           {cta.label}
         </button>
       )}
@@ -108,12 +113,12 @@ function CappedTaskList({
         <PlanRow key={t.id} task={t} late={lateByTaskId?.get(t.id)} onNavigate={onNavigate} onOpen={onOpen} />
       ))}
       {hidden > 0 && (
-        <button onClick={() => setExpanded(true)} className="w-full border-t border-hairline py-2 text-center text-xs font-medium text-brand-500 hover:underline">
+        <button onClick={() => setExpanded(true)} className="w-full border-t border-hairline py-2 text-center text-caption font-medium text-brand-500 hover:underline">
           +{hidden} more
         </button>
       )}
       {expanded && tasks.length > MAX_VISIBLE && (
-        <button onClick={() => setExpanded(false)} className="w-full border-t border-hairline py-2 text-center text-xs font-medium text-ink-400 hover:underline">
+        <button onClick={() => setExpanded(false)} className="w-full border-t border-hairline py-2 text-center text-caption font-medium text-ink-400 hover:underline">
           Show less
         </button>
       )}
@@ -144,7 +149,7 @@ function CollapsibleSection({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className={warn ? "rounded-[18px] border border-warn-tint-100 bg-warn-tint-50" : "rounded-[18px] border border-hairline bg-card"}>
+    <div className={warn ? "rounded-xl border border-warn-tint-100 bg-warn-tint-50" : "rounded-xl border border-hairline bg-card"}>
       <div className="flex items-center justify-between gap-2 px-4 py-3">
         <button
           type="button"
@@ -156,7 +161,7 @@ function CollapsibleSection({
             className={`size-3.5 shrink-0 transition-transform ${warn ? "text-warn-700" : "text-ink-400"} ${open ? "rotate-180" : ""}`}
             aria-hidden="true"
           />
-          <span className={`truncate text-[13.5px] font-bold ${warn ? "text-warn-700" : "text-ink-900"}`}>
+          <span className={`truncate text-body font-bold ${warn ? "text-warn-700" : "text-ink-900"}`}>
             {title}
             {meta && <span className="font-normal"> · {meta}</span>}
           </span>
@@ -194,13 +199,13 @@ function TaskPicker({ tasks, value, onChange }: { tasks: RoadmapTask[]; value: s
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-hairline bg-paper px-2.5 py-1.5 text-left text-sm"
+        className="mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-hairline bg-paper px-2.5 py-1.5 text-left text-body"
       >
         <span className="min-w-0 truncate">{selected?.title ?? "Select a task"}</span>
         <ChevronDown className={`size-4 shrink-0 text-ink-400 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
       </button>
       {open && (
-        <div role="listbox" className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-hairline bg-card p-1 shadow-lg">
+        <div role="listbox" className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg bg-card p-1 shadow-lg">
           {tasks.map((t) => (
             <button
               key={t.id}
@@ -211,7 +216,7 @@ function TaskPicker({ tasks, value, onChange }: { tasks: RoadmapTask[]; value: s
                 onChange(t.id);
                 setOpen(false);
               }}
-              className={`block w-full truncate rounded-md px-2.5 py-1.5 text-left text-sm ${
+              className={`block w-full truncate rounded-md px-2.5 py-1.5 text-left text-body ${
                 t.id === value ? "bg-brand-600 text-white" : "hover:bg-paper"
               }`}
             >
@@ -238,6 +243,7 @@ function useLogTime(tasks: RoadmapTask[], onClose: () => void) {
       invalidateHub(queryClient);
       onClose();
     },
+    onError: () => toast.error("Couldn't log that time — try again."),
   });
   return { taskId, setTaskId, minutes, setMinutes, save };
 }
@@ -249,7 +255,7 @@ function LogTimeDialog({ tasks, onClose }: { tasks: RoadmapTask[]; onClose: () =
   if (tasks.length === 0) {
     return (
       <Modal title="Log study time" onClose={onClose} size="sm" desktopOnly>
-        <p className="text-sm text-ink-600">No tasks scheduled today to log time against.</p>
+        <p className="text-body text-ink-600">No tasks scheduled today to log time against.</p>
       </Modal>
     );
   }
@@ -258,11 +264,11 @@ function LogTimeDialog({ tasks, onClose }: { tasks: RoadmapTask[]; onClose: () =
     <Modal title="Log study time" onClose={onClose} size="sm" desktopOnly>
       <div className="space-y-3">
         <div>
-          <label className="text-xs font-medium text-ink-600">Task</label>
+          <label className="text-caption font-medium text-ink-600">Task</label>
           <TaskPicker tasks={tasks} value={taskId} onChange={setTaskId} />
         </div>
         <div>
-          <label className="text-xs font-medium text-ink-600">Minutes</label>
+          <label className="text-caption font-medium text-ink-600">Minutes</label>
           <div className="mt-1 flex justify-center">
             <DurationPicker value={Number(minutes) || 0} onChange={(n) => setMinutes(String(n))} max={180} />
           </div>
@@ -296,21 +302,21 @@ function LogTimeCard({ tasks, onClose }: { tasks: RoadmapTask[]; onClose: () => 
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4 backdrop-blur-[6px] lg:hidden">
-      <div className="relative w-full max-w-sm rounded-2xl border border-hairline bg-card p-5 shadow-xl">
+      <div className="relative w-full max-w-sm rounded-xl bg-card p-5 shadow-lg">
         <button className="absolute right-3 top-3 grid size-7 place-items-center rounded-full hover:bg-paper" onClick={onClose} title="Close">
           <X className="size-4" aria-hidden="true" />
         </button>
-        <h2 className="mb-3 text-base font-semibold">Log study time</h2>
+        <h2 className="mb-3 text-body-lg font-semibold">Log study time</h2>
         {tasks.length === 0 ? (
-          <p className="text-sm text-ink-600">No tasks scheduled today to log time against.</p>
+          <p className="text-body text-ink-600">No tasks scheduled today to log time against.</p>
         ) : (
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-medium text-ink-600">Task</label>
+              <label className="text-caption font-medium text-ink-600">Task</label>
               <TaskPicker tasks={tasks} value={taskId} onChange={setTaskId} />
             </div>
             <div>
-              <label className="text-xs font-medium text-ink-600">Minutes</label>
+              <label className="text-caption font-medium text-ink-600">Minutes</label>
               <div className="mt-1 flex justify-center">
                 <DurationPicker value={Number(minutes) || 0} onChange={(n) => setMinutes(String(n))} max={180} />
               </div>
@@ -394,79 +400,63 @@ export function TodayPage({ onNavigate }: { onNavigate: (d: Destination) => void
 
   return (
     <div className="space-y-4 pb-6">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h1 className="text-[23px] font-bold tracking-[-0.02em]">Today — {dateLabel}</h1>
-          <p className="text-[13px] text-ink-600">
-            {activated ? `${tasksDone} of ${tasksTotal} done · ` : ""}
-            {dueCount} cards due
-            {activated && overdueTasks > 0 && ` · ${overdueTasks} tasks carried over`}
-          </p>
-        </div>
-        {activated && (
-          <>
-            <div className="flex shrink-0 items-center gap-2 lg:hidden">
-              <button
-                className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline bg-card hover:border-brand-400"
-                onClick={() => setShowLogTime(true)}
-                title="Log study time"
-              >
-                <Clock className="size-4" aria-hidden="true" />
-              </button>
-              <button
-                className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-600 text-white hover:bg-brand-700"
-                onClick={startTodaysPlan}
-                title="Start today's plan"
-              >
-                <Play className="size-4" aria-hidden="true" />
-              </button>
-            </div>
-            <div className="hidden shrink-0 gap-2 lg:flex">
-              <Button variant="outline" size="sm" onClick={() => setShowLogTime(true)}>
-                Log study time
-              </Button>
-              <Button size="sm" onClick={startTodaysPlan}>
-                Start today's plan
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
+      <SectionHeader
+        className="animate-enter"
+        title={`Today — ${dateLabel}`}
+        subtitle={`${activated ? `${tasksDone} of ${tasksTotal} done · ` : ""}${dueCount} cards due${activated && overdueTasks > 0 ? ` · ${overdueTasks} tasks carried over` : ""}`}
+        action={
+          activated && (
+            <>
+              <div className="flex shrink-0 items-center gap-2 lg:hidden">
+                <Button shape="circle" variant="outline" onClick={() => setShowLogTime(true)} title="Log study time">
+                  <Clock className="size-4" aria-hidden="true" />
+                </Button>
+                <Button shape="circle" onClick={startTodaysPlan} title="Start today's plan">
+                  <Play className="size-4" aria-hidden="true" />
+                </Button>
+              </div>
+              <div className="hidden shrink-0 gap-2 lg:flex">
+                <Button variant="outline" size="sm" onClick={() => setShowLogTime(true)}>
+                  Log study time
+                </Button>
+                <Button size="sm" onClick={startTodaysPlan}>
+                  Start today's plan
+                </Button>
+              </div>
+            </>
+          )
+        }
+      />
 
       {activated && (
-        <div className="flex rounded-2xl border border-hairline bg-card">
-          {[
-            { value: `${todayPercent}%`, label: "Today's tasks", color: "", icon: toDoListIcon },
-            { value: String(dueCount), label: "Vocab due", color: "text-brand-500", icon: deadlineIcon },
-            { value: String(overdueTasks), label: "Overdue tasks", color: "text-warn-500", icon: calendarDeadlineIcon },
-            { value: String(weekReview?.loggedMinutes ?? 0), label: "Min. this week", color: "", icon: sevenDaysIcon },
-            {
-              value: quizResults?.results[0] ? `${quizResults.results[0].score}/${quizResults.results[0].total}` : "—",
-              label: "Last self-test",
-              color: "text-ok-600",
-              icon: examIcon,
-            },
-          ].map((cell, i) => (
-            <div
-              key={cell.label}
-              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-3.5 text-center md:flex-row md:justify-start md:gap-2.5 md:px-4 md:py-4 md:text-left ${i < 4 ? "border-r border-[var(--color-hairline)]" : ""}`}
-            >
-              <img src={cell.icon} alt="" className="size-4 shrink-0 md:size-5" />
-              <div className="min-w-0">
-                <p className={`text-[15px] font-bold md:text-[21px] ${cell.color}`}>{cell.value}</p>
-                <p className="text-[9px] leading-tight text-ink-400 md:mt-1 md:text-[11px]">{cell.label}</p>
-              </div>
+        <div className="animate-enter flex rounded-xl border border-hairline bg-card" style={{ animationDelay: "45ms" }}>
+          {(
+            [
+              { value: `${todayPercent}%`, label: "Today's tasks", tone: "default", icon: toDoListIcon },
+              { value: String(dueCount), label: "Vocab due", tone: "accent", icon: deadlineIcon },
+              { value: String(overdueTasks), label: "Overdue tasks", tone: "warn", icon: calendarDeadlineIcon },
+              { value: String(weekReview?.loggedMinutes ?? 0), label: "Min. this week", tone: "default", icon: sevenDaysIcon },
+              {
+                value: quizResults?.results[0] ? `${quizResults.results[0].score}/${quizResults.results[0].total}` : "—",
+                label: "Last self-test",
+                tone: "ok",
+                icon: examIcon,
+              },
+            ] as const
+          ).map((cell, i) => (
+            <div key={cell.label} className={`min-w-0 flex-1 px-1 py-3.5 md:px-4 md:py-4 ${i < 4 ? "border-r border-hairline" : ""}`}>
+              <Stat value={cell.value} label={cell.label} tone={cell.tone} icon={cell.icon} layout="stack-below-md" />
             </div>
           ))}
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_316px]">
+      <div className="animate-enter grid gap-4 lg:grid-cols-[minmax(0,1fr)_316px]" style={{ animationDelay: "90ms" }}>
         <div className="min-w-0 space-y-3.5">
           {!activated ? (
-            <div className="rounded-[18px] border border-hairline bg-card p-4">
+            <div className="rounded-xl border border-hairline bg-card p-4">
               <h3 className="font-semibold">Vocab &amp; syllabus</h3>
-              <p className="mt-1 text-sm text-ink-600">
+              <p className="mt-1 text-body text-ink-600">
                 {dueCount} vocab card{dueCount === 1 ? "" : "s"} due.{" "}
                 {nextUp && (
                   <>
@@ -488,14 +478,14 @@ export function TodayPage({ onNavigate }: { onNavigate: (d: Destination) => void
           ) : (
             <>
               {syllabus && activeItems.length > 0 && (
-                <div className="rounded-[18px] border border-hairline bg-card p-4">
-                  <p className="text-[13.5px] font-bold">Where you are — {activeLevel?.toUpperCase()}</p>
+                <div className="rounded-xl border border-hairline bg-card p-4">
+                  <p className="text-body font-bold">Where you are — {activeLevel?.toUpperCase()}</p>
                   <div className="mt-3 flex h-[9px] gap-0.5 rounded-full bg-paper p-0">
                     <div className="rounded-full bg-brand-500" style={{ flex: doneCount || 0.001 }} />
                     <div className="rounded-full bg-brand-100" style={{ flex: scheduledCount || 0.001 }} />
-                    <div className="rounded-full bg-[var(--color-hairline)]" style={{ flex: untouchedCount || 0.001 }} />
+                    <div className="rounded-full bg-hairline" style={{ flex: untouchedCount || 0.001 }} />
                   </div>
-                  <p className="mt-2 text-xs text-ink-400">
+                  <p className="mt-2 text-caption text-ink-400">
                     {doneCount} done / {scheduledCount} scheduled / {untouchedCount} untouched
                   </p>
                 </div>
@@ -503,7 +493,17 @@ export function TodayPage({ onNavigate }: { onNavigate: (d: Destination) => void
 
               <CollapsibleSection title="Today's tasks" defaultOpen>
                 {today && today.tasks.length === 0 ? (
-                  <p className="py-2 text-sm text-ink-400">No tasks scheduled for today.</p>
+                  <EmptyState
+                    icon={CalendarCheck}
+                    title="Nothing scheduled for today"
+                    description="Plan a task on the Roadmap to see it here."
+                    action={
+                      <Button size="sm" variant="outline" onClick={() => onNavigate("roadmap")}>
+                        Go to Roadmap
+                      </Button>
+                    }
+                    className="border-0 bg-transparent p-3 shadow-none"
+                  />
                 ) : (
                   <CappedTaskList tasks={today?.tasks ?? []} onNavigate={onNavigate} onOpen={setOpenTask} />
                 )}
@@ -516,7 +516,7 @@ export function TodayPage({ onNavigate }: { onNavigate: (d: Destination) => void
                   defaultOpen={false}
                   warn
                   action={
-                    <button onClick={() => onNavigate("roadmap")} className="shrink-0 text-xs font-semibold text-warn-700 hover:underline">
+                    <button onClick={() => onNavigate("roadmap")} className="shrink-0 text-caption font-semibold text-warn-700 hover:underline">
                       Reschedule all
                     </button>
                   }
@@ -538,22 +538,22 @@ export function TodayPage({ onNavigate }: { onNavigate: (d: Destination) => void
             quizResults && quizResults.weakestTopics.length > 0 ? "md:grid md:grid-cols-2" : ""
           }`}
         >
-          <div className="rounded-[18px] border border-hairline bg-card p-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.09em] text-ink-400">Self-test</p>
+          <div className="rounded-xl border border-hairline bg-card p-4">
+            <p className="eyebrow text-ink-400">Self-test</p>
             <h3 className="mt-0.5 font-semibold">Test yourself</h3>
-            <p className="mt-1 text-sm text-ink-600">{testBlurb}</p>
+            <p className="mt-1 text-body text-ink-600">{testBlurb}</p>
             <Button className="mt-3 w-full" onClick={() => onNavigate("test")}>
               Start a test
             </Button>
           </div>
 
           {quizResults && quizResults.weakestTopics.length > 0 && (
-            <div className="rounded-[18px] border border-hairline bg-card p-4">
-              <p className="text-[10px] font-bold uppercase tracking-[0.09em] text-ink-400">Weak areas</p>
+            <div className="rounded-xl border border-hairline bg-card p-4">
+              <p className="eyebrow text-ink-400">Weak areas</p>
               <h3 className="mt-0.5 font-semibold">Still shaky on:</h3>
               <div className="mt-2 space-y-1.5">
                 {quizResults.weakestTopics.map((w) => (
-                  <div key={w.topic} className="flex items-center justify-between text-sm">
+                  <div key={w.topic} className="flex items-center justify-between text-body">
                     <span className="text-ink-600">{w.topic}</span>
                     <span className={w.percent < 50 ? "font-medium text-brand-500" : "font-medium text-warn-500"}>{w.percent}%</span>
                   </div>

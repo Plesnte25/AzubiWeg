@@ -15,7 +15,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange, c
           key={opt.key}
           type="button"
           className={cn(
-            "rounded-full px-3 py-1 text-sm font-medium transition-colors",
+            "rounded-full px-3 py-1 text-body font-medium transition-colors",
             value === opt.key ? "bg-brand-600 text-white" : "text-ink-600 hover:bg-paper hover:text-ink-900",
           )}
           onClick={() => onChange(opt.key)}

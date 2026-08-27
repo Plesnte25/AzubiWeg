@@ -20,9 +20,9 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 export function Textarea({ variant = "bordered", error, footer, className, ...props }: TextareaProps) {
   if (variant === "ghost") {
     return (
-      <div className="rounded-[10px] bg-paper p-2.5 transition-colors focus-within:bg-hairline-soft">
+      <div className="rounded-md bg-paper p-2.5 transition-colors focus-within:bg-hairline-soft">
         <textarea
-          className={cn("w-full resize-none border-0 bg-transparent text-sm outline-none placeholder:text-ink-400", className)}
+          className={cn("w-full resize-none border-0 bg-transparent text-body outline-none placeholder:text-ink-400", className)}
           aria-invalid={error ? true : props["aria-invalid"]}
           {...props}
         />
@@ -34,7 +34,7 @@ export function Textarea({ variant = "bordered", error, footer, className, ...pr
   return (
     <textarea
       className={cn(
-        "w-full resize-none rounded-md border bg-card px-3 py-2 text-sm outline-none transition-colors placeholder:text-ink-400",
+        "w-full resize-none rounded-md border bg-card px-3 py-2 text-body outline-none transition-colors placeholder:text-ink-400",
         error ? "border-danger-600 focus:border-danger-600" : "border-hairline focus:border-brand-400",
         className,
       )}

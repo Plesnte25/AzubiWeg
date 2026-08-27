@@ -54,13 +54,13 @@ export default function ReviewModal({ words, onClose }: ReviewModalProps) {
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-hairline">
               <div className="h-full rounded-full bg-brand-500 transition-[width] duration-300" style={{ width: `${progressPercent}%` }} />
             </div>
-            <span className="shrink-0 text-xs font-medium text-ink-600">
+            <span className="shrink-0 text-caption font-medium text-ink-600">
               {total}/{remaining + total}
             </span>
           </div>
         )}
 
-        <div className="relative rounded-2xl border border-hairline bg-card p-5 shadow-xl">
+        <div className="relative rounded-xl bg-card p-5 shadow-lg">
           <button className="absolute right-3 top-3 grid size-7 place-items-center rounded-full hover:bg-paper" onClick={onClose} title="Close">
             <X className="size-4" aria-hidden="true" />
           </button>
@@ -73,13 +73,13 @@ export default function ReviewModal({ words, onClose }: ReviewModalProps) {
           ) : !current ? (
             <div className="py-4 text-center">
               <PartyPopper className="mx-auto size-8 text-brand-500" aria-hidden="true" />
-              <h2 className="mt-2 text-lg font-semibold">Session complete</h2>
+              <h2 className="mt-2 text-title font-semibold">Session complete</h2>
               {total > 0 ? (
-                <p className="mt-1 text-sm text-ink-600">
+                <p className="mt-1 text-body text-ink-600">
                   {total} reviewed — {done.easy} easy · {done.good} good · {done.hard} hard
                 </p>
               ) : (
-                <p className="mt-1 text-sm text-ink-600">Nothing due right now.</p>
+                <p className="mt-1 text-body text-ink-600">Nothing due right now.</p>
               )}
               <Button variant="primary" className="mt-5 w-full" onClick={onClose}>
                 Back to vault
@@ -91,13 +91,13 @@ export default function ReviewModal({ words, onClose }: ReviewModalProps) {
                 className="flex min-h-[180px] cursor-pointer flex-col items-center justify-center py-4 text-center"
                 onClick={() => setRevealed((r) => !r)}
               >
-                <p className="text-2xl font-semibold">{current.headword}</p>
+                <p className="text-heading font-semibold">{current.headword}</p>
                 {!revealed ? (
-                  <p className="mt-2 text-xs text-ink-400">tap card to flip →</p>
+                  <p className="mt-2 text-caption text-ink-400">tap card to flip →</p>
                 ) : (
                   <div className="mt-3 space-y-1">
-                    {current.meaning && <p className="text-base font-medium text-ink-900">{current.meaning}</p>}
-                    {current.example && <p className="text-sm italic text-ink-600">{current.example}</p>}
+                    {current.meaning && <p className="text-body-lg font-medium text-ink-900">{current.meaning}</p>}
+                    {current.example && <p className="text-body italic text-ink-600">{current.example}</p>}
                   </div>
                 )}
               </div>
@@ -108,7 +108,7 @@ export default function ReviewModal({ words, onClose }: ReviewModalProps) {
                     <button
                       key={g}
                       disabled={grade.isPending}
-                      className={`rounded-full border bg-card px-3 py-2.5 text-sm font-medium disabled:opacity-50 ${cls}`}
+                      className={`rounded-full border bg-card px-3 py-2.5 text-body font-medium disabled:opacity-50 ${cls}`}
                       onClick={() => grade.mutate({ wordId: current.id, g })}
                     >
                       {label}

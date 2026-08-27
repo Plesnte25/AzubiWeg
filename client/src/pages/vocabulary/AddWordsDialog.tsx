@@ -61,7 +61,7 @@ export function AddWordsDialog({ onClose }: AddWordsDialogProps) {
     <Modal title="Add words" onClose={onClose} size="md">
       <form onSubmit={submit} className="space-y-4">
         <div>
-          <p className="mb-1.5 text-sm text-ink-600">Meaning, pronunciation &amp; audio are fetched automatically.</p>
+          <p className="mb-1.5 text-body text-ink-600">Meaning, pronunciation &amp; audio are fetched automatically.</p>
           <Textarea
             className="h-24"
             placeholder={"e.g. Zug, Bahnhof, fahren\n(comma or newline separated)"}
@@ -74,9 +74,9 @@ export function AddWordsDialog({ onClose }: AddWordsDialogProps) {
         <Input label="Lesson / Woche (optional)" placeholder="e.g. week-05" value={lesson} onChange={(e) => setLesson(e.target.value)} />
 
         <div>
-          <p className="mb-1.5 text-sm">Level</p>
+          <p className="mb-1.5 text-body">Level</p>
           <select
-            className="w-full rounded-md border border-hairline bg-card px-3 py-2 text-sm outline-none focus:border-brand-400"
+            className="w-full rounded-md border border-hairline bg-card px-3 py-2 text-body outline-none focus:border-brand-400"
             value={level}
             onChange={(e) => setLevel(e.target.value as "auto" | CefrLevel)}
           >
@@ -90,8 +90,8 @@ export function AddWordsDialog({ onClose }: AddWordsDialogProps) {
 
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <p className="text-sm">Themenfeld</p>
-            <div className="flex gap-1 text-xs">
+            <p className="text-body">Themenfeld</p>
+            <div className="flex gap-1 text-caption">
               {(["auto", "unclassified", "pick"] as ThemeMode[]).map((m) => (
                 <button
                   key={m}
@@ -110,7 +110,7 @@ export function AddWordsDialog({ onClose }: AddWordsDialogProps) {
                 <button
                   key={t}
                   type="button"
-                  className={`rounded-full border px-2 py-1 text-xs ${
+                  className={`rounded-full border px-2 py-1 text-caption ${
                     pickedThemes.includes(t) ? "border-brand-400 bg-brand-50 text-brand-700" : "border-hairline text-ink-600"
                   }`}
                   onClick={() => toggleTheme(t)}
@@ -126,9 +126,9 @@ export function AddWordsDialog({ onClose }: AddWordsDialogProps) {
           {add.isPending ? "Looking up…" : "Add"}
         </Button>
 
-        {add.isError && <p className="text-sm text-danger-600">{String(add.error)}</p>}
+        {add.isError && <p className="text-body text-danger-600">{String(add.error)}</p>}
         {add.isSuccess && add.data.words.length > 0 && (
-          <p className="flex items-center gap-1.5 text-sm text-ok-700">
+          <p className="flex items-center gap-1.5 text-body text-ok-700">
             <CheckCircle2 className="size-4" aria-hidden="true" />
             Added {add.data.words.map((w) => w?.headword).join(", ")}
           </p>

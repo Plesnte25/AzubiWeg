@@ -449,7 +449,7 @@ export default function FabNav() {
         >
           <span
             className={cn(
-              "text-sm font-bold tracking-tight text-white transition-opacity duration-150",
+              "text-body font-bold tracking-tight text-white transition-opacity duration-150",
               isOpen ? "opacity-100 delay-150" : "opacity-0",
             )}
           >
@@ -459,10 +459,10 @@ export default function FabNav() {
       </div>
 
       {notifOpen && isNav && (
-        <div className="animate-scale-in pointer-events-auto fixed inset-x-0 bottom-[220px] z-50 mx-auto w-80 origin-bottom overflow-hidden rounded-xl border border-hairline bg-card shadow-lg">
-          <p className="border-b border-hairline px-4 py-2.5 text-sm font-semibold">Notifications</p>
+        <div className="animate-scale-in pointer-events-auto fixed inset-x-0 bottom-[220px] z-50 mx-auto w-80 origin-bottom overflow-hidden rounded-xl bg-card shadow-lg">
+          <p className="border-b border-hairline px-4 py-2.5 text-body font-semibold">Notifications</p>
           {notifications.length === 0 ? (
-            <p className="flex flex-col items-center gap-1.5 px-4 py-6 text-center text-sm text-ink-400">
+            <p className="flex flex-col items-center gap-1.5 px-4 py-6 text-center text-body text-ink-400">
               <Sparkles className="size-4" aria-hidden="true" />
               All caught up — nothing needs your attention
             </p>
@@ -483,8 +483,8 @@ export default function FabNav() {
                       <span className="flex items-start gap-2.5">
                         <Icon className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />
                         <span className="min-w-0">
-                          <span className="block text-sm font-medium">{n.title}</span>
-                          <span className="block text-xs text-ink-600">{n.detail}</span>
+                          <span className="block text-body font-medium">{n.title}</span>
+                          <span className="block text-caption text-ink-600">{n.detail}</span>
                         </span>
                       </span>
                     </button>

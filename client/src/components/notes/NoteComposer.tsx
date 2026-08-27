@@ -43,7 +43,7 @@ export function NoteComposer({
         placeholder="Type a note — a quick thought, a photo of a handwritten page, anything…"
       />
       <div className="mt-1.5 flex items-center justify-between gap-2">
-        {create.isError && <span className="text-xs text-danger-600">{String(create.error)}</span>}
+        {create.isError && <span className="text-caption text-danger-600">{String(create.error)}</span>}
         <Button size="sm" className="ml-auto" disabled={!stripHtml(draft)} loading={create.isPending} onClick={() => create.mutate()}>
           Add note
         </Button>

@@ -26,7 +26,7 @@ export default function MobileShelfRow({ title, words, flippedWordId, onToggleFl
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold text-ink-900">
+        <span className="text-body font-semibold text-ink-900">
           {title} <span className="font-normal text-ink-400">{words.length}</span>
         </span>
       </div>
@@ -34,6 +34,7 @@ export default function MobileShelfRow({ title, words, flippedWordId, onToggleFl
         {words.map((w) => (
           <div
             key={w.id}
+            className="animate-scale-in"
             onClickCapture={(e) => {
               if (draggedRef.current) {
                 e.stopPropagation();

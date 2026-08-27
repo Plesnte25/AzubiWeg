@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { CefrLevel, RoadmapSkill } from "../api/types";
 import { cn } from "../lib/cn";
 import { SKILL_COLORS, SKILL_LABELS } from "../lib/skills";
+import { Card } from "./ui/Card";
 import { DonutProgress } from "./ui/DonutProgress";
 
 export interface AccordionLevel {
@@ -33,25 +34,25 @@ function CourseRow({ course }: { course: ThemeCourse }) {
   return (
     <div className="px-1 py-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-ink-900">
+        <p className="flex min-w-0 items-center gap-1.5 text-body font-medium text-ink-900">
           {isDone && <Check className="size-3.5 shrink-0 text-ok-600" aria-hidden="true" />}
           <span className="truncate">{course.theme}</span>
         </p>
         <span
-          className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+          className="shrink-0 rounded-full px-2 py-0.5 text-micro font-semibold"
           style={{ backgroundColor: `color-mix(in srgb, ${skillColor} 16%, transparent)`, color: skillColor }}
         >
           {label}
         </span>
       </div>
       <div className="mt-1 flex items-center gap-2">
-        <span className="shrink-0 text-xs text-ink-400">
+        <span className="shrink-0 text-caption text-ink-400">
           {course.done}/{course.total}
         </span>
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-paper">
           <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${course.percent}%`, backgroundColor: barColor }} />
         </div>
-        <span className={cn("w-9 shrink-0 text-right text-xs font-semibold", isDone ? "text-ok-700" : "text-ink-900")}>
+        <span className={cn("w-9 shrink-0 text-right text-caption font-semibold", isDone ? "text-ok-700" : "text-ink-900")}>
           {course.percent}%
         </span>
       </div>
@@ -72,18 +73,21 @@ function ActiveStrip({ level, onClose }: { level: AccordionLevel; onClose: () =>
       className="relative flex w-12 shrink-0 flex-col items-center justify-between gap-2 overflow-hidden border-r border-hairline py-3.5"
     >
       <div
-        className={cn("absolute inset-x-0 bottom-0 transition-[height] duration-700", isDone ? "bg-ok-500/20" : "bg-brand-500/20")}
+        className={cn(
+          "absolute inset-x-0 bottom-0 transition-[height] duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
+          isDone ? "bg-ok-500/20" : "bg-brand-500/20",
+        )}
         style={{ height: `${level.percent}%` }}
       />
       <p
-        className="relative z-10 whitespace-nowrap text-sm font-bold text-ink-900"
+        className="relative z-10 whitespace-nowrap text-body font-bold text-ink-900"
         style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
       >
         {level.level.toUpperCase()} · {LEVEL_TITLES[level.level]}
       </p>
       <div className="relative z-10 flex flex-col items-center gap-0.5">
-        <span className={cn("text-xs font-bold", isDone ? "text-ok-700" : "text-brand-600")}>{level.percent}%</span>
-        <span className="whitespace-nowrap text-[10px] text-ink-400">
+        <span className={cn("text-caption font-bold", isDone ? "text-ok-700" : "text-brand-600")}>{level.percent}%</span>
+        <span className="whitespace-nowrap text-micro text-ink-400">
           {level.done}/{level.total}
         </span>
       </div>
@@ -119,10 +123,13 @@ export default function CoursesAccordion({
       {sections.map(({ level, themeCourses }) => {
         const isOpen = open === level.level;
         return (
-          <div
+          <Card
             key={level.level}
+            padding="none"
+            level={isOpen ? 2 : 1}
+            interactive={isOpen}
             className={cn(
-              "flex min-h-0 overflow-hidden rounded-xl border border-hairline bg-card transition-[flex-grow,flex-basis] duration-300",
+              "flex min-h-0 overflow-hidden transition-[flex-grow,flex-basis,box-shadow,transform] duration-300",
               isOpen ? "flex-[3] basis-0" : "flex-[1] basis-0 flex-col",
             )}
           >
@@ -147,15 +154,15 @@ export default function CoursesAccordion({
                   strokeWidth={6}
                   segments={[{ value: level.percent, color: "var(--color-brand-500)" }]}
                   max={100}
-                  centerValue={<span className="text-xs font-bold">{level.percent}%</span>}
+                  centerValue={<span className="text-caption font-bold">{level.percent}%</span>}
                 />
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-ink-900">{level.level.toUpperCase()}</p>
-                  <p className="truncate text-[11px] text-ink-400">{LEVEL_TITLES[level.level]}</p>
+                  <p className="text-body font-bold text-ink-900">{level.level.toUpperCase()}</p>
+                  <p className="truncate text-micro text-ink-400">{LEVEL_TITLES[level.level]}</p>
                 </div>
               </button>
             )}
-          </div>
+          </Card>
         );
       })}
     </div>

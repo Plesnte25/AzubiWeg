@@ -41,12 +41,12 @@ export function WordCard({ word, flipped, onToggleFlip, onToggleLeech, onDelete,
   return (
     <div
       ref={cardRef}
-      className="relative h-44 rounded-[14px] shadow-xs transition-all duration-200 [perspective:1000px] hover:-translate-y-0.5 hover:shadow-md"
+      className="relative h-44 rounded-lg shadow-xs transition-all duration-200 [perspective:1000px] hover:-translate-y-0.5 hover:shadow-md"
       style={ringing ? { transition: "box-shadow 1.6s ease-out" } : undefined}
     >
       <div
         className={cn(
-          "flip-card-3d relative h-full w-full cursor-pointer rounded-[14px] transition-transform duration-300",
+          "flip-card-3d relative h-full w-full cursor-pointer rounded-lg transition-transform duration-300",
           flipped && "[transform:rotateY(180deg)]",
         )}
         style={
@@ -58,14 +58,14 @@ export function WordCard({ word, flipped, onToggleFlip, onToggleLeech, onDelete,
         onPointerUp={onPointerUp}
       >
         {/* front */}
-        <div className="flip-card-face absolute inset-0 flex flex-col rounded-[14px] border border-hairline bg-card p-3">
+        <div className="flip-card-face absolute inset-0 flex flex-col rounded-lg border border-hairline bg-card p-3">
           <div className="flex items-center gap-1.5">
             <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: stateColor }} aria-hidden="true" />
-            <span className="text-[10px] font-bold tracking-wide" style={{ color: wortartColor }}>
+            <span className="text-micro font-bold tracking-wide" style={{ color: wortartColor }}>
               {word.wortart}
             </span>
             {word.level && (
-              <span className="rounded-full border border-hairline px-1.5 text-[10px] font-medium text-ink-400">
+              <span className="rounded-full border border-hairline px-1.5 text-micro font-medium text-ink-400">
                 {word.level.toUpperCase()}
               </span>
             )}
@@ -73,15 +73,15 @@ export function WordCard({ word, flipped, onToggleFlip, onToggleLeech, onDelete,
           </div>
 
           <div className="mt-2 min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{word.headword}</p>
-            {word.ipa && <p className="truncate text-xs text-ink-400">/{word.ipa}/</p>}
+            <p className="truncate text-body font-semibold">{word.headword}</p>
+            {word.ipa && <p className="truncate text-caption text-ink-400">/{word.ipa}/</p>}
             {word.themenfeld[0] && (
-              <p className="mt-1 truncate text-[11px] text-ink-400">{THEMENFELD_LABELS[word.themenfeld[0]]}</p>
+              <p className="mt-1 truncate text-micro text-ink-400">{THEMENFELD_LABELS[word.themenfeld[0]]}</p>
             )}
           </div>
 
           <div className="mt-auto flex items-center justify-between">
-            <span className="text-[10px] font-medium text-ink-400">{STATE_LABELS[word.state]}</span>
+            <span className="text-micro font-medium text-ink-400">{STATE_LABELS[word.state]}</span>
             {word.audioPath && (
               <button
                 title="Play pronunciation"
@@ -96,17 +96,17 @@ export function WordCard({ word, flipped, onToggleFlip, onToggleLeech, onDelete,
                   onPlayAudio(word);
                 }}
               >
-                {audioPlaying ? <span className="text-[10px] leading-none">❚❚</span> : <Volume2 className="size-3.5" aria-hidden="true" />}
+                {audioPlaying ? <span className="text-micro leading-none">❚❚</span> : <Volume2 className="size-3.5" aria-hidden="true" />}
               </button>
             )}
           </div>
         </div>
 
         {/* back */}
-        <div className="flip-card-face absolute inset-0 flex flex-col rounded-[14px] border border-hairline bg-ink-900 p-3 text-ink-50 [transform:rotateY(180deg)]">
-          <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto text-xs">
+        <div className="flip-card-face absolute inset-0 flex flex-col rounded-lg border border-hairline bg-ink-900 p-3 text-ink-50 [transform:rotateY(180deg)]">
+          <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto text-caption">
             <p
-              className="text-sm font-semibold"
+              className="text-body font-semibold"
               style={word.genus ? { color: GENUS_COLORS[word.genus] } : undefined}
             >
               {articleFront(word.headword, word.genus)}
@@ -115,7 +115,7 @@ export function WordCard({ word, flipped, onToggleFlip, onToggleLeech, onDelete,
             {word.example && <p className="italic text-ink-50/70">{word.example}</p>}
             {word.grammar && <p className="text-ink-50/70">{word.grammar}</p>}
             {word.srInterval !== null && (
-              <p className="text-[10px] text-ink-50/50">
+              <p className="text-micro text-ink-50/50">
                 interval {word.srInterval}d · ease {word.srEase}
               </p>
             )}

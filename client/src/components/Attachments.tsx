@@ -29,7 +29,7 @@ function FileChip({ file, onChanged }: { file: UploadedFileMeta; onChanged: () =
 
   if (isAudio) {
     return (
-      <span className="flex items-center gap-1.5 rounded-full border border-hairline bg-paper px-2 py-1 text-xs">
+      <span className="flex items-center gap-1.5 rounded-full border border-hairline bg-paper px-2 py-1 text-caption">
         {preview && <audio controls src={preview} className="h-7 max-w-56" />}
         <button className="text-ink-400 hover:text-danger-600" title="Remove recording" onClick={() => removeFile.mutate(file.id)}>
           ×
@@ -39,7 +39,7 @@ function FileChip({ file, onChanged }: { file: UploadedFileMeta; onChanged: () =
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-paper px-2 py-0.5 text-xs">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-paper px-2 py-0.5 text-caption">
       {isImage && preview && <img src={preview} alt="" className="size-8 rounded object-cover" />}
       <button
         className="max-w-48 truncate hover:text-brand-700 hover:underline"
@@ -114,7 +114,7 @@ export function Attachments({
         renderTrigger({ onClick: () => fileInput.current?.click(), uploading })
       ) : (
         <button
-          className="rounded border border-hairline px-2 py-0.5 text-xs text-ink-600 hover:bg-paper"
+          className="rounded border border-hairline px-2 py-0.5 text-caption text-ink-600 hover:bg-paper"
           disabled={uploading}
           onClick={() => fileInput.current?.click()}
           title="Attach notes (PDF, photo, or .txt)"
@@ -122,7 +122,7 @@ export function Attachments({
           {uploading ? "Uploading…" : "+ notes"}
         </button>
       )}
-      {error && <span className="text-xs text-danger-600">{error}</span>}
+      {error && <span className="text-caption text-danger-600">{error}</span>}
     </div>
   );
 }

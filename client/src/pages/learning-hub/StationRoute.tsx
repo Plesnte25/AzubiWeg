@@ -119,7 +119,7 @@ export function StationRoute({ stations, currentIdx, orientation, seed, scrollCo
                 label below is truncated at w-[104px], long theme names get
                 cut off there; aria-label already carries the full text for
                 screen readers, this is the sighted-hover equivalent */}
-            <span className="pointer-events-none absolute -top-9 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-md border border-hairline bg-card px-2 py-1 text-xs font-medium text-ink-900 opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            <span className="pointer-events-none absolute -top-9 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-md border border-hairline bg-card px-2 py-1 text-caption font-medium text-ink-900 opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
               {s.theme}
             </span>
             {status === "current" && (
@@ -138,7 +138,7 @@ export function StationRoute({ stations, currentIdx, orientation, seed, scrollCo
                 <span className="absolute size-[22px] animate-ping rounded-full bg-brand-400 opacity-75" aria-hidden="true" />
               )}
               <span
-                className={`relative grid place-items-center rounded-full border-4 border-card text-[10px] font-bold text-white ${
+                className={`relative grid place-items-center rounded-full border-4 border-card text-micro font-bold text-white ${
                   status === "done"
                     ? "size-4 bg-ok-600"
                     : status === "current"
@@ -158,10 +158,10 @@ export function StationRoute({ stations, currentIdx, orientation, seed, scrollCo
                 positions, especially in the horizontal (lg) orientation
                 where wander shares the label's own axis */}
             <span className="w-full rounded bg-card px-1">
-              <span className={`block w-full truncate text-[11.5px] ${status === "current" ? "font-bold" : status === "ahead" ? "text-ink-400" : "text-ink-600"}`}>
+              <span className={`block w-full truncate text-micro ${status === "current" ? "font-bold" : status === "ahead" ? "text-ink-400" : "text-ink-600"}`}>
                 {s.theme}
               </span>
-              <span className={`block text-[10.5px] ${status === "done" ? "text-ok-600" : status === "current" ? "font-semibold text-brand-500" : "text-ink-400"}`}>
+              <span className={`block text-micro ${status === "done" ? "text-ok-600" : status === "current" ? "font-semibold text-brand-500" : "text-ink-400"}`}>
                 {done}/{s.items.length}
               </span>
             </span>

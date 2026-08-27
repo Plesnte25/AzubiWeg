@@ -139,7 +139,7 @@ export default function StudyActivityChart({
 
       <div className="min-h-0 flex-1">
         {isEmpty ? (
-          <p className="text-sm text-ink-600">
+          <p className="text-body text-ink-600">
             {mode === "hour" ? "No study activity logged yet." : "No time logged against roadmap tasks yet."}
           </p>
         ) : mode === "hour" ? (
@@ -150,7 +150,7 @@ export default function StudyActivityChart({
       </div>
 
       {mode !== "hour" && (
-        <ul className="mt-2 flex shrink-0 flex-wrap gap-x-3 gap-y-1 text-xs">
+        <ul className="mt-2 flex shrink-0 flex-wrap gap-x-3 gap-y-1 text-caption">
           {DISPLAY_SKILLS.map((s) => (
             <li key={s} className="flex items-center gap-1.5">
               <span className="size-2 rounded-full" style={{ backgroundColor: SKILL_COLORS[s] }} />
@@ -210,7 +210,7 @@ function HourOfDayBars({
       </svg>
       {active && (
         <div
-          className="pointer-events-none absolute -top-1 whitespace-nowrap rounded-lg border border-hairline bg-card px-2.5 py-1.5 text-xs shadow-md"
+          className="pointer-events-none absolute -top-1 whitespace-nowrap rounded-lg bg-card px-2.5 py-1.5 text-caption shadow-md"
           style={{ left: `${((hover! + 0.5) / data.length) * 100}%`, transform: "translateX(-50%)" }}
         >
           <span className="font-semibold text-ink-900">{active.minutes}m</span> <span className="text-ink-600">at {active.hour}:00</span>
@@ -279,7 +279,7 @@ function StackedBars({
       </svg>
       {active && (
         <div
-          className="pointer-events-none absolute -top-1 whitespace-nowrap rounded-lg border border-hairline bg-card px-2.5 py-1.5 text-xs shadow-md"
+          className="pointer-events-none absolute -top-1 whitespace-nowrap rounded-lg bg-card px-2.5 py-1.5 text-caption shadow-md"
           style={{ left: `${((hover! + 0.5) / bars.length) * 100}%`, transform: "translateX(-50%)" }}
         >
           <p className="font-semibold text-ink-900">

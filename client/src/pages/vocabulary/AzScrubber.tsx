@@ -56,7 +56,7 @@ export function AzScrubber({ words, onJump }: AzScrubberProps) {
     <div className="relative z-30 hidden shrink-0 lg:sticky lg:top-24 lg:block lg:h-[calc(100vh-7rem)] lg:w-8 lg:self-start">
       {hovered && hoveredWords.length > 0 && (
         <div
-          className="absolute right-full z-30 mr-2 w-48 -translate-y-1/2 rounded-lg bg-ink-900 p-2.5 text-xs text-ink-50 shadow-lg"
+          className="absolute right-full z-30 mr-2 w-48 -translate-y-1/2 rounded-lg bg-ink-900 p-2.5 text-caption text-ink-50 shadow-lg"
           style={{ top: `${(hoveredIndex / (LETTERS.length - 1)) * 100}%` }}
         >
           <p className="mb-1 font-bold">
@@ -98,7 +98,8 @@ export function AzScrubber({ words, onJump }: AzScrubberProps) {
             <button
               key={letter}
               disabled={!active}
-              className="w-full text-center text-[10px] font-semibold leading-none text-ink-400 transition-transform disabled:opacity-30"
+              title={active ? undefined : `No words starting with ${letter}`}
+              className="w-full text-center text-micro font-semibold leading-none text-ink-400 transition-transform disabled:opacity-30"
               style={{
                 transform: `scale(${scale})`,
                 color: active && distance === 0 ? "var(--color-brand-500)" : undefined,

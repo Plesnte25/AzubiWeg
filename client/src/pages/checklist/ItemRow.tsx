@@ -58,21 +58,21 @@ export default function ItemRow({ item, first }: { item: ChecklistItem; first: b
           aria-label={isDone ? "Mark as to do" : "Mark as done"}
           onClick={() => update.mutate({ status: isDone ? "todo" : "done" })}
           className={cn(
-            "mt-0.5 size-4 shrink-0 rounded-[5px] md:mt-0",
+            "mt-0.5 size-4 shrink-0 rounded-sm md:mt-0",
             isDone ? "bg-ink-900" : "border-[1.5px] border-ink-300",
           )}
         />
 
         <div className="min-w-0 flex-1">
-          <p className={cn("text-[13px] font-medium", isDone && "text-ink-300 line-through")}>{item.title}</p>
-          {item.description && <p className="mt-0.5 text-[11px] text-ink-300">{item.description}</p>}
-          {error && <p className="mt-1 text-xs text-danger-600">{error}</p>}
+          <p className={cn("text-body font-medium", isDone && "text-ink-300 line-through")}>{item.title}</p>
+          {item.description && <p className="mt-0.5 text-micro text-ink-300">{item.description}</p>}
+          {error && <p className="mt-1 text-caption text-danger-600">{error}</p>}
           {item.files.length > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {item.files.map((f) => (
                 <span
                   key={f.id}
-                  className="inline-flex items-center gap-1 rounded-full bg-hairline-soft px-2 py-0.5 text-[10px] text-ink-600"
+                  className="inline-flex items-center gap-1 rounded-full bg-hairline-soft px-2 py-0.5 text-micro text-ink-600"
                 >
                   <button
                     className="max-w-40 truncate hover:text-brand-700 hover:underline"
@@ -101,7 +101,7 @@ export default function ItemRow({ item, first }: { item: ChecklistItem; first: b
         {item.expiresAt && <DeadlineBadge days={daysUntil(item.expiresAt)} />}
 
         <select
-          className="h-[26px] w-[104px] shrink-0 rounded-[6px] border border-hairline bg-paper px-1.5 text-xs"
+          className="h-[26px] w-[104px] shrink-0 rounded-sm border border-hairline bg-paper px-1.5 text-caption"
           value={item.status}
           onChange={(e) => update.mutate({ status: e.target.value as ChecklistStatus })}
         >
@@ -125,7 +125,7 @@ export default function ItemRow({ item, first }: { item: ChecklistItem; first: b
         />
         <button
           type="button"
-          title="Attach a file"
+          title={uploading ? "Uploading…" : "Attach a file"}
           disabled={uploading}
           onClick={() => fileInput.current?.click()}
           className="shrink-0 text-ink-300 hover:text-brand-700"

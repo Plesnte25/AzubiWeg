@@ -88,7 +88,8 @@ export function Modal({ title, onClose, size = "md", desktopOnly, sheetOnSm, chi
                 // min-h-full (not min-h-screen): grows with content past one
                 // viewport instead of clipping, still fills at least the screen.
                 "flex min-h-full w-full min-w-0 flex-col bg-card p-5 outline-none",
-                "md:min-h-0 md:animate-scale-in md:rounded-xl md:border md:border-hairline md:shadow-xl",
+                // level 3 (overlay): shadow only, no border — see Card.tsx
+                "md:min-h-0 md:animate-scale-in md:rounded-xl md:shadow-lg",
                 MD_SIZE_CLASSES[size],
               )
             : cn(
@@ -96,13 +97,14 @@ export function Modal({ title, onClose, size = "md", desktopOnly, sheetOnSm, chi
                 // wide-min-content child (a long unbreakable string, an unwrapped
                 // form control) force this box past its own max-width instead of
                 // shrinking/wrapping internally — override that default.
-                "animate-scale-in w-full min-w-0 rounded-xl border border-hairline bg-card p-5 shadow-xl outline-none",
+                // level 3 (overlay): shadow only, no border — see Card.tsx
+                "animate-scale-in w-full min-w-0 rounded-xl bg-card p-5 shadow-lg outline-none",
                 SIZE_CLASSES[size],
               )
         }
       >
         <div className="mb-4 flex items-start justify-between gap-4">
-          <h2 className="text-lg font-semibold">{title}</h2>
+          <h2 className="text-title font-semibold">{title}</h2>
           <button className="text-ink-400 hover:text-ink-900" onClick={onClose} title="Close">
             <X className="size-5" aria-hidden="true" />
           </button>

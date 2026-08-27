@@ -90,14 +90,15 @@ export function DonutProgress({
                 strokeDasharray={arc.dasharray}
                 strokeDashoffset={arc.dashoffset}
                 strokeLinecap="round"
+                className="transition-[stroke-dasharray] duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
               />
             ),
         )}
       </svg>
       {(centerValue !== undefined || centerLabel) && (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center leading-tight">
-          {centerValue !== undefined && <span className="text-xl font-bold text-ink-900">{centerValue}</span>}
-          {centerLabel && <span className="text-xs text-ink-600">{centerLabel}</span>}
+          {centerValue !== undefined && <span className="text-heading font-bold text-ink-900">{centerValue}</span>}
+          {centerLabel && <span className="text-caption text-ink-600">{centerLabel}</span>}
         </div>
       )}
       {arcs.map(
@@ -106,7 +107,7 @@ export function DonutProgress({
           arc.label && (
             <span
               key={`label-${i}`}
-              className="absolute grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-warning-100 bg-warning-50 px-1.5 py-0.5 text-[10px] font-bold text-ink-900 shadow-sm"
+              className="absolute grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-warning-100 bg-warning-50 px-1.5 py-0.5 text-micro font-bold text-ink-900 shadow-sm"
               style={{ left: arc.labelX, top: arc.labelY }}
             >
               {arc.label}

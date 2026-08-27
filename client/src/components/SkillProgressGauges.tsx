@@ -39,9 +39,9 @@ function ArcGauge({ percent, color, label }: { percent: number; color: string; l
           />
           <title>{`${label}: ${clamped}%`}</title>
         </svg>
-        <div className="absolute inset-x-0 bottom-1 text-center text-sm font-bold text-ink-900">{clamped}%</div>
+        <div className="absolute inset-x-0 bottom-1 text-center text-body font-bold text-ink-900">{clamped}%</div>
       </div>
-      <span className="mt-0.5 text-xs text-ink-600">{label}</span>
+      <span className="mt-0.5 text-caption text-ink-600">{label}</span>
     </div>
   );
 }
@@ -84,12 +84,12 @@ export default function SkillProgressGauges({
     <div className="space-y-4">
       <div>
         <p className="font-semibold text-ink-900">{name}</p>
-        {nextLessonLine && <p className="mt-0.5 text-sm text-ink-600">Next lesson: {nextLessonLine}</p>}
+        {nextLessonLine && <p className="mt-0.5 text-body text-ink-600">Next lesson: {nextLessonLine}</p>}
       </div>
 
       <div className="relative mt-8">
         <div
-          className="absolute bottom-full mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink-900 px-2.5 py-1 text-xs font-semibold text-white"
+          className="absolute bottom-full mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink-900 px-2.5 py-1 text-caption font-semibold text-white"
           style={{ left: `${overallPercent}%` }}
         >
           {overallPercent}% overall · Day {dayOffset}/{totalDays}
@@ -108,7 +108,7 @@ export default function SkillProgressGauges({
             />
           ))}
         </div>
-        <div className="relative mt-1 h-3.5 text-[10px] font-medium text-ink-400">
+        <div className="relative mt-1 h-3.5 text-micro font-medium text-ink-400">
           {boundaries.map((b) => (
             <span
               key={b.level}

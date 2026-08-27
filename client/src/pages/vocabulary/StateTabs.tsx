@@ -80,7 +80,7 @@ function GroupByDropdown({
       ref={menuRef}
       role="menu"
       aria-label="Group by"
-      className="fixed z-50 flex flex-col gap-0.5 rounded-xl border border-hairline bg-card p-1 shadow-lg"
+      className="fixed z-50 flex flex-col gap-0.5 rounded-xl bg-card p-1 shadow-lg"
       style={{ top: pos.top, left: pos.left }}
     >
       {GROUP_OPTIONS.map((opt) => (
@@ -89,7 +89,7 @@ function GroupByDropdown({
           role="menuitemradio"
           aria-checked={groupBy === opt.key}
           className={cn(
-            "rounded-lg px-3 py-1.5 text-left text-sm font-medium transition-colors",
+            "rounded-lg px-3 py-1.5 text-left text-body font-medium transition-colors",
             groupBy === opt.key ? "bg-brand-600 text-white" : "text-ink-600 hover:bg-paper hover:text-ink-900",
           )}
           onClick={() => {
@@ -157,7 +157,7 @@ export default function StateTabs({ allWords, stateCounts, value, onChange, grou
               tabIndex={active ? 0 : -1}
               onKeyDown={(e) => onKeyDown(e, i)}
               className={cn(
-                "flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                "flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-caption font-medium transition-colors",
                 showCaret && "rounded-r-none",
                 isAll && active
                   ? "border-transparent bg-ink-900 text-white"

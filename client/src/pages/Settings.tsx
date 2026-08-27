@@ -41,8 +41,8 @@ export default function Settings() {
   return (
     <div className="max-w-2xl space-y-4">
       <Card padding="lg">
-        <h1 className="text-lg font-semibold">Appearance</h1>
-        <p className="mt-1 text-sm text-ink-600">Choose how AzubiWeg looks on this device.</p>
+        <h1 className="text-title font-semibold">Appearance</h1>
+        <p className="mt-1 text-body text-ink-600">Choose how AzubiWeg looks on this device.</p>
         <SegmentedControl
           className="mt-3"
           value={theme}
@@ -56,8 +56,8 @@ export default function Settings() {
       </Card>
 
       <Card padding="lg">
-        <h1 className="text-lg font-semibold">Obsidian vault</h1>
-        <p className="mt-1 text-sm text-ink-600">
+        <h1 className="text-title font-semibold">Obsidian vault</h1>
+        <p className="mt-1 text-body text-ink-600">
           Link your Obsidian vocab vault and the app keeps <code>Vocab/master.md</code> in two-way
           sync: words you add here (and reviews you do here) appear in Obsidian, and vice versa —
           including words captured on your phone via <code>inbox.md</code>.
@@ -65,14 +65,14 @@ export default function Settings() {
 
         {status?.vaultPath ? (
           <div className="mt-4 space-y-3">
-            <div className="rounded-md border border-hairline bg-paper px-3 py-2 text-sm">
+            <div className="rounded-md border border-hairline bg-paper px-3 py-2 text-body">
               <div className="flex items-center gap-2">
                 <span
                   className={`inline-block h-2 w-2 rounded-full ${status.watching ? "bg-ok-600" : "bg-danger-600"}`}
                 />
-                <code className="text-xs">{status.vaultPath}</code>
+                <code className="text-caption">{status.vaultPath}</code>
               </div>
-              <p className="mt-1 text-xs text-ink-400">
+              <p className="mt-1 text-caption text-ink-400">
                 {status.wordCount} words · {status.watching ? "watching for changes" : "watcher stopped"}
                 {status.lastSyncAt && ` · last synced ${new Date(status.lastSyncAt).toLocaleTimeString()}`}
               </p>
@@ -112,9 +112,9 @@ export default function Settings() {
             <Button loading={link.isPending}>{link.isPending ? "Importing…" : "Link vault"}</Button>
           </form>
         )}
-        {link.isError && <p className="mt-2 text-sm text-danger-600">{String(link.error)}</p>}
+        {link.isError && <p className="mt-2 text-body text-danger-600">{String(link.error)}</p>}
         {link.isSuccess && (
-          <p className="mt-2 flex items-center gap-1.5 text-sm text-ok-700">
+          <p className="mt-2 flex items-center gap-1.5 text-body text-ok-700">
             <CheckCircle2 className="size-4" aria-hidden="true" />
             Linked — imported {link.data.wordCount} words
           </p>
@@ -122,8 +122,8 @@ export default function Settings() {
       </Card>
 
       <Card padding="lg">
-        <h1 className="text-lg font-semibold">Vocabulary tagging</h1>
-        <p className="mt-1 text-sm text-ink-600">
+        <h1 className="text-title font-semibold">Vocabulary tagging</h1>
+        <p className="mt-1 text-body text-ink-600">
           Words get a level and theme (Themenfeld) automatically when added. Words added before
           that existed, or through the mobile inbox before this was wired up, may still be missing
           one — this fills in whatever's missing without touching anything you've already set or
@@ -139,7 +139,7 @@ export default function Settings() {
           {reclassify.isPending ? "Classifying…" : "Fill in missing tags"}
         </Button>
         {reclassify.isSuccess && (
-          <p className="mt-2 flex items-center gap-1.5 text-sm text-ok-700">
+          <p className="mt-2 flex items-center gap-1.5 text-body text-ok-700">
             <CheckCircle2 className="size-4" aria-hidden="true" />
             {reclassify.data.updated === 0
               ? `Checked ${reclassify.data.total} words — nothing was missing.`
@@ -149,8 +149,8 @@ export default function Settings() {
       </Card>
 
       <Card padding="lg">
-        <h1 className="text-lg font-semibold">Roadmap</h1>
-        <p className="mt-1 text-sm text-ink-600">
+        <h1 className="text-title font-semibold">Roadmap</h1>
+        <p className="mt-1 text-body text-ink-600">
           Restart your 182-day plan from a new date. This deletes every day, task, journal entry,
           and file attached to a roadmap task — it can't be undone. Your syllabus progress,
           vocabulary, and self-test history are stored separately and stay untouched.
@@ -167,13 +167,13 @@ export default function Settings() {
 
       {confirmingReset && (
         <Modal title="Reset your 182-day plan?" onClose={() => setConfirmingReset(false)} size="sm">
-          <p className="text-sm text-ink-600">
+          <p className="text-body text-ink-600">
             This permanently deletes every day, task, journal entry, and attached file on your
             roadmap, and unsets your start date. Your syllabus progress and vocabulary are
             untouched. This can't be undone.
           </p>
           {resetRoadmap.isError && (
-            <p className="mt-2 text-sm text-danger-600">{String(resetRoadmap.error)}</p>
+            <p className="mt-2 text-body text-danger-600">{String(resetRoadmap.error)}</p>
           )}
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="outline" onClick={() => setConfirmingReset(false)}>
@@ -186,7 +186,7 @@ export default function Settings() {
         </Modal>
       )}
 
-      <Card padding="lg" className="text-sm text-ink-600">
+      <Card padding="lg" className="text-body text-ink-600">
         <h2 className="font-medium text-ink-900">How the sync works</h2>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>

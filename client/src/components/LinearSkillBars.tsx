@@ -11,7 +11,7 @@ export default function LinearSkillBars({ skills }: { skills: SkillProgressDatum
     <div className="flex flex-col gap-2.5 md:flex-row md:gap-3">
       {bars.map((b) => (
         <div key={b.skill} className="md:flex-1">
-          <div className="mb-1 flex items-center justify-between gap-2 text-xs">
+          <div className="mb-1 flex items-center justify-between gap-2 text-caption">
             <span className="font-medium text-ink-600">{b.label}</span>
             <span className="font-semibold text-ink-900">{b.percent}%</span>
           </div>

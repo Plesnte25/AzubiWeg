@@ -10,7 +10,7 @@ const variantClasses = {
   info: "border-info-100 bg-info-50 text-info-700",
 };
 
-const sizeClasses = { sm: "px-2 py-0.5 text-xs", md: "px-2.5 py-1 text-sm" };
+const sizeClasses = { sm: "px-2 py-0.5 text-caption", md: "px-2.5 py-1 text-body" };
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   variant?: keyof typeof variantClasses;

@@ -47,26 +47,26 @@ export function LearningRail({ destination, onNavigate }: { destination: Destina
   return (
     <div className="hidden w-[212px] shrink-0 flex-col gap-3 self-start lg:flex lg:sticky lg:top-5">
       {/* Day counter */}
-      <div className="rounded-2xl bg-ink-900 p-4 text-white">
-        <p className="text-[10px] font-bold tracking-[0.1em] text-ink-400">LEARNING HUB</p>
+      <div className="rounded-xl bg-ink-900 p-4 text-white">
+        <p className="eyebrow text-ink-400">LEARNING HUB</p>
         {activated && today ? (
           <>
             <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-[32px] font-bold leading-none">{today.overview.currentDayOffset + 1}</span>
-              <span className="text-xs text-ink-400">of {today.overview.totalDays} days</span>
+              <span className="tabular text-display font-bold leading-none">{today.overview.currentDayOffset + 1}</span>
+              <span className="text-caption text-ink-400">of {today.overview.totalDays} days</span>
             </div>
-            <div className="mt-2.5 h-[5px] overflow-hidden rounded-full bg-[#333]">
+            <div className="mt-2.5 h-[5px] overflow-hidden rounded-full bg-surface-dark-2">
               <div
                 className="h-full rounded-full bg-brand-500"
                 style={{ width: `${Math.round((today.overview.percent / 100) * 100)}%` }}
               />
             </div>
-            {today.theme && <p className="mt-2 text-[11.5px] text-ink-400">{today.theme}</p>}
+            {today.theme && <p className="mt-2 text-micro text-ink-400">{today.theme}</p>}
           </>
         ) : (
           <>
-            <p className="mt-2 text-sm text-white">Roadmap not started</p>
-            <Link to="/learning?view=roadmap" className="mt-2 inline-block text-xs font-medium text-brand-400 hover:underline">
+            <p className="mt-2 text-body text-white">Roadmap not started</p>
+            <Link to="/learning?view=roadmap" className="mt-2 inline-block text-caption font-medium text-brand-400 hover:underline">
               Activate →
             </Link>
           </>
@@ -74,10 +74,10 @@ export function LearningRail({ destination, onNavigate }: { destination: Destina
       </div>
 
       {/* Destination list */}
-      <div className="rounded-2xl border border-hairline bg-card p-1.5">
+      <div className="rounded-xl border border-hairline bg-card p-1.5">
         {GROUPS.map((group, gi) => (
           <div key={group.label}>
-            <p className={`px-2.5 pb-1 text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400 ${gi > 0 ? "pt-3" : "pt-2"}`}>
+            <p className={`eyebrow px-2.5 pb-1 text-ink-400 ${gi > 0 ? "pt-3" : "pt-2"}`}>
               {group.label}
             </p>
             {group.rows.map((row) => {
@@ -87,15 +87,15 @@ export function LearningRail({ destination, onNavigate }: { destination: Destina
                 <button
                   key={row.key}
                   onClick={() => onNavigate(row.key)}
-                  className={`flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors ${
+                  className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors ${
                     active ? "bg-brand-50" : "hover:bg-paper"
                   }`}
                 >
                   <span className={`size-[5px] shrink-0 rounded-full ${active ? "bg-brand-500" : "bg-hairline"}`} />
-                  <span className={`flex-1 truncate text-[13px] ${active ? "font-semibold text-ink-900" : "text-ink-600"}`}>{row.label}</span>
+                  <span className={`flex-1 truncate text-body ${active ? "font-semibold text-ink-900" : "text-ink-600"}`}>{row.label}</span>
                   {badge && (
                     <span
-                      className={`shrink-0 text-[11px] font-bold ${
+                      className={`tabular shrink-0 text-micro font-bold ${
                         badge.tone === "brand" ? "text-brand-500" : badge.tone === "warn" ? "text-warn-500" : "text-ink-400"
                       }`}
                     >
@@ -110,14 +110,14 @@ export function LearningRail({ destination, onNavigate }: { destination: Destina
       </div>
 
       {/* Goethe readiness */}
-      <div className="rounded-2xl border border-hairline bg-card p-4">
-        <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400">Goethe {readiness?.level.toUpperCase() ?? ""}</p>
+      <div className="rounded-xl border border-hairline bg-card p-4">
+        <p className="eyebrow text-ink-400">Goethe {readiness?.level.toUpperCase() ?? ""}</p>
         {readiness ? (
           <>
             <div className="mt-1 flex items-baseline justify-between">
-              <span className="text-sm font-bold">{READINESS_LABEL[readiness.readinessLabel]}</span>
+              <span className="text-body font-bold">{READINESS_LABEL[readiness.readinessLabel]}</span>
               {readiness.avgRecentTestScore !== null && (
-                <span className="flex items-center gap-0.5 text-xs font-semibold text-ok-600">
+                <span className="tabular flex items-center gap-0.5 text-caption font-semibold text-ok-600">
                   {readiness.trend && TREND_ARROW[readiness.trend]} {readiness.avgRecentTestScore}%
                 </span>
               )}
@@ -127,7 +127,7 @@ export function LearningRail({ destination, onNavigate }: { destination: Destina
             </div>
           </>
         ) : (
-          <p className="mt-2 text-xs text-ink-400">Activate your roadmap to see readiness.</p>
+          <p className="mt-2 text-caption text-ink-400">Activate your roadmap to see readiness.</p>
         )}
       </div>
     </div>

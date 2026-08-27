@@ -14,7 +14,7 @@ type Tint = "neutral" | "leech" | "learning" | "mastered";
 const TINT_CLASSES: Record<Tint, { bg: string; text: string; dot: string }> = {
   neutral: { bg: "bg-ink-50", text: "text-ink-600", dot: "bg-ink-400" },
   leech: { bg: "bg-danger-50", text: "text-danger-700", dot: "bg-danger-600" },
-  learning: { bg: "bg-ink-50", text: "text-ink-600", dot: "bg-[var(--color-state-learning)]" },
+  learning: { bg: "bg-ink-50", text: "text-ink-600", dot: "bg-state-learning" },
   mastered: { bg: "bg-ok-50", text: "text-ok-600", dot: "bg-ok-600" },
 };
 
@@ -82,11 +82,11 @@ export default function VocabTile({ word, flipped, onToggleFlip, onPlayAudio, au
       onPointerUp={onPointerUp}
     >
       <div
-        className={`flip-card-3d relative h-full w-full rounded-[14px] shadow-xs transition-transform duration-300 ${flipped ? "[transform:rotateY(180deg)]" : ""}`}
+        className={`flip-card-3d relative h-full w-full rounded-lg shadow-xs transition-transform duration-300 ${flipped ? "[transform:rotateY(180deg)]" : ""}`}
       >
         {/* front */}
         <div
-          className={`flip-card-face absolute inset-0 flex flex-col rounded-[14px] border border-hairline p-2.5 ${tint.bg}`}
+          className={`flip-card-face absolute inset-0 flex flex-col rounded-lg border border-hairline p-2.5 ${tint.bg}`}
           style={{ borderLeftWidth: 3, borderLeftColor: accent }}
         >
           <div className="flex justify-end">
@@ -97,22 +97,22 @@ export default function VocabTile({ word, flipped, onToggleFlip, onPlayAudio, au
             )}
           </div>
           <div className="mt-auto min-w-0">
-            <p className="truncate text-sm font-bold text-ink-900">{word.headword}</p>
-            <p className={`truncate text-[10px] font-medium ${tint.text}`}>{word.wortart}</p>
+            <p className="truncate text-body font-bold text-ink-900">{word.headword}</p>
+            <p className={`truncate text-micro font-medium ${tint.text}`}>{word.wortart}</p>
           </div>
         </div>
 
         {/* back — meaning + IPA + pronunciation only, nothing else */}
         <div
-          className="flip-card-face absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-[14px] border border-hairline bg-ink-900 p-2.5 text-center [transform:rotateY(180deg)]"
+          className="flip-card-face absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-lg border border-hairline bg-ink-900 p-2.5 text-center [transform:rotateY(180deg)]"
           style={{ borderLeftWidth: 3, borderLeftColor: accent }}
         >
           {word.ipa && (
-            <p className="text-[10px]" style={{ color: "var(--color-wortart-wendung)" }}>
+            <p className="text-micro" style={{ color: "var(--color-wortart-wendung)" }}>
               /{word.ipa}/
             </p>
           )}
-          {word.meaning && <p className="line-clamp-3 text-sm font-medium text-white">{word.meaning}</p>}
+          {word.meaning && <p className="line-clamp-3 text-body font-medium text-white">{word.meaning}</p>}
           {word.audioPath && (
             <button
               type="button"
@@ -125,7 +125,7 @@ export default function VocabTile({ word, flipped, onToggleFlip, onPlayAudio, au
               }}
             >
               {audioPlaying ? (
-                <span className="text-[10px] leading-none text-white">❚❚</span>
+                <span className="text-micro leading-none text-white">❚❚</span>
               ) : (
                 <Volume2 className="size-3.5 text-white" aria-hidden="true" />
               )}

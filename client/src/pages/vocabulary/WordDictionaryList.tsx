@@ -20,7 +20,7 @@ export function WordDictionaryList({ words, onPlayAudio, audioPlayingId }: WordD
 
   if (sorted.length === 0) {
     return (
-      <div className="rounded-xl border border-hairline bg-card p-6 text-center text-sm text-ink-400 shadow-xs">
+      <div className="rounded-xl border border-hairline bg-card p-6 text-center text-body text-ink-400 shadow-xs">
         No words match your filters.
       </div>
     );
@@ -33,18 +33,18 @@ export function WordDictionaryList({ words, onPlayAudio, audioPlayingId }: WordD
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
               <span
-                className="text-[15px] font-semibold text-ink-900"
+                className="text-body-lg font-semibold text-ink-900"
                 style={w.genus ? { color: GENUS_COLORS[w.genus] } : undefined}
               >
                 {articleFront(w.headword, w.genus)}
               </span>
-              <span className="text-[11px] font-bold tracking-wide" style={{ color: WORTART_COLORS[w.wortart] }}>
+              <span className="text-micro font-bold tracking-wide" style={{ color: WORTART_COLORS[w.wortart] }}>
                 {w.wortart}
               </span>
-              {w.ipa && <span className="text-xs text-ink-400">/{w.ipa}/</span>}
+              {w.ipa && <span className="text-caption text-ink-400">/{w.ipa}/</span>}
             </div>
-            {w.meaning && <p className="mt-1 text-sm text-ink-600">{w.meaning}</p>}
-            {w.example && <p className="mt-0.5 text-xs italic text-ink-400">{w.example}</p>}
+            {w.meaning && <p className="mt-1 text-body text-ink-600">{w.meaning}</p>}
+            {w.example && <p className="mt-0.5 text-caption italic text-ink-400">{w.example}</p>}
           </div>
           {w.audioPath && (
             <button
@@ -54,7 +54,7 @@ export function WordDictionaryList({ words, onPlayAudio, audioPlayingId }: WordD
               onClick={() => onPlayAudio(w)}
             >
               {audioPlayingId === w.id ? (
-                <span className="text-[10px] leading-none">❚❚</span>
+                <span className="text-micro leading-none">❚❚</span>
               ) : (
                 <Volume2 className="size-3.5" aria-hidden="true" />
               )}

@@ -19,8 +19,8 @@ export default function UpNextPanel({
   if (upNext.length === 0) return null;
 
   return (
-    <div className="rounded-[14px] border border-warn-tint-100 bg-warn-tint-50 px-4 py-3.5">
-      <p className="text-[10px] font-bold text-warn-500">UP NEXT · SORTED BY DEADLINE · ACROSS ALL CATEGORIES</p>
+    <div className="rounded-lg border border-warn-tint-100 bg-warn-tint-50 px-4 py-3.5">
+      <p className="text-micro font-bold text-warn-500">UP NEXT · SORTED BY DEADLINE · ACROSS ALL CATEGORIES</p>
       <ul className="mt-2 space-y-2">
         {upNext.map(({ item, days }) => (
           <li key={item.id} className="flex items-center gap-2.5">
@@ -28,11 +28,11 @@ export default function UpNextPanel({
               type="button"
               aria-label={`Mark "${item.title}" done`}
               onClick={() => onToggleDone(item)}
-              className="size-4 shrink-0 rounded-[5px] border-[1.5px] border-ink-300"
+              className="size-4 shrink-0 rounded-sm border-[1.5px] border-ink-300"
             />
-            <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+            <span className="min-w-0 flex-1 truncate text-body font-medium">
               {item.title}
-              <span className="ml-1.5 text-[11px] font-normal text-ink-300">{CATEGORY_LABEL[item.category]}</span>
+              <span className="ml-1.5 text-micro font-normal text-ink-300">{CATEGORY_LABEL[item.category]}</span>
             </span>
             <DeadlineBadge days={days} />
           </li>

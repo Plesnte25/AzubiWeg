@@ -34,6 +34,7 @@ import SkillProgressGauges from "../components/SkillProgressGauges";
 import StudyActivityChart from "../components/StudyActivityChart";
 import { Card } from "../components/ui/Card";
 import { Skeleton, SkeletonCard } from "../components/ui/Skeleton";
+import { Stat } from "../components/ui/Stat";
 import { cn } from "../lib/cn";
 import { quoteOfTheDay } from "../lib/quotes";
 import { DISPLAY_SKILLS, DISPLAY_SKILL_LABELS_COMPACT, SKILL_COLORS, SKILL_LABELS, displaySkill } from "../lib/skills";
@@ -45,15 +46,8 @@ import { invalidateHub } from "./learning-hub/queryHelpers";
  * share one outer bordered/divided row instead (see the stats row below). */
 function Tile({ label, value, icon, accent }: { label: string; value: string | number; icon?: ReactNode; accent?: boolean }) {
   return (
-    <div
-      title={label}
-      className="flex flex-col items-center justify-center gap-1 rounded-xl border border-hairline bg-card p-2 text-center lg:flex-row lg:items-center lg:justify-start lg:gap-2.5 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:text-left"
-    >
-      {icon}
-      <div className="min-w-0">
-        <div className={`text-base font-bold leading-tight lg:text-2xl ${accent ? "text-brand-600" : "text-ink-900"}`}>{value}</div>
-        <span className="sr-only">{label}</span>
-      </div>
+    <div title={label} className="rounded-xl border border-hairline bg-card p-2 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0">
+      <Stat value={value} label={label} icon={icon} tone={accent ? "accent" : "default"} labelVisibility="sr-only" layout="stack-below-lg" />
     </div>
   );
 }
@@ -118,8 +112,8 @@ function StartRevisionCta({ dueToday }: { dueToday: number }) {
         <Zap className="size-4" aria-hidden="true" />
       </span>
       <div className="min-w-0">
-        <div className="text-sm font-semibold">Start today's revision</div>
-        <div className="text-xs text-white/80">
+        <div className="text-body font-semibold">Start today's revision</div>
+        <div className="text-caption text-white/80">
           {dueToday} word{dueToday === 1 ? "" : "s"} due
         </div>
       </div>
@@ -142,13 +136,13 @@ function SkillTaskRow({ task, onOpen }: { task: RoadmapTask; onOpen: (task: Road
   });
   return (
     <div
-      className={`flex items-start gap-2.5 rounded-lg border border-hairline bg-card py-2 pl-3 pr-3 text-sm ${done ? "opacity-60" : ""}`}
+      className={`flex items-start gap-2.5 rounded-lg border border-hairline bg-card py-2 pl-3 pr-3 text-body ${done ? "opacity-60" : ""}`}
       style={{ borderLeftWidth: 4, borderLeftColor: color }}
     >
       <button
         onClick={() => toggle.mutate(!done)}
         aria-label={done ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
-        className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-[5px] border text-[10px] text-white ${
+        className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-sm border text-micro text-white ${
           done ? "border-ink-900 bg-ink-900" : "border-hairline"
         }`}
       >
@@ -159,8 +153,8 @@ function SkillTaskRow({ task, onOpen }: { task: RoadmapTask; onOpen: (task: Road
           <span className={`font-medium text-ink-900 hover:text-brand-500 ${done ? "line-through" : ""}`}>{task.title}</span>
           {done && <Check className="mt-0.5 size-3.5 shrink-0 text-ok-600" aria-hidden="true" />}
         </div>
-        {task.description && <p className="mt-0.5 truncate text-xs text-ink-400">{task.description}</p>}
-        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-600">
+        {task.description && <p className="mt-0.5 truncate text-caption text-ink-400">{task.description}</p>}
+        <div className="mt-0.5 flex items-center gap-1.5 text-caption text-ink-600">
           <span className="size-1.5 rounded-full" style={{ backgroundColor: color }} />
           {label}
         </div>
@@ -363,15 +357,15 @@ export default function Dashboard() {
     <div className="flex flex-col gap-3 md:h-[calc(100dvh-2rem)] md:min-h-0 lg:h-full lg:min-h-0">
       <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl">
+          <h1 className="flex items-center gap-2 text-heading">
             Guten Tag{firstName ? `, ${firstName}` : ""}!
             <Hand className="size-6 text-brand-500" aria-hidden="true" />
           </h1>
-          <p className="mt-0.5 text-sm text-ink-600">{quote}</p>
+          <p className="mt-0.5 text-body text-ink-600">{quote}</p>
         </div>
         <div className="flex items-center gap-2">
           {data.dueToday === 0 && (
-            <span className="flex items-center gap-1.5 text-sm text-ink-600">
+            <span className="flex items-center gap-1.5 text-body text-ink-600">
               <CheckCircle2 className="size-4 text-ok-600" aria-hidden="true" />
               Nothing due — alles erledigt
             </span>
@@ -383,7 +377,10 @@ export default function Dashboard() {
           scroll); md adds Active courses back for 5, same as lg — Tile
           itself stacks icon-over-value below lg and switches to lg's
           horizontal chromeless look via its own responsive classes. */}
-      <div className="grid shrink-0 grid-cols-4 gap-2 md:grid-cols-5 md:gap-3 lg:gap-0 lg:divide-x lg:divide-hairline lg:rounded-xl lg:border lg:border-hairline lg:bg-card">
+      <div
+        className="animate-enter grid shrink-0 grid-cols-4 gap-2 md:grid-cols-5 md:gap-3 lg:gap-0 lg:divide-x lg:divide-hairline lg:rounded-xl lg:border lg:border-hairline lg:bg-card"
+        style={{ animationDelay: "0ms" }}
+      >
         <Tile
           label="Day streak"
           value={data.streak}
@@ -421,14 +418,14 @@ export default function Dashboard() {
           don't fit below lg — see the hidden lg:grid block further down. */}
       <div className="flex min-h-0 flex-col gap-3 md:flex-1 md:justify-evenly lg:hidden">
         <Card padding="sm" className="flex flex-col">
-          <Link to="/learning?view=today" className="mb-2 flex shrink-0 items-center gap-1.5 text-sm font-medium text-ink-600 hover:text-brand-600">
+          <Link to="/learning?view=today" className="mb-2 flex shrink-0 items-center gap-1.5 text-body font-medium text-ink-600 hover:text-brand-600">
             <img src={clipboardIcon} alt="" width={16} height={16} className="size-4" />
             Today's tasks
           </Link>
           {todayLoading ? (
             <Skeleton className="h-16" />
           ) : noTasksAtAll ? (
-            <p className="text-sm text-ink-600">Nothing on your plate right now — enjoy the breather.</p>
+            <p className="text-body text-ink-600">Nothing on your plate right now — enjoy the breather.</p>
           ) : (
             <div className="max-h-64 space-y-2 overflow-y-auto">
               {[
@@ -444,7 +441,7 @@ export default function Dashboard() {
             Continue: {defaultOpenLevel.toUpperCase()} {LEVEL_TITLES[defaultOpenLevel]}
           </p>
           {data.roadmapToday?.nextIncompleteTitle && (
-            <p className="mt-0.5 text-sm text-ink-600">Next: {data.roadmapToday.nextIncompleteTitle}</p>
+            <p className="mt-0.5 text-body text-ink-600">Next: {data.roadmapToday.nextIncompleteTitle}</p>
           )}
           <div className="relative mt-3 h-2.5 rounded-full bg-paper">
             <div
@@ -455,7 +452,7 @@ export default function Dashboard() {
           <div className="mt-4">
             <LinearSkillBars skills={data.learning.skillProgress} />
           </div>
-          <Link to="/learning?view=syllabus" className="mt-3 inline-block text-sm font-medium text-brand-700 hover:underline">
+          <Link to="/learning?view=syllabus" className="mt-3 inline-block text-body font-medium text-brand-700 hover:underline">
             Resume →
           </Link>
         </Card>
@@ -463,7 +460,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 gap-3 md:shrink-0">
           <Link to="/learning?view=progress">
             <Card padding="sm" interactive>
-              <p className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-ink-600">
+              <p className="mb-1.5 flex items-center gap-1.5 text-body font-medium text-ink-600">
                 <img src={goodFeedbackIcon} alt="" width={16} height={16} className="size-4" />
                 Performance
               </p>
@@ -474,7 +471,7 @@ export default function Dashboard() {
           </Link>
           <Link to="/learning?view=progress">
             <Card padding="sm" interactive>
-              <p className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-ink-600">
+              <p className="mb-1.5 flex items-center gap-1.5 text-body font-medium text-ink-600">
                 <img src={studyTimeIcon} alt="" width={16} height={16} className="size-4" />
                 Study time
               </p>
@@ -488,7 +485,11 @@ export default function Dashboard() {
 
       <div className="hidden min-h-0 flex-1 gap-3 lg:grid lg:grid-cols-[7fr_3fr] lg:overflow-hidden">
         <div className="flex min-h-0 flex-col gap-3">
-          <Card padding="sm" className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <Card
+            padding="sm"
+            className="animate-enter relative flex min-h-0 flex-1 flex-col overflow-hidden"
+            style={{ animationDelay: "45ms" }}
+          >
             <h2 className="sr-only">My Courses</h2>
             <img
               src={onlineCertificateIcon}
@@ -505,7 +506,10 @@ export default function Dashboard() {
             </div>
           </Card>
 
-          <div className="grid min-h-0 flex-[2] grid-cols-1 divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-card lg:grid-cols-2 lg:grid-rows-[1fr_1.1fr] lg:divide-y-0">
+          <div
+            className="animate-enter grid min-h-0 flex-[2] grid-cols-1 divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-card lg:grid-cols-2 lg:grid-rows-[1fr_1.1fr] lg:divide-y-0"
+            style={{ animationDelay: "90ms" }}
+          >
             <Quadrant
               icon={goodFeedbackIcon}
               title="Performance"
@@ -543,10 +547,13 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-card">
+        <div
+          className="animate-enter flex min-h-0 flex-1 flex-col divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-card"
+          style={{ animationDelay: "135ms" }}
+        >
           <div className="shrink-0 p-3">
             {data.roadmapWeekStrip.length === 0 ? (
-              <Link to="/learning?view=roadmap" className="text-sm text-brand-700 hover:underline">
+              <Link to="/learning?view=roadmap" className="text-body text-brand-700 hover:underline">
                 Start your 26-week roadmap →
               </Link>
             ) : (
@@ -561,7 +568,7 @@ export default function Dashboard() {
           </div>
 
           <div className="shrink-0 p-3">
-            <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-ink-600">
+            <p className="mb-2 flex items-center gap-1.5 text-body font-medium text-ink-600">
               <img src={taskIcon} alt="" width={16} height={16} className="size-4" />
               Tasks Completed
             </p>
@@ -571,18 +578,18 @@ export default function Dashboard() {
           <div className="flex min-h-0 flex-1 flex-col p-3">
             <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
               {selectedDay ? (
-                <p className="flex items-center gap-1.5 text-sm font-medium text-ink-600">
+                <p className="flex items-center gap-1.5 text-body font-medium text-ink-600">
                   <img src={clipboardIcon} alt="" width={16} height={16} className="size-4" />
                   {new Date(calSelected!).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
                 </p>
               ) : (
-                <Link to="/learning?view=today" className="flex items-center gap-1.5 text-sm font-medium text-ink-600 hover:text-brand-600">
+                <Link to="/learning?view=today" className="flex items-center gap-1.5 text-body font-medium text-ink-600 hover:text-brand-600">
                   <img src={clipboardIcon} alt="" width={16} height={16} className="size-4" />
                   Today's Tasks
                 </Link>
               )}
               {selectedDay && (
-                <button className="text-xs text-brand-700 hover:underline" onClick={() => setCalSelected(null)}>
+                <button className="text-caption text-brand-700 hover:underline" onClick={() => setCalSelected(null)}>
                   Back to today
                 </button>
               )}
@@ -590,7 +597,7 @@ export default function Dashboard() {
             <div className="min-h-0 flex-1 overflow-y-auto">
               {selectedDay ? (
                 selectedDay.tasks.length === 0 ? (
-                  <p className="text-sm text-ink-600">No tasks that day.</p>
+                  <p className="text-body text-ink-600">No tasks that day.</p>
                 ) : (
                   <div className="space-y-2">
                     {selectedDay.tasks.map((t) => (
@@ -601,7 +608,7 @@ export default function Dashboard() {
               ) : todayLoading ? (
                 <Skeleton className="h-16" />
               ) : noTasksAtAll ? (
-                <p className="text-sm text-ink-600">Nothing on your plate right now — enjoy the breather.</p>
+                <p className="text-body text-ink-600">Nothing on your plate right now — enjoy the breather.</p>
               ) : (
                 <div className="space-y-2">
                   {data.dueToday > 0 && <StartRevisionCta dueToday={data.dueToday} />}
@@ -635,7 +642,7 @@ export default function Dashboard() {
                 >
                   <img src={icon} alt="" width={18} height={18} className="size-[18px]" />
                   {count > 0 && (
-                    <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-[var(--color-danger-solid)] px-1 text-[10px] font-bold leading-4 text-white">
+                    <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-danger-solid px-1 text-micro font-bold leading-4 text-white">
                       {count}
                     </span>
                   )}

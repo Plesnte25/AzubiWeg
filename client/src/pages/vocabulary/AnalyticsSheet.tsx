@@ -56,7 +56,7 @@ export default function AnalyticsSheet({ words, onClose }: AnalyticsSheetProps) 
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="animate-slide-up fixed inset-x-0 bottom-0 rounded-t-[20px] border-t border-hairline bg-card px-[18px] pb-[calc(env(safe-area-inset-bottom)+24px)] pt-3.5 shadow-xl md:px-7 md:pb-7 md:pt-4">
+      <div className="animate-slide-up fixed inset-x-0 bottom-0 rounded-t-[20px] bg-card px-[18px] pb-[calc(env(safe-area-inset-bottom)+24px)] pt-3.5 shadow-lg md:px-7 md:pb-7 md:pt-4">
         <div className="mb-3 h-1 w-10 self-center rounded-full bg-hairline" style={{ margin: "0 auto" }} />
 
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
@@ -71,8 +71,8 @@ export default function AnalyticsSheet({ words, onClose }: AnalyticsSheetProps) 
               className="flex flex-col items-center gap-1 rounded-xl border border-hairline bg-paper p-3 text-center shadow-xs md:p-3.5"
             >
               {tile.icon}
-              <p className="text-lg font-semibold text-ink-900 md:text-xl">{tile.value}</p>
-              <p className="text-[11px] text-ink-400 md:text-xs">{tile.label}</p>
+              <p className="text-title font-semibold text-ink-900 md:text-heading">{tile.value}</p>
+              <p className="text-micro text-ink-400 md:text-caption">{tile.label}</p>
             </div>
           ))}
         </div>
@@ -87,7 +87,7 @@ export default function AnalyticsSheet({ words, onClose }: AnalyticsSheetProps) 
         </div>
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
           {segments.map((s) => (
-            <span key={s.key} className="flex items-center gap-1.5 text-xs text-ink-600">
+            <span key={s.key} className="flex items-center gap-1.5 text-caption text-ink-600">
               <span className="size-2 rounded-full" style={{ backgroundColor: s.color }} aria-hidden="true" />
               {s.label} {Math.round((s.count / total) * 100)}%
             </span>

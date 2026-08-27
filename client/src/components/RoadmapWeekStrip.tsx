@@ -66,7 +66,7 @@ export default function RoadmapWeekStrip({ weekStart, days, selectedDate, onSele
         <button className="grid size-7 place-items-center rounded-full hover:bg-paper" onClick={() => onShiftWeek(-1)} aria-label="Previous week">
           <ChevronLeft className="size-4" aria-hidden="true" />
         </button>
-        <p className="text-base font-bold text-ink-900">{rangeLabel}</p>
+        <p className="text-body-lg font-bold text-ink-900">{rangeLabel}</p>
         <button className="grid size-7 place-items-center rounded-full hover:bg-paper" onClick={() => onShiftWeek(1)} aria-label="Next week">
           <ChevronRight className="size-4" aria-hidden="true" />
         </button>
@@ -87,14 +87,14 @@ export default function RoadmapWeekStrip({ weekStart, days, selectedDate, onSele
               title={label}
               aria-label={label}
               className={cn(
-                "flex flex-col items-center gap-0.5 rounded-[10px] border px-1 py-2 text-center transition-transform",
+                "flex flex-col items-center gap-0.5 rounded-md border px-1 py-2 text-center transition-transform",
                 STATUS_CELL[baseStatus],
                 isHighlighted && "ring-2 ring-inset ring-brand-600",
                 day ? "cursor-pointer hover:scale-[1.03]" : "cursor-default opacity-40",
               )}
             >
-              <span className="text-[11px] text-ink-400">{date.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 2)}</span>
-              <span className="text-sm font-bold text-ink-900">{date.getDate()}</span>
+              <span className="text-micro text-ink-400">{date.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 2)}</span>
+              <span className="text-body font-bold text-ink-900">{date.getDate()}</span>
               {day && day.totalTasks > 0 && (
                 <span className="mt-0.5 h-[3px] w-full overflow-hidden rounded-full">
                   <span className={cn("mx-auto block h-full rounded-full", STATUS_BAR[day.status])} style={{ width: `${Math.round(fraction * 100)}%` }} />

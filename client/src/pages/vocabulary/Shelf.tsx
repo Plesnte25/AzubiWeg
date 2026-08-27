@@ -53,14 +53,14 @@ export function Shelf({
     <div id={id} className="rounded-xl border border-hairline bg-card p-3 shadow-xs">
       <div className="mb-2.5 flex flex-wrap items-center gap-2">
         {glyph && (
-          <span className="text-sm font-bold" style={titleColor ? { color: titleColor } : undefined}>
+          <span className="text-body font-bold" style={titleColor ? { color: titleColor } : undefined}>
             {glyph}
           </span>
         )}
-        <span className="text-sm font-semibold" style={titleColor ? { color: titleColor } : undefined}>
+        <span className="text-body font-semibold" style={titleColor ? { color: titleColor } : undefined}>
           {title}
         </span>
-        <span className="text-xs text-ink-400">
+        <span className="text-caption text-ink-400">
           {words.length} word{words.length === 1 ? "" : "s"}
           {levels.length > 0 && ` · ${levels.map((l) => l.toUpperCase()).join(" ")}`}
         </span>
@@ -101,7 +101,7 @@ export function Shelf({
           {words.map((w) => (
             <div
               key={w.id}
-              className="shrink-0"
+              className="animate-scale-in shrink-0"
               style={{ width: CARD_WIDTH }}
               onClickCapture={(e) => {
                 if (draggedRef.current) {

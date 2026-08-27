@@ -15,7 +15,7 @@ function label(days: number): string {
 export default function DeadlineBadge({ days }: { days: number }) {
   return (
     <span
-      className={`shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${TIER_CLASSES[deadlineTier(days)]}`}
+      className={`shrink-0 rounded-full px-2 py-0.5 text-micro font-semibold ${TIER_CLASSES[deadlineTier(days)]}`}
     >
       {label(days)}
     </span>

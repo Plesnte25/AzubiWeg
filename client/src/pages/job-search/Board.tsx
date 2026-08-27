@@ -16,8 +16,25 @@ import { Briefcase } from "lucide-react";
 import { api } from "../../api/client";
 import type { Application, ApplicationStatus } from "../../api/types";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { Skeleton } from "../../components/ui/Skeleton";
 import { cn } from "../../lib/cn";
 import { COLUMNS, STAGE_BORDER } from "./stages";
+
+function BoardSkeleton() {
+  return (
+    <div className="flex min-w-0 flex-1 gap-[9px]">
+      {COLUMNS.map((col) => (
+        <div key={col.key} className="min-w-0 flex-1">
+          <Skeleton className="mb-1.5 h-3 w-16" />
+          <div className="min-h-32 space-y-[7px] rounded-xl border border-transparent p-1.5">
+            <Skeleton className="h-16 rounded-md" />
+            <Skeleton className="h-16 rounded-md" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Board({ onOpen }: { onOpen: (id: string) => void }) {
   const queryClient = useQueryClient();
@@ -60,7 +77,7 @@ export default function Board({ onOpen }: { onOpen: (id: string) => void }) {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["applications"] }),
   });
 
-  if (isLoading) return <p className="text-ink-300">Loading…</p>;
+  if (isLoading) return <BoardSkeleton />;
   const applications = data?.applications ?? [];
 
   function onDragEnd(e: DragEndEvent) {
@@ -92,7 +109,7 @@ export default function Board({ onOpen }: { onOpen: (id: string) => void }) {
       onDragEnd={onDragEnd}
       onDragCancel={() => setDragged(null)}
     >
-      <div className="flex min-w-0 flex-1 gap-[9px] overflow-hidden">
+      <div className="animate-fade-in flex min-w-0 flex-1 gap-[9px] overflow-hidden">
         {COLUMNS.map((col) => (
           <Column
             key={col.key}
@@ -119,7 +136,7 @@ function Column({
   const { setNodeRef, isOver } = useDroppable({ id: column.key });
   return (
     <div className={cn("min-w-0 flex-1", column.key === "rejected" && "opacity-65")}>
-      <p className={cn("mb-1.5 flex items-baseline gap-1.5 text-[11px] font-bold", column.colorClass)}>
+      <p className={cn("mb-1.5 flex items-baseline gap-1.5 text-micro font-bold", column.colorClass)}>
         {column.label.toUpperCase()} <span className="font-normal text-ink-300">· {items.length}</span>
       </p>
       <SortableContext items={items.map((a) => a.id)} strategy={verticalListSortingStrategy}>
@@ -147,7 +164,7 @@ function SortableCard({ app, onOpen }: { app: Application; onOpen: (id: string) 
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={cn("mb-[7px]", isDragging && "opacity-40")}
+      className={cn("animate-scale-in mb-[7px]", isDragging && "opacity-40")}
       {...attributes}
       {...listeners}
       onClick={() => onOpen(app.id)}
@@ -161,19 +178,20 @@ function AppCard({ app, overlay = false }: { app: Application; overlay?: boolean
   return (
     <div
       className={cn(
-        "cursor-grab rounded-[10px] border border-hairline bg-card px-2.5 py-2.5",
+        "cursor-grab rounded-md border border-hairline bg-card px-2.5 py-2.5",
         "border-l-[3px]",
         STAGE_BORDER[app.status],
+        !overlay && "transition-[box-shadow,transform] duration-150 hover:shadow-md hover:-translate-y-0.5",
         overlay && "shadow-lg",
       )}
     >
-      <p className="text-[12.5px] font-bold">{app.company}</p>
-      <p className="text-[11px] text-ink-400">
+      <p className="text-caption font-bold">{app.company}</p>
+      <p className="text-micro text-ink-400">
         {app.role}
         {app.location ? ` · ${app.location}` : ""}
       </p>
       {app.cv && (
-        <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700">
+        <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-micro font-semibold text-brand-700">
           📄 {app.cv.title}
         </span>
       )}

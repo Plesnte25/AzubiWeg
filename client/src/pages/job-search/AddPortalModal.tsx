@@ -20,7 +20,7 @@ export default function AddPortalModal({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal title="Add a portal" onClose={onClose} size="sm" sheetOnSm>
-      <p className="-mt-3 mb-4 text-sm text-ink-400">Save a job board you check regularly</p>
+      <p className="-mt-3 mb-4 text-body text-ink-400">Save a job board you check regularly</p>
       <form
         className="space-y-3"
         onSubmit={(e) => {
@@ -40,7 +40,7 @@ export default function AddPortalModal({ onClose }: { onClose: () => void }) {
         <Field label="Portal URL">
           <input className={inputCls} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" />
         </Field>
-        {add.isError && <p className="text-sm text-danger-600">{(add.error as Error).message}</p>}
+        {add.isError && <p className="text-body text-danger-600">{(add.error as Error).message}</p>}
         <div className="flex justify-end gap-2 pt-1">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel

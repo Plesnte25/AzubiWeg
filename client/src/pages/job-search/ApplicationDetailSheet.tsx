@@ -16,10 +16,10 @@ export default function ApplicationDetailSheet({ id, onClose }: { id: string; on
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-paper lg:hidden">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-hairline bg-card px-4 py-3">
-        <button type="button" onClick={onClose} className="flex items-center gap-1 text-sm text-ink-400 hover:text-ink-900">
+        <button type="button" onClick={onClose} className="flex items-center gap-1 text-body text-ink-400 hover:text-ink-900">
           <ChevronLeft className="size-4" aria-hidden="true" /> Back
         </button>
-        <p className="min-w-0 flex-1 truncate text-center text-sm font-semibold">
+        <p className="min-w-0 flex-1 truncate text-center text-body font-semibold">
           {app ? `${app.company} — ${app.role}` : "Application"}
         </p>
         <MoreHorizontal className="size-4 shrink-0 text-ink-300" aria-hidden="true" />

@@ -39,11 +39,11 @@ export default function SearchModal({ words, onClose }: SearchModalProps) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="flex max-h-[70vh] w-full max-w-[340px] flex-col overflow-hidden rounded-2xl border border-hairline bg-card shadow-xl md:max-w-[420px]">
+      <div className="flex max-h-[70vh] w-full max-w-[340px] flex-col overflow-hidden rounded-xl bg-card shadow-lg md:max-w-[420px]">
         <div className="flex shrink-0 items-center gap-2 border-b border-hairline p-3">
           <input
             autoFocus
-            className="min-w-0 flex-1 rounded-md border border-hairline bg-paper px-3 py-2 text-sm outline-none focus:border-brand-400"
+            className="min-w-0 flex-1 rounded-md border border-hairline bg-paper px-3 py-2 text-body outline-none focus:border-brand-400"
             placeholder="Search words or meanings…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -54,10 +54,10 @@ export default function SearchModal({ words, onClose }: SearchModalProps) {
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {results.length === 0 ? (
-            <p className="p-3 text-sm text-ink-400">No matches.</p>
+            <p className="p-3 text-body text-ink-400">No matches.</p>
           ) : (
             results.map((w) => (
-              <div key={w.id} className="flex items-center gap-2.5 overflow-hidden rounded-lg px-2.5 py-2 text-sm">
+              <div key={w.id} className="flex items-center gap-2.5 overflow-hidden rounded-lg px-2.5 py-2 text-body">
                 <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: STATE_COLORS[w.state] }} aria-hidden="true" />
                 <span className="shrink-0 font-medium text-ink-900">{articleFront(w.headword, w.genus)}</span>
                 {w.meaning && <span className="min-w-0 flex-1 line-clamp-2 text-ink-400">{w.meaning}</span>}

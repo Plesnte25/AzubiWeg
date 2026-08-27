@@ -84,7 +84,7 @@ export default function ActivityChart({
       </svg>
       {hover !== null && (
         <div
-          className="pointer-events-none absolute -top-1 rounded-md border border-hairline bg-card px-2 py-1 text-xs shadow-md"
+          className="pointer-events-none absolute -top-1 rounded-md bg-card px-2 py-1 text-caption shadow-md"
           style={{ left: `${((hover + 0.5) / data.length) * 100}%`, transform: "translateX(-50%)" }}
         >
           <span className="font-medium">{data[hover].count}</span>{" "}

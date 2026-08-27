@@ -30,7 +30,7 @@ export default function PortalsCard() {
 
   return (
     <Card padding="sm">
-      <p className="mb-2 text-sm font-medium text-ink-600">Portals</p>
+      <p className="mb-2 text-body font-medium text-ink-600">Portals</p>
       <div className="flex flex-wrap items-center gap-1.5">
         {portals.map((p) => {
           const last = new Date(p.lastCheckedAt ?? p.createdAt).getTime();
@@ -39,7 +39,7 @@ export default function PortalsCard() {
           return (
             <span
               key={p.id}
-              className="group inline-flex items-center gap-1.5 rounded-full border border-hairline bg-paper py-1 pl-1.5 pr-2.5 text-[11.5px]"
+              className="group inline-flex items-center gap-1.5 rounded-full border border-hairline bg-paper py-1 pl-1.5 pr-2.5 text-micro"
             >
               <a
                 href={p.url}
@@ -67,14 +67,14 @@ export default function PortalsCard() {
         })}
         <button
           type="button"
-          className="inline-flex items-center gap-1 rounded-full border border-dashed border-hairline px-2.5 py-1 text-[11.5px] text-ink-600 hover:border-brand-400 hover:text-brand-700"
+          className="inline-flex items-center gap-1 rounded-full border border-dashed border-hairline px-2.5 py-1 text-micro text-ink-600 hover:border-brand-400 hover:text-brand-700"
           onClick={() => setAdding(true)}
         >
           <Plus className="size-3" aria-hidden="true" /> Portal
         </button>
       </div>
       {portals.length === 0 && (
-        <p className="mt-1.5 text-xs text-ink-300">
+        <p className="mt-1.5 text-caption text-ink-300">
           Add the portals you apply through — GoAusbildung, Ausbildung.de…
         </p>
       )}

@@ -69,7 +69,7 @@ export default function NewApplicationModal({ onClose }: { onClose: () => void }
 
   return (
     <Modal title="New application" onClose={onClose} size="md" sheetOnSm>
-      <p className="-mt-3 mb-4 text-sm text-ink-400">Paste the job posting link and we'll try to fill in the rest</p>
+      <p className="-mt-3 mb-4 text-body text-ink-400">Paste the job posting link and we'll try to fill in the rest</p>
       <form
         className="space-y-3"
         onSubmit={(e) => {
@@ -89,28 +89,28 @@ export default function NewApplicationModal({ onClose }: { onClose: () => void }
             type="button"
             disabled={!url.trim() || fetchPreview.isPending}
             onClick={() => fetchPreview.mutate()}
-            className="h-9 shrink-0 rounded-md bg-ink-900 px-4 text-sm font-medium text-white hover:bg-ink-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-9 shrink-0 rounded-md bg-ink-900 px-4 text-body font-medium text-white hover:bg-ink-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {fetchPreview.isPending ? "Fetching…" : "Fetch"}
           </button>
         </div>
 
         {fetchedFrom && (
-          <div className="rounded-[14px] border border-ok-100 bg-ok-50 px-4 py-3.5">
-            <p className="flex items-center gap-1 text-sm font-medium text-ok-700">
+          <div className="rounded-lg border border-ok-100 bg-ok-50 px-4 py-3.5">
+            <p className="flex items-center gap-1 text-body font-medium text-ok-700">
               <Check className="size-3.5" aria-hidden="true" /> Fetched from {fetchedFrom}
             </p>
-            <div className="mt-2 grid grid-cols-1 gap-2 text-xs md:grid-cols-2">
+            <div className="mt-2 grid grid-cols-1 gap-2 text-caption md:grid-cols-2">
               <MiniField label="Company" value={company} />
               <MiniField label="Role" value={role} />
               <MiniField label="Location" value={location} />
               <MiniField label="Portal" value={portal} />
             </div>
-            <p className="mt-2 text-[11px] text-ink-400">These fields stay editable below.</p>
+            <p className="mt-2 text-micro text-ink-400">These fields stay editable below.</p>
           </div>
         )}
         {fetchPreview.isSuccess && !fetchedFrom && (
-          <p className="text-xs text-ink-400">
+          <p className="text-caption text-ink-400">
             Couldn't auto-fill from that link — no problem, just fill in the fields below.
           </p>
         )}
@@ -166,9 +166,9 @@ export default function NewApplicationModal({ onClose }: { onClose: () => void }
           </Field>
         </div>
 
-        <p className="text-[11px] text-ink-300">Fetch is best-effort — never required to add an application.</p>
+        <p className="text-micro text-ink-300">Fetch is best-effort — never required to add an application.</p>
 
-        {add.isError && <p className="text-sm text-danger-600">{(add.error as Error).message}</p>}
+        {add.isError && <p className="text-body text-danger-600">{(add.error as Error).message}</p>}
         <div className="flex justify-end gap-2 pt-1">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
@@ -185,8 +185,8 @@ export default function NewApplicationModal({ onClose }: { onClose: () => void }
 function MiniField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] text-ink-300">{label}</p>
-      <p className="text-[13px] font-semibold">{value || "—"}</p>
+      <p className="text-micro text-ink-300">{label}</p>
+      <p className="text-body font-semibold">{value || "—"}</p>
     </div>
   );
 }

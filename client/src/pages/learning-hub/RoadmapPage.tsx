@@ -6,7 +6,9 @@ import { api } from "../../api/client";
 import type { MovedTask, RoadmapCalendarDay, RoadmapDayStatus, RoadmapTask, RoadmapWeekDay } from "../../api/types";
 import { Button } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
+import { SectionHeader } from "../../components/ui/SectionHeader";
 import { Skeleton } from "../../components/ui/Skeleton";
+import { toast } from "../../components/ui/Toast";
 import RoadmapWeekStrip from "../../components/RoadmapWeekStrip";
 import { SKILL_COLORS, SKILL_LABELS } from "../../lib/skills";
 import type { Destination } from "./LearningRail";
@@ -67,23 +69,23 @@ function TaskChip({
     <div
       draggable={draggable}
       onDragStart={(e) => e.dataTransfer.setData("text/plain", task.id)}
-      className={`flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition-colors hover:border-brand-300 ${
+      className={`flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-body transition-colors hover:border-brand-300 ${
         draggable ? "cursor-grab border-warn-tint-200 bg-card active:cursor-grabbing" : "border-hairline bg-card"
       }`}
     >
       <button
         onClick={() => onToggle(!done)}
-        className={`mt-0.5 grid size-3.5 shrink-0 place-items-center rounded border text-[8px] text-white ${done ? "border-ink-900 bg-ink-900" : "border-hairline"}`}
+        className={`mt-0.5 grid size-3.5 shrink-0 place-items-center rounded border text-micro text-white ${done ? "border-ink-900 bg-ink-900" : "border-hairline"}`}
       >
         {done && "✓"}
       </button>
       <button className="min-w-0 flex-1 text-left hover:text-brand-500" onClick={onOpen}>
         <span className={`block truncate ${done ? "text-ink-400 line-through" : ""}`}>{task.title}</span>
-        {task.description && <span className="mt-0.5 block truncate text-xs font-normal text-ink-400">{task.description}</span>}
+        {task.description && <span className="mt-0.5 block truncate text-caption font-normal text-ink-400">{task.description}</span>}
       </button>
       {task.skill && (
         <span
-          className="mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+          className="mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-micro font-semibold"
           style={{
             backgroundColor: `color-mix(in srgb, ${SKILL_COLORS[task.skill]} 16%, transparent)`,
             color: SKILL_COLORS[task.skill],
@@ -93,7 +95,7 @@ function TaskChip({
         </span>
       )}
       {onDropped && (
-        <button onClick={onDropped} title="Drop this task" className="mt-0.5 shrink-0 text-xs text-ink-400 hover:text-warn-500">
+        <button onClick={onDropped} title="Drop this task" className="mt-0.5 shrink-0 text-caption text-ink-400 hover:text-warn-500">
           ✕
         </button>
       )}
@@ -110,6 +112,7 @@ function useAddTask(date: string, onClose: () => void) {
       invalidateHub(queryClient);
       onClose();
     },
+    onError: () => toast.error("Couldn't add that task — try again."),
   });
   return { title, setTitle, save };
 }
@@ -122,7 +125,7 @@ function AddTaskDialog({ date, onClose }: { date: string; onClose: () => void })
       <div className="space-y-3">
         <input
           autoFocus
-          className="w-full rounded-lg border border-hairline bg-paper px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-hairline bg-paper px-3 py-2 text-body"
           placeholder="Task title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -157,15 +160,15 @@ function AddTaskCard({ date, onClose }: { date: string; onClose: () => void }) {
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4 backdrop-blur-[6px] lg:hidden">
-      <div className="relative w-full max-w-sm rounded-2xl border border-hairline bg-card p-5 shadow-xl">
+      <div className="relative w-full max-w-sm rounded-xl bg-card p-5 shadow-lg">
         <button className="absolute right-3 top-3 grid size-7 place-items-center rounded-full hover:bg-paper" onClick={onClose} title="Close">
           <X className="size-4" aria-hidden="true" />
         </button>
-        <h2 className="mb-3 text-base font-semibold">Add task — {fmtDate(date)}</h2>
+        <h2 className="mb-3 text-body-lg font-semibold">Add task — {fmtDate(date)}</h2>
         <div className="space-y-3">
           <input
             autoFocus
-            className="w-full rounded-lg border border-hairline bg-paper px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-hairline bg-paper px-3 py-2 text-body"
             placeholder="Task title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -184,7 +187,7 @@ const BEAD: Record<RoadmapDayStatus, string> = {
   done: "size-[11px] bg-ink-900 border-2 border-paper",
   overdue: "size-[11px] bg-ink-900 border-2 border-paper",
   today: "size-[17px] bg-brand-500 border-[3px] border-paper shadow-[0_0_0_3px_var(--color-brand-50)]",
-  upcoming: "size-[9px] bg-card border-2 border-[var(--color-hairline)]",
+  upcoming: "size-[9px] bg-card border-2 border-hairline",
 };
 
 /** The road: a bead + connecting line per day, redone from scratch after
@@ -202,7 +205,7 @@ const BEAD: Record<RoadmapDayStatus, string> = {
  * e.g. GitHub's commit graph) rather than one unbroken line — that's the
  * price of a design with no shared cross-row state to drift. */
 function DayRail({ status, isFirst, isLast }: { status: RoadmapDayStatus; isFirst: boolean; isLast: boolean }) {
-  const tone = status === "upcoming" ? "bg-[var(--color-hairline)]" : "bg-ink-900";
+  const tone = status === "upcoming" ? "bg-hairline" : "bg-ink-900";
   return (
     <div className="flex w-5 shrink-0 flex-col items-center self-stretch" aria-hidden="true">
       <div className={`w-0.5 shrink-0 ${isFirst ? "bg-transparent" : tone}`} style={{ height: 18 }} />
@@ -238,14 +241,17 @@ function DayCard({
   const toggle = useMutation({
     mutationFn: ({ id, completed }: { id: string; completed: boolean }) => api.toggleRoadmapTask(id, completed),
     onSuccess: () => invalidateHub(queryClient),
+    onError: () => toast.error("Couldn't update that task — try again."),
   });
   const drop = useMutation({
     mutationFn: (id: string) => api.updateRoadmapTask(id, { dropped: true }),
     onSuccess: () => invalidateHub(queryClient),
+    onError: () => toast.error("Couldn't drop that task — try again."),
   });
   const reschedule = useMutation({
     mutationFn: (taskId: string) => api.rescheduleRoadmapTask(taskId, day.dayOffset),
     onSuccess: () => invalidateHub(queryClient),
+    onError: () => toast.error("Couldn't reschedule that task — try again."),
   });
 
   // Deutschland-Context ("bureaucracy") tasks are real roadmap content but
@@ -273,14 +279,14 @@ function DayCard({
     <div className="flex gap-3">
       <DayRail status={day.status} isFirst={isFirst} isLast={isLast} />
       <div
-        className={`min-w-0 flex-1 rounded-[18px] border p-3.5 transition-colors hover:border-brand-300 ${cardClass}`}
+        className={`min-w-0 flex-1 rounded-xl border p-3.5 transition-colors hover:border-brand-300 ${cardClass}`}
         onDragOver={onDragOver}
         onDrop={onDrop}
       >
       <div className="flex items-center justify-between gap-2">
         {isRest ? (
           <div className="flex min-w-0 flex-1 items-baseline gap-2">
-            <span className="text-[13px] font-bold">
+            <span className="text-body font-bold">
               {fmtDay(day.date)}, {fmtDate(day.date)}
             </span>
           </div>
@@ -292,12 +298,12 @@ function DayCard({
             className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
           >
             <ChevronDown className={`size-3.5 shrink-0 text-ink-400 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
-            <span className="truncate text-[13px] font-bold">
+            <span className="truncate text-body font-bold">
               {fmtDay(day.date)}, {fmtDate(day.date)}
             </span>
-            {day.status === "overdue" && <span className="shrink-0 text-[11px] font-semibold text-warn-700">overdue</span>}
-            {day.status === "today" && <span className="shrink-0 text-[11px] font-semibold text-brand-500">today</span>}
-            <span className="shrink-0 text-xs text-ink-400">
+            {day.status === "overdue" && <span className="shrink-0 text-micro font-semibold text-warn-700">overdue</span>}
+            {day.status === "today" && <span className="shrink-0 text-micro font-semibold text-brand-500">today</span>}
+            <span className="shrink-0 text-caption text-ink-400">
               {done}/{activeTasks.length} done
             </span>
           </button>
@@ -323,7 +329,7 @@ function DayCard({
         ))}
 
       {isRest ? (
-        <p className="mt-2 text-sm text-ink-400">Rest day.</p>
+        <p className="mt-2 text-body text-ink-400">Rest day.</p>
       ) : (
         open && (
           <div className="mt-2.5 space-y-1.5">
@@ -374,6 +380,7 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
       invalidateHub(queryClient);
       setPendingUndo(res.moved);
     },
+    onError: () => toast.error("Couldn't pull backlog into today — try again."),
   });
   const spread = useMutation({
     mutationFn: () => api.spreadBacklog(),
@@ -381,11 +388,13 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
       invalidateHub(queryClient);
       setPendingUndo(res.moved);
     },
+    onError: () => toast.error("Couldn't spread the backlog — try again."),
   });
   const undo = useMutation({
     mutationFn: async (moved: MovedTask[]) => {
       for (const m of moved) await api.rescheduleRoadmapTask(m.id, m.fromDayOffset);
     },
+    onError: () => toast.error("Couldn't undo — try again."),
     onSuccess: () => {
       invalidateHub(queryClient);
       setPendingUndo(null);
@@ -402,14 +411,14 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
           </div>
           <Skeleton className="h-9 w-20 shrink-0 rounded-full" />
         </div>
-        <Skeleton className="h-24 w-full rounded-[18px]" />
+        <Skeleton className="h-24 w-full rounded-xl" />
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_288px]">
           <div className="space-y-3.5">
-            <Skeleton className="h-16 w-full rounded-[18px]" />
-            <Skeleton className="h-16 w-full rounded-[18px]" />
-            <Skeleton className="h-16 w-full rounded-[18px]" />
+            <Skeleton className="h-16 w-full rounded-xl" />
+            <Skeleton className="h-16 w-full rounded-xl" />
+            <Skeleton className="h-16 w-full rounded-xl" />
           </div>
-          <Skeleton className="h-64 w-full rounded-[18px]" />
+          <Skeleton className="h-64 w-full rounded-xl" />
         </div>
       </div>
     );
@@ -425,43 +434,33 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
 
   return (
     <div className="space-y-4 pb-6">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h1 className="text-[23px] font-bold tracking-[-0.02em]">
-            Roadmap · week {data.week} of {data.totalWeeks}
-          </h1>
-          <p className="text-[13px] text-ink-600">
-            {fmtDate(data.weekStart)} – {fmtDate(data.weekEnd)}
-            {data.theme && ` · ${data.theme}`} · {data.thisWeek.done} of {data.thisWeek.total} tasks kept
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2 lg:hidden">
-          <button
-            className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline bg-card hover:border-brand-400"
-            onClick={() => setWeek(currentWeek)}
-            title="Jump to current week"
-          >
-            <CalendarDays className="size-4" aria-hidden="true" />
-          </button>
-          <button
-            className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-600 text-white hover:bg-brand-700"
-            onClick={() => setAddTaskDate(new Date().toISOString().slice(0, 10))}
-            title="Add a task"
-          >
-            <Plus className="size-4" aria-hidden="true" />
-          </button>
-        </div>
-        <div className="hidden shrink-0 gap-1.5 lg:flex">
-          <Button size="sm" variant={week === undefined || week === currentWeek ? "primary" : "outline"} onClick={() => setWeek(currentWeek)}>
-            Today
-          </Button>
-          <Button size="sm" onClick={() => setAddTaskDate(new Date().toISOString().slice(0, 10))} leftIcon={<Plus className="size-3.5" aria-hidden="true" />}>
-            Task
-          </Button>
-        </div>
-      </div>
+      <SectionHeader
+        className="animate-enter"
+        title={`Roadmap · week ${data.week} of ${data.totalWeeks}`}
+        subtitle={`${fmtDate(data.weekStart)} – ${fmtDate(data.weekEnd)}${data.theme ? ` · ${data.theme}` : ""} · ${data.thisWeek.done} of ${data.thisWeek.total} tasks kept`}
+        action={
+          <>
+            <div className="flex shrink-0 items-center gap-2 lg:hidden">
+              <Button shape="circle" variant="outline" onClick={() => setWeek(currentWeek)} title="Jump to current week">
+                <CalendarDays className="size-4" aria-hidden="true" />
+              </Button>
+              <Button shape="circle" onClick={() => setAddTaskDate(new Date().toISOString().slice(0, 10))} title="Add a task">
+                <Plus className="size-4" aria-hidden="true" />
+              </Button>
+            </div>
+            <div className="hidden shrink-0 gap-1.5 lg:flex">
+              <Button size="sm" variant={week === undefined || week === currentWeek ? "primary" : "outline"} onClick={() => setWeek(currentWeek)}>
+                Today
+              </Button>
+              <Button size="sm" onClick={() => setAddTaskDate(new Date().toISOString().slice(0, 10))} leftIcon={<Plus className="size-3.5" aria-hidden="true" />}>
+                Task
+              </Button>
+            </div>
+          </>
+        }
+      />
 
-      <div className="rounded-[18px] border border-hairline bg-card p-4">
+      <div className="animate-enter rounded-xl border border-hairline bg-card p-4" style={{ animationDelay: "45ms" }}>
         <RoadmapWeekStrip
           // data.weekStart is a program week anchored to roadmapStartedAt, not
           // necessarily a calendar Monday — RoadmapWeekStrip doesn't require
@@ -474,7 +473,7 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_288px]">
+      <div className="animate-enter grid gap-4 lg:grid-cols-[minmax(0,1fr)_288px]" style={{ animationDelay: "90ms" }}>
         <div className="min-w-0 space-y-3.5">
           {data.days.map((day, i) => (
             <DayCard
@@ -489,37 +488,37 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
         </div>
 
         <div className="flex min-w-0 flex-col gap-3.5 md:grid md:grid-cols-3 lg:flex lg:flex-col">
-          <div className="rounded-[18px] border border-hairline bg-card p-3.5 transition-colors hover:border-brand-300">
-            <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400">This week</p>
-            <p className="mt-1 text-lg font-bold">
-              {data.thisWeek.done} <span className="text-sm font-normal text-ink-400">of {data.thisWeek.total}</span>
+          <div className="rounded-xl border border-hairline bg-card p-3.5 transition-colors hover:border-brand-300">
+            <p className="eyebrow text-ink-400">This week</p>
+            <p className="tabular mt-1 text-title font-bold">
+              {data.thisWeek.done} <span className="text-body font-normal text-ink-400">of {data.thisWeek.total}</span>
             </p>
             <div className="mt-2 flex h-[6px] gap-0.5 overflow-hidden rounded-full bg-warn-tint-100">
               <div className="rounded-full bg-ink-900" style={{ width: `${data.thisWeek.total === 0 ? 0 : (data.thisWeek.done / data.thisWeek.total) * 100}%` }} />
             </div>
-            {weekReview && <p className="mt-2 text-xs text-ink-400">{weekReview.loggedMinutes} min logged</p>}
+            {weekReview && <p className="mt-2 text-caption text-ink-400">{weekReview.loggedMinutes} min logged</p>}
 
             {data.theme && (
               <>
                 <div className="my-3 border-t border-hairline" />
-                <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400">Week theme</p>
-                <p className="mt-1 text-sm font-medium">{data.theme}</p>
+                <p className="eyebrow text-ink-400">Week theme</p>
+                <p className="mt-1 text-body font-medium">{data.theme}</p>
                 {matchedStation && (
-                  <p className="mt-1 text-xs text-ink-600">
+                  <p className="mt-1 text-caption text-ink-600">
                     Station in the {activeLevel?.toUpperCase()} route. Closes when {matchedStation.items.length} of {matchedStation.items.length} items are
                     done — {matchedDone} done now.
                   </p>
                 )}
-                <button onClick={() => onNavigate("syllabus")} className="mt-1.5 text-xs font-semibold text-brand-500 hover:underline">
+                <button onClick={() => onNavigate("syllabus")} className="mt-1.5 text-caption font-semibold text-brand-500 hover:underline">
                   Open in syllabus →
                 </button>
               </>
             )}
           </div>
 
-          <div className="rounded-[18px] border border-warn-tint-100 bg-warn-tint-50 p-3.5 transition-colors hover:border-warn-tint-200">
-            <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-warn-700">Late across the plan</p>
-            <p className="mt-1 text-lg font-bold text-warn-700">{data.lateAcrossPlan}</p>
+          <div className="rounded-xl border border-warn-tint-100 bg-warn-tint-50 p-3.5 transition-colors hover:border-warn-tint-200">
+            <p className="eyebrow text-warn-700">Late across the plan</p>
+            <p className="tabular mt-1 text-title font-bold text-warn-700">{data.lateAcrossPlan}</p>
             {pendingUndo ? (
               <Button size="sm" variant="outline" loading={undo.isPending} onClick={() => undo.mutate(pendingUndo)}>
                 Undo ({pendingUndo.length} moved)
@@ -538,20 +537,20 @@ export function RoadmapPage({ onNavigate }: { onNavigate: (d: Destination) => vo
             )}
           </div>
 
-          <div className="rounded-[18px] border border-hairline bg-card p-3.5 transition-colors hover:border-brand-300">
-            <p className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-400">Pace</p>
-            <div className="mt-1.5 space-y-1 text-sm">
+          <div className="rounded-xl border border-hairline bg-card p-3.5 transition-colors hover:border-brand-300">
+            <p className="eyebrow text-ink-400">Pace</p>
+            <div className="mt-1.5 space-y-1 text-body">
               <div className="flex justify-between">
                 <span className="text-ink-600">Planned</span>
-                <span className="font-medium">{data.pace.plannedTasksPerDay}/day</span>
+                <span className="tabular font-medium">{data.pace.plannedTasksPerDay}/day</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-ink-600">Actual</span>
-                <span className="font-medium">{data.pace.actualTasksPerDay}/day</span>
+                <span className="tabular font-medium">{data.pace.actualTasksPerDay}/day</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-ink-600">Days left</span>
-                <span className="font-medium">{data.pace.daysLeft}</span>
+                <span className="tabular font-medium">{data.pace.daysLeft}</span>
               </div>
             </div>
           </div>

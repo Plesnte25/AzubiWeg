@@ -49,7 +49,7 @@ export default function RoadmapCalendar({ month, days, onSelectDay }: Props) {
 
   return (
     <div>
-      <div className="grid grid-cols-7 gap-1.5 text-center text-xs font-medium text-ink-400">
+      <div className="grid grid-cols-7 gap-1.5 text-center text-caption font-medium text-ink-400">
         {WEEKDAY_LABELS.map((d) => (
           <div key={d}>{d}</div>
         ))}
@@ -72,7 +72,7 @@ export default function RoadmapCalendar({ month, days, onSelectDay }: Props) {
               onClick={() => day && onSelectDay(cell.iso)}
               title={label}
               aria-label={label}
-              className={`group relative flex aspect-square flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl border text-sm font-medium transition-all ${style} ${
+              className={`group relative flex aspect-square flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl border text-body font-medium transition-all ${style} ${
                 day ? "cursor-pointer hover:scale-[1.04] hover:shadow-md" : "cursor-default opacity-40"
               }`}
             >
@@ -89,7 +89,7 @@ export default function RoadmapCalendar({ month, days, onSelectDay }: Props) {
           );
         })}
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-ink-400">
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-caption text-ink-400">
         {(["upcoming", "today", "overdue", "done"] as RoadmapDayStatus[]).map((s) => (
           <span key={s} className="flex items-center gap-1.5">
             <span className={`size-2.5 rounded-full border ${STATUS_STYLES[s]}`} />

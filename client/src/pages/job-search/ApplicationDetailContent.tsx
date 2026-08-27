@@ -67,10 +67,10 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
 
   return (
     <>
-      {app.location && <p className="-mt-3 mb-4 text-sm text-ink-400">{app.location}</p>}
+      {app.location && <p className="-mt-3 mb-4 text-body text-ink-400">{app.location}</p>}
 
       {app.status === "rejected" ? (
-        <span className="inline-flex items-center rounded-full bg-brand-50 px-3 py-1 text-sm font-semibold text-brand-700">
+        <span className="inline-flex items-center rounded-full bg-brand-50 px-3 py-1 text-body font-semibold text-brand-700">
           Rejected
         </span>
       ) : (
@@ -80,7 +80,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
               <div className="flex flex-col items-center gap-1">
                 <div
                   className={cn(
-                    "grid size-7 place-items-center rounded-full border text-xs font-semibold",
+                    "grid size-7 place-items-center rounded-full border text-caption font-semibold",
                     i < stepIndex && "border-ink-900 bg-ink-900 text-white",
                     i === stepIndex && "border-ink-900 bg-ink-900 text-white",
                     i > stepIndex && "border-hairline text-ink-300",
@@ -88,7 +88,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
                 >
                   {i < stepIndex ? <Check className="size-3.5" aria-hidden="true" /> : i + 1}
                 </div>
-                <span className={cn("text-[10.5px]", i <= stepIndex ? "text-ink-900" : "text-ink-300")}>
+                <span className={cn("text-micro", i <= stepIndex ? "text-ink-900" : "text-ink-300")}>
                   {s.label}
                 </span>
               </div>
@@ -100,7 +100,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
         </div>
       )}
 
-      <div className="rounded-[14px] border border-hairline px-4 py-3.5">
+      <div className="rounded-lg border border-hairline px-4 py-3.5">
         <div className="grid gap-3 sm:grid-cols-2">
           <DetailField label="Company">
             <DebouncedInput value={app.company} onCommit={(v) => update.mutate({ company: v })} />
@@ -132,7 +132,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
           </DetailField>
         </div>
         <div className="mt-3 border-t border-hairline-soft pt-3">
-          <p className="mb-1 text-[10px] text-ink-300">Description</p>
+          <p className="mb-1 text-micro text-ink-300">Description</p>
           <DebouncedInput
             textarea
             value={app.description ?? ""}
@@ -144,7 +144,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
 
       <div className="mt-3 flex flex-wrap items-center gap-4">
         {app.url && (
-          <a className="text-sm text-brand-700 hover:underline" href={app.url} target="_blank" rel="noreferrer">
+          <a className="text-body text-brand-700 hover:underline" href={app.url} target="_blank" rel="noreferrer">
             Job posting ↗
           </a>
         )}
@@ -164,7 +164,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
         </Field>
         {app.cv && (
           <button
-            className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100"
+            className="rounded-full bg-brand-50 px-3 py-1 text-caption font-semibold text-brand-700 hover:bg-brand-100"
             onClick={() => downloadFile(app.cv!.file.id, app.cv!.file.originalName)}
           >
             📄 {app.cv.title}
@@ -173,7 +173,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
       </div>
 
       <div className="mt-5 border-t border-hairline pt-4">
-        <p className="mb-2 text-sm font-semibold">Timeline</p>
+        <p className="mb-2 text-body font-semibold">Timeline</p>
         <form
           className="mb-3 flex flex-wrap gap-2"
           onSubmit={(e) => {
@@ -182,7 +182,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
           }}
         >
           <select
-            className="rounded border border-hairline bg-paper px-2 py-1 text-xs"
+            className="rounded border border-hairline bg-paper px-2 py-1 text-caption"
             value={noteType}
             onChange={(e) => setNoteType(e.target.value as typeof noteType)}
           >
@@ -191,7 +191,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
             <option value="follow_up">Follow-up</option>
           </select>
           <input
-            className="min-w-0 flex-1 rounded border border-hairline bg-card px-2 py-1 text-sm"
+            className="min-w-0 flex-1 rounded border border-hairline bg-card px-2 py-1 text-body"
             placeholder="What happened?"
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -202,7 +202,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
         </form>
         <ul className="space-y-2">
           {app.events.map((ev) => (
-            <li key={ev.id} className="flex gap-2 text-sm">
+            <li key={ev.id} className="flex gap-2 text-body">
               <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand-400" />
               <div>
                 <span className="font-medium">{EVENT_LABELS[ev.type]}</span>
@@ -214,7 +214,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
                   </span>
                 )}
                 {ev.note && <span className="text-ink-600"> — {ev.note}</span>}
-                <span className="ml-1 text-xs text-ink-300">{new Date(ev.occurredAt).toLocaleDateString()}</span>
+                <span className="ml-1 text-caption text-ink-300">{new Date(ev.occurredAt).toLocaleDateString()}</span>
               </div>
             </li>
           ))}
@@ -241,7 +241,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
 function DetailField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-0.5 block text-[10px] text-ink-300">{label}</span>
+      <span className="mb-0.5 block text-micro text-ink-300">{label}</span>
       {children}
     </label>
   );

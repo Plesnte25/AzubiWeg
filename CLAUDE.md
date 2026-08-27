@@ -142,11 +142,11 @@ container.
 
 ## Other conventions
 
-- **`cn()` (`client/src/lib/cn.ts`) is a plain string-join, not
-  tailwind-merge.** Passing conflicting utilities (e.g. `items-baseline` from
-  a shared component default + `items-start` override) via `className` does
-  **not** reliably resolve by "last one wins" — build the element's classes
-  as one literal string instead of trying to override a conflicting default.
+- **`cn()` (`client/src/lib/cn.ts`) wraps `tailwind-merge`.** Conflicting
+  utilities (e.g. a shared component's default `items-baseline` + a caller's
+  `items-start` override) now resolve "last one wins" via `twMerge`, so
+  overriding a component default through `className` is safe — no need to
+  hand-build one literal string to dodge a conflict anymore.
 - **Skill colors are global** (`client/src/lib/skills.ts`,
   `SKILL_COLORS`/`SKILL_LABELS`) — reused everywhere a skill is shown (task
   rows, radar axes, gauges, bars, course-row badges). `displaySkill()` merges

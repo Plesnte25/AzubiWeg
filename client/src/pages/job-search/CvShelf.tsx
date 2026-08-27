@@ -38,7 +38,7 @@ export default function CvShelf() {
 
   return (
     <div className="w-[200px] shrink-0">
-      <p className="mb-2 flex items-baseline gap-2 text-[11px] font-bold text-ink-600">
+      <p className="mb-2 flex items-baseline gap-2 text-micro font-bold text-ink-600">
         MY CVs <span className="font-normal text-ink-300">{cvs.length}</span>
       </p>
       <div className="rounded-xl border border-hairline">
@@ -54,13 +54,13 @@ export default function CvShelf() {
               title={`Download ${cv.file.originalName}`}
               onClick={() => downloadFile(cv.file.id, cv.file.originalName)}
             >
-              <span className="block truncate text-xs font-semibold hover:text-brand-700">{cv.title}</span>
-              <span className="mt-0.5 block text-[10.5px] text-ink-300">
+              <span className="block truncate text-caption font-semibold hover:text-brand-700">{cv.title}</span>
+              <span className="mt-0.5 block text-micro text-ink-300">
                 {CATEGORY_LABELS[cv.category]} · {metaLine(cv)}
               </span>
             </button>
             <button
-              className="hidden shrink-0 text-[10px] text-ink-300 hover:text-danger-600 group-hover:inline"
+              className="hidden shrink-0 text-micro text-ink-300 hover:text-danger-600 group-hover:inline"
               title="Delete CV"
               onClick={() => {
                 if (confirm(`Delete "${cv.title}"?`)) remove.mutate(cv.id);
@@ -73,7 +73,7 @@ export default function CvShelf() {
       </div>
       <button
         type="button"
-        className="mt-2 w-full rounded-xl border border-dashed border-hairline px-2.5 py-2 text-center text-xs text-ink-400 hover:border-brand-400 hover:text-brand-700"
+        className="mt-2 w-full rounded-xl border border-dashed border-hairline px-2.5 py-2 text-center text-caption text-ink-400 hover:border-brand-400 hover:text-brand-700"
         onClick={() => setAdding(true)}
       >
         <Plus className="mr-1 inline size-3" aria-hidden="true" /> New CV

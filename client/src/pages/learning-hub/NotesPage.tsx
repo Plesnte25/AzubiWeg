@@ -1,15 +1,18 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { NotebookText, Plus } from "lucide-react";
 import { api } from "../../api/client";
 import type { Note, RoadmapJournalTask, RoadmapSkill, SurfacedNotebookEntry, SurfacedUnitNote } from "../../api/types";
 import { Attachments } from "../../components/Attachments";
 import { NoteComposer } from "../../components/notes/NoteComposer";
 import { NoteEditor } from "../../components/notes/NoteEditor";
+import { Button } from "../../components/ui/Button";
 import { CircleIconButton } from "../../components/ui/CircleIconButton";
+import { EmptyState } from "../../components/ui/EmptyState";
 import { SegmentedControl } from "../../components/ui/SegmentedControl";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { Textarea } from "../../components/ui/Textarea";
+import { toast } from "../../components/ui/Toast";
 import { cn } from "../../lib/cn";
 import { SKILL_LABELS } from "../../lib/skills";
 import { stripHtml } from "../../lib/text";
@@ -102,6 +105,7 @@ function NotebookEditor({ item, onChanged }: { item: SurfacedNotebookEntry; onCh
     mutationFn: (value: string) =>
       api.updateSyllabusNotebook(item.id, { examples: value || null, exceptions: null, commonMistakes: null }),
     onSuccess: onChanged,
+    onError: () => toast.error("Couldn't save that note — try again."),
   });
 
   return (
@@ -120,7 +124,12 @@ function NotebookEditor({ item, onChanged }: { item: SurfacedNotebookEntry; onCh
             parent={{ syllabusItemId: item.id }}
             onChanged={onChanged}
             renderTrigger={({ onClick, uploading }) => (
-              <CircleIconButton icon={<Plus className="size-3.5" aria-hidden="true" />} title="Attach a file" onClick={onClick} disabled={uploading} />
+              <CircleIconButton
+                icon={<Plus className="size-3.5" aria-hidden="true" />}
+                title={uploading ? "Uploading…" : "Attach a file"}
+                onClick={onClick}
+                disabled={uploading}
+              />
             )}
           />
         }
@@ -134,6 +143,7 @@ function UnitNoteEditor({ item, onChanged }: { item: SurfacedUnitNote; onChanged
   const update = useMutation({
     mutationFn: (notes: string) => api.updateUnitNotes(item.sourceId, item.id, notes || null),
     onSuccess: onChanged,
+    onError: () => toast.error("Couldn't save that note — try again."),
   });
 
   return (
@@ -192,10 +202,10 @@ export function NotesPage({ onNavigate }: { onNavigate: (d: Destination) => void
 
   return (
     <div className="space-y-3.5">
-      <div className="flex flex-wrap items-end justify-between gap-2">
+      <div className="animate-enter flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h1 className="text-[19px] font-bold">Notes</h1>
-          <p className="text-[13px] text-ink-600">
+          <h1 className="text-title font-bold">Notes</h1>
+          <p className="text-body text-ink-600">
             {data.notes.length} of your own · {surfacedCount} from lessons
           </p>
         </div>
@@ -210,11 +220,11 @@ export function NotesPage({ onNavigate }: { onNavigate: (d: Destination) => void
         />
       </div>
 
-      <div className="flex flex-nowrap gap-1.5 overflow-x-auto pb-1">
+      <div className="animate-enter flex flex-nowrap gap-1.5 overflow-x-auto pb-1" style={{ animationDelay: "45ms" }}>
         <button
           onClick={() => setSkillFilter(null)}
           className={cn(
-            "shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors",
+            "shrink-0 rounded-full px-2.5 py-1 text-caption font-semibold transition-colors",
             skillFilter === null ? "bg-brand-600 text-white" : "bg-paper text-ink-600 hover:text-ink-900",
           )}
         >
@@ -225,7 +235,7 @@ export function NotesPage({ onNavigate }: { onNavigate: (d: Destination) => void
             key={s}
             onClick={() => setSkillFilter(skillFilter === s ? null : s)}
             className={cn(
-              "shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors",
+              "shrink-0 rounded-full px-2.5 py-1 text-caption font-semibold transition-colors",
               skillFilter === s ? "bg-brand-600 text-white" : "bg-paper text-ink-600 hover:text-ink-900",
             )}
           >
@@ -234,17 +244,39 @@ export function NotesPage({ onNavigate }: { onNavigate: (d: Destination) => void
         ))}
       </div>
 
-      <NoteComposer
-        onCreated={(id) => {
-          invalidate();
-          setExpanded(`note:${id}`);
-        }}
-      />
+      <div className="animate-enter" style={{ animationDelay: "90ms" }}>
+        <NoteComposer
+          onCreated={(id) => {
+            invalidate();
+            setExpanded(`note:${id}`);
+          }}
+        />
+      </div>
 
       {filtered.length === 0 ? (
-        <p className="py-8 text-center text-sm text-ink-400">No notes here yet.</p>
+        <EmptyState
+          icon={NotebookText}
+          title={bucket !== "all" || skillFilter ? "No notes match these filters" : "No notes yet"}
+          description={
+            bucket !== "all" || skillFilter ? "Try a different bucket or skill." : "Write one above, or check back after your next lesson."
+          }
+          action={
+            (bucket !== "all" || skillFilter) && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setBucket("all");
+                  setSkillFilter(null);
+                }}
+              >
+                Clear filters
+              </Button>
+            )
+          }
+        />
       ) : (
-        <div className="divide-y divide-hairline rounded-2xl border border-hairline bg-card">
+        <div className="animate-enter divide-y divide-hairline rounded-xl border border-hairline bg-card" style={{ animationDelay: "135ms" }}>
           {filtered.map((row) => {
             const isOpen = expanded === row.key;
             const skill = rowSkill(row);
@@ -258,18 +290,18 @@ export function NotesPage({ onNavigate }: { onNavigate: (d: Destination) => void
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="rounded-full bg-paper px-2 py-0.5 text-[10px] font-semibold text-ink-600">
+                      <span className="rounded-full bg-paper px-2 py-0.5 text-micro font-semibold text-ink-600">
                         {SOURCE_LABEL[row.source]}
                       </span>
                       {skill && (
-                        <span className="rounded-full bg-paper px-2 py-0.5 text-[10px] font-semibold text-ink-600">
+                        <span className="rounded-full bg-paper px-2 py-0.5 text-micro font-semibold text-ink-600">
                           {SKILL_LABELS[skill]}
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 text-sm font-medium">{rowTitle(row)}</p>
-                    {subtitle && <p className="text-xs text-ink-400">{subtitle}</p>}
-                    {!isOpen && preview && <p className="mt-0.5 truncate text-xs text-ink-400">{preview}</p>}
+                    <p className="mt-1 text-body font-medium">{rowTitle(row)}</p>
+                    {subtitle && <p className="text-caption text-ink-400">{subtitle}</p>}
+                    {!isOpen && preview && <p className="mt-0.5 truncate text-caption text-ink-400">{preview}</p>}
                   </div>
                 </button>
                 {isOpen && row.source === "note" && <NoteEditor note={row.item} onChanged={invalidate} />}

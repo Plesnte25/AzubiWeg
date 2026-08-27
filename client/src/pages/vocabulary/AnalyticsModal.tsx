@@ -84,8 +84,8 @@ export function AnalyticsModal({ words, onClose, onDrillTheme, desktopOnly }: An
           {statsLoading || !stats ? (
             <SkeletonCard className="h-16" />
           ) : (
-            <p className="text-sm text-ink-600">
-              <span className="text-lg font-semibold text-ink-900">{stats.reviewsToday}</span> today ·{" "}
+            <p className="text-body text-ink-600">
+              <span className="text-title font-semibold text-ink-900">{stats.reviewsToday}</span> today ·{" "}
               <span className="font-medium text-ink-900">{avgPerDay}</span>/day average this week
             </p>
           )}
@@ -106,7 +106,7 @@ export function AnalyticsModal({ words, onClose, onDrillTheme, desktopOnly }: An
           </div>
 
           <div className="rounded-lg border border-hairline bg-card p-3 shadow-xs">
-            <p className="mb-1.5 text-xs font-bold tracking-wide text-ink-400">REVIEWS · LAST 14 DAYS</p>
+            <p className="mb-1.5 text-caption font-bold tracking-wide text-ink-400">REVIEWS · LAST 14 DAYS</p>
             {historyLoading ? (
               <SkeletonCard className="h-20" />
             ) : (
@@ -128,7 +128,7 @@ export function AnalyticsModal({ words, onClose, onDrillTheme, desktopOnly }: An
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-lg border border-hairline bg-card p-3 shadow-xs">
-              <p className="mb-1.5 text-xs font-bold tracking-wide text-ink-400">GRADE MIX</p>
+              <p className="mb-1.5 text-caption font-bold tracking-wide text-ink-400">GRADE MIX</p>
               {statsLoading || !stats ? (
                 <SkeletonText lines={3} />
               ) : (
@@ -137,7 +137,7 @@ export function AnalyticsModal({ words, onClose, onDrillTheme, desktopOnly }: An
                     const count = stats.gradeBreakdown[g];
                     const percent = stats.totalReviews === 0 ? 0 : Math.round((count / stats.totalReviews) * 100);
                     return (
-                      <div key={g} className="flex items-center gap-2 text-xs">
+                      <div key={g} className="flex items-center gap-2 text-caption">
                         <span className="w-10 shrink-0 capitalize text-ink-600">{g}</span>
                         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-paper">
                           <div
@@ -155,10 +155,10 @@ export function AnalyticsModal({ words, onClose, onDrillTheme, desktopOnly }: An
               )}
             </div>
             <div className="rounded-lg border border-hairline bg-card p-3 shadow-xs">
-              <p className="mb-1.5 text-xs font-bold tracking-wide text-ink-400">MASTERY BY LEVEL</p>
+              <p className="mb-1.5 text-caption font-bold tracking-wide text-ink-400">MASTERY BY LEVEL</p>
               <div className="space-y-1.5">
                 {masteryByLevel.map((l) => (
-                  <div key={l.level} className="flex items-center gap-2 text-xs">
+                  <div key={l.level} className="flex items-center gap-2 text-caption">
                     <span className="w-6 shrink-0 font-medium text-ink-600">{l.level.toUpperCase()}</span>
                     <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-paper">
                       <div className="h-full bg-ok-600" style={{ width: `${l.percent}%` }} />
@@ -171,13 +171,13 @@ export function AnalyticsModal({ words, onClose, onDrillTheme, desktopOnly }: An
           </div>
 
           <div className="rounded-lg border border-hairline bg-card p-3 shadow-xs">
-            <p className="mb-1.5 text-xs font-bold tracking-wide text-ink-400">WEAKEST THEMENFELDER</p>
+            <p className="mb-1.5 text-caption font-bold tracking-wide text-ink-400">WEAKEST THEMENFELDER</p>
             {weakestThemenfelder.length === 0 ? (
-              <p className="text-xs text-ink-400">Not enough data yet.</p>
+              <p className="text-caption text-ink-400">Not enough data yet.</p>
             ) : (
               <ul className="space-y-1.5">
                 {weakestThemenfelder.map((t) => (
-                  <li key={t.themenfeld} className="flex items-center justify-between gap-2 text-xs">
+                  <li key={t.themenfeld} className="flex items-center justify-between gap-2 text-caption">
                     <span className="min-w-0 flex-1 truncate">{THEMENFELD_LABELS[t.themenfeld]}</span>
                     <span className="shrink-0 text-ink-400">{t.percent}% mastered</span>
                     <Button size="sm" variant="outline" onClick={() => onDrillTheme(t.themenfeld)}>
@@ -193,22 +193,22 @@ export function AnalyticsModal({ words, onClose, onDrillTheme, desktopOnly }: An
         {/* right: the only scroller at lg — below lg, both panels flow in
             one natural column and the modal's own backdrop scrolls */}
         <div className="border-t border-hairline pt-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
-          <p className="mb-1.5 text-xs font-bold tracking-wide text-ink-400">RECENT REVIEWS</p>
+          <p className="mb-1.5 text-caption font-bold tracking-wide text-ink-400">RECENT REVIEWS</p>
           {historyLoading ? (
             <SkeletonText lines={6} />
           ) : !history || history.entries.length === 0 ? (
-            <p className="text-sm text-ink-600">No reviews yet.</p>
+            <p className="text-body text-ink-600">No reviews yet.</p>
           ) : (
             <ul className="space-y-1.5">
               {history.entries.slice(0, 30).map((e) => (
-                <li key={e.id} className="rounded-lg border border-hairline bg-card px-3 py-2 text-sm shadow-xs">
+                <li key={e.id} className="rounded-lg border border-hairline bg-card px-3 py-2 text-body shadow-xs">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">{e.headword}</span>
                     <Badge variant={GRADE_VARIANT[e.grade]} className="capitalize">
                       {e.grade}
                     </Badge>
                   </div>
-                  <p className="mt-0.5 text-xs text-ink-400">
+                  <p className="mt-0.5 text-caption text-ink-400">
                     {new Date(e.reviewedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} · next in{" "}
                     {e.intervalAfter}d
                   </p>
@@ -227,8 +227,8 @@ function KpiTile({ label, value, icon }: { label: string; value: number | undefi
     <div className="flex items-center gap-2.5 rounded-lg border border-hairline bg-card p-2.5 shadow-xs">
       {icon}
       <div className="min-w-0">
-        <p className="text-base font-semibold leading-tight">{value ?? "–"}</p>
-        <p className="truncate text-[10px] text-ink-400">{label}</p>
+        <p className="text-body-lg font-semibold leading-tight">{value ?? "–"}</p>
+        <p className="truncate text-micro text-ink-400">{label}</p>
       </div>
     </div>
   );

@@ -51,8 +51,8 @@ export default function AccountSheet({ open, onClose }: { open: boolean; onClose
         aria-modal="true"
         aria-label="Account menu"
         className={cn(
-          "animate-slide-up fixed inset-x-0 bottom-0 rounded-t-2xl border-t border-hairline bg-card p-4 pb-[calc(env(safe-area-inset-bottom)+16px)] shadow-xl",
-          "md:inset-x-auto md:bottom-4 md:left-[84px] md:w-72 md:animate-scale-in md:rounded-2xl md:border md:pb-4",
+          "animate-slide-up fixed inset-x-0 bottom-0 rounded-t-2xl bg-card p-4 pb-[calc(env(safe-area-inset-bottom)+16px)] shadow-lg",
+          "md:inset-x-auto md:bottom-4 md:left-[84px] md:w-72 md:animate-scale-in md:rounded-xl md:border md:pb-4",
         )}
       >
         <div className="mb-2 h-1 w-10 self-center rounded-full bg-hairline md:hidden" />
@@ -60,7 +60,7 @@ export default function AccountSheet({ open, onClose }: { open: boolean; onClose
         <button
           type="button"
           onClick={() => setTheme(isDark ? "light" : "dark")}
-          className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2.5 text-left text-sm hover:bg-paper"
+          className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2.5 text-left text-body hover:bg-paper"
         >
           {isDark ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
           {isDark ? "Switch to light mode" : "Switch to dark mode"}
@@ -69,7 +69,7 @@ export default function AccountSheet({ open, onClose }: { open: boolean; onClose
         <button
           type="button"
           onClick={() => go("/settings")}
-          className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2.5 text-left text-sm hover:bg-paper"
+          className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2.5 text-left text-body hover:bg-paper"
         >
           <SettingsIcon className="size-4" aria-hidden="true" />
           Settings
@@ -77,11 +77,11 @@ export default function AccountSheet({ open, onClose }: { open: boolean; onClose
 
         <div className="my-2 border-t border-hairline" />
 
-        <p className="px-2 pb-1.5 text-xs font-semibold text-ink-400">
+        <p className="px-2 pb-1.5 text-caption font-semibold text-ink-400">
           Notifications{notifications.length > 0 ? ` (${notifications.length})` : ""}
         </p>
         {notifications.length === 0 ? (
-          <p className="flex items-center gap-1.5 px-2 py-2 text-sm text-ink-400">
+          <p className="flex items-center gap-1.5 px-2 py-2 text-body text-ink-400">
             <Sparkles className="size-4 shrink-0" aria-hidden="true" />
             All caught up — nothing needs your attention
           </p>
@@ -98,8 +98,8 @@ export default function AccountSheet({ open, onClose }: { open: boolean; onClose
                   >
                     <Icon className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />
                     <span className="min-w-0">
-                      <span className="block text-sm font-medium">{n.title}</span>
-                      <span className="block text-xs text-ink-600">{n.detail}</span>
+                      <span className="block text-body font-medium">{n.title}</span>
+                      <span className="block text-caption text-ink-600">{n.detail}</span>
                     </span>
                   </button>
                 </li>
@@ -117,7 +117,7 @@ export default function AccountSheet({ open, onClose }: { open: boolean; onClose
             clearSession();
             navigate("/login");
           }}
-          className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2.5 text-left text-sm text-danger-600 hover:bg-danger-50"
+          className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2.5 text-left text-body text-danger-600 hover:bg-danger-50"
         >
           <LogOut className="size-4" aria-hidden="true" />
           Sign out

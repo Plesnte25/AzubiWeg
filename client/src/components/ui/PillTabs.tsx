@@ -69,7 +69,7 @@ export function PillTabs({ items, value, onChange, ariaLabel, className }: PillT
             onKeyDown={(e) => onKeyDown(e, i)}
             onClick={() => onChange(item.key)}
             className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+              "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-caption font-semibold transition-colors",
               active ? "border-transparent text-white" : "border-hairline text-ink-600 hover:bg-paper",
             )}
             style={active ? { backgroundColor: item.color } : undefined}

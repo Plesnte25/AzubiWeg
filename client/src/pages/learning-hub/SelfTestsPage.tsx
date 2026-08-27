@@ -4,6 +4,7 @@ import { Check, X } from "lucide-react";
 import { api, ApiError } from "../../api/client";
 import type { CefrLevel, RoadmapSkill, SessionQuestion, TopicBreakdown } from "../../api/types";
 import { Button } from "../../components/ui/Button";
+import { toast } from "../../components/ui/Toast";
 import { isAnswerAccepted } from "../../lib/quiz";
 import type { Destination } from "./LearningRail";
 import { invalidateHub } from "./queryHelpers";
@@ -43,7 +44,7 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
   const [length, setLength] = useState(12);
   const [notebookState, setNotebookState] = useState<{ status: "idle" | "saved" } | { status: "pick"; candidates: string[] }>({ status: "idle" });
 
-  const { data: quizResults } = useQuery({ queryKey: ["learning", "quizResults"], queryFn: api.quizResults });
+  const { data: quizResults, isLoading: quizResultsLoading } = useQuery({ queryKey: ["learning", "quizResults"], queryFn: api.quizResults });
 
   useEffect(() => {
     onRunningChange(phase !== "entry");
@@ -81,6 +82,7 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
       });
     },
     onSuccess: () => invalidateHub(queryClient),
+    onError: () => toast.error("Couldn't save that result — try again."),
   });
 
   const q = session?.questions[index];
@@ -175,6 +177,7 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
       if (result.matched) setNotebookState({ status: "saved" });
       else setNotebookState({ status: "pick", candidates: result.candidates ?? [] });
     },
+    onError: () => toast.error("Couldn't save to your notebook — try again."),
   });
 
   const wrongAnswers = answers.filter((a) => !a.correct);
@@ -205,21 +208,21 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
 
   if (phase === "entry") {
     return (
-      <div className="flex min-h-[330px] flex-col rounded-[18px] bg-ink-900 p-5 text-white md:p-7">
-        <p className="text-[10px] font-bold uppercase tracking-[0.09em] text-ink-400">Self-test</p>
-        <h1 className="mt-1 text-[22px] font-bold md:text-[26px]">Test yourself</h1>
-        <p className="mt-2 max-w-[56ch] text-[13.5px] text-ink-400">
+      <div className="animate-enter flex min-h-[330px] flex-col rounded-xl bg-ink-900 p-5 text-white md:p-7">
+        <p className="eyebrow text-ink-400">Self-test</p>
+        <h1 className="mt-1 text-heading font-bold">Test yourself</h1>
+        <p className="mt-2 max-w-[56ch] text-body text-ink-400">
           Grammar, real-life situations and your own vocabulary. Adapts to recent scores, never repeats a recent question, never touches your review
           schedule.
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Length</p>
+          <p className="text-caption font-semibold uppercase tracking-wide text-ink-400">Length</p>
           {[8, 12, 20].map((n) => (
             <button
               key={n}
               onClick={() => setLength(n)}
-              className={`rounded-lg border px-3 py-1.5 text-sm ${
-                length === n ? "border-[1.5px] border-white text-white" : "border-[var(--color-surface-dark-3)] text-ink-400 hover:bg-[var(--color-surface-dark-1)]"
+              className={`rounded-lg border px-3 py-1.5 text-body ${
+                length === n ? "border-[1.5px] border-white text-white" : "border-surface-dark-3 text-ink-400 hover:bg-surface-dark-1"
               }`}
             >
               {n} · {Math.round(n * 1.1)} min
@@ -237,16 +240,25 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
           >
             Start test
           </Button>
+          {quizResultsLoading && (
+            <div className="h-[1.125rem] w-56 animate-shimmer rounded bg-[linear-gradient(90deg,var(--color-surface-dark-1)_25%,var(--color-surface-dark-2)_37%,var(--color-surface-dark-1)_63%)] bg-[length:200%_100%]" />
+          )}
           {quizResults?.results[0] && (
-            <p className="text-sm text-ink-400">
+            <p className="animate-fade-in text-body text-ink-400">
               last {quizResults.results[0].score}/{quizResults.results[0].total} · {new Date(quizResults.results[0].takenAt).toLocaleDateString()}
               {quizResults.avg !== null && ` · average ${quizResults.avg}%`}
             </p>
           )}
         </div>
-        {startError && <p className="mt-2 text-sm text-brand-400">{startError}</p>}
+        {startError && <p className="mt-2 text-body text-brand-400">{startError}</p>}
+        {quizResultsLoading && (
+          <div className="mt-5 flex gap-4 border-t border-surface-dark-2 pt-3">
+            <div className="h-[1.0625rem] w-40 animate-shimmer rounded bg-[linear-gradient(90deg,var(--color-surface-dark-1)_25%,var(--color-surface-dark-2)_37%,var(--color-surface-dark-1)_63%)] bg-[length:200%_100%]" />
+            <div className="h-[1.0625rem] w-32 animate-shimmer rounded bg-[linear-gradient(90deg,var(--color-surface-dark-1)_25%,var(--color-surface-dark-2)_37%,var(--color-surface-dark-1)_63%)] bg-[length:200%_100%]" />
+          </div>
+        )}
         {quizResults && (quizResults.weakestTopics.length > 0 || quizResults.testsTaken > 0) && (
-          <div className="mt-5 flex flex-wrap gap-4 border-t border-[var(--color-surface-dark-2)] pt-3 text-xs text-ink-400">
+          <div className="animate-fade-in mt-5 flex flex-wrap gap-4 border-t border-surface-dark-2 pt-3 text-caption text-ink-400">
             {quizResults.weakestTopics[0] && (
               <span>
                 Weakest: <span className="font-medium text-white">{quizResults.weakestTopics[0].topic}</span> ({quizResults.weakestTopics[0].percent}%)
@@ -267,36 +279,36 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
   if (!session || !q) return null;
 
   return (
-    <div className="flex min-h-[330px] flex-col rounded-[18px] bg-ink-900 p-7 text-white">
+    <div className="flex min-h-[330px] flex-col rounded-xl bg-ink-900 p-7 text-white">
       {phase === "paused" ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
-          <p className="text-lg font-semibold">Paused</p>
+          <p className="text-title font-semibold">Paused</p>
           <div className="flex gap-2">
             <Button onClick={() => setPhase(answers.length > index ? "feedback" : "question")}>Resume</Button>
-            <Button variant="outline" className="border-[var(--color-surface-dark-3)] text-white" onClick={backToHub}>
+            <Button variant="outline" className="border-surface-dark-3 text-white" onClick={backToHub}>
               End test
             </Button>
           </div>
         </div>
       ) : phase === "results" ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-          <p className="text-[46px] font-bold leading-none">
+          <p className="tabular text-display-lg font-bold leading-none">
             {answers.filter((a) => a.correct).length}
-            <span className="text-[22px] font-normal text-ink-400">/{answers.length}</span>
+            <span className="text-heading font-normal text-ink-400">/{answers.length}</span>
           </p>
-          <p className="text-sm text-ink-400">{Math.round((answers.filter((a) => a.correct).length / answers.length) * 100)}% correct</p>
+          <p className="text-body text-ink-400">{Math.round((answers.filter((a) => a.correct).length / answers.length) * 100)}% correct</p>
           <div className="flex flex-wrap justify-center gap-1.5">
             {answers.map((a, i) => (
-              <div key={i} className={`grid size-[27px] place-items-center rounded-[7px] text-xs font-bold ${a.correct ? "bg-ok-600" : "bg-brand-500"}`}>
+              <div key={i} className={`grid size-[27px] place-items-center rounded-sm text-caption font-bold ${a.correct ? "bg-ok-600" : "bg-brand-500"}`}>
                 {a.correct ? "✓" : "✕"}
               </div>
             ))}
           </div>
-          <div className="w-full max-w-sm space-y-1.5 border-t border-[var(--color-surface-dark-2)] pt-3 text-left">
+          <div className="w-full max-w-sm space-y-1.5 border-t border-surface-dark-2 pt-3 text-left">
             {[...byTopicResults.entries()].map(([topic, v]) => (
-              <div key={topic} className="flex items-center justify-between text-sm">
+              <div key={topic} className="flex items-center justify-between text-body">
                 <span className="text-ink-400">{topic}</span>
-                <div className="h-1.5 w-24 overflow-hidden rounded-full bg-[var(--color-surface-dark-2)]">
+                <div className="h-1.5 w-24 overflow-hidden rounded-full bg-surface-dark-2">
                   <div className="h-full rounded-full bg-brand-500" style={{ width: `${(v.correct / v.total) * 100}%` }} />
                 </div>
               </div>
@@ -305,11 +317,11 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
           <div className="flex flex-wrap justify-center gap-2">
             {wrongAnswers.length > 0 && <Button onClick={reviewWrong}>Review {wrongAnswers.length} wrong</Button>}
             {quizResults?.weakestTopics[0] && (
-              <Button variant="outline" className="border-[var(--color-surface-dark-3)] text-white" onClick={drillWeakest}>
+              <Button variant="outline" className="border-surface-dark-3 text-white" onClick={drillWeakest}>
                 Drill {quizResults.weakestTopics[0].topic}
               </Button>
             )}
-            <Button variant="outline" className="border-[var(--color-surface-dark-3)] text-white" onClick={backToHub}>
+            <Button variant="outline" className="border-surface-dark-3 text-white" onClick={backToHub}>
               Back to hub
             </Button>
           </div>
@@ -321,28 +333,28 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
               {session.questions.map((_, i) => (
                 <div
                   key={i}
-                  className={`h-1 flex-1 rounded-full ${i < index ? "bg-brand-500" : i === index ? "bg-white" : "bg-[var(--color-surface-dark-2)]"}`}
+                  className={`h-1 flex-1 rounded-full ${i < index ? "bg-brand-500" : i === index ? "bg-white" : "bg-surface-dark-2"}`}
                 />
               ))}
             </div>
-            <span className="ml-4 shrink-0 text-xs text-ink-400">
+            <span className="ml-4 shrink-0 text-caption text-ink-400">
               {index + 1} / {session.questions.length} · esc pauses
             </span>
           </div>
 
-          <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.09em] text-ink-400">{q.topic}</p>
-          <p className="mt-1 text-[22px] font-bold">{q.prompt}</p>
+          <p className="eyebrow mt-5 text-ink-400">{q.topic}</p>
+          <p className="mt-1 text-heading font-bold">{q.prompt}</p>
 
           <div className="mt-5 flex-1">
             {q.type === "mcq" && (
               <div className="grid gap-2 sm:grid-cols-2">
                 {q.choices.map((choice, i) => {
                   const answered = phase === "feedback";
-                  let style = "border-[var(--color-surface-dark-3)] hover:bg-[var(--color-surface-dark-1)]";
+                  let style = "border-surface-dark-3 hover:bg-surface-dark-1";
                   if (answered) {
-                    if (i === q.answerIndex) style = "border-ok-600 bg-[var(--color-ok-50)]/10 text-ok-600";
+                    if (i === q.answerIndex) style = "border-ok-600 bg-ok-50/10 text-ok-600";
                     else if (i === picked) style = "border-brand-500 bg-brand-900/30 text-brand-400";
-                    else style = "border-[var(--color-surface-dark-3)] opacity-50";
+                    else style = "border-surface-dark-3 opacity-50";
                   }
                   return (
                     <button
@@ -352,9 +364,9 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
                         setPicked(i);
                         record(i === q.answerIndex);
                       }}
-                      className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left text-[15px] transition-colors ${style}`}
+                      className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left text-body-lg transition-colors ${style}`}
                     >
-                      <span className="grid size-[22px] shrink-0 place-items-center rounded bg-[var(--color-surface-dark-2)] text-xs font-bold">{i + 1}</span>
+                      <span className="grid size-[22px] shrink-0 place-items-center rounded bg-surface-dark-2 text-caption font-bold">{i + 1}</span>
                       {choice}
                     </button>
                   );
@@ -366,11 +378,11 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
               <div className="grid max-w-md gap-2 sm:grid-cols-2">
                 {[true, false].map((value) => {
                   const answered = phase === "feedback";
-                  let style = "border-[var(--color-surface-dark-3)] hover:bg-[var(--color-surface-dark-1)]";
+                  let style = "border-surface-dark-3 hover:bg-surface-dark-1";
                   if (answered) {
                     if (value === q.answer) style = "border-ok-600 text-ok-600";
                     else if (picked === (value ? 1 : 0)) style = "border-brand-500 text-brand-400";
-                    else style = "border-[var(--color-surface-dark-3)] opacity-50";
+                    else style = "border-surface-dark-3 opacity-50";
                   }
                   return (
                     <button
@@ -380,7 +392,7 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
                         setPicked(value ? 1 : 0);
                         record(value === q.answer);
                       }}
-                      className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2.5 text-sm font-medium ${style}`}
+                      className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2.5 text-body font-medium ${style}`}
                     >
                       {value ? <Check className="size-4" aria-hidden="true" /> : <X className="size-4" aria-hidden="true" />}
                       {value ? "Richtig" : "Falsch"}
@@ -402,8 +414,8 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
                 <input
                   autoFocus
                   disabled={phase === "feedback"}
-                  className={`flex-1 rounded-lg border bg-transparent px-3 py-2 text-sm text-white ${
-                    phase === "feedback" ? (lastCorrect ? "border-ok-600" : "border-brand-500") : "border-[var(--color-surface-dark-3)]"
+                  className={`flex-1 rounded-lg border bg-transparent px-3 py-2 text-body text-white ${
+                    phase === "feedback" ? (lastCorrect ? "border-ok-600" : "border-brand-500") : "border-surface-dark-3"
                   }`}
                   placeholder="Type your answer…"
                   value={draft}
@@ -419,10 +431,10 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
           </div>
 
           {phase === "feedback" && (
-            <div className="mt-4 border-t border-[var(--color-surface-dark-2)] pt-4">
-              <div className="border-l-2 border-[var(--color-surface-dark-3)] pl-3.5">
-                <p className="text-[13px] text-ink-400">{synthesizedExplanation(q)}</p>
-                <p className="mt-1 text-xs text-ink-400">
+            <div className="mt-4 border-t border-surface-dark-2 pt-4">
+              <div className="border-l-2 border-surface-dark-3 pl-3.5">
+                <p className="text-body text-ink-400">{synthesizedExplanation(q)}</p>
+                <p className="mt-1 text-caption text-ink-400">
                   Topic: {q.topic} · this question now counts toward that topic's mastery
                 </p>
               </div>
@@ -432,21 +444,21 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
                   <Button onClick={advance}>{index === session.questions.length - 1 ? "Finish review" : "Next"}</Button>
                 )}
                 {notebookState.status === "idle" && (
-                  <Button variant="outline" className="border-[var(--color-surface-dark-3)] text-white" loading={addToNotebook.isPending} onClick={() => addToNotebook.mutate(undefined)}>
+                  <Button variant="outline" className="border-surface-dark-3 text-white" loading={addToNotebook.isPending} onClick={() => addToNotebook.mutate(undefined)}>
                     Add to notebook
                   </Button>
                 )}
-                {notebookState.status === "saved" && <span className="text-xs text-ok-600">Added to notebook</span>}
-                {!session.reviewOnly && <span className="text-xs text-ink-400">↵ next</span>}
+                {notebookState.status === "saved" && <span className="text-caption text-ok-600">Added to notebook</span>}
+                {!session.reviewOnly && <span className="text-caption text-ink-400">↵ next</span>}
               </div>
               {notebookState.status === "pick" && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  <span className="text-xs text-ink-400">Which station?</span>
+                  <span className="text-caption text-ink-400">Which station?</span>
                   {notebookState.candidates.map((theme) => (
                     <button
                       key={theme}
                       onClick={() => addToNotebook.mutate(theme)}
-                      className="rounded-full border border-[var(--color-surface-dark-3)] px-2 py-0.5 text-xs hover:bg-[var(--color-surface-dark-1)]"
+                      className="rounded-full border border-surface-dark-3 px-2 py-0.5 text-caption hover:bg-surface-dark-1"
                     >
                       {theme}
                     </button>
@@ -457,7 +469,7 @@ export function SelfTestsPage({ onRunningChange, onNavigate }: { onRunningChange
           )}
 
           {phase === "question" && (
-            <div className="mt-4 flex gap-4 border-t border-[var(--color-surface-dark-2)] pt-3 text-xs text-ink-400">
+            <div className="mt-4 flex gap-4 border-t border-surface-dark-2 pt-3 text-caption text-ink-400">
               <span>↑ ↓ move</span>
               <span>1–3 pick</span>
               <span>↵ next</span>

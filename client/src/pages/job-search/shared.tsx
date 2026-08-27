@@ -2,11 +2,11 @@ import { type ChangeEvent, type ReactNode, useState } from "react";
 import { Textarea } from "../../components/ui/Textarea";
 
 export const inputCls =
-  "w-full rounded border border-hairline bg-card px-2.5 py-1.5 text-sm placeholder:text-ink-300";
+  "w-full rounded border border-hairline bg-card px-2.5 py-1.5 text-body placeholder:text-ink-300";
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="block text-sm">
+    <label className="block text-body">
       <span className="mb-1 block text-ink-600">{label}</span>
       {children}
     </label>

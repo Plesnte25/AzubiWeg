@@ -159,28 +159,20 @@ export default function Vocabulary() {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-xl font-semibold">Vocabulary</h1>
-          <p className="text-sm text-ink-600">
+          <h1 className="text-heading font-semibold">Vocabulary</h1>
+          <p className="text-body text-ink-600">
             {allWords.length} words · {dueCount} due
           </p>
         </div>
         <div className="flex items-center gap-2">
           <ViewModeToggle value={viewMode} onChange={setViewMode} />
           <div className="flex items-center gap-2 lg:hidden">
-            <button
-              className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline bg-card hover:border-brand-400"
-              onClick={() => setShowSearch(true)}
-              title="Search"
-            >
+            <Button shape="circle" variant="outline" onClick={() => setShowSearch(true)} title="Search">
               <Search className="size-4" aria-hidden="true" />
-            </button>
-            <button
-              className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-600 text-white hover:bg-brand-700"
-              onClick={() => setShowAdd(true)}
-              title="Add words"
-            >
+            </Button>
+            <Button shape="circle" onClick={() => setShowAdd(true)} title="Add words">
               <Plus className="size-4" aria-hidden="true" />
-            </button>
+            </Button>
           </div>
           <div className="hidden lg:block">
             <Button leftIcon={<Plus className="size-4" aria-hidden="true" />} onClick={() => setShowAdd(true)}>
@@ -199,7 +191,7 @@ export default function Vocabulary() {
       </div>
 
       <input
-        className="hidden w-full rounded-md border border-hairline bg-card px-3 py-2 text-sm outline-none focus:border-brand-400 md:max-w-sm lg:block lg:max-w-md"
+        className="hidden w-full rounded-md border border-hairline bg-card px-3 py-2 text-body outline-none focus:border-brand-400 md:max-w-sm lg:block lg:max-w-md"
         placeholder="Search words or meanings…"
         aria-label="Search words or meanings"
         value={filters.search}
@@ -233,7 +225,7 @@ export default function Vocabulary() {
 
       {(dueCount > 0 || newCount > 0) && (
         <div className="hidden items-center gap-2 rounded-xl border border-hairline bg-card px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3 lg:flex">
-          <p className="min-w-0 flex-1 truncate text-xs text-ink-600 sm:text-sm">
+          <p className="min-w-0 flex-1 truncate text-caption text-ink-600 sm:text-body">
             {dueCount > 0 && (
               <>
                 You have <span className="font-semibold text-ink-900">{dueCount}</span> due
@@ -273,7 +265,7 @@ export default function Vocabulary() {
           />
 
           {hasActiveCustomization && (
-            <button className="text-xs font-medium text-ink-400 hover:text-ink-900" onClick={() => setFilters(DEFAULT_FILTERS)}>
+            <button className="text-caption font-medium text-ink-400 hover:text-ink-900" onClick={() => setFilters(DEFAULT_FILTERS)}>
               Clear filters
             </button>
           )}

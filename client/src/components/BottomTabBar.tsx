@@ -69,7 +69,7 @@ export default function BottomTabBar({ onOpenAccount }: { onOpenAccount: () => v
             )}
           >
             <Icon className="size-[18px]" aria-hidden="true" />
-            <span className="text-[9px] font-medium leading-none">{dest.label}</span>
+            <span className="text-micro font-medium leading-none">{dest.label}</span>
           </button>
         );
       })}

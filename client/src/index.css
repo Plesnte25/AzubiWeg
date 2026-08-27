@@ -31,9 +31,35 @@
 
   /* radius — softer than Tailwind's defaults, re-tunes every existing
      rounded-md/lg/xl usage app-wide with no per-page edits */
+  --radius-sm: 0.375rem;
   --radius-md: 0.625rem;
   --radius-lg: 0.875rem;
   --radius-xl: 1.25rem;
+
+  /* Type scale — 8 steps replacing ~150 ad-hoc arbitrary sizes. Ratio ~1.2.
+     Nothing below 11px: sub-11px text read as cramped rather than dense.
+     Small labels get the eyebrow treatment below instead of a smaller size. */
+  --text-micro: 0.6875rem;      /* 11 — legends, badges, table meta */
+  --text-caption: 0.75rem;      /* 12 — field labels, timestamps */
+  --text-body: 0.875rem;        /* 14 — default (== old text-sm) */
+  --text-body-lg: 1rem;         /* 16 — lead paragraphs, card body */
+  --text-title: 1.1875rem;      /* 19 — card + section titles */
+  --text-heading: 1.5rem;       /* 24 — page h1 */
+  --text-display: 2rem;         /* 32 — hero stat numbers */
+  --text-display-lg: 2.75rem;   /* 44 — the ONE big number per screen */
+
+  --text-micro--line-height: 1.35;
+  --text-caption--line-height: 1.4;
+  --text-body--line-height: 1.55;
+  --text-body-lg--line-height: 1.6;
+  --text-title--line-height: 1.3;
+  --text-title--letter-spacing: -0.015em;
+  --text-heading--line-height: 1.2;
+  --text-heading--letter-spacing: -0.025em;
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.035em;
+  --text-display-lg--line-height: 1;
+  --text-display-lg--letter-spacing: -0.04em;
 
   /* brand: crimson — the app's single bold accent (primary actions, active
      nav, links, gamification highlights) */
@@ -98,6 +124,10 @@
   --animate-slide-up: slide-up 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-scale-in: scale-in 150ms ease-out both;
   --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+  /* Staggered page-enter (each top-level section, animation-delay: calc(var(--i) * 45ms))
+     and the Card `interactive` hover-lift — see CLAUDE.md's UI overhaul notes. */
+  --animate-enter: enter 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-lift: lift 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
   /* Syllabus route path: a small repeating dash offset on completed (solid)
      segments only, suggesting travel along the route — period-based, so it
      works for any segment length with no getTotalLength() measurement. */
@@ -194,6 +224,14 @@
 }
 @keyframes flow {
   to { stroke-dashoffset: -32; }
+}
+@keyframes enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes lift {
+  from { transform: translateY(0); }
+  to { transform: translateY(-2px); }
 }
 /* Hub dock: idle rest pose is translate(-50%, 50%) — center pinned to the
    viewport-bottom baseline so only the top half peeks up. Both keyframes
@@ -348,9 +386,56 @@ button:active:not(:disabled) {
   transform: scale(0.98);
 }
 
-/* cards (the app's rounded-xl bordered surfaces) get a whisper of depth */
-.bg-card {
-  box-shadow: var(--shadow-card);
+/* Depth: three surface levels (see components/ui/Card.tsx). @layer components
+   is required here, not a plain unlayered rule — Tailwind v4's own utilities
+   (shadow-md, shadow-lg, shadow-none, ...) live in the `utilities` layer,
+   which always wins over `components` regardless of source order, but an
+   UNLAYERED rule always wins over every named layer including utilities. A
+   plain `.bg-card { box-shadow: ... }` here would silently block every
+   shadow-md/shadow-lg utility applied alongside it — the same class of bug
+   the old global :focus-visible rule had. `.bg-card`'s shadow is a leftover
+   default from the one-elevation-level-everywhere era, kept as the level-1
+   fallback for any surface not yet given an explicit level; .surface-raised/
+   -overlay (and Card's own level 2/3 classes) are meant to override it. */
+@layer components {
+  .bg-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .surface-raised {
+    box-shadow: var(--shadow-md);
+  }
+
+  .surface-overlay {
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+/* @layer components again — see the note above `.bg-card`. Neither of these
+   currently gets combined with a conflicting utility anywhere in the app,
+   but there's no reason to leave the trap armed for the next call site that
+   tries to. */
+@layer components {
+  /* the app is mostly numbers — stat tiles, scores, streaks, due counts,
+     minute totals. Proportional digits make columns of them read ragged. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+}
+
+/* replaces every sub-11px label; reads as *smaller* than 11px because of
+   the caps + tracking, without going below the type scale's floor.
+   Deliberately doesn't set color — pair with a text-* color utility (most
+   often text-ink-400) at the call site. @layer components (see the note
+   above .bg-card) so a conflicting utility can still win if ever combined. */
+@layer components {
+  .eyebrow {
+    font-size: var(--text-micro);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
 }
 
 details summary::-webkit-details-marker {

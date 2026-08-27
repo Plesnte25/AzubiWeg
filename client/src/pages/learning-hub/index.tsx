@@ -53,23 +53,23 @@ function ActivationGate() {
 
   return (
     <Card padding="lg" className="text-center">
-      <h2 className="text-base font-bold">Start your 26-week roadmap</h2>
-      <p className="mx-auto mt-2 max-w-sm text-sm text-ink-600">
+      <h2 className="text-body-lg font-bold">Start your 26-week roadmap</h2>
+      <p className="mx-auto mt-2 max-w-sm text-body text-ink-600">
         Generates a day-by-day plan to Goethe-exam readiness from your syllabus progress.
       </p>
       <div className="mx-auto mt-4 max-w-xs">
         <input
           type="date"
-          className="w-full rounded-lg border border-hairline bg-paper px-3 py-1.5 text-sm"
+          className="w-full rounded-lg border border-hairline bg-paper px-3 py-1.5 text-body"
           value={date}
           onChange={(e) => setDate(e.target.value)}
         />
-        <p className="mt-1 text-xs text-ink-400">Optional — leave blank to start today</p>
+        <p className="mt-1 text-caption text-ink-400">Optional — leave blank to start today</p>
       </div>
       <Button className="mt-4" loading={pending} onClick={activate}>
         Activate
       </Button>
-      {error && <p className="mt-2 text-sm text-danger-600">{error}</p>}
+      {error && <p className="mt-2 text-body text-danger-600">{error}</p>}
     </Card>
   );
 }

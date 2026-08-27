@@ -57,8 +57,8 @@ export default function Checklist() {
     <div className="mx-auto max-w-[1020px] space-y-4 px-4 py-4 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-[22px] font-bold tracking-[-0.015em]">Checklist</h1>
-          <p className="text-[13px] text-ink-400">
+          <h1 className="text-heading font-bold">Checklist</h1>
+          <p className="text-body text-ink-400">
             {done} of {applicable.length} done
             {needsAttention > 0 && ` · ${needsAttention} item${needsAttention === 1 ? "" : "s"} need attention this week`}
           </p>
@@ -67,7 +67,7 @@ export default function Checklist() {
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-ink-300" aria-hidden="true" />
             <input
-              className="h-9 w-48 rounded-[9px] border border-hairline bg-card pl-8 pr-2.5 text-sm placeholder:text-ink-300"
+              className="h-9 w-48 rounded-md border border-hairline bg-card pl-8 pr-2.5 text-body placeholder:text-ink-300"
               placeholder="Search…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -88,13 +88,13 @@ export default function Checklist() {
 
       <div>
         <div className="mb-2 flex items-center gap-2">
-          <p className="text-[11px] font-bold text-ink-400">
+          <p className="text-micro font-bold text-ink-400">
             ALL ITEMS{activeCategory ? ` · FILTERED BY ${CATEGORY_LABEL[activeCategory].toUpperCase()}` : ""}
           </p>
           {activeCategory && (
             <button
               type="button"
-              className="text-[11px] font-semibold text-brand-600 hover:underline"
+              className="text-micro font-semibold text-brand-600 hover:underline"
               onClick={() => setActiveCategory(null)}
             >
               Clear filter ✕
@@ -105,7 +105,7 @@ export default function Checklist() {
         {visible.length === 0 ? (
           <EmptyState icon={CheckSquare} title="No matching items" description="Try a different search or category." />
         ) : (
-          <div className="rounded-[14px] border border-hairline bg-card">
+          <div className="rounded-lg border border-hairline bg-card">
             {visible.map((item, i) => (
               <ItemRow key={item.id} item={item} first={i === 0} />
             ))}
@@ -115,7 +115,7 @@ export default function Checklist() {
         {activeCategory && (
           <button
             type="button"
-            className="mt-2 w-full rounded-[14px] border border-dashed border-hairline py-2 text-center text-sm text-ink-400 hover:border-brand-400 hover:text-brand-700"
+            className="mt-2 w-full rounded-lg border border-dashed border-hairline py-2 text-center text-body text-ink-400 hover:border-brand-400 hover:text-brand-700"
             onClick={() => setAdding(true)}
           >
             + Add item to {CATEGORY_LABEL[activeCategory]}

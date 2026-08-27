@@ -71,7 +71,7 @@ export function MinimalTiptap({
     editorProps: {
       attributes: {
         class: cn(
-          "max-w-none text-sm outline-none",
+          "max-w-none text-body outline-none",
           "[&_p]:my-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5",
           "[&_blockquote]:my-1 [&_blockquote]:border-l-2 [&_blockquote]:border-hairline [&_blockquote]:pl-2 [&_blockquote]:text-ink-600",
           "[&_.is-editor-empty:first-child]:before:float-left [&_.is-editor-empty:first-child]:before:h-0 [&_.is-editor-empty:first-child]:before:text-ink-400 [&_.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]",
@@ -91,7 +91,7 @@ export function MinimalTiptap({
   if (!editor) return null;
 
   return (
-    <div className={cn("rounded-[10px] bg-paper p-2.5 transition-colors focus-within:bg-hairline-soft", className)}>
+    <div className={cn("rounded-md bg-paper p-2.5 transition-colors focus-within:bg-hairline-soft", className)}>
       <EditorContent editor={editor} />
       <div className="mt-1.5 flex items-center gap-0.5 border-t border-hairline pt-1.5">
         <ToolbarButton active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} title="Bold">

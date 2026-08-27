@@ -34,7 +34,7 @@ function NotesComposer({ item, onChanged }: { item: SyllabusItem; onChanged: () 
     <div className="mt-2">
       <Textarea
         variant="ghost"
-        className="text-xs"
+        className="text-caption"
         rows={2}
         placeholder="Type a note…"
         value={draft}
@@ -48,7 +48,12 @@ function NotesComposer({ item, onChanged }: { item: SyllabusItem; onChanged: () 
             parent={{ syllabusItemId: item.id }}
             onChanged={onChanged}
             renderTrigger={({ onClick, uploading }) => (
-              <CircleIconButton icon={<Plus className="size-3.5" aria-hidden="true" />} title="Attach a file" onClick={onClick} disabled={uploading} />
+              <CircleIconButton
+                icon={<Plus className="size-3.5" aria-hidden="true" />}
+                title={uploading ? "Uploading…" : "Attach a file"}
+                onClick={onClick}
+                disabled={uploading}
+              />
             )}
           />
         }
@@ -113,15 +118,15 @@ export function StationDetailModal({
   }, [onClose]);
 
   return (
-    <div ref={panelRef} role="dialog" aria-modal="true" aria-label={`Station ${resolvedIdx + 1} · ${station.theme}`} className="animate-slide-up rounded-[18px] border border-hairline bg-card p-4 shadow-lg">
+    <div ref={panelRef} role="dialog" aria-modal="true" aria-label={`Station ${resolvedIdx + 1} · ${station.theme}`} className="animate-slide-up rounded-xl bg-card p-4 shadow-lg">
       <div className="mb-3 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[14.5px] font-bold">
+          <p className="text-body font-bold">
             Station {resolvedIdx + 1} · {station.theme}
           </p>
-          <p className="text-xs text-ink-400">
+          <p className="text-caption text-ink-400">
             {station.items.length} items · {closedCount}/{station.items.length} closed
-            {isPreview && <span className="ml-2 rounded-full bg-ink-50 px-2 py-0.5 text-[10px] font-semibold text-ink-400">preview</span>}
+            {isPreview && <span className="ml-2 rounded-full bg-ink-50 px-2 py-0.5 text-micro font-semibold text-ink-400">preview</span>}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
@@ -139,27 +144,27 @@ export function StationDetailModal({
         </div>
       </div>
 
-      <div className="max-h-[60vh] divide-y divide-hairline overflow-y-auto rounded-2xl border border-hairline">
+      <div className="max-h-[60vh] divide-y divide-hairline overflow-y-auto rounded-xl border border-hairline">
         {station.items.map((item) => {
           const isCurrent = currentItemId === item.id;
           return (
-            <div key={item.id} className={`px-4 py-2.5 ${isCurrent ? "bg-[var(--color-brand-50)]" : ""}`}>
+            <div key={item.id} className={`px-4 py-2.5 ${isCurrent ? "bg-brand-50" : ""}`}>
               <div className="flex items-center gap-2.5">
                 <button
                   disabled={isPreview}
                   onClick={() => onToggleItem(item.id, item.completedAt === null)}
-                  className={`grid size-[17px] shrink-0 place-items-center rounded-full border text-[9px] text-white disabled:cursor-not-allowed ${
+                  className={`grid size-[17px] shrink-0 place-items-center rounded-full border text-micro text-white disabled:cursor-not-allowed ${
                     item.completedAt !== null ? "border-ok-600 bg-ok-600" : isCurrent ? "border-2 border-brand-500" : "border-2 border-hairline"
                   }`}
                 >
                   {item.completedAt !== null && "✓"}
                 </button>
                 <div className="min-w-0 flex-1">
-                  <span className={`block text-[13px] ${item.completedAt !== null ? "text-ink-400 line-through" : ""}`}>{item.title}</span>
-                  {item.description && <span className="mt-0.5 block truncate text-xs text-ink-400">{item.description}</span>}
+                  <span className={`block text-body ${item.completedAt !== null ? "text-ink-400 line-through" : ""}`}>{item.title}</span>
+                  {item.description && <span className="mt-0.5 block truncate text-caption text-ink-400">{item.description}</span>}
                 </div>
-                {isCurrent && <span className="shrink-0 rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-semibold text-white">on today</span>}
-                {item.skippedAt && <span className="shrink-0 text-[10px] text-ink-400">skipped</span>}
+                {isCurrent && <span className="shrink-0 rounded-full bg-brand-500 px-2 py-0.5 text-micro font-semibold text-white">on today</span>}
+                {item.skippedAt && <span className="shrink-0 text-micro text-ink-400">skipped</span>}
                 {!isPreview && (
                   <button
                     onClick={() => {

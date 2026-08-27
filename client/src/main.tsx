@@ -5,6 +5,7 @@ import { createBrowserRouter, Navigate, Outlet, RouterProvider } from "react-rou
 import "./index.css";
 import { api, getToken, setSession } from "./api/client";
 import Layout from "./components/Layout";
+import { Toaster } from "./components/ui/Toast";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 
@@ -89,6 +90,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
+      <Toaster />
     </QueryClientProvider>
   </StrictMode>,
 );

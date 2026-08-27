@@ -10,7 +10,7 @@ export function Select({ label, id, className, children, ...props }: SelectProps
     <select
       id={id}
       className={cn(
-        "rounded-md border border-hairline bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-brand-400",
+        "rounded-md border border-hairline bg-card px-3 py-2 text-body outline-none transition-colors focus:border-brand-400",
         className,
       )}
       {...props}
@@ -22,7 +22,7 @@ export function Select({ label, id, className, children, ...props }: SelectProps
   if (!label) return field;
 
   return (
-    <label htmlFor={id} className="block text-sm">
+    <label htmlFor={id} className="block text-body">
       {label}
       <div className="mt-1">{field}</div>
     </label>

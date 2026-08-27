@@ -11,7 +11,7 @@ export default function MasteryStrip({ allWords }: { allWords: Word[] }) {
   const { newCount, learningCount, masteredCount } = masteryBreakdown(allWords);
 
   return (
-    <div className="flex h-5 overflow-hidden rounded-full bg-paper text-[9px] font-medium text-white">
+    <div className="flex h-5 overflow-hidden rounded-full bg-paper text-micro font-medium text-white">
       {newCount > 0 && (
         <div
           className="flex items-center justify-center overflow-hidden whitespace-nowrap"

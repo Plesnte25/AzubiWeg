@@ -34,12 +34,12 @@ export default function Login({ mode }: { mode: "login" | "register" }) {
       <Card padding="lg" className="animate-fade-in w-full max-w-sm">
         <form onSubmit={submit}>
           <div className="mb-1 flex items-center gap-2">
-            <span className="grid size-7 place-items-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white">
+            <span className="grid size-7 place-items-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-caption font-bold text-white">
               AW
             </span>
-            <h1 className="text-xl font-semibold tracking-tight">AzubiWeg</h1>
+            <h1 className="text-heading font-semibold tracking-tight">AzubiWeg</h1>
           </div>
-          <p className="mb-5 text-sm text-ink-600">
+          <p className="mb-5 text-body text-ink-600">
             {mode === "login" ? "Welcome back. Weiter geht's!" : "Your companion for the journey to Germany."}
           </p>
 
@@ -81,7 +81,7 @@ export default function Login({ mode }: { mode: "login" | "register" }) {
           </div>
 
           {error && (
-            <p id="auth-error" role="alert" aria-live="assertive" className="mt-3 text-sm text-danger-600">
+            <p id="auth-error" role="alert" aria-live="assertive" className="mt-3 text-body text-danger-600">
               {error}
             </p>
           )}
@@ -90,7 +90,7 @@ export default function Login({ mode }: { mode: "login" | "register" }) {
             {mode === "login" ? "Sign in" : "Create account"}
           </Button>
 
-          <p className="mt-4 text-center text-sm text-ink-600">
+          <p className="mt-4 text-center text-body text-ink-600">
             {mode === "login" ? (
               <>
                 New here?{" "}

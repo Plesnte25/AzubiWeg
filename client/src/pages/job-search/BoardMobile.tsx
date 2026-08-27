@@ -6,9 +6,23 @@ import type { ApplicationStatus } from "../../api/types";
 import { CarouselDots } from "../../components/ui/CarouselDots";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { PillTabs } from "../../components/ui/PillTabs";
+import { Skeleton } from "../../components/ui/Skeleton";
 import { COLUMNS, STAGE_BORDER, STAGE_COLOR } from "./stages";
 
 const PILL_ITEMS = COLUMNS.map((c) => ({ key: c.key, label: c.label, color: STAGE_COLOR[c.key] }));
+
+function BoardMobileSkeleton() {
+  return (
+    <div>
+      <Skeleton className="h-8 w-full rounded-full" />
+      <div className="mt-3 grid gap-2.5 md:grid-cols-2">
+        <Skeleton className="h-16 rounded-md" />
+        <Skeleton className="h-16 rounded-md" />
+        <Skeleton className="h-16 rounded-md" />
+      </div>
+    </div>
+  );
+}
 
 /** sm/md replacement for the lg 5-column kanban board — no drag-and-drop
  * below lg (per spec), a stage-pill filter instead of columns: tap a stage,
@@ -18,7 +32,7 @@ export default function BoardMobile({ onOpen }: { onOpen: (id: string) => void }
   const { data, isLoading } = useQuery({ queryKey: ["applications"], queryFn: api.applications });
   const [stage, setStage] = useState<ApplicationStatus>("wishlist");
 
-  if (isLoading) return <p className="text-ink-300">Loading…</p>;
+  if (isLoading) return <BoardMobileSkeleton />;
   const applications = data?.applications ?? [];
   const counts: Record<ApplicationStatus, number> = {
     wishlist: 0,
@@ -32,7 +46,7 @@ export default function BoardMobile({ onOpen }: { onOpen: (id: string) => void }
   const activeIndex = COLUMNS.findIndex((c) => c.key === stage);
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <PillTabs
         items={PILL_ITEMS.map((p) => ({ ...p, count: counts[p.key as ApplicationStatus] }))}
         value={stage}
@@ -49,15 +63,15 @@ export default function BoardMobile({ onOpen }: { onOpen: (id: string) => void }
             <button
               key={app.id}
               onClick={() => onOpen(app.id)}
-              className={`rounded-[10px] border border-hairline border-l-[3px] bg-card px-3 py-3 text-left ${STAGE_BORDER[app.status]}`}
+              className={`animate-scale-in rounded-md border border-hairline border-l-[3px] bg-card px-3 py-3 text-left transition-[box-shadow,transform] duration-150 hover:shadow-md hover:-translate-y-0.5 ${STAGE_BORDER[app.status]}`}
             >
-              <p className="text-[13px] font-bold">{app.company}</p>
-              <p className="text-[11.5px] text-ink-400">
+              <p className="text-body font-bold">{app.company}</p>
+              <p className="text-micro text-ink-400">
                 {app.role}
                 {app.location ? ` · ${app.location}` : ""}
               </p>
               {app.cv && (
-                <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700">
+                <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-micro font-semibold text-brand-700">
                   📄 {app.cv.title}
                 </span>
               )}
