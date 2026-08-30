@@ -1,661 +1,392 @@
-import { lazy, Suspense, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, CheckCircle2, Hand, Zap } from "lucide-react";
-import type { ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import applyIcon from "../assets/icons/apply.webp";
-import clipboardIcon from "../assets/icons/clipboard.webp";
-import studyTimeIcon from "../assets/icons/clock (1).webp";
-import clockIcon from "../assets/icons/clock.webp";
-import dictionaryIcon from "../assets/icons/dictionary.webp";
-import fireIcon from "../assets/icons/fire.webp";
-import goodFeedbackIcon from "../assets/icons/good-feedback.webp";
-import jobInterviewIcon from "../assets/icons/job-interview.webp";
-import jobOfferIcon from "../assets/icons/job-offer.webp";
-import learningIcon from "../assets/icons/learning.webp";
-import onlineCertificateIcon from "../assets/icons/online-certificate.webp";
-import quizIcon from "../assets/icons/quiz.webp";
-import rejectIcon from "../assets/icons/reject.webp";
-import riseIcon from "../assets/icons/rise.webp";
-import streamingIcon from "../assets/icons/streaming.webp";
-import taskIcon from "../assets/icons/task.webp";
-import wishlistIcon from "../assets/icons/wishlist.webp";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Fire } from "@phosphor-icons/react";
+import { useNavigate } from "react-router-dom";
 import { api, getUser } from "../api/client";
-import type { CefrLevel, RoadmapSkill, RoadmapTask, SyllabusItem } from "../api/types";
-import CoursesAccordion, { LEVEL_TITLES, type ThemeCourse } from "../components/CoursesAccordion";
-import LinearSkillBars from "../components/LinearSkillBars";
-import MiniBarChart from "../components/MiniBarChart";
-import RoadmapWeekStrip from "../components/RoadmapWeekStrip";
-import SegmentedSkillBar from "../components/SegmentedSkillBar";
-// chart.js/react-chartjs-2 aren't needed for first paint (the radar isn't
-// the LCP element) — lazy-loaded to keep it out of the eager entry bundle.
-const SkillPerformanceRadar = lazy(() => import("../components/SkillPerformanceRadar"));
-import SkillProgressGauges from "../components/SkillProgressGauges";
-import StudyActivityChart from "../components/StudyActivityChart";
-import { Card } from "../components/ui/Card";
-import { Skeleton, SkeletonCard } from "../components/ui/Skeleton";
-import { Stat } from "../components/ui/Stat";
-import { cn } from "../lib/cn";
-import { quoteOfTheDay } from "../lib/quotes";
-import { DISPLAY_SKILLS, DISPLAY_SKILL_LABELS_COMPACT, SKILL_COLORS, SKILL_LABELS, displaySkill } from "../lib/skills";
-import { TaskDetailDrawer } from "./learning-hub/TaskDetailDrawer";
-import { invalidateHub } from "./learning-hub/queryHelpers";
+import type { DashboardNextTask, RoadmapSkill } from "../api/types";
+import ReviewDial from "../components/ReviewDial";
+import { BottomSheet } from "../components/ui/BottomSheet";
+import { Skeleton } from "../components/ui/Skeleton";
+import { levelStates } from "../lib/levels";
+import { SKILL_LABELS } from "../lib/skills";
+import { useNavStack } from "../lib/navStack";
 
-/** Card chrome (border/radius/own bg) below `lg`, unchanged from the classic
- * per-tile card look; at `lg:` the chrome is stripped since the 5 tiles then
- * share one outer bordered/divided row instead (see the stats row below). */
-function Tile({ label, value, icon, accent }: { label: string; value: string | number; icon?: ReactNode; accent?: boolean }) {
-  return (
-    <div title={label} className="rounded-xl border border-hairline bg-card p-2 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0">
-      <Stat value={value} label={label} icon={icon} tone={accent ? "accent" : "default"} labelVisibility="sr-only" layout="stack-below-lg" />
-    </div>
-  );
+// The 5 skills this screen shows, in this exact order — literal per the
+// handoff (README §2.5), which deliberately does NOT use this app's usual
+// DISPLAY_SKILLS merge (listening stays separate from speaking here; vocab
+// isn't shown at all). A dedicated set for this one screen, not a shared
+// lib/skills.ts export, since no other screen groups skills this way.
+const WEAKEST_STRIP_SKILLS: { skill: RoadmapSkill; short: string }[] = [
+  { skill: "reading", short: "READ" },
+  { skill: "listening", short: "LISTEN" },
+  { skill: "grammar", short: "GRAM" },
+  { skill: "writing", short: "WRITE" },
+  { skill: "speaking", short: "SPEAK" },
+];
+
+const DAILY_MINUTES_GOAL = 30;
+
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Morning";
+  if (hour < 18) return "Afternoon";
+  return "Evening";
 }
 
-/** Compact quadrant used inside the merged Analytics grid — no visible
- * heading, just a large low-opacity grayscale watermark icon bleeding off
- * the top-left corner (per the latest Claude Design mock's "card identity
- * via watermark, not text" direction). The title still exists as an
- * `sr-only` heading so screen readers get a real accessible name — the mock
- * itself flagged this as an open accessibility gap when it dropped text
- * headings, so it's added back in non-visually here.
- *
- * The watermark sits ABOVE the content (z-20 vs. the content's z-10, matching
- * the mock's own z-index:2/z-index:1 layering) so it stays visible regardless
- * of what's rendered underneath — `pointer-events-none` keeps it from
- * blocking clicks/hover on the real content. Content area has no scroll of
- * its own; each chart is expected to size itself to fit exactly. */
-function Quadrant({
-  icon,
-  title,
-  className,
-  children,
-  onClick,
-}: {
-  icon: string;
-  title: string;
-  className?: string;
-  children: ReactNode;
-  /** Optional — a plain div onClick (not a nested <a>) so children that are
-   * themselves interactive (e.g. Study Time's hour/week/month toggle) can
-   * still work; they just need to stopPropagation in their own handler. */
-  onClick?: () => void;
-}) {
-  return (
-    <div
-      className={cn(
-        "relative flex min-h-0 flex-col overflow-hidden p-3",
-        onClick && "cursor-pointer transition-colors hover:bg-paper",
-        className,
-      )}
-      onClick={onClick}
-    >
-      <h3 className="sr-only">{title}</h3>
-      <img src={icon} alt="" width={112} height={112} className="pointer-events-none absolute -left-4 -top-4 z-20 h-28 w-28 opacity-10 grayscale" />
-      <div className="relative z-10 min-h-0 flex-1 overflow-hidden">{children}</div>
-    </div>
-  );
-}
-
-/** A gradient-filled, icon-led CTA that stands out from the rest of the
- * task list — this is the one action-oriented shortcut ("start reviewing
- * right now"), not just another informational row. Links with
- * ?startReview=1 so Vocabulary.tsx jumps straight into the flashcard queue
- * instead of just landing on the page in its default state. */
-function StartRevisionCta({ dueToday }: { dueToday: number }) {
-  return (
-    <Link
-      to="/vocabulary?startReview=1"
-      className="flex items-center gap-3 rounded-lg bg-gradient-to-r from-brand-500 to-brand-600 p-3 text-white shadow-sm transition-transform hover:scale-[1.01]"
-    >
-      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/20">
-        <Zap className="size-4" aria-hidden="true" />
-      </span>
-      <div className="min-w-0">
-        <div className="text-body font-semibold">Start today's revision</div>
-        <div className="text-caption text-white/80">
-          {dueToday} word{dueToday === 1 ? "" : "s"} due
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-/** One roadmap task, tagged with its section's dedicated color (reading,
- * writing, grammar, …) — a checkbox toggles completion in place, the title
- * opens the full TaskDetailDrawer, mirroring Learning Hub's Today page
- * `PlanRow`. */
-function SkillTaskRow({ task, onOpen }: { task: RoadmapTask; onOpen: (task: RoadmapTask) => void }) {
-  const queryClient = useQueryClient();
-  const color = task.skill ? SKILL_COLORS[task.skill] : "var(--color-ink-400)";
-  const label = task.skill ? SKILL_LABELS[task.skill] : "General";
-  const done = task.completedAt !== null;
-  const toggle = useMutation({
-    mutationFn: (completed: boolean) => api.toggleRoadmapTask(task.id, completed),
-    onSuccess: () => invalidateHub(queryClient),
-  });
-  return (
-    <div
-      className={`flex items-start gap-2.5 rounded-lg border border-hairline bg-card py-2 pl-3 pr-3 text-body ${done ? "opacity-60" : ""}`}
-      style={{ borderLeftWidth: 4, borderLeftColor: color }}
-    >
-      <button
-        onClick={() => toggle.mutate(!done)}
-        aria-label={done ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
-        className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-sm border text-micro text-white ${
-          done ? "border-ink-900 bg-ink-900" : "border-hairline"
-        }`}
-      >
-        {done && "✓"}
-      </button>
-      <button className="min-w-0 flex-1 text-left" onClick={() => onOpen(task)}>
-        <div className="flex items-start justify-between gap-2">
-          <span className={`font-medium text-ink-900 hover:text-brand-500 ${done ? "line-through" : ""}`}>{task.title}</span>
-          {done && <Check className="mt-0.5 size-3.5 shrink-0 text-ok-600" aria-hidden="true" />}
-        </div>
-        {task.description && <p className="mt-0.5 truncate text-caption text-ink-400">{task.description}</p>}
-        <div className="mt-0.5 flex items-center gap-1.5 text-caption text-ink-600">
-          <span className="size-1.5 rounded-full" style={{ backgroundColor: color }} />
-          {label}
-        </div>
-      </button>
-    </div>
-  );
-}
-
-function isoDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function mondayOf(d: Date): Date {
-  const dayIdx = (d.getDay() + 6) % 7;
-  const out = new Date(d);
-  out.setDate(out.getDate() - dayIdx);
-  return out;
-}
-
-/** Groups syllabus items into "courses" (real themes, e.g. "Verbs: present
- * tense") per level — module count/completion come straight from the
- * syllabus, and each theme's badge is colored by its items' dominant real
- * skill tag (reusing the same global skill-color map used everywhere else),
- * not a fabricated difficulty rating. */
-function buildThemeCourses(items: SyllabusItem[]): Record<CefrLevel, ThemeCourse[]> {
-  const groups = new Map<string, { level: CefrLevel; theme: string; total: number; done: number; skillCounts: Map<RoadmapSkill, number> }>();
-  for (const item of items) {
-    const theme = item.theme ?? "General";
-    const key = `${item.level}|${theme}`;
-    const g = groups.get(key) ?? { level: item.level, theme, total: 0, done: 0, skillCounts: new Map() };
-    g.total += 1;
-    if (item.completedAt) g.done += 1;
-    if (item.skill) g.skillCounts.set(item.skill, (g.skillCounts.get(item.skill) ?? 0) + 1);
-    groups.set(key, g);
+/** Best-effort task-length estimate — no explicit duration field exists on
+ * RoadmapTask (only self-reported minutesSpent, which only exists after
+ * completion), so this is a type-based heuristic, not real per-task data. */
+function estimateFor(task: DashboardNextTask): string {
+  switch (task.type) {
+    case "vocab":
+      return "~10 min";
+    case "milestone_test":
+      return "~15 min";
+    case "study_source":
+      return "~20 min";
+    default:
+      return "~10 min";
   }
-  const result: Record<CefrLevel, ThemeCourse[]> = { a1: [], a2: [], b1: [] };
-  for (const g of groups.values()) {
-    let dominant: RoadmapSkill | null = null;
-    let max = 0;
-    for (const [skill, count] of g.skillCounts) {
-      if (count > max) {
-        max = count;
-        dominant = skill;
-      }
-    }
-    result[g.level].push({
-      theme: g.theme,
-      skill: dominant,
-      total: g.total,
-      done: g.done,
-      percent: g.total === 0 ? 0 : Math.round((g.done / g.total) * 100),
-    });
+}
+
+function ctaFor(task: DashboardNextTask, navigate: ReturnType<typeof useNavigate>, switchTab: (path: string) => void) {
+  switch (task.type) {
+    case "vocab":
+      return () => navigate("/words?startReview=1");
+    case "milestone_test":
+      return () => switchTab("/plan?view=test");
+    case "study_source":
+      return () => switchTab("/plan?view=sources");
+    default:
+      return () => switchTab("/plan");
   }
-  return result;
+}
+
+function initials(name: string | undefined): string {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  return parts.length === 1 ? parts[0]!.slice(0, 2).toUpperCase() : (parts[0]![0]! + parts[1]![0]!).toUpperCase();
 }
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { switchTab } = useNavStack();
+  const [taskDetailOpen, setTaskDetailOpen] = useState(false);
   const { data, isLoading } = useQuery({ queryKey: ["dashboard"], queryFn: api.dashboard });
-  const { data: hourlyActivity } = useQuery({
-    queryKey: ["activity", "hourly"],
-    queryFn: api.activityHourly,
-    refetchInterval: 60_000,
-  });
-  const { data: weekly } = useQuery({ queryKey: ["roadmap", "review", "week"], queryFn: () => api.roadmapWeeklyReview() });
-  const currentMonth = new Date().toISOString().slice(0, 7);
-  const { data: monthlyReview } = useQuery({
-    queryKey: ["roadmap", "review", "month", currentMonth],
-    queryFn: () => api.roadmapMonthlyReview(currentMonth),
-  });
-  // full task list (all sections), not just the dashboard summary's single
-  // "next incomplete" line — shared cache key with Learning Hub's Today tab
-  const { data: todayFull } = useQuery({ queryKey: ["roadmap", "today"], queryFn: api.roadmapToday });
-  const { data: syllabusData } = useQuery({ queryKey: ["learning", "syllabus"], queryFn: api.learningSyllabus });
-
-  const [weekStart, setWeekStart] = useState(() => isoDate(mondayOf(new Date())));
-  const [calSelected, setCalSelected] = useState<string | null>(null);
-  const [openTask, setOpenTask] = useState<RoadmapTask | null>(null);
-  const weekEndDate = new Date(weekStart + "T00:00:00");
-  weekEndDate.setDate(weekEndDate.getDate() + 6);
-  const monthsNeeded = Array.from(new Set([weekStart.slice(0, 7), isoDate(weekEndDate).slice(0, 7)]));
-  const { data: calDataA } = useQuery({ queryKey: ["roadmap", "calendar", monthsNeeded[0]], queryFn: () => api.roadmapCalendar(monthsNeeded[0]!) });
-  const { data: calDataB } = useQuery({
-    queryKey: ["roadmap", "calendar", monthsNeeded[1]],
-    queryFn: () => api.roadmapCalendar(monthsNeeded[1]!),
-    enabled: monthsNeeded.length > 1,
-  });
-  const weekDays = [...(calDataA?.days ?? []), ...(calDataB?.days ?? [])];
-  const selectedDayQuery = useQuery({
-    queryKey: ["roadmap", "day", calSelected],
-    queryFn: () => api.roadmapDay(calSelected as string),
-    enabled: calSelected !== null,
-    retry: false,
-  });
-  const shiftWeek = (deltaWeeks: number) => {
-    const d = new Date(weekStart + "T00:00:00");
-    d.setDate(d.getDate() + deltaWeeks * 7);
-    setWeekStart(isoDate(d));
-  };
+  const { data: activity } = useQuery({ queryKey: ["activity", "summary", 1], queryFn: () => api.activitySummary(1) });
 
   if (isLoading || !data) {
     return (
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-8 w-32 rounded-full" />
-        </div>
-        <div className="grid grid-cols-4 gap-2 md:grid-cols-5 md:gap-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
-        <div className="grid gap-3 lg:grid-cols-3">
-          <div className="space-y-3 lg:col-span-2">
-            <SkeletonCard className="h-40" />
-            <SkeletonCard className="h-40" />
-          </div>
-          <div className="space-y-3">
-            <SkeletonCard className="h-24" />
-            <SkeletonCard className="h-48" />
-          </div>
-        </div>
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="mx-auto h-44 w-44 rounded-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-28 w-full" />
       </div>
     );
   }
 
-  const bySkill = weekly?.bySkill ?? [];
-  const bySkillTotals = new Map<RoadmapSkill, { done: number; total: number }>();
-  for (const t of bySkill) {
-    const key = displaySkill(t.skill);
-    const entry = bySkillTotals.get(key) ?? { done: 0, total: 0 };
-    entry.done += t.done;
-    entry.total += t.total;
-    bySkillTotals.set(key, entry);
-  }
-  const skillSegments = DISPLAY_SKILLS.map((skill) => {
-    const tally = bySkillTotals.get(skill);
-    return { skill, label: DISPLAY_SKILL_LABELS_COMPACT[skill], color: SKILL_COLORS[skill], done: tally?.done ?? 0, total: tally?.total ?? 0 };
-  });
+  const user = getUser();
+  const firstName = user?.name?.trim().split(/\s+/)[0];
+  const states = levelStates(data.learning.levels);
+  const activeLevel = data.learning.levels[Math.max(0, states.indexOf("active"))]?.level ?? "a1";
+  const activeLevelPercent = data.learning.levels.find((l) => l.level === activeLevel)?.percent ?? 0;
 
-  const levelsInProgress = data.learning.levels.filter((l) => l.total > 0);
-  const defaultOpenIdx = levelsInProgress.findIndex((l) => l.total === 0 || l.percent < 100);
-  const defaultOpenLevel = levelsInProgress[defaultOpenIdx === -1 ? levelsInProgress.length - 1 : defaultOpenIdx]?.level ?? "a1";
-  const themeCourses = buildThemeCourses(syllabusData?.items ?? []);
-  const activeCoursesCount = levelsInProgress.filter((l) => l.percent > 0 && l.percent < 100).length;
+  const todayEntry = data.roadmapWeekStrip.find((d) => d.status === "today");
+  const dayLabel = new Date().toLocaleDateString(undefined, { weekday: "long" });
+  const dayNumber = todayEntry ? todayEntry.dayOffset + 1 : null;
 
-  const selectedDay = calSelected && selectedDayQuery.data ? selectedDayQuery.data.day : null;
+  const minsToday = activity?.minutesToday ?? 0;
+  const minsPercent = Math.min(100, Math.round((minsToday / DAILY_MINUTES_GOAL) * 100));
 
-  // openTask is a snapshot captured at click time — re-derive the live copy
-  // from the freshly-fetched lists on every render so its checkbox/fields
-  // never go stale after a mutation invalidates ["roadmap", "today"/"day"]
-  // (same pattern as Learning Hub's Today page).
-  const liveOpenTask =
-    openTask &&
-    (todayFull?.tasks.find((t) => t.id === openTask.id) ??
-      todayFull?.backlog.flatMap((g) => g.tasks).find((t) => t.id === openTask.id) ??
-      selectedDay?.tasks.find((t) => t.id === openTask.id) ??
-      openTask);
+  const examDate = data.examTargetDate ? new Date(`${data.examTargetDate}T00:00:00`) : null;
+  const examDaysRaw = examDate ? Math.round((examDate.getTime() - new Date().setHours(0, 0, 0, 0)) / 86_400_000) : null;
+  const examAmber = examDaysRaw !== null && examDaysRaw >= 0 && examDaysRaw <= 14;
 
-  // todayFull resolves independently of (usually slightly after) the main
-  // dashboard query above, which is what clears the page's top-level
-  // skeleton — without distinguishing "still loading" from "confirmed
-  // empty" here, the Today's Tasks card below flashes the empty-state
-  // message and then jumps to the real list once todayFull arrives,
-  // both a layout shift and, briefly, a wrong answer for anyone who does
-  // have tasks.
-  const todayLoading = todayFull === undefined;
-  const noTasksAtAll = !todayLoading && data.dueToday === 0 && todayFull.tasks.length === 0;
+  const nextTask = data.roadmapToday?.nextTask ?? null;
+  const roadmapStarted = data.roadmapToday !== null;
 
-  const firstName = getUser()?.name?.trim().split(/\s+/)[0];
-  const quote = quoteOfTheDay();
+  const skillPerfMap = new Map(data.learning.skillPerformance.map((s) => [s.skill, s.percent]));
+  const weakestStrip = WEAKEST_STRIP_SKILLS.map((s) => ({ ...s, pct: skillPerfMap.get(s.skill) ?? 0 }));
+  const weakest = [...weakestStrip].sort((a, b) => a.pct - b.pct)[0]!;
 
-  // sm/md mini-graphs: Performance merges the 9 raw skills into the 5
-  // display skills the same way SkillPerformanceRadar does internally
-  // (max per merged group); Study time buckets the current week's minutes
-  // (already fetched for the segmented bar / lg bar chart) into 7 daily bars.
-  const perfByDisplay = new Map<RoadmapSkill, number>();
-  for (const d of data.learning.skillPerformance) {
-    const key = displaySkill(d.skill);
-    perfByDisplay.set(key, Math.max(perfByDisplay.get(key) ?? 0, d.percent));
-  }
-  const perfBars = DISPLAY_SKILLS.map((s) => ({
-    label: DISPLAY_SKILL_LABELS_COMPACT[s],
-    value: perfByDisplay.get(s) ?? 0,
-    color: SKILL_COLORS[s],
-  }));
-
-  const weekMonday = mondayOf(new Date());
-  const dailyTotals = new Map<string, number>();
-  for (const e of weekly?.dailyMinutesBySkill ?? []) dailyTotals.set(e.date, (dailyTotals.get(e.date) ?? 0) + e.minutes);
-  const weeklyTotals = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekMonday);
-    d.setDate(d.getDate() + i);
-    const key = isoDate(d);
-    return { label: d.toLocaleDateString(undefined, { weekday: "narrow" }), value: dailyTotals.get(key) ?? 0, color: "var(--color-brand-400)" };
-  });
+  const startNextTask = () => {
+    setTaskDetailOpen(false);
+    if (!roadmapStarted) {
+      switchTab("/plan");
+      return;
+    }
+    if (!nextTask) {
+      switchTab("/plan?view=test");
+      return;
+    }
+    ctaFor(nextTask, navigate, switchTab)();
+  };
 
   return (
-    <>
-    <div className="flex flex-col gap-3 md:h-[calc(100dvh-2rem)] md:min-h-0 lg:h-full lg:min-h-0">
-      <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
+    <div
+      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)]"
+      style={{ background: "radial-gradient(120% 48% at 50% 6%, #23263d 0%, #161826 64%)" }}
+    >
+      {/* ── header ── */}
+      <div className="flex items-baseline justify-between">
         <div>
-          <h1 className="flex items-center gap-2 text-heading">
-            Guten Tag{firstName ? `, ${firstName}` : ""}!
-            <Hand className="size-6 text-brand-500" aria-hidden="true" />
-          </h1>
-          <p className="mt-0.5 text-body text-ink-600">{quote}</p>
+          {dayNumber !== null && (
+            <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
+              {dayLabel} · day {dayNumber}
+            </div>
+          )}
+          <div className="mt-[3px] text-[29px] leading-tight font-medium" style={{ letterSpacing: "-.02em" }}>
+            {greeting()}{firstName ? `, ${firstName}` : ""}.
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {data.dueToday === 0 && (
-            <span className="flex items-center gap-1.5 text-body text-ink-600">
-              <CheckCircle2 className="size-4 text-ok-600" aria-hidden="true" />
-              Nothing due — alles erledigt
+        <div className="flex items-center gap-2.5">
+          <div className="flex flex-col items-end gap-1">
+            <span className="rounded-full border px-2 py-0.5 text-micro font-medium uppercase" style={{ borderColor: "rgba(233,233,237,.16)" }}>
+              {activeLevel.toUpperCase()}
             </span>
-          )}
+            <span className="flex items-center gap-1 text-[11px]" style={{ color: "rgba(233,233,237,.55)" }}>
+              <Fire size={12} weight="fill" aria-hidden="true" />
+              {data.streak} days
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/settings")}
+            aria-label="Profile and settings"
+            className="grid size-10 shrink-0 place-items-center rounded-full text-[15px] font-medium"
+            style={{
+              letterSpacing: "-.01em",
+              color: "#d2cefd",
+              background: "linear-gradient(150deg,#3a3560,#272a45)",
+              border: "1px solid rgba(181,171,252,.4)",
+            }}
+          >
+            {initials(user?.name)}
+          </button>
         </div>
       </div>
-
-      {/* sm shows 4 (no Active courses, so a single row never needs to
-          scroll); md adds Active courses back for 5, same as lg — Tile
-          itself stacks icon-over-value below lg and switches to lg's
-          horizontal chromeless look via its own responsive classes. */}
       <div
-        className="animate-enter grid shrink-0 grid-cols-4 gap-2 md:grid-cols-5 md:gap-3 lg:gap-0 lg:divide-x lg:divide-hairline lg:rounded-xl lg:border lg:border-hairline lg:bg-card"
-        style={{ animationDelay: "0ms" }}
-      >
-        <Tile
-          label="Day streak"
-          value={data.streak}
-          accent
-          icon={<img src={fireIcon} alt="" width={24} height={24} className="size-5 lg:size-6" />}
-        />
-        <Tile
-          label="Learning Hrs"
-          value={`${(data.totalLearningMinutes / 60).toFixed(1)}h`}
-          icon={<img src={clockIcon} alt="" width={24} height={24} className="size-5 lg:size-6" />}
-        />
-        <Tile
-          label="Vocab due / total"
-          value={`${data.dueToday} / ${data.totalWords}`}
-          accent={data.dueToday > 0}
-          icon={<img src={dictionaryIcon} alt="" width={24} height={24} className="size-5 lg:size-6" />}
-        />
-        <Tile
-          label="Quizzes completed"
-          value={data.quizzesCompleted}
-          icon={<img src={quizIcon} alt="" width={24} height={24} className="size-5 lg:size-6" />}
-        />
-        <div className="hidden md:contents">
-          <Tile
-            label="Active courses"
-            value={activeCoursesCount}
-            icon={<img src={streamingIcon} alt="" width={24} height={24} className="size-5 lg:size-6" />}
-          />
-        </div>
+        className="mt-[11px] h-px shrink-0"
+        style={{
+          background:
+            "linear-gradient(to right, transparent, rgba(233,233,237,.16) 40px, rgba(233,233,237,.16) calc(100% - 40px), transparent)",
+        }}
+      />
+
+      {/* ── review dial ── */}
+      <ReviewDial
+        dueCount={data.dueToday}
+        reviewedToday={data.reviewsToday}
+        secondaryPercent={activeLevelPercent}
+        onStart={() => navigate("/words?startReview=1")}
+      />
+      <div className="mt-2 flex justify-center gap-[18px] text-[10px]" style={{ color: "rgba(233,233,237,.62)" }}>
+        <span className="flex items-center gap-[5px]">
+          <i className="inline-block size-[7px] rounded-sm" style={{ background: "#9184d9" }} />
+          review {data.dueToday}
+        </span>
+        <span className="flex items-center gap-[5px]">
+          <i className="inline-block size-[7px] rounded-sm" style={{ background: "#423a6a" }} />
+          new {data.newWords}
+        </span>
       </div>
 
-      {/* sm/md-only: a simplified subset (today's tasks, a linear-bar
-          "Continue" card, 2 compact mini-cards) replacing lg's full Courses
-          accordion / radar+chart Analytics grid / Schedule column, which
-          don't fit below lg — see the hidden lg:grid block further down. */}
-      <div className="flex min-h-0 flex-col gap-3 md:flex-1 md:justify-evenly lg:hidden">
-        <Card padding="sm" className="flex flex-col md:min-h-0 md:flex-1">
-          <Link to="/learning?view=today" className="mb-2 flex shrink-0 items-center gap-1.5 text-body font-medium text-ink-600 hover:text-brand-600">
-            <img src={clipboardIcon} alt="" width={16} height={16} className="size-4" />
-            Today's tasks
-          </Link>
-          {todayLoading ? (
-            <Skeleton className="h-16" />
-          ) : noTasksAtAll ? (
-            <p className="text-body text-ink-600">Nothing on your plate right now — enjoy the breather.</p>
-          ) : (
-            <div className="max-h-64 min-h-0 flex-1 space-y-2 overflow-y-auto md:max-h-none">
-              {[
-                ...(data.dueToday > 0 ? [<StartRevisionCta key="due" dueToday={data.dueToday} />] : []),
-                ...(todayFull?.tasks.map((t) => <SkillTaskRow key={t.id} task={t} onOpen={setOpenTask} />) ?? []),
-              ]}
-            </div>
-          )}
-        </Card>
-
-        <Card padding="sm" className="md:shrink-0">
-          <p className="font-semibold text-ink-900">
-            Continue: {defaultOpenLevel.toUpperCase()} {LEVEL_TITLES[defaultOpenLevel]}
-          </p>
-          {data.roadmapToday?.nextIncompleteTitle && (
-            <p className="mt-0.5 text-body text-ink-600">Next: {data.roadmapToday.nextIncompleteTitle}</p>
-          )}
-          <div className="relative mt-3 h-2.5 rounded-full bg-paper">
+      {/* ── day strip ── */}
+      <div className="mt-[13px] grid grid-cols-3 gap-2">
+        <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
+          <div className="flex items-baseline gap-[3px]">
+            <span className="tabular text-[21px] font-medium" style={{ letterSpacing: "-.02em" }}>{minsToday}</span>
+            <span className="text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>/ {DAILY_MINUTES_GOAL}</span>
+          </div>
+          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>minutes today</div>
+          <div className="mt-0.5 h-[3px] overflow-hidden rounded-full" style={{ background: "#292b31" }}>
             <div
-              className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600 transition-[width] duration-700"
-              style={{ width: `${levelsInProgress.find((l) => l.level === defaultOpenLevel)?.percent ?? 0}%` }}
+              className="h-full rounded-full transition-[width] duration-300"
+              style={{ width: `${minsPercent}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }}
             />
-          </div>
-          <div className="mt-4">
-            <LinearSkillBars skills={data.learning.skillProgress} />
-          </div>
-          <Link to="/learning?view=syllabus" className="mt-3 inline-block text-body font-medium text-brand-700 hover:underline">
-            Resume →
-          </Link>
-        </Card>
-
-        <div className="grid grid-cols-2 gap-3 md:shrink-0">
-          <Link to="/learning?view=progress">
-            <Card padding="sm" interactive>
-              <p className="mb-1.5 flex items-center gap-1.5 text-body font-medium text-ink-600">
-                <img src={goodFeedbackIcon} alt="" width={16} height={16} className="size-4" />
-                Performance
-              </p>
-              <div className="h-14">
-                <MiniBarChart bars={perfBars} max={100} />
-              </div>
-            </Card>
-          </Link>
-          <Link to="/learning?view=progress">
-            <Card padding="sm" interactive>
-              <p className="mb-1.5 flex items-center gap-1.5 text-body font-medium text-ink-600">
-                <img src={studyTimeIcon} alt="" width={16} height={16} className="size-4" />
-                Study time
-              </p>
-              <div className="h-14">
-                <MiniBarChart bars={weeklyTotals} />
-              </div>
-            </Card>
-          </Link>
-        </div>
-      </div>
-
-      <div className="hidden min-h-0 flex-1 gap-3 lg:grid lg:grid-cols-[7fr_3fr] lg:overflow-hidden">
-        <div className="flex min-h-0 flex-col gap-3">
-          <Card
-            padding="sm"
-            className="animate-enter relative flex min-h-0 flex-1 flex-col overflow-hidden"
-            style={{ animationDelay: "45ms" }}
-          >
-            <h2 className="sr-only">My Courses</h2>
-            <img
-              src={onlineCertificateIcon}
-              alt=""
-              className="pointer-events-none absolute -left-4 -top-4 z-20 h-28 w-28 opacity-10 grayscale"
-            />
-            <img
-              src={learningIcon}
-              alt=""
-              className="pointer-events-none absolute -bottom-4 -right-4 z-20 h-28 w-28 opacity-10 grayscale"
-            />
-            <div className="relative z-10 min-h-0 flex-1">
-              <CoursesAccordion levels={levelsInProgress} courses={themeCourses} defaultOpenLevel={defaultOpenLevel} />
-            </div>
-          </Card>
-
-          <div
-            className="animate-enter grid min-h-0 flex-[2] grid-cols-1 divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-card lg:grid-cols-2 lg:grid-rows-[1fr_1.1fr] lg:divide-y-0"
-            style={{ animationDelay: "90ms" }}
-          >
-            <Quadrant
-              icon={goodFeedbackIcon}
-              title="Performance"
-              className="lg:border-b lg:border-r lg:border-hairline"
-              onClick={() => navigate("/learning?view=progress")}
-            >
-              <Suspense fallback={<div className="h-full w-full" />}>
-                <SkillPerformanceRadar data={data.learning.skillPerformance} />
-              </Suspense>
-            </Quadrant>
-            <Quadrant
-              icon={studyTimeIcon}
-              title="Study Time"
-              className="lg:border-b lg:border-hairline"
-              onClick={() => navigate("/learning?view=progress")}
-            >
-              <StudyActivityChart
-                hourly={hourlyActivity?.hours ?? []}
-                weekly={weekly?.dailyMinutesBySkill ?? []}
-                monthly={monthlyReview?.dailyMinutesBySkill ?? []}
-              />
-            </Quadrant>
-            <Quadrant icon={riseIcon} title="My Progress" className="lg:col-span-2">
-              {todayFull?.overview && (
-                <SkillProgressGauges
-                  name={`German — Ausbildung Track`}
-                  nextLessonLine={data.roadmapToday?.nextIncompleteTitle ?? null}
-                  dayOffset={todayFull.overview.currentDayOffset}
-                  totalDays={todayFull.overview.totalDays}
-                  levels={data.learning.levels}
-                  skills={data.learning.skillProgress}
-                />
-              )}
-            </Quadrant>
           </div>
         </div>
-
-        <div
-          className="animate-enter flex min-h-0 flex-1 flex-col divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-card"
-          style={{ animationDelay: "135ms" }}
+        <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
+          <div className="flex items-baseline gap-[3px]">
+            <span className="tabular text-[21px] font-medium" style={{ letterSpacing: "-.02em" }}>
+              {data.roadmapToday?.tasksDone ?? 0}
+            </span>
+            <span className="text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>/ {data.roadmapToday?.tasksTotal ?? 0}</span>
+          </div>
+          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>plan tasks</div>
+          <div className="mt-0.5 h-[3px] overflow-hidden rounded-full" style={{ background: "#292b31" }}>
+            <div
+              className="h-full rounded-full transition-[width] duration-300"
+              style={{
+                width: `${data.roadmapToday && data.roadmapToday.tasksTotal > 0 ? Math.round((data.roadmapToday.tasksDone / data.roadmapToday.tasksTotal) * 100) : 0}%`,
+                background: "linear-gradient(90deg,#5d5294,#b5abfc)",
+              }}
+            />
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => switchTab("/plan?view=syllabus")}
+          className="rounded-xl p-[11px] text-left"
+          style={{ background: "#1c1f2c" }}
         >
-          <div className="shrink-0 p-3">
-            {data.roadmapWeekStrip.length === 0 ? (
-              <Link to="/learning?view=roadmap" className="text-body text-brand-700 hover:underline">
-                Start your 26-week roadmap →
-              </Link>
-            ) : (
-              <RoadmapWeekStrip
-                weekStart={weekStart}
-                days={weekDays}
-                selectedDate={calSelected}
-                onSelectDay={setCalSelected}
-                onShiftWeek={shiftWeek}
-              />
-            )}
+          <div className="flex items-baseline gap-[3px]">
+            <span className="tabular text-[21px] font-medium" style={{ letterSpacing: "-.02em", color: examAmber ? "#e4c4b6" : "#b5abfc" }}>
+              {examDaysRaw === null ? "—" : examDaysRaw >= 0 ? examDaysRaw : Math.abs(examDaysRaw)}
+            </span>
+            <span className="text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>
+              {examDaysRaw === null ? "" : examDaysRaw > 0 ? "d" : examDaysRaw === 0 ? "" : "d ago"}
+            </span>
           </div>
-
-          <div className="shrink-0 p-3">
-            <p className="mb-2 flex items-center gap-1.5 text-body font-medium text-ink-600">
-              <img src={taskIcon} alt="" width={16} height={16} className="size-4" />
-              Tasks Completed
-            </p>
-            <SegmentedSkillBar segments={skillSegments} />
+          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>to your exam</div>
+          <div className="mt-[3px] text-[10px]" style={{ color: "rgba(233,233,237,.62)" }}>
+            {examDate ? examDate.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "Set a date →"}
           </div>
+        </button>
+      </div>
 
-          <div className="flex min-h-0 flex-1 flex-col p-3">
-            <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
-              {selectedDay ? (
-                <p className="flex items-center gap-1.5 text-body font-medium text-ink-600">
-                  <img src={clipboardIcon} alt="" width={16} height={16} className="size-4" />
-                  {new Date(calSelected!).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
-                </p>
-              ) : (
-                <Link to="/learning?view=today" className="flex items-center gap-1.5 text-body font-medium text-ink-600 hover:text-brand-600">
-                  <img src={clipboardIcon} alt="" width={16} height={16} className="size-4" />
-                  Today's Tasks
-                </Link>
-              )}
-              {selectedDay && (
-                <button className="text-caption text-brand-700 hover:underline" onClick={() => setCalSelected(null)}>
-                  Back to today
-                </button>
-              )}
+      {/* ── next in your plan hero card ── */}
+      <div
+        onClick={() => setTaskDetailOpen(true)}
+        className="relative mt-3 cursor-pointer overflow-hidden rounded-2xl p-3.5"
+        style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a, 0 12px 28px rgba(0,0,0,.4)" }}
+      >
+        <div
+          className="animate-pulse-glow pointer-events-none absolute -top-10 -right-[34px] size-[140px] rounded-full"
+          style={{ background: "radial-gradient(closest-side, rgba(145,132,217,.3), transparent)" }}
+        />
+        <div className="flex items-center gap-1.5">
+          <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>Next in your plan</div>
+          <span className="rounded-full border px-1.5 py-px text-[9px]" style={{ borderColor: "rgba(233,233,237,.14)", color: "rgba(233,233,237,.62)" }}>
+            {nextTask?.skill ? SKILL_LABELS[nextTask.skill] : nextTask ? "Your own" : "Free"}
+          </span>
+        </div>
+        <div className="mt-1.5 text-xl font-medium text-pretty" style={{ letterSpacing: "-.02em" }}>
+          {!roadmapStarted
+            ? "Start your 26-week roadmap"
+            : nextTask
+              ? nextTask.title
+              : "Everything on today's plan is done."}
+        </div>
+        <div className="mt-[11px] flex items-center gap-3">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!roadmapStarted) {
+                switchTab("/plan");
+                return;
+              }
+              startNextTask();
+            }}
+            className="min-h-[42px] rounded-[10px] px-4 text-[14px] font-medium text-white"
+            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+          >
+            {!roadmapStarted ? "Get started" : nextTask ? "Start" : "Practise anyway"} →
+          </button>
+          {nextTask && (
+            <div className="flex items-center gap-1.5 text-[11.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+              {estimateFor(nextTask)}
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              {selectedDay ? (
-                selectedDay.tasks.length === 0 ? (
-                  <p className="text-body text-ink-600">No tasks that day.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {selectedDay.tasks.map((t) => (
-                      <SkillTaskRow key={t.id} task={t} onOpen={setOpenTask} />
-                    ))}
-                  </div>
-                )
-              ) : todayLoading ? (
-                <Skeleton className="h-16" />
-              ) : noTasksAtAll ? (
-                <p className="text-body text-ink-600">Nothing on your plate right now — enjoy the breather.</p>
-              ) : (
-                <div className="space-y-2">
-                  {data.dueToday > 0 && <StartRevisionCta dueToday={data.dueToday} />}
-                  {todayFull?.tasks.map((t) => <SkillTaskRow key={t.id} task={t} onOpen={setOpenTask} />)}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* No border lines between icons or above this row — separation
-              comes from spacing alone, each count shown as a
-              notification-style bubble (same pattern as the sidebar's
-              unread-count badge) instead of a number printed below the icon. */}
-          <div className="flex shrink-0 items-center justify-around gap-2 py-3">
-            {(
-              [
-                ["wishlist", "Wishlist", wishlistIcon],
-                ["applied", "Applied", applyIcon],
-                ["interview", "Interview", jobInterviewIcon],
-                ["offer", "Offer", jobOfferIcon],
-                ["rejected", "Rejected", rejectIcon],
-              ] as const
-            ).map(([key, label, icon]) => {
-              const count = data.applications[key];
-              return (
-                <Link
-                  key={key}
-                  to="/applications"
-                  aria-label={`${label}: ${count}`}
-                  className="relative grid place-items-center rounded-full p-1.5 hover:bg-paper"
-                >
-                  <img src={icon} alt="" width={18} height={18} className="size-[18px]" />
-                  {count > 0 && (
-                    <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-danger-solid px-1 text-micro font-bold leading-4 text-white">
-                      {count}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
+          )}
         </div>
       </div>
+
+      {/* ── weakest right now ── */}
+      {/* pr reserves clearance for CaptureFab (46px + 18px right offset),
+          which docks in this same bottom-right zone — without it, the FAB
+          visually sits on top of the "Mastery" link on tall/sparse screens
+          where mt-auto's slack pushes this block close to the tab bar. */}
+      <div className="mt-auto pr-16 pt-4 pb-1">
+        <div className="mb-2 flex items-center gap-2.5">
+          <div className="shrink-0 text-[10px] tracking-[.12em] whitespace-nowrap uppercase" style={{ color: "rgba(233,233,237,.5)" }}>
+            Weakest right now
+          </div>
+          <span className="truncate text-[11px]" style={{ color: "#e4c4b6" }}>
+            {SKILL_LABELS[weakest.skill]} · {weakest.pct} %
+          </span>
+          <button
+            type="button"
+            onClick={() => switchTab("/stats")}
+            className="ml-auto flex shrink-0 items-center gap-0.5 text-[11px] whitespace-nowrap"
+            style={{ color: "#b5abfc" }}
+          >
+            Mastery ›
+          </button>
+        </div>
+        <button type="button" onClick={() => switchTab("/stats")} className="flex w-full gap-[5px]">
+          {weakestStrip.map((s) => {
+            const weak = s.pct < 50;
+            return (
+              <div key={s.skill} className="flex flex-1 flex-col gap-[5px]">
+                <div className="h-[5px] overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
+                  <div
+                    className="h-full rounded-[3px] transition-[width] duration-300"
+                    style={{ width: `${s.pct}%`, background: weak ? "#d19b86" : s.pct >= 70 ? "#b5abfc" : "#796cbf" }}
+                  />
+                </div>
+                <span className="text-[10px] tracking-[.02em]" style={{ color: weak ? "#e4c4b6" : "rgba(233,233,237,.62)" }}>
+                  {s.short}
+                </span>
+              </div>
+            );
+          })}
+        </button>
+      </div>
+
+      <BottomSheet open={taskDetailOpen} onClose={() => setTaskDetailOpen(false)}>
+        <div className="flex items-center gap-1.5">
+          <span className="rounded-full border px-1.5 py-px text-[9.5px]" style={{ borderColor: "rgba(233,233,237,.14)", color: "rgba(233,233,237,.62)" }}>
+            {nextTask?.skill ? SKILL_LABELS[nextTask.skill] : "Free"}
+          </span>
+          <span className="text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>today's plan</span>
+        </div>
+        <div className="mt-[9px] text-xl font-medium text-pretty" style={{ letterSpacing: "-.02em" }}>
+          {!roadmapStarted ? "Start your 26-week roadmap" : nextTask ? nextTask.title : "Nothing left on today's plan."}
+        </div>
+        <div className="mt-[9px] text-[13px] leading-[1.55] text-pretty" style={{ color: "rgba(233,233,237,.7)" }}>
+          {!roadmapStarted
+            ? "Generates a day-by-day plan to Goethe-exam readiness from your syllabus progress."
+            : nextTask
+              ? (nextTask.description ?? "Part of today's roadmap plan.")
+              : "You can still open a self-test or work ahead on new words."}
+        </div>
+        <div className="mt-[15px] flex flex-col gap-[9px]">
+          <div className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px]" style={{ background: "#20222f" }}>
+            <span className="flex-1 text-[12.5px]" style={{ color: "rgba(233,233,237,.6)" }}>Estimated</span>
+            <span className="text-[12.5px] font-medium">{nextTask ? estimateFor(nextTask) : "—"}</span>
+          </div>
+          <div className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px]" style={{ background: "#20222f" }}>
+            <span className="flex-1 text-[12.5px]" style={{ color: "rgba(233,233,237,.6)" }}>Moves</span>
+            <span className="text-[12.5px] font-medium">
+              {nextTask?.skill ? SKILL_LABELS[nextTask.skill] : nextTask ? "Your own goal" : "Your choice"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px]" style={{ background: "#20222f" }}>
+            <span className="flex-1 text-[12.5px]" style={{ color: "rgba(233,233,237,.6)" }}>If you skip</span>
+            <span className="text-[12.5px] font-medium">{nextTask ? "Rolls into your backlog" : "—"}</span>
+          </div>
+        </div>
+        <div className="mt-4 flex gap-[9px]">
+          <button
+            type="button"
+            onClick={() => setTaskDetailOpen(false)}
+            className="min-h-[46px] flex-1 rounded-[11px] border text-[14px] font-medium"
+            style={{ borderColor: "rgba(233,233,237,.16)" }}
+          >
+            Not now
+          </button>
+          <button
+            type="button"
+            onClick={startNextTask}
+            className="min-h-[46px] flex-[1.5] rounded-[11px] text-[15px] font-medium text-white"
+            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+          >
+            Start →
+          </button>
+        </div>
+      </BottomSheet>
     </div>
-    {liveOpenTask && (
-      <TaskDetailDrawer task={liveOpenTask} onClose={() => setOpenTask(null)} onNavigate={(d) => navigate(`/learning?view=${d}`)} />
-    )}
-    </>
   );
 }

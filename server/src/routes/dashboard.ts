@@ -5,7 +5,6 @@ import { requireAuth } from "../middleware/auth.js";
 import { computeDayStreak, localDateKey } from "../services/learning/activity.js";
 import { addDaysUTC, dayStatus } from "../services/learning/roadmap.js";
 import { skillPerformance } from "../services/learning/review.js";
-import { EXPIRY_WARN_DAYS, expiryStatus } from "../services/reminders.js";
 
 const CORE_SKILLS = ["grammar", "vocab", "listening", "speaking", "writing", "reading"] as const satisfies readonly RoadmapSkill[];
 
@@ -29,9 +28,6 @@ dashboardRouter.get("/", async (req, res) => {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
-  const expiryHorizon = new Date();
-  expiryHorizon.setDate(expiryHorizon.getDate() + EXPIRY_WARN_DAYS + 1);
-
   // learning activity only matters for the streak, so a year back is plenty
   const activityHorizon = new Date();
   activityHorizon.setDate(activityHorizon.getDate() - 366);
@@ -47,7 +43,6 @@ dashboardRouter.get("/", async (req, res) => {
     reviewsToday,
     lessons,
     recentLogs,
-    expiringItems,
     appsByStatus,
     syllabusRows,
     syllabusActivity,
@@ -78,16 +73,6 @@ dashboardRouter.get("/", async (req, res) => {
       select: { reviewedAt: true },
       orderBy: { reviewedAt: "desc" },
       take: 5000,
-    }),
-    prisma.checklistItem.findMany({
-      where: {
-        userId: req.userId,
-        status: { notIn: ["done", "not_applicable"] },
-        expiresAt: { not: null, lte: expiryHorizon },
-      },
-      select: { id: true, title: true, expiresAt: true },
-      orderBy: { expiresAt: "asc" },
-      take: 8,
     }),
     prisma.application.groupBy({
       by: ["status"],
@@ -125,14 +110,20 @@ dashboardRouter.get("/", async (req, res) => {
     }),
     prisma.selfTestResult.count({ where: { userId: req.userId } }),
     prisma.dailyActiveMinutes.aggregate({ where: { userId: req.userId }, _sum: { minutes: true } }),
-    prisma.user.findUniqueOrThrow({ where: { id: req.userId }, select: { roadmapStartedAt: true } }),
+    prisma.user.findUniqueOrThrow({
+      where: { id: req.userId },
+      select: { roadmapStartedAt: true, examTargetDate: true },
+    }),
     prisma.roadmapDay.findMany({
       where: { userId: req.userId, date: { gte: weekStart, lt: weekEnd } },
       select: {
         date: true,
         dayOffset: true,
         theme: true,
-        tasks: { select: { completedAt: true, title: true }, orderBy: { sortOrder: "asc" } },
+        tasks: {
+          select: { id: true, type: true, skill: true, title: true, description: true, completedAt: true },
+          orderBy: { sortOrder: "asc" },
+        },
       },
       orderBy: { date: "asc" },
     }),
@@ -243,17 +234,27 @@ dashboardRouter.get("/", async (req, res) => {
     status: dayStatus(d, todayUtc),
   }));
   const todayRow = weekDays.find((d) => d.date.getTime() === todayUtc.getTime());
+  const nextIncomplete = todayRow?.tasks.find((t) => t.completedAt === null) ?? null;
   const roadmapToday =
     user.roadmapStartedAt && todayRow
       ? {
           theme: todayRow.theme,
           tasksDone: todayRow.tasks.filter((t) => t.completedAt !== null).length,
           tasksTotal: todayRow.tasks.length,
-          nextIncompleteTitle: todayRow.tasks.find((t) => t.completedAt === null)?.title ?? null,
+          nextTask: nextIncomplete
+            ? {
+                id: nextIncomplete.id,
+                type: nextIncomplete.type,
+                skill: nextIncomplete.skill,
+                title: nextIncomplete.title,
+                description: nextIncomplete.description,
+              }
+            : null,
         }
       : null;
 
   res.json({
+    examTargetDate: user.examTargetDate ? user.examTargetDate.toISOString().slice(0, 10) : null,
     totalWords,
     dueToday,
     newWords,
@@ -266,12 +267,6 @@ dashboardRouter.get("/", async (req, res) => {
     totalLearningMinutes: totalLearningMinutesAgg._sum.minutes ?? 0,
     lessons: lessons.map((l) => ({ lesson: l.lesson, count: l._count })),
     activity,
-    expiringDocuments: expiringItems.map((i) => ({
-      id: i.id,
-      title: i.title,
-      expiresAt: i.expiresAt,
-      expiry: expiryStatus(i.expiresAt, now),
-    })),
     applications,
     heatmap,
     learning: {
