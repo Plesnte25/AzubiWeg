@@ -2,12 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { api } from "../api/client";
-import { useTheme } from "../hooks/useTheme";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
 import { Modal } from "../components/ui/Modal";
-import { SegmentedControl } from "../components/ui/SegmentedControl";
 import { invalidateHub } from "./learning-hub/queryHelpers";
 
 export default function Settings() {
@@ -15,7 +13,6 @@ export default function Settings() {
   const { data: status } = useQuery({ queryKey: ["vault-status"], queryFn: api.vaultStatus });
   const [path, setPath] = useState("");
   const [confirmingReset, setConfirmingReset] = useState(false);
-  const { theme, setTheme } = useTheme();
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ["vault-status"] });
@@ -40,21 +37,6 @@ export default function Settings() {
 
   return (
     <div className="max-w-2xl space-y-4">
-      <Card padding="lg">
-        <h1 className="text-title font-semibold">Appearance</h1>
-        <p className="mt-1 text-body text-ink-600">Choose how AzubiWeg looks on this device.</p>
-        <SegmentedControl
-          className="mt-3"
-          value={theme}
-          onChange={setTheme}
-          options={[
-            { key: "light", label: "Light" },
-            { key: "dark", label: "Dark" },
-            { key: "system", label: "System" },
-          ]}
-        />
-      </Card>
-
       <Card padding="lg">
         <h1 className="text-title font-semibold">Obsidian vault</h1>
         <p className="mt-1 text-body text-ink-600">

@@ -2,7 +2,6 @@ import { Filler, LineElement, PointElement, RadialLinearScale, Tooltip, Chart as
 import { useMemo } from "react";
 import { Radar } from "react-chartjs-2";
 import type { RoadmapSkill } from "../api/types";
-import { useTheme } from "../hooks/useTheme";
 import { DISPLAY_SKILLS, DISPLAY_SKILL_LABELS, SKILL_COLORS, displaySkill } from "../lib/skills";
 
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip);
@@ -13,8 +12,7 @@ export interface SkillPerformanceDatum {
 }
 
 /** Canvas 2D (what Chart.js draws on) can't resolve `var(--foo)` the way DOM/
- * SVG styles can, so theme-aware colors have to be read as computed values
- * and re-read whenever the theme toggles (see `useTheme()` below). */
+ * SVG styles can, so theme-aware colors have to be read as computed values. */
 function resolveColor(value: string): string {
   const match = value.match(/^var\((--[\w-]+)\)$/);
   if (!match) return value;
@@ -26,8 +24,6 @@ function resolveColor(value: string): string {
  * are read via hover tooltip only, per the original design spec. Each vertex
  * point and axis label uses the skill's global color. */
 export default function SkillPerformanceRadar({ data }: { data: SkillPerformanceDatum[] }) {
-  const { resolved } = useTheme();
-
   const byDisplaySkill = new Map<string, number>();
   for (const d of data) {
     const key = displaySkill(d.skill);
@@ -85,7 +81,7 @@ export default function SkillPerformanceRadar({ data }: { data: SkillPerformance
       } satisfies ChartOptions<"radar">,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(values), resolved]);
+  }, [JSON.stringify(values)]);
 
   const summary = DISPLAY_SKILLS.map((s, i) => `${DISPLAY_SKILL_LABELS[s]}: ${values[i]}%`).join(", ");
 
