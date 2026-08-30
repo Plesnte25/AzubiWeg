@@ -12,9 +12,6 @@ model User {
   passwordHash       String
   name               String
   vaultPath          String?
-  // when the default document checklist was seeded; guards against re-seeding
-  // after the user deletes items
-  checklistSeededAt  DateTime?
   // same idea for the CEFR syllabus (learning hub)
   learningSeededAt   DateTime?
   // which revision of DEFAULT_SYLLABUS_ITEMS this user has; a bump triggers a
@@ -28,7 +25,6 @@ model User {
   words              Word[]
   cvs                Cv[]
   applications       Application[]
-  checklistItems     ChecklistItem[]
   files              UploadedFile[]
   syllabusItems      SyllabusItem[]
   studySources       StudySource[]
@@ -161,8 +157,6 @@ model UploadedFile {
   id              String         @id @default(cuid())
   userId          String
   user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  checklistItemId String?
-  checklistItem   ChecklistItem? @relation(fields: [checklistItemId], references: [id], onDelete: Cascade)
   syllabusItemId  String?
   syllabusItem    SyllabusItem?  @relation(fields: [syllabusItemId], references: [id], onDelete: Cascade)
   studySourceId   String?
@@ -264,42 +258,6 @@ enum ApplicationEventType {
   note
   interview
   follow_up
-}
-
-model ChecklistItem {
-  id          String            @id @default(cuid())
-  userId      String
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title       String
-  description String?
-  category    ChecklistCategory @default(other)
-  status      ChecklistStatus   @default(todo)
-  expiresAt   DateTime?         @db.Date
-  sortOrder   Int               @default(0)
-  // came from the seeded default set
-  isDefault   Boolean           @default(false)
-  files       UploadedFile[]
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-}
-
-enum ChecklistCategory {
-  identity
-  education
-  visa
-  finances
-  insurance
-  application
-  after_arrival
-  other
-}
-
-enum ChecklistStatus {
-  todo
-  in_progress
-  done
-  // e.g. "blocked account OR salary proof" — mark the unused path n/a
-  not_applicable
 }
 
 model SyllabusItem {

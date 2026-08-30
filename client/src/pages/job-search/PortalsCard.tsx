@@ -5,8 +5,6 @@ import { api } from "../../api/client";
 import { Card } from "../../components/ui/Card";
 import AddPortalModal from "./AddPortalModal";
 
-// matches server/src/routes/notifications.ts's PORTAL_CHECK_DAYS, so the
-// "check this portal" notification and this pill's stale dot agree
 const STALE_DAYS = 7;
 const MS_PER_DAY = 86_400_000;
 
@@ -18,10 +16,7 @@ export default function PortalsCard() {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["portals"] });
   const markChecked = useMutation({
     mutationFn: api.markPortalChecked,
-    onSuccess: () => {
-      invalidate();
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    },
+    onSuccess: invalidate,
   });
   const remove = useMutation({ mutationFn: api.deletePortal, onSuccess: invalidate });
 

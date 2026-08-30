@@ -255,8 +255,8 @@ function DayCard({
   });
 
   // Deutschland-Context ("bureaucracy") tasks are real roadmap content but
-  // stay confined to the Checklist page — not shown (or counted) in this
-  // day's visible task list/progress.
+  // stay out of this day's visible task list/progress — see the note in
+  // server/src/routes/roadmap.ts's visibleTasks().
   const activeTasks = day.tasks.filter((t) => !t.droppedAt && t.skill !== "bureaucracy");
   const isRest = activeTasks.length === 0;
   const done = activeTasks.filter((t) => t.completedAt !== null).length;

@@ -2,7 +2,7 @@ import { prisma } from "../../db.js";
 import { DEFAULT_SAVED_LINKS } from "./saved-links-defaults.js";
 
 /** Lazily seeds a user's saved links on first use — same one-shot pattern as
- * checklistSeededAt/learningSeededAt. Unlike the syllabus/roadmap, there's no
+ * learningSeededAt. Unlike the syllabus/roadmap, there's no
  * version bump here: once seeded, a user's SavedLink rows are entirely their
  * own to edit or delete, never overwritten from this list again. */
 export async function ensureSavedLinksSeeded(userId: string): Promise<void> {

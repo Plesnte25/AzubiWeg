@@ -17,7 +17,6 @@ import type { CefrLevel, Grade, Themenfeld } from "@prisma/client";
 import { prisma } from "../src/db.js";
 import { activateRoadmapForUser } from "../src/routes/roadmap.js";
 import { setRoadmapTaskCompletion } from "../src/services/learning/completion-sync.js";
-import { ensureChecklistSeeded } from "../src/services/checklist/seed.js";
 import { ensureSyllabusSeeded } from "../src/services/learning/syllabus-seed.js";
 import { ensureSavedLinksSeeded } from "../src/services/learning/saved-links-seed.js";
 
@@ -200,7 +199,6 @@ async function seedApplications(userId: string): Promise<void> {
 async function main() {
   const user = await seedUser();
 
-  await ensureChecklistSeeded(user.id);
   await ensureSyllabusSeeded(user.id);
   await ensureSavedLinksSeeded(user.id);
   await seedRoadmap(user.id);

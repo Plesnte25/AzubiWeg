@@ -216,9 +216,11 @@ roadmapRouter.get("/today", async (req, res) => {
   const currentDayOffset = Math.round((today.getTime() - user.roadmapStartedAt.getTime()) / 86_400_000);
 
   // Deutschland-Context ("bureaucracy") tasks stay real roadmap content —
-  // they still count toward overview progress below — but the user only
-  // wants paperwork-flavored to-dos surfaced on the dedicated Checklist
-  // page, not mixed into Today's plan or the overdue backlog list.
+  // they still count toward overview progress below — but were kept out of
+  // Today's plan/the overdue backlog list because they used to surface on
+  // the (now-removed) Checklist page instead. TODO(Phase 11 — Plan rebuild):
+  // decide where bureaucracy tasks should actually surface now that
+  // Checklist is gone, rather than leaving them filtered out with no home.
   const visibleTasks = (tasks: (typeof allTasks)[number][]) => tasks.filter((t) => t.skill !== "bureaucracy");
 
   res.json({

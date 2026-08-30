@@ -27,8 +27,6 @@ interface Props {
  * A true month grid (unlike the rolling contribution-graph layout used
  * elsewhere) with real day-of-month numbers, clickable cells, and a thin
  * completion bar per day so progress reads at a glance without opening it.
- * Reuses the same status-color language as Checklist.tsx's expiry badges
- * (bg-X-50/text-X-600) rather than inventing a new one.
  */
 export default function RoadmapCalendar({ month, days, onSelectDay }: Props) {
   const [year, m] = month.split("-").map(Number);

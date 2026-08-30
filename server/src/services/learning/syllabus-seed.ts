@@ -15,7 +15,7 @@ export async function ensureSyllabusSeeded(userId: string): Promise<void> {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
 
   if (!user.learningSeededAt) {
-    // seed once per user; the stamp guards re-seeding (same as the checklist)
+    // seed once per user; the stamp guards re-seeding
     await prisma.$transaction([
       prisma.syllabusItem.createMany({
         data: DEFAULT_SYLLABUS_ITEMS.map((item, i) => ({ userId, ...item, sortOrder: i })),
