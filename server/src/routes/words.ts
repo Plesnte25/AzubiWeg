@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
@@ -83,6 +83,12 @@ wordsRouter.post("/", async (req, res) => {
   const rejected: { word: string; reason: "loanword" | "not-german" }[] = [];
   for (const [i, word] of words.entries()) {
     let sortKey: string;
+    // declension/conjugation are app-only columns (never part of the vault
+    // card format, same status as themenfeld/level below) — captured here
+    // from whichever branch resolved the word, applied in the unified
+    // app-only update after both branches, never through Card.fields.
+    let declension: unknown = null;
+    let conjugation: unknown = null;
     if (user.vaultPath) {
       // resolution + lemma merging + typed-form dedupe all live in the
       // vault sync service (same behavior as the Python script)
@@ -93,14 +99,25 @@ wordsRouter.post("/", async (req, res) => {
         continue;
       }
       sortKey = result.headword.toLowerCase();
+      declension = result.declension;
+      conjugation = result.conjugation;
     } else {
-      const { found: _found, headword, typed: _typed, rejected: whyRejected, ...fields } =
-        await enrichWord(word, audioDir, lesson ?? null);
+      const {
+        found: _found,
+        headword,
+        typed: _typed,
+        rejected: whyRejected,
+        declension: entryDeclension,
+        conjugation: entryConjugation,
+        ...fields
+      } = await enrichWord(word, audioDir, lesson ?? null);
       if (whyRejected) {
         rejected.push({ word, reason: whyRejected });
         if (i < words.length - 1) await delay(BATCH_DELAY_MS);
         continue;
       }
+      declension = entryDeclension;
+      conjugation = entryConjugation;
       const card = makeCard(headword, fields, null);
       sortKey = card.sortKey;
       await prisma.word.upsert({
@@ -119,9 +136,9 @@ wordsRouter.post("/", async (req, res) => {
       }
     }
 
-    // themenfeld/level are app-only columns (never part of the vault card
-    // format), so this always writes straight to Postgres regardless of
-    // user.vaultPath.
+    // themenfeld/level/declension/conjugation are app-only columns (never
+    // part of the vault card format), so this always writes straight to
+    // Postgres regardless of user.vaultPath.
     const created = await prisma.word.findUniqueOrThrow({
       where: { userId_sortKey: { userId: user.id, sortKey } },
     });
@@ -131,6 +148,10 @@ wordsRouter.post("/", async (req, res) => {
     const classified = {
       themenfeld: explicitThemenfeld !== undefined ? explicitThemenfeld : auto.themenfeld,
       level: explicitLevel !== undefined ? explicitLevel : auto.level,
+      // Json? columns need Prisma's JsonNull sentinel, not plain `null`, to
+      // write a real SQL NULL rather than an ambiguous JSON-null value.
+      declension: (declension ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+      conjugation: (conjugation ?? Prisma.JsonNull) as Prisma.InputJsonValue,
     };
     const withClassification = await prisma.word.update({
       where: { id: created.id },
@@ -243,4 +264,43 @@ wordsRouter.get("/:id/audio", async (req, res) => {
     return res.status(404).json({ error: "Audio file not found" });
   }
   res.sendFile(resolved);
+});
+
+// DErivBase's probability score tiers into two bands for display — "closely
+// related" vs. "same family but a stretch" — rather than showing an
+// undifferentiated cluster (see WordFamilyRelation's schema comment).
+const CLOSE_FAMILY_THRESHOLD = 0.7;
+
+wordsRouter.get("/:id/family", async (req, res) => {
+  const word = await prisma.word.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  if (!word) return res.status(404).json({ error: "Word not found" });
+
+  const headwordLower = word.headword.toLowerCase();
+  const [asA, asB] = await Promise.all([
+    prisma.wordFamilyRelation.findMany({ where: { headwordALower: headwordLower } }),
+    prisma.wordFamilyRelation.findMany({ where: { headwordBLower: headwordLower } }),
+  ]);
+  const related = [
+    ...asA.map((r) => ({ headword: r.headwordB, pos: r.posB, score: r.score })),
+    ...asB.map((r) => ({ headword: r.headwordA, pos: r.posA, score: r.score })),
+  ].sort((a, b) => b.score - a.score);
+
+  // cross-reference against this user's own vocab so the client can show
+  // "already in your words" vs. a word they haven't added yet
+  const relatedLower = related.map((r) => r.headword.toLowerCase());
+  const owned = relatedLower.length
+    ? await prisma.word.findMany({
+        where: { userId: req.userId, sortKey: { in: relatedLower } },
+        select: { id: true, headword: true, sortKey: true },
+      })
+    : [];
+  const ownedBySortKey = new Map(owned.map((w) => [w.sortKey, w]));
+
+  res.json({
+    members: related.map((r) => ({
+      ...r,
+      tier: r.score >= CLOSE_FAMILY_THRESHOLD ? ("close" as const) : ("distant" as const),
+      ownedWordId: ownedBySortKey.get(r.headword.toLowerCase())?.id ?? null,
+    })),
+  });
 });

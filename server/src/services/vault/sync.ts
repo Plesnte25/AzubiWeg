@@ -267,6 +267,8 @@ class VaultSyncService {
     found: boolean;
     merged: boolean;
     rejected: "loanword" | "not-german" | null;
+    declension: unknown | null;
+    conjugation: unknown | null;
   }> {
     const { master, audioDir } = vaultFiles(vaultPath);
     const { res, transient } = await resolveWordSafe(word);
@@ -279,28 +281,52 @@ class VaultSyncService {
         await this.applyToVault(userId, vaultPath, (cards) =>
           mergeFormNote(cards, word, res.headword, res.formNote),
         );
-        return { headword: res.headword, typed: word, found: true, merged: true, rejected: null };
+        return {
+          headword: res.headword,
+          typed: word,
+          found: true,
+          merged: true,
+          rejected: null,
+          declension: null,
+          conjugation: null,
+        };
       }
     }
 
-    // strip found/headword/typed/rejected before this reaches Card.fields —
-    // those aren't CardFields and Prisma rejects them once reconcile()
-    // spreads card.fields into a Word upsert (same trap words.ts's non-vault
-    // path already guards against with the same destructure)
+    // strip found/headword/typed/rejected/declension/conjugation before this
+    // reaches Card.fields — those aren't CardFields, and declension/
+    // conjugation specifically are app-only columns (same status as
+    // themenfeld/level — see Word's schema comment) that must never round-
+    // trip through vault markdown: a later resync re-parses CardFields fresh
+    // from the file (no declension/conjugation in it) and would silently
+    // wipe them back to null if they'd been let into Card.fields here. They
+    // ride back out via this method's own return value instead, for the
+    // caller (routes/words.ts) to apply through the same separate app-only
+    // update themenfeld/level already use.
     const {
       found,
       headword: _headword,
       typed: _typed,
       rejected,
+      declension,
+      conjugation,
       ...cardFields
     } = await enrichResolved(res, audioDir, lesson, transient);
     if (rejected) {
-      return { headword: res.headword, typed: word, found: false, merged: false, rejected };
+      return {
+        headword: res.headword,
+        typed: word,
+        found: false,
+        merged: false,
+        rejected,
+        declension: null,
+        conjugation: null,
+      };
     }
     await this.applyToVault(userId, vaultPath, (cards) =>
       upsertEnrichedCard(cards, word, res.headword, cardFields),
     );
-    return { headword: res.headword, typed: word, found, merged: false, rejected: null };
+    return { headword: res.headword, typed: word, found, merged: false, rejected: null, declension, conjugation };
   }
 
   /** Port of cmd_enrich_inbox: enrich every raw word, then reset the file. */

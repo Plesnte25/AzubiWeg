@@ -89,9 +89,24 @@ snapshot). Reviews done in the app and in Obsidian update the same
 | Database | PostgreSQL, Prisma 7 |
 | Auth | JWT (jsonwebtoken) + bcrypt |
 | Vault sync | chokidar file watcher, custom markdown parser/writer |
-| Enrichment | Wiktionary REST + MediaWiki APIs, ffmpeg, msedge-tts |
+| Enrichment | kaikki.org (German Wiktionary dump) + DErivBase, ffmpeg, msedge-tts |
 | Kanban | @dnd-kit |
 | Uploads | multer → per-user disk storage, auth-checked streaming |
+
+## Data sources
+
+Vocabulary enrichment (meanings, examples, IPA, declension/conjugation
+tables, audio) is imported once from
+[kaikki.org](https://kaikki.org/dictionary/German/)'s German Wiktionary
+dump (`server/scripts/import-kaikki.ts`) rather than scraped live per word —
+see Tatu Ylonen, "Wiktextract: Wiktionary as Machine-Readable Structured
+Data," *Proceedings of the 13th Conference on Language Resources and
+Evaluation (LREC)*, pp. 1317–1325, Marseille, 2022.
+
+Word-family relations come from
+[DErivBase](https://www.ims.uni-stuttgart.de/forschung/ressourcen/lexika/derivbase/)
+v2.0 (Institute for Natural Language Processing, University of Stuttgart),
+licensed CC BY-SA 3.0 (`server/scripts/import-derivbase.ts`).
 
 ## Running it
 

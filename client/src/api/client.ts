@@ -2,17 +2,16 @@ import type {
   ActivityFeedFilter,
   ActivityFeedResponse,
   ActivitySummary,
-  AppNotification,
   Application,
   ApplicationDetail,
   ApplicationStats,
   ApplicationStatus,
-  ChecklistCategory,
   Cv,
   CvCategory,
-  ChecklistItem,
-  ChecklistStatus,
   DashboardData,
+  ExamAttempt,
+  ExamQuestionPublic,
+  ExamStatus,
   Grade,
   CefrLevel,
   MovedTask,
@@ -54,6 +53,7 @@ import type {
   WeakWord,
   Themenfeld,
   Word,
+  WordFamilyMember,
 } from "./types";
 
 export class ApiError extends Error {
@@ -150,6 +150,7 @@ export const api = {
   deleteWord: (id: string) => request<void>(`/api/words/${id}`, { method: "DELETE" }),
   reclassifyWords: () =>
     request<{ total: number; updated: number }>("/api/words/reclassify", { method: "POST" }),
+  wordFamily: (id: string) => request<{ members: WordFamilyMember[] }>(`/api/words/${id}/family`),
 
   reviewQueue: () => request<{ due: Word[]; fresh: Word[] }>("/api/reviews/queue"),
   gradeWord: (wordId: string, grade: Grade) =>
@@ -174,24 +175,6 @@ export const api = {
   vaultUnlink: () => request<{ ok: boolean }>("/api/vault/unlink", { method: "POST" }),
   vaultSyncNow: () => request<{ wordCount: number }>("/api/vault/sync", { method: "POST" }),
 
-  checklist: () => request<{ items: ChecklistItem[] }>("/api/checklist"),
-  addChecklistItem: (data: {
-    title: string;
-    description?: string;
-    category: ChecklistCategory;
-    expiresAt?: string | null;
-  }) => request<{ item: ChecklistItem }>("/api/checklist", { method: "POST", body: JSON.stringify(data) }),
-  updateChecklistItem: (
-    id: string,
-    data: Partial<{
-      title: string;
-      description: string | null;
-      category: ChecklistCategory;
-      status: ChecklistStatus;
-      expiresAt: string | null;
-    }>,
-  ) => request<{ item: ChecklistItem }>(`/api/checklist/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  deleteChecklistItem: (id: string) => request<void>(`/api/checklist/${id}`, { method: "DELETE" }),
   deleteFile: (id: string) => request<void>(`/api/files/${id}`, { method: "DELETE" }),
 
   cvs: () => request<{ cvs: Cv[] }>("/api/cvs"),
@@ -335,6 +318,18 @@ export const api = {
       body: JSON.stringify(opts),
     }),
   quizResults: () => request<QuizResultsResponse>("/api/learning/quiz/results"),
+
+  examStatus: () => request<ExamStatus>("/api/learning/exam/status"),
+  startExam: () =>
+    request<{ attemptId: string; level: CefrLevel; questions: ExamQuestionPublic[]; timeLimitMinutes: number }>(
+      "/api/learning/exam/start",
+      { method: "POST" },
+    ),
+  submitExam: (attemptId: string, answers: { qid: string; answer: string | number | boolean }[]) =>
+    request<{ attempt: ExamAttempt }>(`/api/learning/exam/${attemptId}/submit`, {
+      method: "POST",
+      body: JSON.stringify({ answers }),
+    }),
   submitQuizResult: (data: {
     score: number;
     total: number;
@@ -404,12 +399,15 @@ export const api = {
 
   notesFeed: (q?: string) => request<NotesFeedResponse>(`/api/notes${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   taskNotes: (roadmapTaskId: string) => request<{ notes: Note[] }>(`/api/notes?roadmapTaskId=${roadmapTaskId}`),
+  wordNotes: (wordId: string) => request<{ notes: Note[] }>(`/api/notes?wordId=${wordId}`),
   createNote: (data: {
     title?: string | null;
     body?: string | null;
     skill?: RoadmapSkill | null;
     syllabusItemId?: string | null;
     roadmapTaskId?: string | null;
+    wordId?: string | null;
+    contextTag?: string | null;
   }) => request<{ note: Note }>("/api/notes", { method: "POST", body: JSON.stringify(data) }),
   updateNote: (
     id: string,
@@ -419,6 +417,8 @@ export const api = {
       skill: RoadmapSkill | null;
       syllabusItemId: string | null;
       roadmapTaskId: string | null;
+      wordId: string | null;
+      contextTag: string | null;
     }>,
   ) => request<{ note: Note }>(`/api/notes/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteNote: (id: string) => request<void>(`/api/notes/${id}`, { method: "DELETE" }),
@@ -442,8 +442,6 @@ export const api = {
     request<{ portal: Portal }>(`/api/portals/${id}/checked`, { method: "POST" }),
   deletePortal: (id: string) => request<void>(`/api/portals/${id}`, { method: "DELETE" }),
 
-  notifications: () => request<{ notifications: AppNotification[] }>("/api/notifications"),
-
   activityPing: () => request<void>("/api/activity/ping", { method: "POST" }),
   activitySummary: (days?: number) =>
     request<ActivitySummary>(`/api/activity/summary${days ? `?days=${days}` : ""}`),
@@ -459,7 +457,6 @@ export async function uploadFile(
   file: File,
   opts: {
     kind: "document" | "cv_photo" | "audio_recording";
-    checklistItemId?: string;
     syllabusItemId?: string;
     studySourceId?: string;
     roadmapTaskId?: string;
@@ -470,7 +467,6 @@ export async function uploadFile(
   const form = new FormData();
   form.append("file", file);
   form.append("kind", opts.kind);
-  if (opts.checklistItemId) form.append("checklistItemId", opts.checklistItemId);
   if (opts.syllabusItemId) form.append("syllabusItemId", opts.syllabusItemId);
   if (opts.studySourceId) form.append("studySourceId", opts.studySourceId);
   if (opts.roadmapTaskId) form.append("roadmapTaskId", opts.roadmapTaskId);

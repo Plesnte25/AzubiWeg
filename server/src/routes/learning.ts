@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
@@ -8,6 +9,13 @@ import { buildSession } from "../services/learning/engine.js";
 import { computeRoutePace } from "../services/learning/pace.js";
 import { levelProgress, levelStates, sourcePercent } from "../services/learning/progress.js";
 import { QUESTION_BANK } from "../services/learning/question-bank.js";
+import {
+  EXAM_ATTEMPT_COOLDOWN_DAYS,
+  EXAM_TIME_LIMIT_MINUTES,
+  buildExamSession,
+  canAttemptExam,
+  scoreExam,
+} from "../services/learning/exam.js";
 import { weakAreasFromBreakdowns } from "../services/learning/review.js";
 import { ensureSyllabusSeeded } from "../services/learning/syllabus-seed.js";
 import { ensureSavedLinksSeeded } from "../services/learning/saved-links-seed.js";
@@ -856,4 +864,97 @@ learningRouter.post("/quiz/notebook", async (req, res) => {
   });
   const { roadmapTasks, ...rest } = item;
   res.json({ matched: true, item: { ...rest, roadmapDayOffset: roadmapTasks[0]?.day.dayOffset ?? null } });
+});
+
+// ── exam gate — the real, gating final exam per CEFR level (see
+// services/learning/exam.ts's doc comment for how this differs from the
+// self-reported/client-scored practice quiz above: answers never reach the
+// client, submissions are re-scored server-side against the stored bank). ──
+
+const LEVELS_ORDER = ["a1", "a2", "b1"] as const;
+
+/** Same syllabus-percent computation the /quiz route above uses, reused
+ * here to find the user's current active level and to refuse starting an
+ * exam for any level that isn't it (can't skip ahead, can't re-take one
+ * that's already behind you). */
+async function activeLevelFor(userId: string) {
+  const syllabusRows = await prisma.syllabusItem.findMany({
+    where: { userId },
+    select: { level: true, completedAt: true },
+  });
+  const levels = LEVELS_ORDER.map((level) => {
+    const inLevel = syllabusRows.filter((r) => r.level === level);
+    const done = inLevel.filter((r) => r.completedAt !== null).length;
+    return {
+      total: inLevel.length,
+      percent: inLevel.length === 0 ? 0 : Math.round((done / inLevel.length) * 100),
+    };
+  });
+  const states = levelStates(levels);
+  return LEVELS_ORDER[Math.max(0, states.indexOf("active"))]!;
+}
+
+learningRouter.get("/exam/status", async (req, res) => {
+  const activeLevel = await activeLevelFor(req.userId);
+  const attempts = await prisma.examAttempt.findMany({
+    where: { userId: req.userId, level: activeLevel },
+    orderBy: { startedAt: "desc" },
+  });
+  const gate = canAttemptExam(attempts.map((a) => ({ startedAt: a.startedAt, passed: a.passed })));
+  res.json({
+    level: activeLevel,
+    ...gate,
+    lastAttempt: attempts[0] ?? null,
+    timeLimitMinutes: EXAM_TIME_LIMIT_MINUTES,
+    cooldownDays: EXAM_ATTEMPT_COOLDOWN_DAYS,
+  });
+});
+
+learningRouter.post("/exam/start", async (req, res) => {
+  const activeLevel = await activeLevelFor(req.userId);
+  const attempts = await prisma.examAttempt.findMany({
+    where: { userId: req.userId, level: activeLevel },
+    select: { startedAt: true, passed: true },
+  });
+  const gate = canAttemptExam(attempts);
+  if (!gate.allowed) {
+    return res.status(409).json({ error: `Cannot start exam: ${gate.reason}`, ...gate });
+  }
+
+  const questions = buildExamSession(activeLevel);
+  if (!questions.length) {
+    return res.status(404).json({ error: `No exam content for level ${activeLevel} yet` });
+  }
+  const attempt = await prisma.examAttempt.create({
+    data: { userId: req.userId, level: activeLevel },
+  });
+  res.status(201).json({ attemptId: attempt.id, level: activeLevel, questions, timeLimitMinutes: EXAM_TIME_LIMIT_MINUTES });
+});
+
+const submitSchema = z.object({
+  answers: z
+    .array(z.object({ qid: z.string(), answer: z.union([z.string(), z.number(), z.boolean()]) }))
+    .max(200),
+});
+
+learningRouter.post("/exam/:id/submit", async (req, res) => {
+  const parsed = submitSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+
+  const attempt = await prisma.examAttempt.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  if (!attempt) return res.status(404).json({ error: "Exam attempt not found" });
+  if (attempt.submittedAt) return res.status(409).json({ error: "This attempt was already submitted" });
+
+  const result = scoreExam(attempt.level, parsed.data.answers);
+  const updated = await prisma.examAttempt.update({
+    where: { id: attempt.id },
+    data: {
+      submittedAt: new Date(),
+      score: result.score,
+      total: result.total,
+      passed: result.passed,
+      sectionBreakdown: result.sectionBreakdown as unknown as Prisma.InputJsonValue,
+    },
+  });
+  res.json({ attempt: updated });
 });

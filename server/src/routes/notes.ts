@@ -19,12 +19,22 @@ function mergedNotebookBody(item: { examples: string | null; exceptions: string 
 notesRouter.get("/", async (req, res) => {
   const q = typeof req.query.q === "string" && req.query.q.trim() ? req.query.q.trim() : undefined;
   const roadmapTaskId = typeof req.query.roadmapTaskId === "string" ? req.query.roadmapTaskId : undefined;
+  const wordId = typeof req.query.wordId === "string" ? req.query.wordId : undefined;
 
-  // scoped to one task (TaskDetailDrawer's Notes section) — skip the 3
-  // cross-app aggregate queries entirely, nothing else needs them
+  // scoped to one task (TaskDetailDrawer's Notes section) or one word (Word
+  // Detail's "Your note" card) — skip the 3 cross-app aggregate queries
+  // entirely, nothing else needs them
   if (roadmapTaskId) {
     const notes = await prisma.note.findMany({
       where: { userId: req.userId, roadmapTaskId },
+      include: { files: true },
+      orderBy: { createdAt: "desc" },
+    });
+    return res.json({ notes, taskJournals: [], grammarNotebook: [], sourceNotes: [] });
+  }
+  if (wordId) {
+    const notes = await prisma.note.findMany({
+      where: { userId: req.userId, wordId },
       include: { files: true },
       orderBy: { createdAt: "desc" },
     });
@@ -95,9 +105,20 @@ const noteSchema = z.object({
   skill: SKILL_ENUM.nullish(),
   syllabusItemId: z.string().nullish(),
   roadmapTaskId: z.string().nullish(),
+  // wordId: soft link to a vocab word (Word Detail's "Your note" card, and
+  // the live "Link '<word>' to this note?" prompt while typing). contextTag:
+  // which screen/section was active when the FAB capture button was tapped
+  // ("/Jobs") — not validated against anything, it's just a display label.
+  wordId: z.string().nullish(),
+  contextTag: z.string().trim().max(60).nullish(),
 });
 
-async function validateLinks(userId: string, syllabusItemId: string | null | undefined, roadmapTaskId: string | null | undefined) {
+async function validateLinks(
+  userId: string,
+  syllabusItemId: string | null | undefined,
+  roadmapTaskId: string | null | undefined,
+  wordId: string | null | undefined,
+) {
   if (syllabusItemId) {
     const item = await prisma.syllabusItem.findFirst({ where: { id: syllabusItemId, userId } });
     if (!item) return "Syllabus item not found";
@@ -105,6 +126,10 @@ async function validateLinks(userId: string, syllabusItemId: string | null | und
   if (roadmapTaskId) {
     const task = await prisma.roadmapTask.findFirst({ where: { id: roadmapTaskId, day: { userId } } });
     if (!task) return "Roadmap task not found";
+  }
+  if (wordId) {
+    const word = await prisma.word.findFirst({ where: { id: wordId, userId } });
+    if (!word) return "Word not found";
   }
   return null;
 }
@@ -114,9 +139,9 @@ notesRouter.post("/", async (req, res) => {
     .refine((d) => Boolean(d.title?.trim() || d.body?.trim()), { message: "Note needs a title or some text" })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
-  const { title, body, skill, syllabusItemId, roadmapTaskId } = parsed.data;
+  const { title, body, skill, syllabusItemId, roadmapTaskId, wordId, contextTag } = parsed.data;
 
-  const linkError = await validateLinks(req.userId, syllabusItemId, roadmapTaskId);
+  const linkError = await validateLinks(req.userId, syllabusItemId, roadmapTaskId, wordId);
   if (linkError) return res.status(404).json({ error: linkError });
 
   const note = await prisma.note.create({
@@ -127,6 +152,8 @@ notesRouter.post("/", async (req, res) => {
       skill: skill ?? null,
       syllabusItemId: syllabusItemId ?? null,
       roadmapTaskId: roadmapTaskId ?? null,
+      wordId: wordId ?? null,
+      contextTag: contextTag ?? null,
     },
     include: { files: true },
   });
@@ -135,7 +162,13 @@ notesRouter.post("/", async (req, res) => {
 
 const patchSchema = noteSchema.refine(
   (d) =>
-    d.title !== undefined || d.body !== undefined || d.skill !== undefined || d.syllabusItemId !== undefined || d.roadmapTaskId !== undefined,
+    d.title !== undefined ||
+    d.body !== undefined ||
+    d.skill !== undefined ||
+    d.syllabusItemId !== undefined ||
+    d.roadmapTaskId !== undefined ||
+    d.wordId !== undefined ||
+    d.contextTag !== undefined,
   { message: "Nothing to update" },
 );
 
@@ -146,8 +179,8 @@ notesRouter.patch("/:id", async (req, res) => {
   const existing = await prisma.note.findFirst({ where: { id: req.params.id, userId: req.userId } });
   if (!existing) return res.status(404).json({ error: "Note not found" });
 
-  const { title, body, skill, syllabusItemId, roadmapTaskId } = parsed.data;
-  const linkError = await validateLinks(req.userId, syllabusItemId, roadmapTaskId);
+  const { title, body, skill, syllabusItemId, roadmapTaskId, wordId, contextTag } = parsed.data;
+  const linkError = await validateLinks(req.userId, syllabusItemId, roadmapTaskId, wordId);
   if (linkError) return res.status(404).json({ error: linkError });
 
   const note = await prisma.note.update({
@@ -158,6 +191,8 @@ notesRouter.patch("/:id", async (req, res) => {
       ...(skill !== undefined ? { skill: skill ?? null } : {}),
       ...(syllabusItemId !== undefined ? { syllabusItemId: syllabusItemId ?? null } : {}),
       ...(roadmapTaskId !== undefined ? { roadmapTaskId: roadmapTaskId ?? null } : {}),
+      ...(wordId !== undefined ? { wordId: wordId ?? null } : {}),
+      ...(contextTag !== undefined ? { contextTag: contextTag ?? null } : {}),
     },
     include: { files: true },
   });

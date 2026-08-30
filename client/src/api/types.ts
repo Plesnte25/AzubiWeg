@@ -25,6 +25,31 @@ export type Themenfeld =
   | "natur_umwelt"
   | "gesellschaft";
 
+// noun case x number table, from the kaikki.org enrichment pipeline —
+// server/src/services/enrichment/kaikki.ts's extractDeclension()
+export interface DeclensionTable {
+  nom?: { sg?: string; pl?: string };
+  akk?: { sg?: string; pl?: string };
+  dat?: { sg?: string; pl?: string };
+  gen?: { sg?: string; pl?: string };
+}
+
+// present-tense 6-person grid + best-effort past/perfect — extractConjugation()
+export interface ConjugationTable {
+  present?: { ich?: string; du?: string; er?: string; wir?: string; ihr?: string; sie?: string };
+  past?: string;
+  perfect?: string;
+}
+
+export interface WordFamilyMember {
+  headword: string;
+  pos: string;
+  score: number;
+  tier: "close" | "distant";
+  // set when this family member is already one of the user's own tracked words
+  ownedWordId: string | null;
+}
+
 export interface Word {
   id: string;
   headword: string;
@@ -44,6 +69,8 @@ export interface Word {
   themenfeld: Themenfeld[];
   level: CefrLevel | null;
   leech: boolean;
+  declension: DeclensionTable | null;
+  conjugation: ConjugationTable | null;
   // computed at read time, never persisted (server/src/services/vocab/classify.ts)
   wortart: Wortart;
   genus: Genus;
@@ -51,6 +78,14 @@ export interface Word {
 }
 
 export type RoadmapDayStripStatus = "done" | "overdue" | "today" | "upcoming";
+
+export interface DashboardNextTask {
+  id: string;
+  type: RoadmapTaskType;
+  skill: RoadmapSkill | null;
+  title: string;
+  description: string | null;
+}
 
 export interface DashboardData {
   totalWords: number;
@@ -60,9 +95,9 @@ export interface DashboardData {
   streak: number;
   quizzesCompleted: number;
   totalLearningMinutes: number;
+  examTargetDate: string | null;
   lessons: { lesson: string | null; count: number }[];
   activity: { date: string; count: number }[];
-  expiringDocuments: { id: string; title: string; expiresAt: string; expiry: ExpiryStatus }[];
   applications: Record<ApplicationStatus, number>;
   heatmap: { date: string; reviews: number; learning: number }[];
   learning: {
@@ -76,7 +111,7 @@ export interface DashboardData {
     theme: string | null;
     tasksDone: number;
     tasksTotal: number;
-    nextIncompleteTitle: string | null;
+    nextTask: DashboardNextTask | null;
   } | null;
   roadmapWeekStrip: { date: string; dayOffset: number; status: RoadmapDayStripStatus }[];
 }
@@ -116,7 +151,6 @@ export interface ReviewStats {
 
 export interface UploadedFileMeta {
   id: string;
-  checklistItemId: string | null;
   syllabusItemId: string | null;
   studySourceId: string | null;
   roadmapTaskId: string | null;
@@ -127,20 +161,6 @@ export interface UploadedFileMeta {
   size: number;
   createdAt: string;
 }
-
-export type ExpiryStatus = "ok" | "warn" | "urgent" | "expired";
-
-export type ChecklistCategory =
-  | "identity"
-  | "education"
-  | "visa"
-  | "finances"
-  | "insurance"
-  | "application"
-  | "after_arrival"
-  | "other";
-
-export type ChecklistStatus = "todo" | "in_progress" | "done" | "not_applicable";
 
 export type CvCategory = "lebenslauf" | "ats";
 
@@ -209,19 +229,6 @@ export interface ApplicationStats {
   offers: number;
   avgDaysToResponse: number | null;
   weeklyActivity: { weekStart: string; applied: number }[];
-}
-
-export interface ChecklistItem {
-  id: string;
-  title: string;
-  description: string | null;
-  category: ChecklistCategory;
-  status: ChecklistStatus;
-  expiresAt: string | null;
-  sortOrder: number;
-  isDefault: boolean;
-  files: UploadedFileMeta[];
-  expiry: ExpiryStatus | null;
 }
 
 export type CefrLevel = "a1" | "a2" | "b1";
@@ -312,6 +319,45 @@ export type SessionQuestion =
   | { qid: string; type: "fill_blank"; level: CefrLevel; topic: string; skill: RoadmapSkill; prompt: string; accepted: string[] }
   | { qid: string; type: "true_false"; level: CefrLevel; topic: string; skill: RoadmapSkill; prompt: string; answer: boolean };
 
+// ── Exam gate — the real, gating final exam per level. Distinct from the
+// practice self-test above: no answers are shipped to the client, and
+// results are server-scored (see server/src/services/learning/exam.ts). ──
+
+export type ExamSection = "vocabulary" | "grammar" | "gender_drill" | "listening";
+
+// mirrors server's ExamQuestionPublic — server/src/services/learning/exam.ts
+export type ExamQuestionPublic =
+  | { qid: string; section: ExamSection; type: "mcq"; prompt: string; choices: string[] }
+  | { qid: string; section: ExamSection; type: "fill_blank"; prompt: string }
+  | { qid: string; section: ExamSection; type: "true_false"; prompt: string };
+
+export interface ExamSectionBreakdown {
+  section: ExamSection;
+  correct: number;
+  total: number;
+}
+
+export interface ExamAttempt {
+  id: string;
+  level: CefrLevel;
+  startedAt: string;
+  submittedAt: string | null;
+  score: number | null;
+  total: number | null;
+  passed: boolean | null;
+  sectionBreakdown: ExamSectionBreakdown[] | null;
+}
+
+export interface ExamStatus {
+  level: CefrLevel;
+  allowed: boolean;
+  reason: "already_passed" | "cooldown" | null;
+  nextAvailableAt: string | null;
+  lastAttempt: ExamAttempt | null;
+  timeLimitMinutes: number;
+  cooldownDays: number;
+}
+
 export interface TopicBreakdown {
   topic: string;
   level: CefrLevel;
@@ -383,6 +429,11 @@ export interface Note {
   skill: RoadmapSkill | null;
   syllabusItemId: string | null;
   roadmapTaskId: string | null;
+  // soft link to a vocab word ("Your note" card on Word Detail); contextTag
+  // is which screen/section was active when the FAB capture button was
+  // tapped (e.g. "/Jobs"), shown as a removable chip
+  wordId: string | null;
+  contextTag: string | null;
   files: UploadedFileMeta[];
   createdAt: string;
   updatedAt: string;
@@ -629,12 +680,4 @@ export interface NotebookLinkResult {
   matched: boolean;
   candidates?: string[];
   item?: SyllabusItem;
-}
-
-export interface AppNotification {
-  id: string;
-  type: "portal" | "application" | "document";
-  title: string;
-  detail: string;
-  href: string;
 }

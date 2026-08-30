@@ -3,21 +3,27 @@ import { downloadCommonsAudio, synthesizeTts } from "./audio.js";
 import {
   type Resolution,
   TransientLookupError,
-  buildGrammarNote,
-  extractAudioFilename,
-  extractExample,
-  extractIpa,
-  getDeWikitext,
+  findPrimaryEntry,
   isEnglishCognate,
   resolveWord,
-} from "./wiktionary.js";
+} from "./kaikki.js";
 
-export { resolveWord, type Resolution, TransientLookupError } from "./wiktionary.js";
+export { resolveWord, type Resolution, TransientLookupError } from "./kaikki.js";
 
+// declension/conjugation are app-only columns on Word, same status as
+// themenfeld/level/leech (never part of the vault card format — see Word's
+// own schema comment) — deliberately NOT part of CardFields, which is the
+// strict vault-round-trip contract. Callers must apply these through the
+// same separate "app-only column" write path themenfeld/level already use,
+// never let them ride along through Card.fields/vault markdown, or a vault
+// resync (which re-parses CardFields fresh from the file, with no
+// declension/conjugation in it) would silently wipe them back to null.
 export interface EnrichmentResult extends CardFields {
   found: boolean; // false = meaning lookup failed, card added with a fill-manually note
   headword: string; // resolved lemma -- may differ from what was typed ("bist" -> "sein")
   typed: string;
+  declension: unknown | null;
+  conjugation: unknown | null;
   // set (and no card written by the caller) when the word was an English
   // loanword or confirmed not German -- null on a transient failure, which
   // still gets a placeholder card so a bad network day never looks like a
@@ -39,7 +45,7 @@ export async function resolveWordSafe(
   } catch (e) {
     if (e instanceof TransientLookupError) {
       return {
-        res: { headword: word, typed: word, formNote: null, meaning: null, source: "wiktionary" },
+        res: { headword: word, typed: word, formNote: null, meaning: null, source: "kaikki" },
         transient: true,
       };
     }
@@ -47,13 +53,35 @@ export async function resolveWordSafe(
   }
 }
 
+/** Free-text summary for the vault card's Grammar field, from a KaikkiEntry
+ * — same human-readable convention the old wikitext version produced
+ * ("der; Plural: die Häuser" / "geht, ging, ist gegangen"), now built from
+ * already-structured data instead of regex. */
+function buildGrammarNote(
+  entry: { gender: string | null; declension: unknown; conjugation: unknown } | null,
+): string | null {
+  if (!entry) return null;
+  const conj = entry.conjugation as { present?: Record<string, string>; past?: string; perfect?: string } | null;
+  if (conj) {
+    const parts = [conj.present?.er, conj.past, conj.perfect].filter(Boolean);
+    if (parts.length) return parts.join(", ");
+  }
+  if (entry.gender) {
+    const decl = entry.declension as { nom?: { pl?: string } } | null;
+    const plural = decl?.nom?.pl;
+    return plural ? `${entry.gender}; Plural: die ${plural}` : entry.gender;
+  }
+  return null;
+}
+
 /**
- * Enriches an already-resolved word — IPA, grammar, example, audio (Commons
- * recording, else Edge TTS), all looked up against the resolved headword.
- * Rejects (no audio/extraction done, EnrichmentResult.rejected set) an
- * English loanword or a confirmed-not-German word, unless the resolution
- * itself was transient (network hiccup, not a real "not found") -- that
- * case still gets a placeholder card, same as add_word.py's enrich_word.
+ * Enriches an already-resolved word — IPA, grammar, example, declension/
+ * conjugation, audio (Commons recording, else Edge TTS), all looked up
+ * against the resolved headword's local KaikkiEntry. Rejects (no audio/
+ * extraction done, EnrichmentResult.rejected set) an English loanword or a
+ * confirmed-not-German word, unless the resolution itself was transient
+ * (network hiccup on the translation fallback, not a real "not found") --
+ * that case still gets a placeholder card, same as add_word.py's enrich_word.
  */
 export async function enrichResolved(
   res: Resolution,
@@ -61,13 +89,7 @@ export async function enrichResolved(
   lesson: string | null = null,
   transient = false,
 ): Promise<EnrichmentResult> {
-  let wikitext: string | null = null;
-  if (!transient) {
-    wikitext = await getDeWikitext(res.headword);
-    if (wikitext === null && res.headword !== res.typed) {
-      wikitext = await getDeWikitext(res.typed);
-    }
-  }
+  const entry = transient ? null : await findPrimaryEntry(res.headword);
 
   const empty = {
     ipa: null,
@@ -75,11 +97,13 @@ export async function enrichResolved(
     form: res.formNote,
     example: null,
     audioPath: null,
+    declension: null,
+    conjugation: null,
     lesson,
     headword: res.headword,
     typed: res.typed,
   };
-  if (!transient && res.meaning && isEnglishCognate(res.headword, res.meaning, wikitext)) {
+  if (!transient && res.meaning && isEnglishCognate(res.headword, res.meaning, entry?.etymology ?? null)) {
     return { ...empty, meaning: res.meaning, found: true, rejected: "loanword" };
   }
   if (!transient && !res.meaning) {
@@ -87,9 +111,8 @@ export async function enrichResolved(
   }
 
   let audioPath: string | null = null;
-  const audioFilename = extractAudioFilename(wikitext);
-  if (audioFilename) {
-    audioPath = await downloadCommonsAudio(audioFilename, audioDir);
+  if (entry?.audioFilename) {
+    audioPath = await downloadCommonsAudio(entry.audioFilename, audioDir);
   }
   if (!audioPath) {
     audioPath = await synthesizeTts(res.headword, audioDir);
@@ -97,11 +120,13 @@ export async function enrichResolved(
 
   return {
     meaning: res.meaning,
-    ipa: extractIpa(wikitext),
-    grammar: buildGrammarNote(wikitext),
+    ipa: entry?.ipa ?? null,
+    grammar: buildGrammarNote(entry),
     form: res.formNote,
-    example: extractExample(wikitext),
+    example: entry?.example ?? null,
     audioPath,
+    declension: entry?.declension ?? null,
+    conjugation: entry?.conjugation ?? null,
     lesson,
     found: res.meaning !== null,
     headword: res.headword,
@@ -113,8 +138,9 @@ export async function enrichResolved(
 /**
  * The full lookup pipeline for one word — resolution (case variants, lemma
  * following) plus enrichment. Callers adding words in batch should wait ~1s
- * between calls (politeness to the free APIs; the per-request 429 retry
- * handles whatever slips through).
+ * between calls (politeness to the free translation-fallback API; the
+ * per-request 429 retry handles whatever slips through — the primary
+ * KaikkiEntry lookup itself is a local DB read with no rate limit).
  */
 export async function enrichWord(
   word: string,

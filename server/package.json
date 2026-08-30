@@ -10,6 +10,9 @@
     "db:start": "tsx scripts/dev-db.ts",
     "db:migrate": "prisma migrate dev",
     "seed:demo": "tsx scripts/seed-demo.ts",
+    "import:kaikki": "tsx scripts/import-kaikki.ts",
+    "import:derivbase": "tsx scripts/import-derivbase.ts",
+    "backfill:kaikki": "tsx scripts/backfill-kaikki.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -19,6 +22,8 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "@types/adm-zip": "^0.5.8",
+    "adm-zip": "^0.6.0",
     "bcryptjs": "^3.0.3",
     "chokidar": "^5.0.0",
     "dotenv": "^17.4.2",

@@ -44,6 +44,7 @@ model User {
   dailyActiveMinutes DailyActiveMinutes[]
   hourlyActiveMinutes HourlyActiveMinutes[]
   notes              Note[]
+  examAttempts       ExamAttempt[]
 }
 
 // short-lived — folded into DailyActiveMinutes within a day, never outlives
@@ -114,6 +115,14 @@ model Word {
   form       String?
   example    String?
   audioPath  String?
+  // structured grammar tables (nouns: {nom,akk,dat,gen: {sg,pl}}; verbs:
+  // {present: {ich,du,er,wir,ihr,sie}, perfect, past}) — sourced from the
+  // kaikki.org enrichment pipeline (services/enrichment/kaikki.ts), additive
+  // to the free-text grammar/form fields above which stay vault-format
+  // fields. Null when the source has no forms table for this word (not
+  // every entry has one — see the kaikki.org coverage note there).
+  declension  Json?
+  conjugation Json?
   lesson     String?
   srDue      DateTime?   @db.Date
   srInterval Int?
@@ -124,6 +133,7 @@ model Word {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   reviews    ReviewLog[]
+  notes      Note[]
 
   // app-only state below — never part of the vault card format (see
   // services/vault/format.ts's CardFields), so vault reconcile() upserts
@@ -151,6 +161,78 @@ enum Grade {
   hard
   good
   easy
+}
+
+// ── kaikki.org enrichment lookup (global, not per-user) ──
+// Populated once (and re-run periodically) by server/scripts/import-kaikki.ts
+// from kaikki.org's German Wiktionary JSONL dump, replacing the old live
+// per-word Wiktionary wikitext scrape (see services/enrichment/kaikki.ts).
+// Keyed by lemma, not by any user's Word row — the same "Haus" lookup serves
+// every user, so this can't be a Word-FK'd table the way UploadedFile's
+// parent links are (Word rows are per-user, this data isn't).
+model KaikkiEntry {
+  id           String   @id @default(cuid())
+  headword     String
+  headwordLower String
+  pos          String
+  // "der"/"die"/"das" for nouns, null otherwise
+  gender       String?
+  meaning      String?
+  example      String?
+  exampleTranslation String?
+  ipa          String?
+  // Commons filename (e.g. "De-Haus.ogg"), not a resolved URL — feeds
+  // directly into the existing downloadCommonsAudio(filename, audioDir)
+  // unchanged, same as the old Wiktionary-wikitext-sourced audio filename did.
+  audioFilename String?
+  declension   Json?
+  conjugation  Json?
+  // raw etymology text, kept only for the loanword/cognate rejection check
+  // in services/enrichment/kaikki.ts — never surfaced to the user
+  etymology    String?
+  forms        KaikkiForm[]
+  importedAt   DateTime @default(now())
+
+  @@index([headwordLower])
+}
+
+// Reverse index: every inflected surface form ("gehe", "ging", "Häuser", ...)
+// a KaikkiEntry's own forms array lists, pointing back to that lemma — lets
+// resolveWord() find "gehen" from a typed "gehe" without re-deriving German
+// inflection rules itself. Multiple entries can legitimately share a form
+// string (homonyms) — form is indexed, not unique.
+model KaikkiForm {
+  id       String      @id @default(cuid())
+  form     String
+  formLower String
+  // e.g. "second-person, singular, present" — kaikki.org's own tags array,
+  // joined; lets resolveWord() build a formNote ("bist = second-person
+  // singular present of sein") without re-deriving the description itself.
+  tags     String?
+  entryId  String
+  entry    KaikkiEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([formLower])
+}
+
+// Word-family relations from DErivBase v2.0's probabilities file (see
+// server/scripts/import-derivbase.ts), also global/lemma-keyed like
+// KaikkiEntry above, and for the same reason. `score` is the ML classifier's
+// pairwise semantic-relatedness probability (0-1) from DErivBase's
+// "-probabilities.txt" format, used to tier "closely related" vs. "same
+// family but a stretch" rather than showing an undifferentiated cluster.
+model WordFamilyRelation {
+  id            String @id @default(cuid())
+  headwordALower String
+  headwordA     String
+  posA          String
+  headwordBLower String
+  headwordB     String
+  posB          String
+  score         Float
+
+  @@index([headwordALower])
+  @@index([headwordBLower])
 }
 
 model UploadedFile {
@@ -394,6 +476,27 @@ model SelfTestResult {
   @@index([userId, takenAt])
 }
 
+// The real, gating final exam per CEFR level (distinct from SelfTestResult
+// above, which is practice and never gates anything — see that model's own
+// comment). One row per attempt, kept for history and the "one attempt per
+// week" rate limit (services/learning/exam.ts). A pass unlocks the next
+// level in levelStates() (services/learning/progress.ts).
+model ExamAttempt {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level            CefrLevel
+  startedAt        DateTime  @default(now())
+  submittedAt      DateTime?
+  score            Int?
+  total            Int?
+  passed           Boolean?
+  // [{ section: "vocabulary"|"grammar"|"gender_drill"|"listening", correct, total }]
+  sectionBreakdown Json?
+
+  @@index([userId, level, startedAt])
+}
+
 enum SelfTestKind {
   // legacy word-only MCQ
   vocab
@@ -504,6 +607,18 @@ model Note {
   syllabusItem   SyllabusItem? @relation(fields: [syllabusItemId], references: [id], onDelete: SetNull)
   roadmapTaskId  String?
   roadmapTask    RoadmapTask?  @relation(fields: [roadmapTaskId], references: [id], onDelete: SetNull)
+  // soft link to a vocab word (SetNull, same precedent as syllabusItemId/
+  // roadmapTaskId above) — surfaced as a "Your note" card on Word Detail and
+  // offered live while typing ("Link 'die Wohnung' to this note?").
+  // Orthogonal to `skill` above: skill is a topical tag, wordId is a direct
+  // reference to one specific word.
+  wordId         String?
+  word           Word?         @relation(fields: [wordId], references: [id], onDelete: SetNull)
+  // which screen/section was active when the FAB capture button was tapped
+  // (e.g. "/Jobs"), shown as a removable chip in the editor and the note
+  // list. Null for notes created by navigating to Notes directly rather
+  // than via the FAB, or from the dashboard (no context to tag).
+  contextTag     String?
   files          UploadedFile[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt

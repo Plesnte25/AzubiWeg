@@ -59,7 +59,7 @@ export function deriveWortart(meaning: string | null, grammar: string | null): W
     if (wortart) return wortart;
   }
   // grammar starting with a gendered article ("der; Plural: ...") only happens for nouns
-  // (see buildGrammarNote() in wiktionary.ts); principal parts ("sieht, sah, hat gesehen") are verb-only
+  // (see buildGrammarNote() in enrichment/index.ts); principal parts ("sieht, sah, hat gesehen") are verb-only
   if (grammar && /^(der|die|das)\b/i.test(grammar)) return "Nomen";
   if (grammar && /,.*\bhat\b|,.*\bist\b/.test(grammar)) return "Verb";
   const headwordLike = meaning ?? "";
@@ -67,7 +67,7 @@ export function deriveWortart(meaning: string | null, grammar: string | null): W
   return "Funktionswort";
 }
 
-/** Best-effort — mirrors extractGender()'s der/die/das convention, but reads the already-formatted `grammar` string, not raw wikitext. */
+/** Best-effort — reads the already-formatted `grammar` string's leading der/die/das, same convention KaikkiEntry.gender uses at import time. */
 export function deriveGenus(grammar: string | null): Genus {
   if (!grammar) return null;
   const m = grammar.match(/^(der|die|das)\b/i);
