@@ -5,10 +5,10 @@ import { ApplicationDetailContent } from "./ApplicationDetailContent";
 
 /** sm/md — a full-page view (not a modal), replacing the lg centered
  * ApplicationDetailModal below lg per spec. z-50 (matching Modal.tsx) so it
- * visually covers BottomTabBar/IconRail (both z-40) without needing to
- * plumb a "hide nav" flag up through Layout.tsx — same trick this app's
- * other full-bleed-below-lg overlays already rely on (SearchModal,
- * ReviewModal). Own back control, per spec. */
+ * visually covers BottomTabBar (z-40) without needing to plumb a "hide nav"
+ * flag up through Layout.tsx — same trick this app's other full-bleed-
+ * below-lg overlays already rely on (SearchModal, ReviewModal). Own back
+ * control, per spec. */
 export default function ApplicationDetailSheet({ id, onClose }: { id: string; onClose: () => void }) {
   const { data } = useQuery({ queryKey: ["applications", id], queryFn: () => api.application(id) });
   const app = data?.application;

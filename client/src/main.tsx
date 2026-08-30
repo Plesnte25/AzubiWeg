@@ -9,14 +9,14 @@ import { Toaster } from "./components/ui/Toast";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 
-// only Login (unauthenticated) and Dashboard (the first authenticated view)
-// are needed for first paint — every other route is its own chunk, loaded
-// on navigation, so signing in doesn't pull in the CV editor/kanban/quiz
-// code up front
+// only Login (unauthenticated) and Dashboard (the first authenticated view,
+// mounted at Today's "/") are needed for first paint — every other route is
+// its own chunk, loaded on navigation, so signing in doesn't pull in the CV
+// editor/kanban/quiz code up front
 const JobSearch = lazy(() => import("./pages/job-search"));
-const Checklist = lazy(() => import("./pages/checklist"));
-const LearningHub = lazy(() => import("./pages/learning-hub"));
+const PlanEntry = lazy(() => import("./pages/PlanEntry"));
 const Settings = lazy(() => import("./pages/Settings"));
+const Stats = lazy(() => import("./pages/Stats"));
 const Vocabulary = lazy(() => import("./pages/Vocabulary"));
 
 function Lazy({ children }: { children: React.ReactNode }) {
@@ -69,16 +69,22 @@ const router = createBrowserRouter([
       {
         element: <Layout />,
         children: [
+          // ── the 5 real tab destinations (Today/Words/Plan/Jobs/Stats) ──
           { path: "/", element: <Dashboard /> },
-          { path: "/vocabulary", element: <Lazy><Vocabulary /></Lazy> },
-          { path: "/review", element: <Navigate to="/vocabulary" replace /> },
-          { path: "/learning", element: <Lazy><LearningHub /></Lazy> },
-          { path: "/roadmap", element: <Navigate to="/learning?view=roadmap" replace /> },
-          { path: "/job-search", element: <Lazy><JobSearch /></Lazy> },
-          { path: "/applications", element: <Navigate to="/job-search" replace /> },
-          { path: "/cv", element: <Navigate to="/job-search" replace /> },
-          { path: "/cv/:id", element: <Navigate to="/job-search" replace /> },
-          { path: "/checklist", element: <Lazy><Checklist /></Lazy> },
+          { path: "/words", element: <Lazy><Vocabulary /></Lazy> },
+          { path: "/plan", element: <Lazy><PlanEntry /></Lazy> },
+          { path: "/jobs", element: <Lazy><JobSearch /></Lazy> },
+          { path: "/stats", element: <Lazy><Stats /></Lazy> },
+          // ── legacy URL redirects — old bookmarks/links keep working ──
+          { path: "/vocabulary", element: <Navigate to="/words" replace /> },
+          { path: "/review", element: <Navigate to="/words" replace /> },
+          { path: "/learning", element: <Navigate to="/plan" replace /> },
+          { path: "/roadmap", element: <Navigate to="/plan?view=roadmap" replace /> },
+          { path: "/job-search", element: <Navigate to="/jobs" replace /> },
+          { path: "/applications", element: <Navigate to="/jobs" replace /> },
+          { path: "/cv", element: <Navigate to="/jobs" replace /> },
+          { path: "/cv/:id", element: <Navigate to="/jobs" replace /> },
+          { path: "/checklist", element: <Navigate to="/" replace /> },
           { path: "/settings", element: <Lazy><Settings /></Lazy> },
         ],
       },
