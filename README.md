@@ -7,11 +7,15 @@ tracking applications. This app solves the problems I hit along the way. **V1** 
 a German vocabulary manager with spaced-repetition review, kept in **two-way sync
 with my Obsidian vault**. **V2** adds the application side: a Job Search page
 (kanban application tracker + a CV shelf, with best-effort autofill from a pasted
-posting URL) and a document checklist for the Ausbildung visa process. **V3** adds
-a Learning Progress Hub — a CEFR syllabus, a day-by-day study roadmap, and
-self-tests — feeding a richer dashboard.
+posting URL). **V3** adds a Learning Progress Hub — a CEFR syllabus, a day-by-day
+study roadmap, exam-gated level progression, and self-tests — feeding a richer
+dashboard.
 
-![Dashboard](docs/screenshots/10-dashboard-v2.png)
+> **Mid-rebuild**: the whole UI is being reworked against a dark-only design
+> system ("Nocturne") with a new 5-tab navigation model — see
+> [CLAUDE.md](CLAUDE.md#the-nocturne-redesign-in-progress) for status. The
+> screenshots below are from the previous design and are queued for a refresh;
+> the feature descriptions in this README stay current either way.
 
 ## What V1 does
 
@@ -49,16 +53,15 @@ snapshot). Reviews done in the app and in Obsidian update the same
   `JobPosting` structured data (or falls back to its title/meta tags) to
   best-effort prefill company/role/location/portal — always editable, never
   required. Auto-logged timeline per application (status changes, notes,
-  interviews), portal quick-links with stale-check reminders, and stats: response
-  rate, interview rate, average days to response, applications per week.
-- **Document checklist** — seeded with ~24 items a non-EU Ausbildung applicant
-  actually needs (Zeugnisse + apostille + certified translations, B1/B2
-  certificate, §16a visa paperwork, VIDEX, Sperrkonto *or* salary proof,
-  Anmeldung, Aufenthaltstitel, …). Search, an "Up Next" panel surfacing the
-  nearest deadlines across every category, and category filter tiles with live
-  completion rings — urgency leads, categories filter the list rather than
-  containing it. Each item carries status, **file attachments**, and a deadline
-  badge that drives a "documents needing attention" section on the dashboard.
+  interviews), portal quick-links to platforms like GoAusbildung with
+  stale-check reminders (since none of them offer account sync or public
+  APIs), and stats: response rate, interview rate, average days to response,
+  applications per week.
+
+(A document checklist for the Ausbildung visa process shipped in V2 and was
+later removed in favor of the Learning Hub's roadmap absorbing that content;
+an in-app notifications engine was also removed — see
+[docs/ROADMAP.md](docs/ROADMAP.md) for what replaced them, if anything has.)
 
 ## What V3 adds
 
@@ -66,19 +69,28 @@ snapshot). Reviews done in the app and in Obsidian update the same
   B1. Checking items off drives per-level completion percentage and "what's
   next" suggestions.
   ![Syllabus](docs/screenshots/13-syllabus.png)
+- **Exam-gated level progression** — sequential CEFR unlocking: a dedicated,
+  separately-authored exam question bank (distinct from the practice-quiz
+  bank below) gates each level, with a real pass-threshold/time-limit/
+  attempt-rate-limit engine (`server/src/services/learning/exam.ts`) rather
+  than letting levels unlock freely.
 - **Day-by-day roadmap** — a 182-day (26-week) study plan to Goethe-exam
   readiness, generated live from syllabus progress, with a calendar view and
   overdue backlog.
 - **Study-source registry** — register YouTube playlists, Nicos Weg chapters,
   or Duolingo units and self-log progress, since none of these platforms
   expose a progress API.
-- **Self-tests & Goethe readiness** — a 163-question bank built from syllabus
-  topics and vocab/SRS data, with weekly/monthly readiness rollups.
+- **Self-tests & Goethe readiness** — a 163-question practice bank built from
+  syllabus topics and vocab/SRS data, with weekly/monthly readiness rollups.
+- **Word family** — related-word lookups from
+  [DErivBase](https://www.ims.uni-stuttgart.de/forschung/ressourcen/lexika/derivbase/),
+  tiered by relatedness score (closely related vs. same family but a
+  stretch) and cross-referenced against your own tracked vocab.
+- **Word-linked notes** — freeform notes can attach to a specific vocab word
+  (surfaced on that word's detail view) in addition to a syllabus topic or
+  roadmap task.
 - **Activity tracking** — day-streaks and study-time history computed from
   real activity, feeding the dashboard's activity chart.
-- **Notifications & portals** — on-demand reminders (stale applications,
-  expiring documents) and quick-link bookmarks to platforms like GoAusbildung,
-  since none of them offer account sync or public APIs.
 
 ## Stack
 
@@ -138,9 +150,11 @@ cd server && npm test
 ```
 
 Covers the vault sync's byte-identical round-trip, SRS scheduling parity with
-the Obsidian plugin, and pure-logic suites for applications, checklist
-reminders, and the Learning Hub (roadmap generation, quizzes, activity
-tracking).
+the Obsidian plugin, the kaikki.org enrichment pipeline's word resolution,
+and pure-logic suites for applications and the Learning Hub (roadmap
+generation, exam gating, quizzes, activity tracking). Server-side only — no
+dedicated client test runner; UI changes are verified by driving the app in
+a real browser (see [CLAUDE.md](CLAUDE.md#testing-conventions)).
 
 ## Deployment
 
@@ -161,21 +175,29 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full ecosystem plan and feature s
   search, an urgency-first "Up Next" panel, and category filters.)
 - ~~**V3 — Learning Progress Hub**~~ ✅ CEFR syllabus, day-by-day roadmap,
   self-tests, activity tracking. (2026-08-08: gamification — points, badges —
-  removed in favor of the plain activity/streak tracking above.)
-- **Now** (reprioritized 2026-08-05, cutting across strict version order —
-  see [docs/ROADMAP.md](docs/ROADMAP.md#phasing) for the full breakdown):
-  app-wide bug-fixing pass (**top priority** — first tranche landed
-  2026-08-27: a unified type/elevation/motion design system across every
-  page; kanban keyboard accessibility, missing ARIA labels, and a chart
-  accessibility gap fixed; Dashboard's sm/md task list no longer clips; a
-  first fix attempt for the long-standing vocabulary touch-scroll issue; and
-  consistent "Show more" pagination for Vocabulary, Checklist, and the Job
-  Search kanban), vocab PDF export + CLI (the last of V1's scope), dashboard
+  removed in favor of the plain activity/streak tracking above; the document
+  checklist and an in-app notifications engine were also removed around the
+  same time.)
+- **Now — the Nocturne redesign**: a complete UI/UX rebuild against a
+  dark-only design system and a new 5-tab navigation model, superseding the
+  app-wide-bug-fixing-pass priority below (reprioritized once the redesign
+  was scoped). Full 20-phase plan and current status in
+  [CLAUDE.md](CLAUDE.md#the-nocturne-redesign-in-progress). Landed so far:
+  the checklist/notifications removal, the kaikki.org/DErivBase enrichment
+  pipeline swap, exam-gating, the new nav shell, and the Today/Words/Word
+  Detail/Review-session screens; Plan, Jobs, Stats, Notes, Self-tests,
+  Settings, and desktop layouts are still on the pre-Nocturne design.
+- **After that** — the pre-redesign priority list, picked back up once
+  Nocturne ships: an app-wide bug-fixing pass (first tranche already landed
+  2026-08-27: a unified type/elevation/motion design system, kanban keyboard
+  accessibility, ARIA/chart accessibility fixes, consistent "Show more"
+  pagination), vocab PDF export + CLI (the last of V1's scope), dashboard
   upgrades (certificates, GitHub activity, pulled forward from V4), and the
   rest of V5 (GitHub Actions CI, calendar integration, grammar
-  micro-lessons). Worked interleaved, no strict order.
+  micro-lessons).
 - **Long run, unscheduled** — deliberately deferred, not dropped: the rest of
   V4 (Ausbildung opportunity discovery, cover letter assistant, Europass CV
   template, ATS checks), the **salary & cost planner**, the **Germany
-  knowledge base**, and the bureaucracy checklist's guided explanatory
-  content.
+  knowledge base**, and guided explanatory content for the bureaucracy
+  process (the checklist that would have hosted it is gone; this would need
+  a new home).

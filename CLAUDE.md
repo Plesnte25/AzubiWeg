@@ -1,16 +1,14 @@
 # CLAUDE.md
 
 Shared context for AzubiWeg across **Claude (claude.ai)**, **Claude Code
-(CLI)**, and **Claude Design** — the source of truth for the dashboard's
-design system and the conventions established while building it, so a
-mockup made in Claude Design, a change discussed in claude.ai, and code
-written by Claude Code all stay consistent with each other and with what's
-actually shipped.
+(CLI)**, and **Claude Design** — the source of truth for the app's design
+system and the conventions established while building it, so a mockup made
+in Claude Design, a change discussed in claude.ai, and code written by
+Claude Code all stay consistent with each other and with what's actually
+shipped.
 
 For feature scope (V1–V3, what each version does) see [README.md](README.md).
-This file is specifically about **how the app is built and styled**, and the
-non-obvious decisions/gotchas behind it — mainly the Dashboard, which has
-gone through many iterative design passes.
+This file is specifically about **how the app is built and styled**.
 
 ## Stack
 
@@ -22,259 +20,204 @@ in this project — always run `npx prisma generate` explicitly after a
 migration, or the server throws "Unknown argument" errors against a stale
 generated client. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-## Dashboard layout: 4 grouped sections
+## The Nocturne redesign (in progress)
 
-The dashboard (`client/src/pages/Dashboard.tsx`) is organized into 4 sections,
-each a **single bordered/rounded container with internal divider lines**
-between its members — not N separate cards with gaps between them. This was
-a deliberate consolidation after the dashboard read as "congested": every
-widget having its own border/radius/shadow/padding wasted a lot of space.
+The app is mid-way through a complete UI/UX rebuild against a Claude Design
+handoff — a dark-only design system called **Nocturne**, a new 5-tab
+(Today/Words/Plan/Jobs/Stats) + back-stack navigation model, and several new
+backend subsystems (kaikki.org/DErivBase enrichment pipeline, exam-gating,
+word-linked notes). The full plan — 20 ordered phases, sequencing rationale,
+and per-phase file lists — lives at
+`~/.claude/plans/so-we-are-going-wondrous-axolotl.md`; check it (and this
+project's memory) for current phase status before starting new UI work,
+rather than assuming a page hasn't been touched yet.
 
-1. **Stats** — 5 tiles in one row, `divide-x` between them, chrome-stripped
-   individual tiles (full card look below `lg:`, flush inside one shared
-   border at `lg:`).
-2. **Courses** ("My Courses") — a 3-panel horizontal accordion (A1/A2/B1).
-   Collapsed panel = conic-gradient ring + code + title. Active panel = a
-   48px left "water-tank" strip (background fills bottom-up to
-   percent-complete, no separate progress bar) + a scrollable **list** of
-   course rows (`divide-y`, not individually-carded), green-highlighted when
-   100% done. Clicking the active strip again collapses back to
-   all-3-equal-width.
-3. **Analytics** — one bordered container, CSS grid: Performance (radar) +
-   Study Time (bar chart) side by side on top, My Progress (overall bar +
-   5 skill gauges) spanning full width below (`grid-rows-[1fr_1.1fr]`).
-4. **Schedule** (right column) — one bordered container: week-strip
-   calendar, Tasks Completed (segmented bar), Today's Tasks (the one
-   scrollable section), and a pinned Jobs-pipeline icon row at the bottom.
+Rollout is **big-bang per phase** — no coexisting old/new routes or
+feature-flagged UI. When a phase reskins a page, the old implementation is
+deleted outright (grep for external consumers first), not kept around behind
+a flag.
 
-Left (Courses+Analytics) : right (Schedule) column width is `7fr : 3fr`
-(`lg:grid-cols-[7fr_3fr]`) — deliberately tuned narrower for Schedule,
-confirmed working at that ratio without cramping the calendar/task list.
+**Reproduce the handoff with literal fidelity** — exact colors, spacing,
+copy, structure — by extracting the actual markup/styles from the
+`.dc.html` prototype (`grep`/`Read` the relevant `<sc-if>` block and its
+backing JS, not just the README prose), then translate that into this app's
+real React/Tailwind stack (don't paste the prototype's own markup or class
+names — it uses a design-tool-proprietary CSS reset that doesn't exist
+here).
 
-**No page scroll at `lg:` and up** is a hard requirement — everything fits a
-fixed viewport (`h-dvh`-based) via flex-1/min-h-0 chains. Internal scroll is
-only acceptable on genuinely list-like content (the course list, Today's
-Tasks) — chart/gauge quadrants must **fit exactly**, not scroll (see the
-Charts section below for how that's kept true). Below `lg:`, everything
-falls back to a plain stacked single column of individually-carded widgets —
-sm/md has been explicitly deferred and isn't part of this design pass.
+### Deviate from literal fidelity only when it would misrepresent real data
 
-## Card identity: watermark icons, not text headers
+The handoff is an offline demo with fabricated data and a simplified model
+of the app (no real backend, no real auth). Follow it exactly for visual
+design, but when its *behavior* assumes something this app's real backend
+doesn't do, build the honest version instead — this has come up repeatedly
+and the same judgment call applies each time:
 
-"My Courses", "Performance", "Study Time", and "My Progress" have **no
-visible heading text** — each carries a large (~112px), low-opacity (10%),
-grayscale watermark icon bleeding off a corner instead (My Courses gets two,
-one per corner). Every one of these cards still has a real `<h2>`/`<h3
-className="sr-only">` heading in the DOM for accessibility, since the
-watermark is purely decorative.
+- **Auth screen**: reskin the passphrase-dot visual style, but rewrite the
+  "everything stays on this device, nothing is uploaded" copy — this is a
+  real server-backed JWT app, not local-only.
+- **Add-Word sheet**: the article-suggest chips (der/die/das guessed from a
+  word's ending) are a hint only, never submitted to the API — the real
+  gender comes from the kaikki.org enrichment lookup at save time.
+- **Review session grade row**: this app's SRS
+  (`server/src/services/srs.ts`) is a 3-grade port of the Obsidian Spaced
+  Repetition plugin — there's no "again" grade the handoff's 4-button row
+  assumes, so it's Hard/Good/Easy only. Per-grade interval labels are real,
+  computed via `GET /api/reviews/:wordId/preview` (calls the same pure
+  `schedule()` the real grade-submit route uses), not the handoff's
+  hardcoded "&lt;1 min"/"2 days" copy.
+- **Missing/incomplete data** (declension, conjugation, word-family):
+  kaikki.org/DErivBase coverage is real but incomplete — hide the card
+  entirely rather than showing an empty/fabricated table.
+- When a real affordance has no correct implementation yet (e.g. the review
+  session's undo button would need to both revert a word's SRS fields *and*
+  delete the `ReviewLog` row it just wrote, and no such endpoint exists),
+  **omit it** rather than build something that looks functional but isn't.
+  Leave a comment saying why, the same way `BottomTabBar.tsx`/`Layout.tsx`
+  already flag several Phase-17-pending gaps.
 
-**Gotcha**: the watermark must have a **higher z-index than the card's
-content** (`z-20` vs. the content wrapper's `z-10`), not lower — otherwise
-opaque content underneath (e.g. the accordion panels' `bg-card`) fully hides
-it. `pointer-events-none` on the watermark keeps clicks passing through to
-the real content beneath it.
+### Navigation model (`client/src/lib/navStack.tsx`)
 
-Tasks Completed / Today's Tasks / the Jobs row keep plain text labels — the
-watermark treatment is only for the 4 cards above.
+A back-stack layered on top of React Router, ported from the handoff's own
+`go()`/`goBack()`/`tabTo()` reference implementation:
 
-## Icon set
+- **`push(path, { state? })`** — forward navigation from a tab or another
+  pushed screen. Records the current path onto the stack (deduping if
+  `path` is already in it — re-entering pops back to that entry instead of
+  growing the stack) unless the current path is transient. `state` carries
+  router location state (e.g. a curated word list for the review session)
+  without serializing it into the URL.
+- **`switchTab(path)`** — selecting a bottom-tab destination; resets the
+  stack (tabs are independent roots).
+- **`goBack()`** — pops to the real previous screen, skipping transient
+  entries and stale duplicates of the current path.
+- **`backLabel`** — what `goBack()` will land on right now, for a pushed
+  screen's dynamic "‹ Back to X" button (`ROUTE_LABELS`, longest-prefix
+  match — a screen under `/words/*` doesn't need its own entry, `/words`'s
+  already covers it).
+- **Transient screens** (`TRANSIENT_PATH_PREFIXES`, currently `/review`) are
+  never a valid Back target — abandoning one is never recorded onto the
+  stack, and `Layout.tsx` hides the tab bar/FAB while on one for a
+  distraction-free session. Extend this list as MCQ/fill-blank/note-editor
+  land.
 
-Flat icons in `client/src/assets/icons/` (not emoji, not a line-icon
-library, for card/tile identity specifically) — `.webp`, not `.png`
-(converted for PageSpeed's image-delivery audit, same resolution, ~50%
-smaller):
+**Gotcha**: React Router does **not** remount a route element just because
+`location.state` changes on an unchanged pathname. `push("/review", {state})`
+called while already on `/review` (e.g. Session Done's "drill" button on the
+flagged word) needs a real remount to reset session state — key the route's
+inner component on `useLocation().key` (unique per navigation entry, even to
+the same path). See `ReviewSession.tsx`'s outer/inner split for the pattern.
 
-| File | Used for |
-|---|---|
-| `fire.webp` | Stat tile: Day streak |
-| `clock.webp` | Stat tile: Learning Hrs |
-| `dictionary.webp` | Stat tile: Vocab due/total |
-| `quiz.webp` | Stat tile: Quizzes completed |
-| `streaming.webp` | Stat tile: Active courses |
-| `hourglass.webp` / `schedule.webp` / `annual.webp` | Study Time toggle: Hour / Weekly / Monthly |
-| `clock (1).webp` | Study Time watermark |
-| `good-feedback.webp` | Performance watermark |
-| `rise.webp` | My Progress watermark |
-| `online-certificate.webp` | My Courses watermark (top-left) |
-| `learning.webp` | My Courses watermark (bottom-right) |
-| `task.webp` | Tasks Completed header |
-| `clipboard.webp` | Today's Tasks header |
-| `wishlist.webp` / `apply.webp` / `job-interview.webp` / `job-offer.webp` / `reject.webp` | Jobs-pipeline row: Wishlist / Applied / Interview / Offer / Rejected |
+### Design tokens
 
-All 5 job-pipeline icons are real files now (no lucide placeholders left in
-that row).
+Dark-only, defined in `client/src/index.css`'s `@theme` block — no `.dark`
+class light/dark mechanism (removed with the Nocturne token swap). Key
+values: background `#161826`, surfaces `#1c1f2c`/`#20222f`, accent family
+`#9184d9`/`#b5abfc`/`#d2cefd`/`#5d5294`/`#423a6a`/`#3f424d`, amber warning
+`#e4c4b6`/`#d19b86`, gender-coding hues (`--color-genus-der/die/das`, already
+matching the handoff's ART map). Type scale, radius steps, and the
+`--animate-*` custom properties (`fade-in-screen`, `pulse-glow`, `pop-in`,
+`bob`, …) live in the same block — add new keyframes there rather than
+inlining animation CSS per component.
 
-Everything else (chevrons, checkmarks, award badge, etc.) is `lucide-react`.
+Nocturne pages are written with inline `style={{}}` for anything pulled
+directly from the handoff (literal hex/rgba values, exact px spacing) plus
+Tailwind utilities for layout — see `Dashboard.tsx`/`Vocabulary.tsx` for the
+established shape. This is a deliberate departure from the pre-Nocturne
+`Button`/`Card`/`Stat` component library (still used by not-yet-rebuilt
+pages) — don't reach for those components on a page being actively
+reskinned to Nocturne.
 
-## Charts: pick the simplest thing that fits, avoid vendored chart libraries
+### Shared primitives
 
-- **Radar** (Performance): Chart.js via `react-chartjs-2`
-  (`client/src/components/SkillPerformanceRadar.tsx`).
-- **Bar charts** (Study Time hour/weekly/monthly): hand-rolled SVG, not a
-  library — full control over a simple shape, no dependency risk.
-- **Arc gauges, donut rings, segmented bars**: also hand-rolled SVG
-  (`SkillProgressGauges.tsx`, `DonutProgress.tsx`, `SegmentedSkillBar.tsx`).
-- A `@bklit`/`@visx`-based radar chart family (`client/src/charts/*`) and
-  `motion` were used in an earlier pass and have been **fully removed** —
-  don't reintroduce them; Chart.js replaced that exact slot.
+- **`components/ui/BottomSheet.tsx`** — headerless bottom sheet (drag
+  handle, scrim, slide-up transform), ported exactly from the handoff's
+  `taskScrim`/`taskSheet` styling. The default primitive for any modal
+  surface on a Nocturne page (task detail, Add-Word, Word Family, note
+  editing, review-session actions) — distinct from the older `Modal.tsx`
+  (centered dialog / sheet-on-sm), which still backs not-yet-rebuilt pages
+  and stopgaps. A `BottomSheet` should stay **permanently mounted** with an
+  `open` boolean prop (not conditionally rendered) so its close transition
+  plays and so the "reset form fields when it reopens" `useEffect` pattern
+  works — see `AddWordsDialog.tsx`.
+- **`client/src/lib/wordDisplay.ts`** — shared word-display helpers used
+  everywhere a word gets a chip or a review-strength sparkline (the Words
+  list, Word Detail, the review card): `chipLabel`/`chipColor`/
+  `fullArtLabel` (article/wortart chip), `buildSparkline`/`barColor`/
+  `GRADE_HEIGHT` (grade-history bars, tiered by height), `findSlippingWord`
+  (longest current streak of "hard" grades, for Session Done).
+- **`client/src/lib/navDestinations.ts`** — the 5 tab destinations
+  (icon/label/path), source of truth for `BottomTabBar.tsx`.
 
-**Gotcha — Canvas can't resolve CSS variables.** Chart.js draws on
-`<canvas>`, which (unlike SVG/DOM styles) can't resolve `var(--foo)` — colors
-must be read via `getComputedStyle(document.documentElement)` and re-read
-whenever the theme toggles (see `resolveColor()` in
-`SkillPerformanceRadar.tsx`, driven by the `useTheme()` hook). SVG-based
-charts don't have this problem — `var(--color-...)` works fine directly in
-their `style`/attribute props.
+### Phase-tracking comments
 
-**Gotcha — chart containers must have a real, bounded height, not a fixed
-pixel guess.** Both the radar and the SVG bar charts previously used a fixed
-height (`h-72`, or an SVG whose CSS height was driven by a fixed
-width:height aspect ratio) that didn't match the actual flex-computed space
-in a merged/no-scroll layout, causing clipped labels or forced scrolling.
-Fix: size the chart's wrapper `h-full w-full` inside a proper
-`min-h-0 flex-1` ancestor chain, and for hand-rolled SVGs use
-`preserveAspectRatio="xMidYMid meet"` so it scales down to fit rather than
-overflowing. For the Analytics grid specifically, **explicit
-`grid-rows-[1fr_1.1fr]`** (not implicit auto rows) is required — implicit
-grid rows size to content, not equal shares, and silently starved one row
-of height when the grid was flattened from separate cards into one merged
-container.
+Code that bridges to a not-yet-built phase carries a `Phase N` comment
+(e.g. `PlanEntry.tsx`: "Phase 11 replaces this whole shell"; `CaptureFab.tsx`:
+"onClick is a stub until Phase 13"). Grep for `Phase ` before assuming a
+screen is unfinished or a stopgap is permanent — it usually says exactly
+which phase replaces it.
 
-## Design system: type scale, elevation, shared primitives
+## Testing conventions
 
-Introduced in the design-system pass (2026-08-27) — every page has been
-migrated onto this; don't reintroduce arbitrary `text-[Npx]`/`rounded-[Npx]`
-values or hand-rolled stat tiles/section headers/circular icon buttons.
-
-- **Type scale** — 8 steps in `index.css`'s `@theme` block, `--text-micro`
-  (11px) through `--text-display-lg` (44px), each with its own paired
-  line-height/letter-spacing. Use the Tailwind utilities they generate
-  (`text-micro`, `text-caption`, `text-body`, `text-body-lg`, `text-title`,
-  `text-heading`, `text-display`, `text-display-lg`) instead of `text-sm`/
-  `text-xs`/arbitrary px values. One `text-display`/`text-display-lg` per
-  screen (the single most important number), one `text-heading` (the page
-  title), `text-title` for section heads within a page.
-- **Radius scale** — `--radius-sm` (6px, chips/badges) through `--radius-xl`
-  (20px, top-level cards/panels), plus the unchanged `-md`/`-lg` steps.
-- **Elevation — pick one signal per surface, never both.** `Card`
-  (`client/src/components/ui/Card.tsx`) takes a `level?: 1 | 2 | 3` prop:
-  level 1 (default) is a top-level grouped container — border, no shadow;
-  level 2 is anything that lifts (hover states, the dragged kanban card, the
-  active accordion panel) — `shadow-md`, no border; level 3 is
-  modals/sheets/popovers/the FAB dock — `shadow-lg`, no border. `interactive`
-  gives a level-1 card a level-2 look on hover (2px lift via
-  `hover:-translate-y-0.5` — don't go further, it reads as a toy). `.bg-card`'s
-  own `box-shadow` and the `.surface-raised`/`.surface-overlay` helper
-  classes live in `@layer components` in `index.css`, not as unlayered rules
-  — Tailwind v4's own utilities (`shadow-md`, `shadow-none`, …) live in the
-  `utilities` layer, which always wins over a named layer like `components`,
-  but an *unlayered* rule always wins over every named layer including
-  utilities — so an unlayered `.bg-card { box-shadow: ... }` would silently
-  block any `shadow-*` utility applied alongside it. Keep new surface rules
-  inside `@layer components` for the same reason.
-- **`Card`'s `padding` prop is viewport-aware** (`none`/`sm`/`md`/`lg`, each
-  a touch tighter below `md:` and expanding at `md:` — see the
-  `paddingClasses` map) — pick the prop for the density you want rather than
-  overriding with a one-off `className` padding value.
-- **`Button`'s `shape` prop** (`"rect" | "circle"`) replaces the hand-rolled
-  `grid size-9 place-items-center rounded-full border ...` circular-icon-
-  button pattern that used to be repeated per-page — use `shape="circle"`
-  instead of rebuilding it.
-- **`.tabular`** (`font-variant-numeric: tabular-nums`) — apply to every
-  stat-tile value, score display (`12/20`), gauge/segmented-bar label, and
-  any other place a column of numbers needs to line up. Not for prose.
-- **`.eyebrow`** — small-caps-style label (11px, 600 weight, uppercase,
-  tracked) replacing every sub-11px label; pair with a `text-*` color
-  utility (usually `text-ink-400`) at the call site, since it doesn't set
-  its own color.
-- **Shared primitives** (`client/src/components/ui/` unless noted) — reach
-  for these instead of re-implementing the same pattern per page:
-  - `Stat` — value + label + optional icon/tone/delta, absorbs what used to
-    be three independent stat-tile implementations (Dashboard, TodayPage,
-    ProgressPage). Value gets `.tabular`, label gets `.eyebrow`.
-  - `SectionHeader` — page `<h1>` + optional subtitle + right-slot action,
-    one shared shape instead of five pages disagreeing on heading size.
-  - `Toast` (`toast.success/error/info(message)`) — module-level pub-sub,
-    not a Context provider, so it's callable from anywhere (a mutation's
-    `onError`) with no provider tree required. `<Toaster/>` is mounted once
-    in `main.tsx`; every data-mutating call should have an `onError` that
-    calls `toast.error(...)` — mutations used to fail silently.
-  - `Tooltip` — CSS-only hover/focus tooltip (150ms delay on hover, instant
-    on focus), replacing native `title=""` on icon-only buttons. Icon-only
-    buttons should still carry a real `aria-label` separately (in addition
-    to `title` if you want the mouse-hover-only browser tooltip too) —
-    screen readers don't reliably expose `title`.
-  - `Progress` — thin wrapper unifying `FillBar` (linear) and
-    `DonutProgress` (ring) behind one API; no new rendering logic.
-  - `Skeleton`/`SkeletonCard`/`SkeletonRow`/`SkeletonStat` — shaped loading
-    placeholders matching what's actually coming (a stat tile, a list row, a
-    card), not a generic shimmer block or a spinner-on-blank-page.
-  - `useAnimatedNumber` (`client/src/hooks/`) — rAF count-up, ease-out,
-    ~400ms, fires only when a value *changes*, never on mount (a count-up on
-    every page load is noise, not polish).
-- **Motion** — `--animate-enter` (staggered page-section entrance,
-  `animation-delay: calc(var(--i) * 45ms)` per top-level section, capped at
-  ~6 children) and `--animate-lift` (`Card`'s `interactive` hover). Both CSS
-  keyframes, no JS animation library — the `motion` package stays fully
-  removed (see Charts section above). `prefers-reduced-motion` already
-  neutralises all of it globally; verify that still holds after adding any
-  new animated token.
-- **Lists that can grow long — render-cap, not server pagination.**
-  Vocabulary's List view, Checklist's "All items" list, and the Job Search
-  kanban's columns (desktop `Board.tsx` per-column, mobile `BoardMobile.tsx`
-  per-stage) all fetch their full set unconditionally — other on-page UI
-  needs the full set for correctness (Vocabulary's facet counts, Checklist's
-  `CategoryGrid`/`UpNextPanel` cross-category counts, the kanban's drag-drop
-  reorder math) — and instead cap how many rows/cards are *rendered*, with a
-  "Show more" button revealing the next page. Don't reach for a paginated
-  API endpoint for a list like this without first checking whether something
-  else on the page depends on seeing the whole set.
+- **Server** (`cd server && npm test`, vitest) — **pure-function unit tests
+  on `services/` only**. There is no DB-integration or route-level test
+  infra in this repo (no supertest, no test Postgres) — a route handler
+  that's just thin CRUD+zod over Prisma isn't a testing gap on its own; the
+  gap is when a route contains real *logic* with no extracted pure function
+  backing it (e.g. `buildGrammarNote()` in
+  `services/enrichment/index.ts` was genuinely untested pure logic until
+  Phase 5's gap-closing pass exported and tested it — don't invent a
+  route/DB test to cover something that's really just schema validation).
+- **Client** — no dedicated test runner. Rely on `npm run build` (`tsc -b`,
+  catches type errors) plus **actually driving the page in a browser**
+  before calling a UI change done — `npm run build` passing is not the same
+  as the feature working. This project has no committed browser-automation
+  skill yet; when one is needed, `playwright-core` + a cached Chromium
+  binary (check `~/.cache/ms-playwright/`, `~/.cache/pw-shot/` for one
+  already on disk before reaching for a fresh install) driven by a small
+  throwaway script is enough — inject a token into `localStorage` (see
+  `api/client.ts`'s `setSession` for the exact keys: `token`/`user`/
+  `isDemo`) rather than automating the login form. `DEMO_MODE_ENABLED=true`
+  in `server/.env` + `npm run seed:demo` gives a fast login path for local
+  testing — toggle it back off afterward, it's meant to be temporary.
+  Real bugs this has actually caught: a date-math bug in a "next review"
+  display (mixing UTC-anchored `@db.Date` values with local-timezone
+  formatting — see the Date arithmetic gotcha below) and a same-route
+  remount bug (see the Navigation model gotcha above). Neither would have
+  been caught by typecheck alone.
 
 ## Other conventions
 
+- **Date arithmetic on `@db.Date` columns**: Prisma serializes these as
+  UTC-midnight ISO strings. Some routes reformat to a plain `YYYY-MM-DD`
+  before sending (`dashboard.ts`'s `examTargetDate`) so the client can use a
+  cheap local-midnight reconstruction (`` `${dateStr}T00:00:00` ``); others
+  don't (`Word.srDue`) and need the UTC-getter treatment instead (see
+  `server/src/services/reminders.ts`'s `daysUntil()` for the canonical
+  pattern, or `client/src/pages/words/ReviewHistoryCard.tsx` for the
+  client-side translation of it). **Check which convention a given field
+  actually uses before copying a date-math pattern from a neighboring
+  screen** — the two are not interchangeable and mixing them silently
+  shifts the displayed day for anyone not at UTC.
 - **`cn()` (`client/src/lib/cn.ts`) wraps `tailwind-merge`.** Conflicting
-  utilities (e.g. a shared component's default `items-baseline` + a caller's
-  `items-start` override) now resolve "last one wins" via `twMerge`, so
-  overriding a component default through `className` is safe — no need to
-  hand-build one literal string to dodge a conflict anymore.
+  utilities resolve "last one wins," so overriding a component default
+  through `className` is safe.
 - **Skill colors are global** (`client/src/lib/skills.ts`,
-  `SKILL_COLORS`/`SKILL_LABELS`) — reused everywhere a skill is shown (task
-  rows, radar axes, gauges, bars, course-row badges). `displaySkill()` merges
-  listening into speaking for display purposes only (`DISPLAY_SKILLS`); the
-  raw 9-skill truth stays intact for anything showing a single real task.
-  `DISPLAY_SKILL_LABELS_COMPACT` gives the merged skill as `"S/L"` instead of
-  `"Speaking & Listening"` for tight spaces (Study Time legend, Tasks
-  Completed legend) — use it there; other spots (radar axis, gauge label)
-  keep the full label.
-- **Notification-bubble count pattern**: a small circle
-  (`bg-[var(--color-danger-solid)]`, white bold text, `rounded-full`,
-  positioned `absolute -right-0.5 -top-0.5`) overlaid on an icon, shown only
-  when count > 0 — used by the Jobs-pipeline icon row (`Dashboard.tsx`).
-  Prefer this over a count-printed-below-the-icon or a
-  bordered-pill-with-text-label when space is tight and the icon alone is
-  identifiable. (Nav is `FabNav.tsx` now, not a sidebar — it signals
-  notifications differently, via the hub's gradient fill, not this bubble.)
-- **Divided lists over individually-carded rows** when something is
-  logically one list (course rows, learning-hub sections): wrap in
-  `divide-y divide-hairline`, no per-row border/radius/own-background. Only
-  reach for a full nested card when the row is genuinely a separate,
-  independently-styled unit.
-- Design tokens (colors, radius, shadows, type scale) live in
-  `client/src/index.css`'s `@theme` block and re-theme automatically for dark
-  mode via a `.dark` class override of the same variable names — never
-  hardcode a hex value that should adapt to theme; reference the CSS
-  variable (or, for canvas contexts, resolve it — see the Charts gotcha
-  above).
+  `SKILL_COLORS`/`SKILL_LABELS`), reused everywhere a skill is shown.
+  `displaySkill()` merges listening into speaking for display purposes only
+  — the raw 9-skill truth stays intact for anything showing a single real
+  task.
 
 ## Claude Design handoffs
 
 Exports live under `~/Downloads/<name>/design_handoff_.../` as a `.dc.html`
 (a design-tool-proprietary reference, not code to copy) + a `README.md`
 describing intended structure/tokens/interactions in prose. Treat the
-`README.md` as the spec and the `.dc.html` as a visual reference to open in a
-browser — recreate the *described behavior* in the real React/Tailwind
+`README.md` as the spec and the `.dc.html` as a visual reference to open in
+a browser — recreate the *described behavior* in the real React/Tailwind
 stack, don't paste markup from it. Any data/icons shown in a mock are
 placeholders for positioning/alignment unless the handoff says otherwise —
-real data comes from the API, real icons come from whatever's in
-`client/src/assets/icons/` (confirm with the user before substituting or
-guessing a file that isn't there yet).
+real data comes from the API, real icons come from Phosphor Icons
+(`@phosphor-icons/react`, regular weight — the Nocturne handoff's icon
+system; `lucide-react` still backs not-yet-rebuilt pages, being swapped
+incrementally per page rather than in one mechanical pass).

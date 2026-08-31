@@ -10,11 +10,11 @@ sketches the next features in enough detail to start implementation from.
 | # | Planner module | Status | What exists / what's missing |
 |---|---|---|---|
 | 1 | Deutsch Vault | **Mostly built** (V1) | Vocab manager with enrichment, pronunciation audio, grammar data, SM-2 spaced revision, Obsidian two-way sync, search. Missing: vocab PDF export, CLI. |
-| 2 | Ausbildung Opportunity Tracker | **Partially built** (V2) | We track applications *after* they're made (kanban + stats, merged into the Job Search page), plus on-demand notifications (stale applications, portal check reminders) and best-effort autofill from a pasted posting URL. Job *discovery* — listing search, filters by salary/German level, bookmarks — doesn't exist yet. Planned for V4. |
-| 3 | Bureaucracy Companion | **Partially built** (V2) | Document checklist seeded with ~24 non-EU Ausbildung items, file attachments, expiry reminders, search, category filters, and an urgency-first "Up Next" view. Missing: guided explanatory content per topic (moves into the knowledge base) — long-run, deliberately deferred. |
+| 2 | Ausbildung Opportunity Tracker | **Partially built** (V2) | We track applications *after* they're made (kanban + stats, merged into the Job Search page), plus portal quick-links with stale-check reminders and best-effort autofill from a pasted posting URL. An app-wide notifications engine existed briefly and was removed (see below) — portal stale-checks are the one on-demand reminder that survived it. Job *discovery* — listing search, filters by salary/German level, bookmarks — doesn't exist yet. Planned for V4. |
+| 3 | Bureaucracy Companion | **Removed, no replacement yet** | A document checklist (seeded with ~24 non-EU Ausbildung items, file attachments, expiry reminders, search, category filters, an urgency-first "Up Next" view) shipped in V2 and was removed during the Nocturne redesign (Phase 1 — see [CLAUDE.md](../CLAUDE.md#the-nocturne-redesign-in-progress)), along with the notifications engine (Phase 2). Neither has a replacement in the new nav yet; guided explanatory content per topic (the original plan for this module) stays long-run/deferred regardless. |
 | 4 | European Resume Builder | **Retired, replaced with a simpler model** (V2) | Originally a form + live PDF preview (German Lebenslauf / ATS-friendly English templates, multiple CVs per account). Replaced 2026-07-31: a CV is now just a file you already have, uploaded and tagged, living on a shelf beside the application kanban — no in-app builder to keep in sync with a PDF export. Missing (if ever revisited): Europass template, cover letters, automated ATS checks (V4). |
 | 5 | Salary & Cost Planner | **Missing — long-run, deliberately deferred** | City comparison, taxes, rent, budget, savings projections. Carried forward from V3, not yet started. |
-| 6 | Deutschland Dashboard | **Built** (V2/V3) | Dashboard shows documents needing attention, application stats, syllabus/roadmap progress, study streaks, and activity history. Missing: certificates, GitHub activity (V4). |
+| 6 | Deutschland Dashboard | **Built** (V2/V3), rebuilt again for Nocturne (Phase 7) | The Nocturne "Today" screen shows a review dial, day-strip stats (minutes/tasks/exam countdown), the next plan task, and a weakest-skill strip — it has no "documents needing attention" widget (that tracked the now-removed checklist) or application-stats widget carried over from the pre-Nocturne dashboard; neither has a new home yet. Missing: certificates, GitHub activity (V4). |
 | 7 | Germany Knowledge Base | **Missing — long-run, deliberately deferred** | Guides for visa, Anmeldung, blocked account, insurance, housing, FAQs. Carried forward from V3, not yet started; a community-wiki model with contributions is a possible later evolution. |
 
 **V3 (Learning Progress Hub) shipped**: CEFR syllabus (174 items, A1→B1), a
@@ -88,12 +88,25 @@ next thing to study.
 ## Phasing
 
 - ~~**V3** — Learning Progress Hub~~ ✅ shipped.
-- **Now** — reprioritized 2026-08-05, cutting across strict version order to
-  pull forward what matters most instead of shipping V4 then V5 in sequence:
-  1. **App-wide bug-fixing pass** — top priority, ahead of any new feature work.
-     No fixed list yet; starts with a systematic sweep across the whole app to
-     build one (Vocabulary's mobile touch-scroll issue, set aside earlier, is
-     the one known item going in).
+- **Now — the Nocturne redesign**, reprioritized ahead of everything below
+  once it was scoped (superseding the 2026-08-05 "app-wide bug-fixing pass"
+  priority, which resumes once this ships — see "After that"). A complete
+  UI/UX rebuild against a Claude Design handoff: dark-only design system,
+  new 5-tab + back-stack navigation, and 3 new backend subsystems
+  (kaikki.org/DErivBase enrichment pipeline replacing live Wiktionary
+  scraping, exam-gated CEFR progression, word-linked notes). Full 20-phase
+  plan at `~/.claude/plans/so-we-are-going-wondrous-axolotl.md` (sequencing
+  rationale, per-phase file lists, verify steps); status/what's-landed
+  summarized in [CLAUDE.md](../CLAUDE.md#the-nocturne-redesign-in-progress) —
+  check there rather than trusting a phase count written here, since this
+  file isn't updated per-phase the way that status summary is.
+- **After that** — the pre-redesign priority, reprioritized 2026-08-05,
+  cutting across strict version order to pull forward what matters most
+  instead of shipping V4 then V5 in sequence:
+  1. **App-wide bug-fixing pass** — top priority, ahead of any new feature
+     work. First tranche landed 2026-08-27 (design system, accessibility,
+     pagination fixes) before the redesign took over; resume once Nocturne
+     ships rather than fixing bugs in a UI mid-replacement.
   2. Vocab PDF export + vocabulary CLI — the last piece of module 1 (Deutsch
      Vault)'s V1 scope.
   3. Dashboard upgrades — certificates, GitHub activity (pulled forward out of
@@ -108,4 +121,6 @@ next thing to study.
     automated ATS checks.
   - Salary & Cost Planner (module 5) — carried forward from V3.
   - Germany Knowledge Base (module 7) — carried forward from V3.
-  - Bureaucracy Companion's guided explanatory content per topic (module 3).
+  - Bureaucracy Companion's guided explanatory content per topic (module 3) —
+    the checklist that would have hosted it is gone (see module 3's row
+    above), so this needs a new home decided before it can restart.
