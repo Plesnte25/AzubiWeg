@@ -57,7 +57,7 @@ export async function resolveWordSafe(
  * — same human-readable convention the old wikitext version produced
  * ("der; Plural: die Häuser" / "geht, ging, ist gegangen"), now built from
  * already-structured data instead of regex. */
-function buildGrammarNote(
+export function buildGrammarNote(
   entry: { gender: string | null; declension: unknown; conjugation: unknown } | null,
 ): string | null {
   if (!entry) return null;
