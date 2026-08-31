@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useActivityHeartbeat } from "../hooks/useActivityHeartbeat";
 import { cn } from "../lib/cn";
-import { NavStackProvider } from "../lib/navStack";
+import { isTransientPath, NavStackProvider } from "../lib/navStack";
 import AccountSheet from "./AccountSheet";
 import BottomTabBar from "./BottomTabBar";
 import CaptureFab from "./CaptureFab";
@@ -11,6 +11,11 @@ import DemoBanner from "./DemoBanner";
 export default function Layout() {
   const location = useLocation();
   const isDashboard = location.pathname === "/";
+  // Transient screens (the review session so far) own the whole viewport
+  // distraction-free, same as the handoff — no tab bar/FAB to tap away
+  // through mid-session, and no reserved bottom padding for a bar that
+  // isn't there.
+  const isTransient = isTransientPath(location.pathname);
   const [accountOpen, setAccountOpen] = useState(false);
 
   useActivityHeartbeat();
@@ -28,15 +33,19 @@ export default function Layout() {
 
         <main
           className={cn(
-            "pb-[calc(88px+env(safe-area-inset-bottom))]",
+            !isTransient && "pb-[calc(88px+env(safe-area-inset-bottom))]",
             isDashboard ? "px-4 py-4 lg:h-dvh lg:min-h-[760px] lg:py-3" : "mx-auto max-w-6xl px-4 py-6",
           )}
         >
           <Outlet />
         </main>
 
-        <BottomTabBar onOpenAccount={() => setAccountOpen(true)} />
-        <CaptureFab />
+        {!isTransient && (
+          <>
+            <BottomTabBar onOpenAccount={() => setAccountOpen(true)} />
+            <CaptureFab />
+          </>
+        )}
         {/* Settings/sign-out have no home in the new 5-tab nav yet — Phase 17
             builds the real Profile sheet (behind Today's avatar, per the
             handoff). Kept reachable in the meantime via the same long-press-

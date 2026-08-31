@@ -77,6 +77,29 @@ reviewsRouter.get("/queue", async (req, res) => {
   res.json({ due: due.map(withComputedFields), fresh: fresh.map(withComputedFields) });
 });
 
+function previousScheduleFor(word: { srDue: Date | null; srInterval: number | null; srEase: number | null }) {
+  return word.srDue && word.srInterval !== null && word.srEase !== null
+    ? { interval: word.srInterval, ease: word.srEase, due: word.srDue }
+    : null;
+}
+
+// Real-data preview of what each grade button would actually do to this
+// card's schedule (the handoff's Review-session grade row shows a resulting
+// interval per button, e.g. "2 days") -- read-only, calls the same pure
+// schedule() the real grade POST below uses, so there's no second scheduling
+// implementation to drift out of sync.
+reviewsRouter.get("/:wordId/preview", async (req, res) => {
+  const word = await prisma.word.findFirst({ where: { id: req.params.wordId, userId: req.userId } });
+  if (!word) return res.status(404).json({ error: "Word not found" });
+
+  const previous = previousScheduleFor(word);
+  res.json({
+    hard: schedule("hard", previous),
+    good: schedule("good", previous),
+    easy: schedule("easy", previous),
+  });
+});
+
 const gradeSchema = z.object({ grade: z.enum(["hard", "good", "easy"]) });
 
 reviewsRouter.post("/:wordId", async (req, res) => {
@@ -89,10 +112,7 @@ reviewsRouter.post("/:wordId", async (req, res) => {
   });
   if (!word) return res.status(404).json({ error: "Word not found" });
 
-  const previous =
-    word.srDue && word.srInterval !== null && word.srEase !== null
-      ? { interval: word.srInterval, ease: word.srEase, due: word.srDue }
-      : null;
+  const previous = previousScheduleFor(word);
   const next = schedule(grade, previous);
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });

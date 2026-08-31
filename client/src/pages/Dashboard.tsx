@@ -49,10 +49,10 @@ function estimateFor(task: DashboardNextTask): string {
   }
 }
 
-function ctaFor(task: DashboardNextTask, navigate: ReturnType<typeof useNavigate>, switchTab: (path: string) => void) {
+function ctaFor(task: DashboardNextTask, push: (path: string) => void, switchTab: (path: string) => void) {
   switch (task.type) {
     case "vocab":
-      return () => navigate("/words?startReview=1");
+      return () => push("/review");
     case "milestone_test":
       return () => switchTab("/plan?view=test");
     case "study_source":
@@ -70,7 +70,7 @@ function initials(name: string | undefined): string {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { switchTab } = useNavStack();
+  const { switchTab, push } = useNavStack();
   const [taskDetailOpen, setTaskDetailOpen] = useState(false);
   const { data, isLoading } = useQuery({ queryKey: ["dashboard"], queryFn: api.dashboard });
   const { data: activity } = useQuery({ queryKey: ["activity", "summary", 1], queryFn: () => api.activitySummary(1) });
@@ -120,7 +120,7 @@ export default function Dashboard() {
       switchTab("/plan?view=test");
       return;
     }
-    ctaFor(nextTask, navigate, switchTab)();
+    ctaFor(nextTask, push, switchTab)();
   };
 
   return (
@@ -179,7 +179,7 @@ export default function Dashboard() {
         dueCount={data.dueToday}
         reviewedToday={data.reviewsToday}
         secondaryPercent={activeLevelPercent}
-        onStart={() => navigate("/words?startReview=1")}
+        onStart={() => push("/review")}
       />
       <div className="mt-2 flex justify-center gap-[18px] text-[10px]" style={{ color: "rgba(233,233,237,.62)" }}>
         <span className="flex items-center gap-[5px]">

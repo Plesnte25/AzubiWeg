@@ -23,10 +23,11 @@ import { useLocation, useNavigate } from "react-router-dom";
  *   push history (matches tabTo() in the reference).
  */
 
-// No pushed screens exist yet as of Phase 6 (Word Detail, Review session,
-// MCQ, etc. all land in later phases) — extend this as each transient
-// screen is built. A path is transient if it starts with any of these.
-const TRANSIENT_PATH_PREFIXES: string[] = [];
+// A path is transient if it starts with any of these — never a valid Back
+// target, and Layout.tsx hides the tab bar/FAB while on one (distraction-
+// free session chrome, matching the handoff). Extend as each transient
+// screen is built (MCQ, fill-blank, note editor, ... land in later phases).
+const TRANSIENT_PATH_PREFIXES: string[] = ["/review"];
 
 // path prefix -> human label for the dynamic back button, e.g. "back to
 // Words". Extend as pushed screens are added in later phases (Word Detail,
@@ -75,8 +76,10 @@ export function contextTagForPath(pathname: string): string {
 
 interface NavStackContextValue {
   /** In-app forward navigation (opening a pushed screen from a tab or
-   * another pushed screen) — records history per the rules above. */
-  push: (path: string) => void;
+   * another pushed screen) — records history per the rules above. `state`
+   * carries router location state (e.g. a curated word list for the review
+   * session) without serializing it into the URL. */
+  push: (path: string, options?: { state?: unknown }) => void;
   /** Resets the stack and navigates — for selecting a bottom-tab destination. */
   switchTab: (path: string) => void;
   /** Pops to the real previous screen (skipping transient/duplicate entries). */
@@ -110,7 +113,7 @@ export function NavStackProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const push = useCallback(
-    (path: string) => {
+    (path: string, options?: { state?: unknown }) => {
       const stack = stackRef.current;
       const current = location.pathname;
       const seenAt = stack.lastIndexOf(path);
@@ -120,7 +123,7 @@ export function NavStackProvider({ children }: { children: React.ReactNode }) {
         setStack([...stack, current]);
       }
       // else: leaving a transient screen — stack unchanged, don't record it
-      navigate(path);
+      navigate(path, { state: options?.state });
     },
     [location.pathname, navigate, setStack],
   );

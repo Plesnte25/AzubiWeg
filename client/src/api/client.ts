@@ -13,6 +13,7 @@ import type {
   ExamQuestionPublic,
   ExamStatus,
   Grade,
+  GradePreview,
   CefrLevel,
   MovedTask,
   Note,
@@ -158,6 +159,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ grade }),
     }),
+  reviewPreview: (wordId: string) => request<GradePreview>(`/api/reviews/${wordId}/preview`),
   reviewHistory: (limit?: number) =>
     request<{ entries: ReviewHistoryEntry[] }>(`/api/reviews/history${limit ? `?limit=${limit}` : ""}`),
   reviewWeakWords: (limit?: number) =>

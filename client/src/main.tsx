@@ -18,6 +18,8 @@ const PlanEntry = lazy(() => import("./pages/PlanEntry"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Stats = lazy(() => import("./pages/Stats"));
 const Vocabulary = lazy(() => import("./pages/Vocabulary"));
+const WordDetail = lazy(() => import("./pages/words/WordDetail"));
+const ReviewSession = lazy(() => import("./pages/review/ReviewSession"));
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<p className="text-ink-400">Loading…</p>}>{children}</Suspense>;
@@ -72,12 +74,13 @@ const router = createBrowserRouter([
           // ── the 5 real tab destinations (Today/Words/Plan/Jobs/Stats) ──
           { path: "/", element: <Dashboard /> },
           { path: "/words", element: <Lazy><Vocabulary /></Lazy> },
+          { path: "/words/:id", element: <Lazy><WordDetail /></Lazy> },
+          { path: "/review", element: <Lazy><ReviewSession /></Lazy> },
           { path: "/plan", element: <Lazy><PlanEntry /></Lazy> },
           { path: "/jobs", element: <Lazy><JobSearch /></Lazy> },
           { path: "/stats", element: <Lazy><Stats /></Lazy> },
           // ── legacy URL redirects — old bookmarks/links keep working ──
           { path: "/vocabulary", element: <Navigate to="/words" replace /> },
-          { path: "/review", element: <Navigate to="/words" replace /> },
           { path: "/learning", element: <Navigate to="/plan" replace /> },
           { path: "/roadmap", element: <Navigate to="/plan?view=roadmap" replace /> },
           { path: "/job-search", element: <Navigate to="/jobs" replace /> },

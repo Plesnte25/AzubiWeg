@@ -125,6 +125,14 @@ export interface VaultStatus {
 
 export type Grade = "hard" | "good" | "easy";
 
+export interface ScheduleResult {
+  due: string;
+  interval: number;
+  ease: number;
+}
+
+export type GradePreview = Record<Grade, ScheduleResult>;
+
 export interface ReviewHistoryEntry {
   id: string;
   wordId: string;

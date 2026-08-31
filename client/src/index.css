@@ -168,6 +168,7 @@
   --animate-pop-in: pop-in 500ms both;
   --animate-fade-in-screen: fade-in-screen 280ms both;
   --animate-grow-x: grow-x 800ms both;
+  --animate-bob: bob 3s ease-in-out infinite;
 
   /* Genus (der/die/das) — literal Nocturne "gender-coding hues" (the spec's
      own words), a fixed identity system for the Vocabulary page's word cards
@@ -261,6 +262,10 @@
 @keyframes fade-in-screen {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
 }
 @keyframes grow-x {
   from { transform: scaleX(0); }
