@@ -41,3 +41,21 @@ export function stationStatus(station: Station): "done" | "skipped" | "current" 
   if (allClosed) return "skipped";
   return "current"; // resolved relative to other stations by the caller
 }
+
+const tokenize = (s: string) => new Set(s.toLowerCase().replace(/[^a-z0-9äöüß]+/g, " ").split(" ").filter(Boolean));
+
+/** Roadmap week themes and Syllabus station themes are authored somewhat
+ * independently (different strings for the "same" topic in several places),
+ * so an exact match often misses — best-effort word-overlap, same recipe as
+ * the self-test notebook-linking matcher in routes/learning.ts. Used by
+ * Plan.tsx's Week mode to link a week's theme back to its syllabus station. */
+export function bestMatchingStation<T extends { theme: string }>(stations: T[], weekTheme: string): T | null {
+  const exact = stations.find((s) => s.theme === weekTheme);
+  if (exact) return exact;
+  const weekTokens = tokenize(weekTheme);
+  const scored = stations
+    .map((s) => ({ station: s, score: [...weekTokens].filter((t) => tokenize(s.theme).has(t)).length }))
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score);
+  return scored[0]?.station ?? null;
+}

@@ -215,21 +215,19 @@ roadmapRouter.get("/today", async (req, res) => {
   const tasksDone = allTasks.filter((t) => t.completedAt !== null).length;
   const currentDayOffset = Math.round((today.getTime() - user.roadmapStartedAt.getTime()) / 86_400_000);
 
-  // Deutschland-Context ("bureaucracy") tasks stay real roadmap content —
-  // they still count toward overview progress below — but were kept out of
-  // Today's plan/the overdue backlog list because they used to surface on
-  // the (now-removed) Checklist page instead. TODO(Phase 11 — Plan rebuild):
-  // decide where bureaucracy tasks should actually surface now that
-  // Checklist is gone, rather than leaving them filtered out with no home.
-  const visibleTasks = (tasks: (typeof allTasks)[number][]) => tasks.filter((t) => t.skill !== "bureaucracy");
-
+  // Deutschland-Context ("bureaucracy") tasks used to be filtered out of
+  // Today's plan/the overdue backlog list because they surfaced on the
+  // Checklist page instead — with Checklist gone (Phase 1) and no
+  // replacement built for it, that left them invisible and uncompletable
+  // through any UI while still counting toward overview progress below.
+  // Phase 11 (Plan rebuild) resolves this by no longer filtering them out —
+  // they show in the task list like any other task, tagged the same
+  // "Context" skill label SourcesPage's RESOURCE_SKILL_LABEL already uses.
   res.json({
     date: todayRow?.date ?? today,
     theme: todayRow?.theme ?? null,
-    tasks: visibleTasks(todayRow?.tasks ?? []),
-    backlog: computeBacklog(days, today)
-      .map((g) => ({ ...g, tasks: visibleTasks(g.tasks) }))
-      .filter((g) => g.tasks.length > 0),
+    tasks: todayRow?.tasks ?? [],
+    backlog: computeBacklog(days, today).filter((g) => g.tasks.length > 0),
     overview: {
       totalDays: DEFAULT_ROADMAP_DAYS.length,
       currentDayOffset,

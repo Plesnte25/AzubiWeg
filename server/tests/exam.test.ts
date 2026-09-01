@@ -4,9 +4,21 @@ import {
   EXAM_PASS_THRESHOLD,
   buildExamSession,
   canAttemptExam,
+  levelHasExamContent,
   scoreExam,
 } from "../src/services/learning/exam.js";
 import { EXAM_QUESTION_BANK } from "../src/services/learning/exam-question-bank.js";
+
+describe("levelHasExamContent", () => {
+  it("is true for a1, which has an authored bank", () => {
+    expect(levelHasExamContent("a1")).toBe(true);
+  });
+
+  it("is false for a level with no questions yet", () => {
+    expect(levelHasExamContent("a2")).toBe(false);
+    expect(levelHasExamContent("b1")).toBe(false);
+  });
+});
 
 describe("buildExamSession", () => {
   it("returns every A1 question, shuffled, with no answer data exposed", () => {

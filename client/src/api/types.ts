@@ -281,6 +281,10 @@ export interface SyllabusResponse {
   levels: LevelProgress[];
   items: SyllabusItem[];
   routePace: RoutePace;
+  // real exam-gate lock state, one entry per level in CEFR order — see
+  // levelStatesWithExamGate() in server/src/services/learning/progress.ts
+  lockStates: LevelState[];
+  examGate: ({ hasContent: false } | { hasContent: true; passed: boolean })[];
 }
 
 export interface LevelProgress {

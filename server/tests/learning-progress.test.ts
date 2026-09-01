@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   levelProgress,
   levelStates,
+  levelStatesWithExamGate,
   sourcePercent,
   type ProgressItem,
 } from "../src/services/learning/progress.js";
@@ -70,6 +71,44 @@ describe("levelStates", () => {
 
   it("treats an unseeded (empty) syllabus as first-active", () => {
     expect(levelStates([lvl(0, 0), lvl(0, 0), lvl(0, 0)])).toEqual(["active", "locked", "locked"]);
+  });
+});
+
+describe("levelStatesWithExamGate", () => {
+  const lvl = (percent: number, total = 36) => ({ percent, total });
+  const noExam = { hasContent: false as const };
+  const gated = (passed: boolean) => ({ hasContent: true as const, passed });
+
+  it("keeps a level active (not done) once its syllabus is 100% but its exam isn't passed yet", () => {
+    expect(levelStatesWithExamGate([lvl(100), lvl(0), lvl(0)], [gated(false), noExam, noExam])).toEqual([
+      "active",
+      "locked",
+      "locked",
+    ]);
+  });
+
+  it("advances to done/active once the exam is passed", () => {
+    expect(levelStatesWithExamGate([lvl(100), lvl(0), lvl(0)], [gated(true), noExam, noExam])).toEqual([
+      "done",
+      "active",
+      "locked",
+    ]);
+  });
+
+  it("never gates a level with no authored exam content, even at 100%", () => {
+    expect(levelStatesWithExamGate([lvl(100), lvl(0), lvl(0)], [noExam, noExam, noExam])).toEqual([
+      "done",
+      "active",
+      "locked",
+    ]);
+  });
+
+  it("still gates on syllabus completion first, independent of exam state", () => {
+    expect(levelStatesWithExamGate([lvl(40), lvl(0), lvl(0)], [gated(false), noExam, noExam])).toEqual([
+      "active",
+      "locked",
+      "locked",
+    ]);
   });
 });
 

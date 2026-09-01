@@ -7,13 +7,14 @@ import { localDateKey } from "../services/learning/activity.js";
 import { setSyllabusItemCompletion } from "../services/learning/completion-sync.js";
 import { buildSession } from "../services/learning/engine.js";
 import { computeRoutePace } from "../services/learning/pace.js";
-import { levelProgress, levelStates, sourcePercent } from "../services/learning/progress.js";
+import { levelProgress, levelStates, levelStatesWithExamGate, sourcePercent } from "../services/learning/progress.js";
 import { QUESTION_BANK } from "../services/learning/question-bank.js";
 import {
   EXAM_ATTEMPT_COOLDOWN_DAYS,
   EXAM_TIME_LIMIT_MINUTES,
   buildExamSession,
   canAttemptExam,
+  levelHasExamContent,
   scoreExam,
 } from "../services/learning/exam.js";
 import { weakAreasFromBreakdowns } from "../services/learning/review.js";
@@ -36,10 +37,24 @@ const CORE_SKILL = z.enum(["grammar", "vocab", "listening", "speaking", "writing
 
 // ── syllabus ──
 
+/** Per-level {hasContent, passed} for levelStatesWithExamGate() — one query,
+ * shared by the /syllabus route (real lock enforcement, Phase 11 of the
+ * Nocturne redesign) and activeLevelFor() below (so the exam start/status
+ * routes agree with what Syllabus shows as locked, instead of a
+ * syllabus-only view of "active" that could point at a level the user can't
+ * actually enter yet). */
+async function examGateForUser(userId: string) {
+  const passedRows = await prisma.examAttempt.findMany({ where: { userId, passed: true }, select: { level: true } });
+  const passedLevels = new Set(passedRows.map((r) => r.level));
+  return (["a1", "a2", "b1"] as const).map((level) =>
+    levelHasExamContent(level) ? { hasContent: true as const, passed: passedLevels.has(level) } : { hasContent: false as const },
+  );
+}
+
 learningRouter.get("/syllabus", async (req, res) => {
   await ensureSyllabusSeeded(req.userId);
 
-  const [items, user] = await Promise.all([
+  const [items, user, examGate] = await Promise.all([
     prisma.syllabusItem.findMany({
       where: { userId: req.userId },
       include: {
@@ -51,6 +66,7 @@ learningRouter.get("/syllabus", async (req, res) => {
       orderBy: [{ level: "asc" }, { sortOrder: "asc" }],
     }),
     prisma.user.findUniqueOrThrow({ where: { id: req.userId }, select: { examTargetDate: true } }),
+    examGateForUser(req.userId),
   ]);
   const withRoadmapDay = items.map(({ roadmapTasks, ...item }) => ({
     ...item,
@@ -58,8 +74,12 @@ learningRouter.get("/syllabus", async (req, res) => {
   }));
 
   const levels = levelProgress(items);
-  const states = levelStates(levels);
-  const activeIdx = states.indexOf("active");
+  const lockStates = levelStatesWithExamGate(levels, examGate);
+  // route pace still keys off the syllabus-only "active" level (matches
+  // /exam/status's activeLevelFor(), which now also folds in the exam
+  // gate) -- a level that's syllabus-100%-but-exam-gated is "active" under
+  // both, so this stays correct.
+  const activeIdx = lockStates.indexOf("active");
   const activeLevel = activeIdx === -1 ? levels[levels.length - 1]?.level : levels[activeIdx]?.level;
 
   // ROUTE PACE: remaining/recently-completed items in the active level only —
@@ -73,7 +93,7 @@ learningRouter.get("/syllabus", async (req, res) => {
     today: new Date(),
   });
 
-  res.json({ levels, items: withRoadmapDay, routePace });
+  res.json({ levels, items: withRoadmapDay, routePace, lockStates, examGate });
 });
 
 // A "station" is every SyllabusItem sharing (level, theme) — derived, not a
@@ -890,7 +910,8 @@ async function activeLevelFor(userId: string) {
       percent: inLevel.length === 0 ? 0 : Math.round((done / inLevel.length) * 100),
     };
   });
-  const states = levelStates(levels);
+  const examGate = await examGateForUser(userId);
+  const states = levelStatesWithExamGate(levels, examGate);
   return LEVELS_ORDER[Math.max(0, states.indexOf("active"))]!;
 }
 

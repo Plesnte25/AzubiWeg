@@ -10,7 +10,7 @@ import { NoteEditor } from "../../components/notes/NoteEditor";
 import { Button } from "../../components/ui/Button";
 import { CircleIconButton } from "../../components/ui/CircleIconButton";
 import { DurationPicker } from "../../components/ui/DurationPicker";
-import type { Destination } from "./LearningRail";
+import type { Destination } from "./destinations";
 import { invalidateHub } from "./queryHelpers";
 
 const TYPE_CTA: Partial<Record<RoadmapTaskType, { label: string; to: Destination }>> = {

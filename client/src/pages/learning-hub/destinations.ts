@@ -1,35 +1,5 @@
+// Legacy destination keys, still used by NotesPage/SelfTestsPage/
+// ProgressPage/TaskDetailDrawer's onNavigate prop (Phase 13/14/16 of the
+// Nocturne redesign move/reskin these; until then their bridge wrappers in
+// pages/plan/ and Stats.tsx translate a Destination into a real route push).
 export type Destination = "today" | "roadmap" | "syllabus" | "sources" | "notes" | "test" | "progress";
-
-export interface DestinationRow {
-  key: Destination;
-  label: string;
-}
-
-export const GROUPS: { label: string; rows: DestinationRow[] }[] = [
-  {
-    label: "Plan",
-    rows: [
-      { key: "today", label: "Today" },
-      { key: "roadmap", label: "Roadmap" },
-    ],
-  },
-  {
-    label: "Learn",
-    rows: [
-      { key: "syllabus", label: "Syllabus" },
-      { key: "sources", label: "Sources" },
-      { key: "notes", label: "Notes" },
-    ],
-  },
-  {
-    label: "Check",
-    rows: [
-      { key: "test", label: "Self-tests" },
-      { key: "progress", label: "Progress" },
-    ],
-  },
-];
-
-/** Flat destination list — the sm/md pill-tab sub-nav's data source
- * (LearningRail itself is lg-only). */
-export const DESTINATION_ROWS: DestinationRow[] = GROUPS.flatMap((g) => g.rows);

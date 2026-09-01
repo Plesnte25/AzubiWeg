@@ -14,7 +14,11 @@ import Login from "./pages/Login";
 // its own chunk, loaded on navigation, so signing in doesn't pull in the CV
 // editor/kanban/quiz code up front
 const JobSearch = lazy(() => import("./pages/job-search"));
-const PlanEntry = lazy(() => import("./pages/PlanEntry"));
+const Plan = lazy(() => import("./pages/plan/Plan"));
+const Syllabus = lazy(() => import("./pages/plan/Syllabus"));
+const Sources = lazy(() => import("./pages/plan/Sources"));
+const Notes = lazy(() => import("./pages/plan/Notes"));
+const SelfTests = lazy(() => import("./pages/plan/SelfTests"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Stats = lazy(() => import("./pages/Stats"));
 const Vocabulary = lazy(() => import("./pages/Vocabulary"));
@@ -76,13 +80,17 @@ const router = createBrowserRouter([
           { path: "/words", element: <Lazy><Vocabulary /></Lazy> },
           { path: "/words/:id", element: <Lazy><WordDetail /></Lazy> },
           { path: "/review", element: <Lazy><ReviewSession /></Lazy> },
-          { path: "/plan", element: <Lazy><PlanEntry /></Lazy> },
+          { path: "/plan", element: <Lazy><Plan /></Lazy> },
+          { path: "/plan/syllabus", element: <Lazy><Syllabus /></Lazy> },
+          { path: "/plan/sources", element: <Lazy><Sources /></Lazy> },
+          { path: "/plan/notes", element: <Lazy><Notes /></Lazy> },
+          { path: "/plan/self-tests", element: <Lazy><SelfTests /></Lazy> },
           { path: "/jobs", element: <Lazy><JobSearch /></Lazy> },
           { path: "/stats", element: <Lazy><Stats /></Lazy> },
           // ── legacy URL redirects — old bookmarks/links keep working ──
           { path: "/vocabulary", element: <Navigate to="/words" replace /> },
           { path: "/learning", element: <Navigate to="/plan" replace /> },
-          { path: "/roadmap", element: <Navigate to="/plan?view=roadmap" replace /> },
+          { path: "/roadmap", element: <Navigate to="/plan" replace /> },
           { path: "/job-search", element: <Navigate to="/jobs" replace /> },
           { path: "/applications", element: <Navigate to="/jobs" replace /> },
           { path: "/cv", element: <Navigate to="/jobs" replace /> },

@@ -31,6 +31,15 @@ function shuffle<T>(arr: T[], rng: () => number): T[] {
   return out;
 }
 
+/** Whether any exam questions exist yet for this level — a level with none
+ * can never be exam-gated (see levelStatesWithExamGate() in
+ * services/learning/progress.ts), or completing its syllabus would
+ * permanently lock the user out with no exam to ever pass. Only A1 has
+ * content as of this writing. */
+export function levelHasExamContent(level: CefrLevel): boolean {
+  return EXAM_QUESTION_BANK.some((q) => q.level === level);
+}
+
 /** All of a level's exam questions, shuffled — the whole bank, not a
  * sampled subset (20 questions at the A1 starter size is already a
  * reasonable exam length; sampling matters more once each level's bank

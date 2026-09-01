@@ -89,7 +89,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
       style={{ background: isDone ? "radial-gradient(100% 44% at 50% 16%, #2b2741 0%, #161826 68%)" : "radial-gradient(120% 50% at 50% 0%, #1d2033, #161826 62%)" }}
     >
       {isDone ? (
-        <SessionDone done={done} total={total} elapsedSeconds={elapsedSeconds} onHome={() => goBack()} onTakeTest={() => push("/plan?view=test")} />
+        <SessionDone done={done} total={total} elapsedSeconds={elapsedSeconds} onHome={() => goBack()} onTakeTest={() => push("/plan/self-tests")} />
       ) : (
         <>
           <div className="flex items-center gap-2.5">

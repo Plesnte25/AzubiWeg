@@ -16,7 +16,7 @@ import { toast } from "../../components/ui/Toast";
 import { cn } from "../../lib/cn";
 import { SKILL_LABELS } from "../../lib/skills";
 import { stripHtml } from "../../lib/text";
-import type { Destination } from "./LearningRail";
+import type { Destination } from "./destinations";
 import { invalidateHub } from "./queryHelpers";
 import { TaskDetailDrawer } from "./TaskDetailDrawer";
 

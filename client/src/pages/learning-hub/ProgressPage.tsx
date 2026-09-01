@@ -5,7 +5,7 @@ import type { ProgressPeriod, RoadmapSkill } from "../../api/types";
 import { SectionHeader } from "../../components/ui/SectionHeader";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { Stat } from "../../components/ui/Stat";
-import type { Destination } from "./LearningRail";
+import type { Destination } from "./destinations";
 import taskIcon from "../../assets/icons/task.webp";
 import clockIcon from "../../assets/icons/clock.webp";
 import quizIcon from "../../assets/icons/quiz.webp";

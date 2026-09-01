@@ -54,9 +54,9 @@ function ctaFor(task: DashboardNextTask, push: (path: string) => void, switchTab
     case "vocab":
       return () => push("/review");
     case "milestone_test":
-      return () => switchTab("/plan?view=test");
+      return () => switchTab("/plan/self-tests");
     case "study_source":
-      return () => switchTab("/plan?view=sources");
+      return () => switchTab("/plan/sources");
     default:
       return () => switchTab("/plan");
   }
@@ -117,7 +117,7 @@ export default function Dashboard() {
       return;
     }
     if (!nextTask) {
-      switchTab("/plan?view=test");
+      switchTab("/plan/self-tests");
       return;
     }
     ctaFor(nextTask, push, switchTab)();
@@ -227,7 +227,7 @@ export default function Dashboard() {
         </div>
         <button
           type="button"
-          onClick={() => switchTab("/plan?view=syllabus")}
+          onClick={() => switchTab("/plan/syllabus")}
           className="rounded-xl p-[11px] text-left"
           style={{ background: "#1c1f2c" }}
         >

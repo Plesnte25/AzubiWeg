@@ -6,7 +6,7 @@ import type { CefrLevel, RoadmapSkill, SessionQuestion, TopicBreakdown } from ".
 import { Button } from "../../components/ui/Button";
 import { toast } from "../../components/ui/Toast";
 import { isAnswerAccepted } from "../../lib/quiz";
-import type { Destination } from "./LearningRail";
+import type { Destination } from "./destinations";
 import { invalidateHub } from "./queryHelpers";
 
 interface AnswerRecord {
