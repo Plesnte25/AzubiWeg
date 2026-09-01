@@ -1,8 +1,7 @@
 import { PencilSimple } from "@phosphor-icons/react";
 import { useLocation } from "react-router-dom";
-import { toast } from "./ui/Toast";
 import { NAV_DESTINATIONS, isActivePath } from "../lib/navDestinations";
-import { useCaptureContext } from "../lib/navStack";
+import { useCaptureContext, useNavStack } from "../lib/navStack";
 
 /**
  * Floating quick-note capture button — present on all 5 tab screens (never
@@ -11,13 +10,12 @@ import { useCaptureContext } from "../lib/navStack";
  * absolute-positioned within the tab bar's reserved band, dark gradient
  * fill, accent-tinted border/icon.
  *
- * onClick is a stub until Phase 13 builds the real Note Editor + FAB wiring
- * — it already reads the right context tag via useCaptureContext() (the
- * cross-cutting hook the handoff's interaction notes call for), that value
- * just has nowhere to go yet.
+ * Pushes a fresh Note Editor pre-tagged with the current tab's context (or
+ * no tag at all from Today, matching the handoff's SECTION map).
  */
 export default function CaptureFab() {
   const location = useLocation();
+  const { push } = useNavStack();
   const contextTag = useCaptureContext();
   const onTabScreen = NAV_DESTINATIONS.some((d) => isActivePath(d.to, d.end, location.pathname));
 
@@ -28,10 +26,8 @@ export default function CaptureFab() {
       type="button"
       title="Capture a note"
       aria-label="Capture a note"
-      onClick={() =>
-        toast.info(contextTag ? `Quick notes are coming soon (tagged ${contextTag})` : "Quick notes are coming soon")
-      }
-      className="fixed right-[18px] bottom-[76px] z-40 grid size-[46px] place-items-center rounded-full border"
+      onClick={() => push("/plan/notes/edit/new", { state: contextTag ? { contextTag } : undefined })}
+      className="fixed right-[18px] bottom-[76px] z-40 grid size-[46px] place-items-center rounded-full border lg:bottom-[18px]"
       style={{
         background: "linear-gradient(160deg,#2f2b4a,#232532)",
         borderColor: "rgba(181,171,252,.45)",

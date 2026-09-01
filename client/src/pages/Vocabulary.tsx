@@ -6,6 +6,7 @@ import type { Grade } from "../api/types";
 import { barColor, buildSparkline, chipColor, chipLabel, NO_DATA_HEIGHT, SPARKLINE_SLOTS } from "../lib/wordDisplay";
 import { useNavStack } from "../lib/navStack";
 import { AddWordsDialog } from "./vocabulary/AddWordsDialog";
+import { WordDetailContent } from "./words/WordDetailContent";
 
 type FilterKey = "all" | "der" | "die" | "das" | "verb";
 const FILTERS: { key: FilterKey; label: string }[] = [
@@ -25,6 +26,7 @@ export default function Vocabulary() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
   const [showAdd, setShowAdd] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const sparklines = useMemo(() => {
     const byWord = new Map<string, Grade[]>();
@@ -51,10 +53,12 @@ export default function Vocabulary() {
 
   const shakyCount = allWords.filter((w) => w.leech).length;
   const resultLabel = q ? `${filtered.length} match${filtered.length === 1 ? "" : "es"}` : "All words";
+  const effectiveSelectedId = selectedId ?? filtered[0]?.id ?? null;
 
   return (
+    <>
     <div
-      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col pt-[calc(env(safe-area-inset-top)+18px)]"
+      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col pt-[calc(env(safe-area-inset-top)+18px)] lg:hidden"
       style={{ background: "#161826" }}
     >
       <div className="px-[18px]">
@@ -173,11 +177,116 @@ export default function Vocabulary() {
         )}
       </div>
 
+    </div>
+
+    {/* ── lg+: master-detail (German Companion Desktop.dc.html, id="1b")
+        — same word list/filter/search state as mobile, a click selects
+        instead of navigating away. No notes dock/drag-to-link here: that's
+        real functionality with no equivalent anywhere else in the app yet
+        (word-linking today only happens from the Note Editor's own
+        detection, see lib/wordLink.ts), out of scope for a nav-pattern
+        pass. ── */}
+    <div className="hidden min-h-0 lg:flex lg:h-full">
+      <div className="flex w-[300px] shrink-0 flex-col border-r" style={{ borderColor: "rgba(233,233,237,.08)" }}>
+        <div className="px-[18px] pt-[18px] pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[19px] leading-tight font-medium" style={{ letterSpacing: "-.02em" }}>
+                Words
+              </div>
+              <div className="text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+                {allWords.length} total · {shakyCount} shaky
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAdd(true)}
+              className="flex min-h-[34px] items-center gap-1.5 rounded-[9px] px-3 text-[12.5px] font-medium text-white"
+              style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+            >
+              <Plus size={14} weight="bold" aria-hidden="true" />
+              Word
+            </button>
+          </div>
+          <div className="relative mt-[11px]">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search your words"
+              aria-label="Search your words"
+              className="min-h-[38px] w-full rounded-[10px] pl-[34px] text-[13.5px] outline-none"
+              style={{ background: "#1c1f2c", color: "#e9e9ed", border: "1px solid rgba(233,233,237,.1)" }}
+            />
+            <MagnifyingGlass size={15} weight="regular" className="absolute top-[11px] left-[11px]" style={{ color: "rgba(233,233,237,.45)" }} aria-hidden="true" />
+          </div>
+          <div className="mt-[9px] flex gap-1.5">
+            {FILTERS.map((f) => {
+              const active = filter === f.key;
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setFilter(f.key)}
+                  className="rounded-full px-[10px] py-1 text-[10.5px] whitespace-nowrap"
+                  style={{ background: active ? "rgba(145,132,217,.22)" : "#20222f", color: active ? "#d2cefd" : "rgba(233,233,237,.6)" }}
+                >
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto pb-3">
+          {filtered.map((w) => {
+            const bars = sparklines.get(w.id) ?? Array<number>(SPARKLINE_SLOTS).fill(NO_DATA_HEIGHT);
+            const active = w.id === effectiveSelectedId;
+            return (
+              <div
+                key={w.id}
+                onClick={() => setSelectedId(w.id)}
+                className="flex cursor-pointer items-center gap-[11px] px-[18px] py-[11px]"
+                style={{
+                  background: active ? "linear-gradient(90deg,rgba(145,132,217,.14),transparent)" : "transparent",
+                  boxShadow: active ? "inset 2px 0 0 #9184d9" : "none",
+                  borderBottom: "1px solid rgba(233,233,237,.05)",
+                }}
+              >
+                <div className="grid size-8 shrink-0 place-items-center rounded-[9px] text-[10.5px] font-medium" style={{ background: "rgba(233,233,237,.08)", color: chipColor(w) }}>
+                  {chipLabel(w)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[14px] font-medium">{w.headword}</div>
+                  <div className="truncate text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
+                    {w.meaning ?? "no meaning yet"}
+                  </div>
+                </div>
+                <div className="flex h-4 shrink-0 items-end gap-[2.5px]">
+                  {bars.map((h, i) => (
+                    <i key={i} className="block w-1 rounded-[1px]" style={{ height: h * 0.8, background: barColor(h) }} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="min-w-0 flex-1">
+        {effectiveSelectedId ? (
+          <WordDetailContent key={effectiveSelectedId} id={effectiveSelectedId} embedded />
+        ) : (
+          <div className="grid h-full place-items-center text-[13px]" style={{ color: "rgba(233,233,237,.4)" }}>
+            No words yet.
+          </div>
+        )}
+      </div>
+    </div>
+
       <AddWordsDialog
         open={showAdd}
         initialWord={q && filtered.length === 0 ? query.trim() : ""}
         onClose={() => setShowAdd(false)}
       />
-    </div>
+    </>
   );
 }

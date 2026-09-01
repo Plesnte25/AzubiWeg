@@ -110,7 +110,7 @@ function StationNode({
 }
 
 export default function Syllabus() {
-  const { goBack, backLabel } = useNavStack();
+  const { goBack, backLabel, push } = useNavStack();
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["learning", "syllabus"], queryFn: api.learningSyllabus });
   const [userLevel, setUserLevel] = useState<CefrLevel | null>(null);
@@ -163,7 +163,7 @@ export default function Syllabus() {
 
   return (
     <div
-      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col overflow-y-auto px-5 pt-[calc(env(safe-area-inset-top)+18px)] pb-6"
+      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col overflow-y-auto px-5 pt-[calc(env(safe-area-inset-top)+18px)] pb-6 lg:mx-auto lg:my-8 lg:min-h-0 lg:max-w-[640px] lg:rounded-[20px] lg:border lg:border-white/5 lg:pb-8"
       style={{ background: "linear-gradient(180deg,#161826 0%,#1c1e30 60%,#161826 100%)" }}
     >
       <div className="flex items-center justify-between">
@@ -231,7 +231,12 @@ export default function Syllabus() {
               >
                 <Flag size={14} weight="regular" aria-hidden="true" />
               </div>
-              <div className="rounded-xl p-3 py-3.5" style={{ border: "1px solid rgba(145,132,217,.4)", background: "rgba(145,132,217,.08)" }}>
+              <button
+                type="button"
+                onClick={() => push("/plan/exam-gate")}
+                className="w-full rounded-xl p-3 py-3.5 text-left"
+                style={{ border: "1px solid rgba(145,132,217,.4)", background: "rgba(145,132,217,.08)" }}
+              >
                 <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "#b5abfc" }}>
                   Self-test · gate to {LEVELS[levelIdx + 1] ? LEVEL_LABELS[LEVELS[levelIdx + 1]!] : "next level"}
                 </div>
@@ -239,11 +244,7 @@ export default function Syllabus() {
                 <div className="mt-0.5 text-[11.5px]" style={{ color: "rgba(233,233,237,.45)" }}>
                   {examGate.hasContent && "passed" in examGate ? (examGate.passed ? "Passed" : "Ready — syllabus complete") : "Not yet available"}
                 </div>
-                {/* Phase 12 builds the real Exam Gate screen (stat cards, section
-                    breakdown, Drill-first/Start-exam) — GET /api/learning/exam/status
-                    is real and working, this teaser just doesn't have anywhere to
-                    push to yet. */}
-              </div>
+              </button>
             </div>
           )}
         </div>

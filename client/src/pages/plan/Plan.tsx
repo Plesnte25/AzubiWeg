@@ -6,6 +6,7 @@ import {
   Cards,
   CaretDown,
   Check,
+  ListChecks,
   NotePencil,
   Path,
   Plus,
@@ -46,10 +47,9 @@ function fmtWeekday(iso: string): string {
   return new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { weekday: "narrow" });
 }
 
-/** The 7-cell read-only week strip (check/fraction/dot per day) — a
- * literal, much simpler sibling of components/RoadmapWeekStrip.tsx (which
- * stays in Week mode below, chevrons/month-header and all; this one has
- * neither, matching the handoff's Plan screen exactly). */
+/** The 7-cell read-only week strip (check/fraction/dot per day) shown in
+ * Day mode — literal, matching the handoff's Plan screen exactly (no
+ * chevrons/month-header; Week mode below uses its own WeekOverview). */
 function WeekStrip({ days }: { days: { date: string; status: RoadmapDayStatus; done: number; total: number }[] }) {
   return (
     <div className="flex gap-[5px]">
@@ -211,7 +211,10 @@ export default function Plan() {
   const weekDays = week?.days.map((d) => ({ date: d.date, status: d.status, done: d.tasks.filter((t) => t.completedAt !== null).length, total: d.tasks.length }));
 
   return (
-    <div className="-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-[18px] pt-[calc(env(safe-area-inset-top)+18px)]" style={{ background: "radial-gradient(110% 40% at 20% 4%, #22253c, #161826 58%)" }}>
+    <div
+      className="-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-[18px] pt-[calc(env(safe-area-inset-top)+18px)] lg:mx-auto lg:my-8 lg:min-h-0 lg:max-w-[640px] lg:rounded-[20px] lg:border lg:border-white/5 lg:pb-8"
+      style={{ background: "radial-gradient(110% 40% at 20% 4%, #22253c, #161826 58%)" }}
+    >
       <div className="flex items-center justify-between">
         <div>
           <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
@@ -241,6 +244,7 @@ export default function Plan() {
           { label: "Syllabus", icon: Path, to: "/plan/syllabus" },
           { label: "Sources", icon: BookOpen, to: "/plan/sources" },
           { label: "Notes", icon: NotePencil, to: "/plan/notes" },
+          { label: "Tests", icon: ListChecks, to: "/plan/self-tests" },
         ].map(({ label, icon: Icon, to }) => (
           <button
             key={to}

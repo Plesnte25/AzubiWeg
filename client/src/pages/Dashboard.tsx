@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Fire } from "@phosphor-icons/react";
-import { useNavigate } from "react-router-dom";
+import { Briefcase, Check, Fire, PencilSimple } from "@phosphor-icons/react";
 import { api, getUser } from "../api/client";
 import type { DashboardNextTask, RoadmapSkill } from "../api/types";
+import { ProfileSheet } from "../components/ProfileSheet";
 import ReviewDial from "../components/ReviewDial";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { Skeleton } from "../components/ui/Skeleton";
 import { levelStates } from "../lib/levels";
 import { SKILL_LABELS } from "../lib/skills";
 import { useNavStack } from "../lib/navStack";
+import { ExamSchedule } from "./plan/ExamSchedule";
 
 // The 5 skills this screen shows, in this exact order — literal per the
 // handoff (README §2.5), which deliberately does NOT use this app's usual
@@ -69,11 +70,17 @@ function initials(name: string | undefined): string {
 }
 
 export default function Dashboard() {
-  const navigate = useNavigate();
   const { switchTab, push } = useNavStack();
   const [taskDetailOpen, setTaskDetailOpen] = useState(false);
+  const [examScheduleOpen, setExamScheduleOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const { data, isLoading } = useQuery({ queryKey: ["dashboard"], queryFn: api.dashboard });
   const { data: activity } = useQuery({ queryKey: ["activity", "summary", 1], queryFn: () => api.activitySummary(1) });
+  // lg-only 3-column layout needs the full today's-task list (dashboard's
+  // own payload only has tasksDone/tasksTotal/nextTask) and sources — both
+  // real, both already fetched elsewhere in the app (Plan.tsx, Sources.tsx)
+  const { data: todayFull } = useQuery({ queryKey: ["learning", "roadmap", "today"], queryFn: api.roadmapToday });
+  const { data: sourcesData } = useQuery({ queryKey: ["learning", "sources"], queryFn: api.learningSources });
 
   if (isLoading || !data) {
     return (
@@ -124,8 +131,9 @@ export default function Dashboard() {
   };
 
   return (
+    <>
     <div
-      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)]"
+      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)] lg:hidden"
       style={{ background: "radial-gradient(120% 48% at 50% 6%, #23263d 0%, #161826 64%)" }}
     >
       {/* ── header ── */}
@@ -152,7 +160,7 @@ export default function Dashboard() {
           </div>
           <button
             type="button"
-            onClick={() => navigate("/settings")}
+            onClick={() => setProfileOpen(true)}
             aria-label="Profile and settings"
             className="grid size-10 shrink-0 place-items-center rounded-full text-[15px] font-medium"
             style={{
@@ -227,7 +235,7 @@ export default function Dashboard() {
         </div>
         <button
           type="button"
-          onClick={() => switchTab("/plan/syllabus")}
+          onClick={() => setExamScheduleOpen(true)}
           className="rounded-xl p-[11px] text-left"
           style={{ background: "#1c1f2c" }}
         >
@@ -334,6 +342,242 @@ export default function Dashboard() {
           })}
         </button>
       </div>
+    </div>
+
+    {/* ── lg+: 3-column desktop layout (German Companion Desktop.dc.html,
+        id="1a") — same data as the mobile column above, laid out wider. ── */}
+    <div
+      className="hidden min-h-0 lg:flex lg:h-full lg:flex-col"
+      style={{ background: "radial-gradient(120% 48% at 50% 6%, #23263d 0%, #161826 64%)" }}
+    >
+      <div className="flex items-end justify-between">
+        <div>
+          {dayNumber !== null && (
+            <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
+              {dayLabel} · day {dayNumber}
+            </div>
+          )}
+          <div className="mt-1 text-[28px] leading-tight font-medium" style={{ letterSpacing: "-.02em" }}>
+            {greeting()}{firstName ? `, ${firstName}` : ""}.
+          </div>
+        </div>
+        <div className="flex items-center gap-[9px]">
+          <button
+            type="button"
+            onClick={() => push("/plan/notes/edit/new")}
+            className="flex min-h-[38px] items-center gap-[7px] rounded-[10px] px-[13px] text-[13px]"
+            style={{ background: "#20222f", color: "#e9e9ed" }}
+          >
+            <PencilSimple size={15} weight="regular" aria-hidden="true" />
+            Capture note
+          </button>
+          <button
+            type="button"
+            onClick={() => push("/review")}
+            className="flex min-h-[38px] items-center gap-[7px] rounded-[10px] px-[15px] text-[13.5px] font-medium text-white"
+            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+          >
+            Start reviewing →
+          </button>
+        </div>
+      </div>
+      <div className="mt-4 h-px shrink-0" style={{ background: "linear-gradient(to right, rgba(233,233,237,.16), rgba(233,233,237,.16) calc(100% - 60px), transparent)" }} />
+
+      <div className="mt-5 grid min-h-0 flex-1 grid-cols-[300px_1fr_288px] gap-5">
+        {/* left column */}
+        <div className="flex min-h-0 flex-col gap-3.5">
+          <div className="flex flex-col items-center rounded-2xl p-[18px]" style={{ background: "linear-gradient(160deg,#232338,#1c1f2c)" }}>
+            <ReviewDial dueCount={data.dueToday} reviewedToday={data.reviewsToday} secondaryPercent={activeLevelPercent} onStart={() => push("/review")} />
+            <div className="mt-3 flex justify-center gap-[18px] text-[10.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
+              <span className="flex items-center gap-[5px]">
+                <i className="inline-block size-[7px] rounded-sm" style={{ background: "#9184d9" }} />
+                review {data.dueToday}
+              </span>
+              <span className="flex items-center gap-[5px]">
+                <i className="inline-block size-[7px] rounded-sm" style={{ background: "#423a6a" }} />
+                new {data.newWords}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="rounded-xl p-[13px]" style={{ background: "#1c1f2c" }}>
+              <div className="flex items-baseline gap-[3px]">
+                <span className="text-[22px] font-medium" style={{ letterSpacing: "-.02em" }}>{minsToday}</span>
+                <span className="text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>/ {DAILY_MINUTES_GOAL}</span>
+              </div>
+              <div className="text-[10.5px]" style={{ color: "rgba(233,233,237,.55)" }}>minutes today</div>
+              <div className="mt-[3px] h-[3px] overflow-hidden rounded-full" style={{ background: "#292b31" }}>
+                <div className="h-full rounded-full" style={{ width: `${minsPercent}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }} />
+              </div>
+            </div>
+            <div className="rounded-xl p-[13px]" style={{ background: "#1c1f2c" }}>
+              <div className="flex items-baseline gap-[3px]">
+                <span className="text-[22px] font-medium" style={{ letterSpacing: "-.02em" }}>{data.roadmapToday?.tasksDone ?? 0}</span>
+                <span className="text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>/ {data.roadmapToday?.tasksTotal ?? 0}</span>
+              </div>
+              <div className="text-[10.5px]" style={{ color: "rgba(233,233,237,.55)" }}>plan tasks</div>
+              <div className="mt-[3px] h-[3px] overflow-hidden rounded-full" style={{ background: "#292b31" }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${data.roadmapToday && data.roadmapToday.tasksTotal > 0 ? Math.round((data.roadmapToday.tasksDone / data.roadmapToday.tasksTotal) * 100) : 0}%`,
+                    background: "linear-gradient(90deg,#5d5294,#b5abfc)",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <button type="button" onClick={() => switchTab("/stats")} className="mt-auto rounded-xl p-[14px] text-left" style={{ background: "#1c1f2c" }}>
+            <div className="flex items-center gap-[9px]">
+              <div className="text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>Weakest right now</div>
+              <span className="text-[11px]" style={{ color: "#e4c4b6" }}>{SKILL_LABELS[weakest.skill]} · {weakest.pct} %</span>
+            </div>
+            <div className="mt-2.5 flex gap-[6px]">
+              {weakestStrip.map((s) => {
+                const weak = s.pct < 50;
+                return (
+                  <div key={s.skill} className="flex flex-1 flex-col gap-[5px]">
+                    <div className="h-[5px] overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
+                      <div className="h-full rounded-[3px]" style={{ width: `${s.pct}%`, background: weak ? "#d19b86" : s.pct >= 70 ? "#b5abfc" : "#796cbf" }} />
+                    </div>
+                    <span className="text-[9.5px]" style={{ color: weak ? "#e4c4b6" : "rgba(233,233,237,.55)" }}>{s.short}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </button>
+        </div>
+
+        {/* middle column */}
+        <div className="flex min-h-0 flex-col gap-3.5">
+          <div
+            onClick={() => setTaskDetailOpen(true)}
+            className="relative cursor-pointer overflow-hidden rounded-2xl p-[18px]"
+            style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a, 0 12px 28px rgba(0,0,0,.4)" }}
+          >
+            <div className="animate-pulse-glow pointer-events-none absolute -top-[50px] -right-10 size-[180px] rounded-full" style={{ background: "radial-gradient(closest-side, rgba(145,132,217,.28), transparent)" }} />
+            <div className="flex items-center gap-2">
+              <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>Next in your plan</div>
+              <span className="rounded-full border px-1.5 py-px text-[9px]" style={{ borderColor: "rgba(233,233,237,.14)", color: "rgba(233,233,237,.62)" }}>
+                {nextTask?.skill ? SKILL_LABELS[nextTask.skill] : nextTask ? "Your own" : "Free"}
+              </span>
+            </div>
+            <div className="mt-2 text-[23px] font-medium" style={{ letterSpacing: "-.02em" }}>
+              {!roadmapStarted ? "Start your 26-week roadmap" : nextTask ? nextTask.title : "Everything on today's plan is done."}
+            </div>
+            <div className="mt-[15px] flex items-center gap-[14px]">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!roadmapStarted) {
+                    switchTab("/plan");
+                    return;
+                  }
+                  startNextTask();
+                }}
+                className="min-h-[42px] rounded-[10px] px-[17px] text-[14px] font-medium text-white"
+                style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+              >
+                {!roadmapStarted ? "Get started" : nextTask ? "Start" : "Practise anyway"} →
+              </button>
+              {nextTask && (
+                <div className="text-[11.5px]" style={{ color: "rgba(233,233,237,.55)" }}>{estimateFor(nextTask)}</div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl" style={{ background: "#1c1f2c" }}>
+            <div className="flex items-center justify-between px-4 pt-3.5 pb-2.5">
+              <div className="text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+                Today's plan · {data.roadmapToday?.tasksDone ?? 0} of {data.roadmapToday?.tasksTotal ?? 0} done
+              </div>
+              <button type="button" onClick={() => switchTab("/plan")} className="flex items-center gap-[5px] text-[11.5px]" style={{ color: "#b5abfc" }}>
+                See plan
+              </button>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col gap-[7px] overflow-y-auto px-4 pb-3.5">
+              {(todayFull?.tasks ?? []).length === 0 ? (
+                <p className="text-[12.5px]" style={{ color: "rgba(233,233,237,.4)" }}>Nothing planned for today yet.</p>
+              ) : (
+                todayFull!.tasks.map((task) => {
+                  const done = task.completedAt !== null;
+                  const isNext = !done && nextTask?.id === task.id;
+                  return (
+                    <div
+                      key={task.id}
+                      onClick={isNext ? () => setTaskDetailOpen(true) : undefined}
+                      className="flex items-center gap-[11px] rounded-[10px] p-3"
+                      style={{
+                        background: isNext ? "linear-gradient(160deg,#2b2741,#232532)" : done ? "#20222f" : "#20222f",
+                        boxShadow: isNext ? "0 0 0 1px #423a6a" : "none",
+                        opacity: done ? 0.6 : 1,
+                        cursor: isNext ? "pointer" : "default",
+                      }}
+                    >
+                      <div
+                        className="grid size-5 shrink-0 place-items-center rounded-[6px]"
+                        style={{ background: done ? "#9184d9" : "transparent", border: done ? "none" : "1.5px solid rgba(233,233,237,.28)" }}
+                      >
+                        {done && <Check size={12} weight="regular" style={{ color: "#161826" }} aria-hidden="true" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13.5px] font-medium" style={{ textDecoration: done ? "line-through" : "none", textDecorationColor: "rgba(233,233,237,.35)" }}>
+                          {task.title}
+                        </div>
+                        {task.minutesSpent !== null && (
+                          <div className="text-[10.5px]" style={{ color: "rgba(233,233,237,.45)" }}>
+                            {task.minutesSpent} min
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* right column */}
+        <div className="flex min-h-0 flex-col gap-3.5">
+          {sourcesData && sourcesData.sources.length > 0 && (
+            <div className="flex min-h-0 flex-col gap-[11px] overflow-hidden rounded-xl p-[14px]" style={{ background: "#1c1f2c" }}>
+              <div className="flex items-center justify-between">
+                <div className="text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>Sources in play</div>
+                <button type="button" onClick={() => switchTab("/plan/sources")} style={{ color: "rgba(233,233,237,.35)" }}>›</button>
+              </div>
+              <div className="flex flex-col gap-[11px] overflow-hidden">
+                {sourcesData.sources.slice(0, 3).map((s) => (
+                  <div key={s.id}>
+                    <div className="flex items-center gap-[9px]">
+                      <span className="min-w-0 flex-1 truncate text-[12.5px]">{s.title}</span>
+                      <span className="text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>{s.percent ?? s.completedUnits}{s.percent !== null ? "%" : ""}</span>
+                    </div>
+                    <div className="mt-1.5 h-1 overflow-hidden rounded-[2px]" style={{ background: "#292b31" }}>
+                      <div className="h-full" style={{ width: `${s.percent ?? 0}%`, background: "linear-gradient(90deg,#5d5294,#9184d9)" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <button type="button" onClick={() => switchTab("/jobs")} className="rounded-xl p-[14px] text-left" style={{ background: "#1c1f2c" }}>
+            <div className="flex items-center gap-2">
+              <Briefcase size={14} weight="regular" style={{ color: "#b5abfc" }} aria-hidden="true" />
+              <div className="text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>Applications</div>
+            </div>
+            <div className="mt-1.5 flex items-baseline gap-2">
+              <span className="text-[20px] font-medium">{data.applications.wishlist + data.applications.applied + data.applications.interview}</span>
+              <span className="text-[11.5px]" style={{ color: "rgba(233,233,237,.55)" }}>open · {data.applications.offer} offer{data.applications.offer === 1 ? "" : "s"}</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
 
       <BottomSheet open={taskDetailOpen} onClose={() => setTaskDetailOpen(false)}>
         <div className="flex items-center gap-1.5">
@@ -387,6 +631,17 @@ export default function Dashboard() {
           </button>
         </div>
       </BottomSheet>
-    </div>
+
+      <ExamSchedule open={examScheduleOpen} onClose={() => setExamScheduleOpen(false)} />
+      <ProfileSheet
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        name={user?.name}
+        email={user?.email}
+        level={activeLevel}
+        dayNumber={dayNumber}
+        streak={data.streak}
+      />
+    </>
   );
 }

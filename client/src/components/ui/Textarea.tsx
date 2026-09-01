@@ -5,7 +5,8 @@ type Variant = "bordered" | "ghost";
 
 interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   /** "bordered" — a standard form textarea (rounded, border-hairline, bg-card),
-   * matching Input.tsx's own focus treatment (border-color shift, no ring).
+   * with the same border-color-shift-not-ring focus treatment used across
+   * this component library.
    * "ghost" — the borderless, soft-filled composer style already established
    * for note-taking (NotesComposer, TaskDetailDrawer's journal field): no
    * border, sits in its own bg-paper box, and shifts to bg-hairline-soft on

@@ -4,6 +4,7 @@ import {
   EXAM_PASS_THRESHOLD,
   buildExamSession,
   canAttemptExam,
+  examSectionCounts,
   levelHasExamContent,
   scoreExam,
 } from "../src/services/learning/exam.js";
@@ -17,6 +18,19 @@ describe("levelHasExamContent", () => {
   it("is false for a level with no questions yet", () => {
     expect(levelHasExamContent("a2")).toBe(false);
     expect(levelHasExamContent("b1")).toBe(false);
+  });
+});
+
+describe("examSectionCounts", () => {
+  it("counts a1's real per-section bank size, summing to the whole bank", () => {
+    const counts = examSectionCounts("a1");
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    expect(total).toBe(EXAM_QUESTION_BANK.filter((q) => q.level === "a1").length);
+    expect(counts.vocabulary).toBeGreaterThan(0);
+  });
+
+  it("is all zero for a level with no content", () => {
+    expect(examSectionCounts("a2")).toEqual({ vocabulary: 0, grammar: 0, gender_drill: 0, listening: 0 });
   });
 });
 

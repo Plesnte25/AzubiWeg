@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Plus, SkipForward, Trash2, Undo2, X } from "lucide-react";
+import { ArrowCounterClockwise, Plus, SkipForward, Trash, X } from "@phosphor-icons/react";
 import { api } from "../../api/client";
 import type { SyllabusItem } from "../../api/types";
 import { Attachments } from "../../components/Attachments";
@@ -49,7 +49,7 @@ function NotesComposer({ item, onChanged }: { item: SyllabusItem; onChanged: () 
             onChanged={onChanged}
             renderTrigger={({ onClick, uploading }) => (
               <CircleIconButton
-                icon={<Plus className="size-3.5" aria-hidden="true" />}
+                icon={<Plus size={14} weight="regular" aria-hidden="true" />}
                 title={uploading ? "Uploading…" : "Attach a file"}
                 onClick={onClick}
                 disabled={uploading}
@@ -132,15 +132,15 @@ export function StationDetailModal({
         <div className="flex shrink-0 items-center gap-1.5">
           {!isPreview && (
             <>
-              <CircleIconButton icon={<Plus className="size-4" aria-hidden="true" />} title="Add item" onClick={onAddItem} />
+              <CircleIconButton icon={<Plus size={16} weight="regular" aria-hidden="true" />} title="Add item" onClick={onAddItem} />
               <CircleIconButton
-                icon={skipped ? <Undo2 className="size-4" aria-hidden="true" /> : <SkipForward className="size-4" aria-hidden="true" />}
+                icon={skipped ? <ArrowCounterClockwise size={16} weight="regular" aria-hidden="true" /> : <SkipForward size={16} weight="regular" aria-hidden="true" />}
                 title={skipped ? "Un-skip station" : "Skip station"}
                 onClick={onSkip}
               />
             </>
           )}
-          <CircleIconButton icon={<X className="size-4" aria-hidden="true" />} title="Close" onClick={onClose} />
+          <CircleIconButton icon={<X size={16} weight="regular" aria-hidden="true" />} title="Close" onClick={onClose} />
         </div>
       </div>
 
@@ -173,7 +173,7 @@ export function StationDetailModal({
                     title="Delete item"
                     className="shrink-0 text-ink-400 hover:text-danger-600"
                   >
-                    <Trash2 className="size-3.5" aria-hidden="true" />
+                    <Trash size={14} weight="regular" aria-hidden="true" />
                   </button>
                 )}
               </div>

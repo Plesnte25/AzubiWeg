@@ -337,6 +337,8 @@ export type SessionQuestion =
 
 export type ExamSection = "vocabulary" | "grammar" | "gender_drill" | "listening";
 
+export type ExamAnswerValue = string | number | boolean;
+
 // mirrors server's ExamQuestionPublic — server/src/services/learning/exam.ts
 export type ExamQuestionPublic =
   | { qid: string; section: ExamSection; type: "mcq"; prompt: string; choices: string[] }
@@ -368,6 +370,8 @@ export interface ExamStatus {
   lastAttempt: ExamAttempt | null;
   timeLimitMinutes: number;
   cooldownDays: number;
+  passThreshold: number;
+  sectionCounts: Record<ExamSection, number>;
 }
 
 export interface TopicBreakdown {

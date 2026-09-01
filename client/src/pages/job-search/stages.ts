@@ -16,8 +16,8 @@ export const STAGE_BORDER: Record<ApplicationStatus, string> = {
   rejected: "border-l-brand-500",
 };
 
-// Same semantics as STAGE_BORDER, as CSS color values for the sm/md
-// PillTabs stage filter (BoardMobile.tsx) — Tailwind text-color utility
+// Same semantics as STAGE_BORDER, as CSS color values for the funnel bar
+// and stage-pill filter (BoardMobile.tsx) — Tailwind text-color utility
 // class names aren't usable as inline style values.
 export const STAGE_COLOR: Record<ApplicationStatus, string> = {
   wishlist: "var(--color-ink-400)",

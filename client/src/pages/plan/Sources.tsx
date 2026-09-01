@@ -236,7 +236,10 @@ export default function Sources() {
   const activeCount = sources.filter((s) => s.percent === null || s.percent < 100).length;
 
   return (
-    <div className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-[18px] pt-[calc(env(safe-area-inset-top)+18px)]" style={{ background: "radial-gradient(110% 38% at 22% 4%, #23253a, #161826 58%)" }}>
+    <div
+      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-[18px] pt-[calc(env(safe-area-inset-top)+18px)] lg:mx-auto lg:my-8 lg:min-h-0 lg:max-w-[640px] lg:rounded-[20px] lg:border lg:border-white/5 lg:pb-8"
+      style={{ background: "radial-gradient(110% 38% at 22% 4%, #23253a, #161826 58%)" }}
+    >
       <div className="flex items-center justify-between text-[13px]" style={{ color: "rgba(233,233,237,.55)" }}>
         <button type="button" onClick={goBack} className="flex items-center gap-[3px]" style={{ color: "inherit" }}>
           <CaretLeft size={14} weight="regular" aria-hidden="true" />

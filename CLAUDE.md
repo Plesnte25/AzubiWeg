@@ -20,17 +20,23 @@ in this project — always run `npx prisma generate` explicitly after a
 migration, or the server throws "Unknown argument" errors against a stale
 generated client. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-## The Nocturne redesign (in progress)
+## The Nocturne redesign (complete)
 
-The app is mid-way through a complete UI/UX rebuild against a Claude Design
-handoff — a dark-only design system called **Nocturne**, a new 5-tab
-(Today/Words/Plan/Jobs/Stats) + back-stack navigation model, and several new
+The app has been fully rebuilt against a Claude Design handoff — a
+dark-only design system called **Nocturne**, a new 5-tab
+(Today/Words/Plan/Jobs/Stats) + back-stack navigation model, several new
 backend subsystems (kaikki.org/DErivBase enrichment pipeline, exam-gating,
-word-linked notes). The full plan — 20 ordered phases, sequencing rationale,
-and per-phase file lists — lives at
-`~/.claude/plans/so-we-are-going-wondrous-axolotl.md`; check it (and this
-project's memory) for current phase status before starting new UI work,
-rather than assuming a page hasn't been touched yet.
+word-linked notes), and a real desktop (lg+) layout — a labelled sidebar +
+⌘K palette shell, pixel-precise Dashboard/Words desktop layouts, and every
+other real screen centered in a consistent capped-width pane inside that
+shell. All 20 phases (0–19, including the desktop pass and a full
+regression/dead-code cleanup) are done. The plan that drove it — sequencing
+rationale, per-phase file lists — lives at
+`~/.claude/plans/so-we-are-going-wondrous-axolotl.md`, kept for historical
+reference rather than a live status tracker now that nothing's outstanding
+against it. **`docs/KNOWN_ISSUES.md`** tracks what's left: a small bug
+backlog deliberately deferred until the whole redesign shipped, now being
+worked through.
 
 Rollout is **big-bang per phase** — no coexisting old/new routes or
 feature-flagged UI. When a phase reskins a page, the old implementation is

@@ -31,6 +31,19 @@ function shuffle<T>(arr: T[], rng: () => number): T[] {
   return out;
 }
 
+/** Question count per section for a level -- real, from the bank, but
+ * never the questions/answers themselves. Exam Gate (Phase 12 of the
+ * Nocturne redesign) shows this as "40 questions · meaning & gender" per
+ * section; safe to expose since knowing the count doesn't help anyone
+ * cheat. */
+export function examSectionCounts(level: CefrLevel): Record<ExamSection, number> {
+  const counts: Record<ExamSection, number> = { vocabulary: 0, grammar: 0, gender_drill: 0, listening: 0 };
+  for (const q of EXAM_QUESTION_BANK) {
+    if (q.level === level) counts[q.section]++;
+  }
+  return counts;
+}
+
 /** Whether any exam questions exist yet for this level — a level with none
  * can never be exam-gated (see levelStatesWithExamGate() in
  * services/learning/progress.ts), or completing its syllabus would

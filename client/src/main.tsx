@@ -18,9 +18,13 @@ const Plan = lazy(() => import("./pages/plan/Plan"));
 const Syllabus = lazy(() => import("./pages/plan/Syllabus"));
 const Sources = lazy(() => import("./pages/plan/Sources"));
 const Notes = lazy(() => import("./pages/plan/Notes"));
+const NoteEditor = lazy(() => import("./pages/plan/NoteEditor"));
 const SelfTests = lazy(() => import("./pages/plan/SelfTests"));
+const SelfTestRunner = lazy(() => import("./pages/plan/SelfTestRunner"));
+const ExamGate = lazy(() => import("./pages/plan/ExamGate"));
+const ExamRunner = lazy(() => import("./pages/plan/ExamRunner"));
 const Settings = lazy(() => import("./pages/Settings"));
-const Stats = lazy(() => import("./pages/Stats"));
+const Stats = lazy(() => import("./pages/stats/Stats"));
 const Vocabulary = lazy(() => import("./pages/Vocabulary"));
 const WordDetail = lazy(() => import("./pages/words/WordDetail"));
 const ReviewSession = lazy(() => import("./pages/review/ReviewSession"));
@@ -84,7 +88,11 @@ const router = createBrowserRouter([
           { path: "/plan/syllabus", element: <Lazy><Syllabus /></Lazy> },
           { path: "/plan/sources", element: <Lazy><Sources /></Lazy> },
           { path: "/plan/notes", element: <Lazy><Notes /></Lazy> },
+          { path: "/plan/notes/edit/:id", element: <Lazy><NoteEditor /></Lazy> },
           { path: "/plan/self-tests", element: <Lazy><SelfTests /></Lazy> },
+          { path: "/plan/self-tests/run", element: <Lazy><SelfTestRunner /></Lazy> },
+          { path: "/plan/exam-gate", element: <Lazy><ExamGate /></Lazy> },
+          { path: "/exam-take", element: <Lazy><ExamRunner /></Lazy> },
           { path: "/jobs", element: <Lazy><JobSearch /></Lazy> },
           { path: "/stats", element: <Lazy><Stats /></Lazy> },
           // ── legacy URL redirects — old bookmarks/links keep working ──

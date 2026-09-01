@@ -11,11 +11,11 @@ posting URL). **V3** adds a Learning Progress Hub — a CEFR syllabus, a day-by-
 study roadmap, exam-gated level progression, and self-tests — feeding a richer
 dashboard.
 
-> **Mid-rebuild**: the whole UI is being reworked against a dark-only design
-> system ("Nocturne") with a new 5-tab navigation model — see
-> [CLAUDE.md](CLAUDE.md#the-nocturne-redesign-in-progress) for status. The
-> screenshots below are from the previous design and are queued for a refresh;
-> the feature descriptions in this README stay current either way.
+> **Recently rebuilt**: the whole UI now runs on a dark-only design system
+> ("Nocturne") with a new 5-tab navigation model and a real desktop layout —
+> see [CLAUDE.md](CLAUDE.md#the-nocturne-redesign-complete) for what changed.
+> The screenshots below are from the previous design and are queued for a
+> refresh; the feature descriptions in this README stay current either way.
 
 ## What V1 does
 
@@ -178,20 +178,18 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full ecosystem plan and feature s
   removed in favor of the plain activity/streak tracking above; the document
   checklist and an in-app notifications engine were also removed around the
   same time.)
-- **Now — the Nocturne redesign**: a complete UI/UX rebuild against a
-  dark-only design system and a new 5-tab navigation model, superseding the
-  app-wide-bug-fixing-pass priority below (reprioritized once the redesign
-  was scoped). Full 20-phase plan and current status in
-  [CLAUDE.md](CLAUDE.md#the-nocturne-redesign-in-progress). Landed so far:
-  the checklist/notifications removal, the kaikki.org/DErivBase enrichment
-  pipeline swap, exam-gating, the new nav shell, and the Today/Words/Word
-  Detail/Review-session screens; Plan, Jobs, Stats, Notes, Self-tests,
-  Settings, and desktop layouts are still on the pre-Nocturne design.
-- **After that** — the pre-redesign priority list, picked back up once
-  Nocturne ships: an app-wide bug-fixing pass (first tranche already landed
-  2026-08-27: a unified type/elevation/motion design system, kanban keyboard
-  accessibility, ARIA/chart accessibility fixes, consistent "Show more"
-  pagination), vocab PDF export + CLI (the last of V1's scope), dashboard
+- ~~**The Nocturne redesign**~~ ✅ a complete UI/UX rebuild against a
+  dark-only design system, a new 5-tab navigation model, and a real desktop
+  (lg+) layout. Full 20-phase history in
+  [CLAUDE.md](CLAUDE.md#the-nocturne-redesign-complete). A small bug backlog
+  deliberately deferred until the whole rebuild shipped is tracked in
+  `docs/KNOWN_ISSUES.md` and is being worked through now.
+- **Now** — the pre-redesign priority list, picked back up now that
+  Nocturne has shipped: an app-wide bug-fixing pass (first tranche already
+  landed 2026-08-27: a unified type/elevation/motion design system, kanban
+  keyboard accessibility, ARIA/chart accessibility fixes, consistent "Show
+  more" pagination; a second tranche is clearing the Nocturne-era backlog
+  above), vocab PDF export + CLI (the last of V1's scope), dashboard
   upgrades (certificates, GitHub activity, pulled forward from V4), and the
   rest of V5 (GitHub Actions CI, calendar integration, grammar
   micro-lessons).

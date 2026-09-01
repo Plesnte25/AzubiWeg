@@ -27,7 +27,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 // target, and Layout.tsx hides the tab bar/FAB while on one (distraction-
 // free session chrome, matching the handoff). Extend as each transient
 // screen is built (MCQ, fill-blank, note editor, ... land in later phases).
-const TRANSIENT_PATH_PREFIXES: string[] = ["/review"];
+const TRANSIENT_PATH_PREFIXES: string[] = ["/review", "/exam-take", "/plan/notes/edit", "/plan/self-tests/run"];
 
 // path prefix -> human label for the dynamic back button, e.g. "back to
 // Words". Extend as pushed screens are added in later phases (Word Detail,

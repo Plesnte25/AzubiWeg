@@ -11,9 +11,11 @@ import { levelProgress, levelStates, levelStatesWithExamGate, sourcePercent } fr
 import { QUESTION_BANK } from "../services/learning/question-bank.js";
 import {
   EXAM_ATTEMPT_COOLDOWN_DAYS,
+  EXAM_PASS_THRESHOLD,
   EXAM_TIME_LIMIT_MINUTES,
   buildExamSession,
   canAttemptExam,
+  examSectionCounts,
   levelHasExamContent,
   scoreExam,
 } from "../services/learning/exam.js";
@@ -928,6 +930,8 @@ learningRouter.get("/exam/status", async (req, res) => {
     lastAttempt: attempts[0] ?? null,
     timeLimitMinutes: EXAM_TIME_LIMIT_MINUTES,
     cooldownDays: EXAM_ATTEMPT_COOLDOWN_DAYS,
+    passThreshold: EXAM_PASS_THRESHOLD,
+    sectionCounts: examSectionCounts(activeLevel),
   });
 });
 

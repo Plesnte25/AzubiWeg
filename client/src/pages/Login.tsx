@@ -1,10 +1,22 @@
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, LockSimple } from "@phosphor-icons/react";
 import { api, ApiError, setSession } from "../api/client";
-import { Button } from "../components/ui/Button";
-import { Card } from "../components/ui/Card";
-import { Input } from "../components/ui/Input";
 
+const FIELD_LABEL_STYLE = { color: "rgba(233,233,237,.5)" } as const;
+
+/**
+ * Reskin of the handoff's sAuth (German Companion App.dc.html) — the
+ * visual style ports directly (centered column, pulsing app-mark circle,
+ * rounded dark inputs, disabled-until-filled primary button), but the
+ * fields and copy don't: the handoff's passphrase is a fake numeric-PIN
+ * keypad with a "Use Face ID instead" fallback and an "everything stays on
+ * this device, nothing is uploaded" disclaimer — none of that is true of
+ * this app (real bcrypt-hashed passwords over a real server, no local-only
+ * vault, no biometric auth), so this keeps the real email/password(/name)
+ * form and rewrites the disclaimer, per CLAUDE.md's one deliberate
+ * fidelity exception for this screen.
+ */
 export default function Login({ mode }: { mode: "login" | "register" }) {
   const navigate = useNavigate();
   const [name, setName] = useState("");
@@ -13,8 +25,11 @@ export default function Login({ mode }: { mode: "login" | "register" }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const canSubmit = email.trim() && password.length >= 8 && (mode === "login" || name.trim());
+
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (!canSubmit) return;
     setBusy(true);
     setError(null);
     try {
@@ -30,34 +45,70 @@ export default function Login({ mode }: { mode: "login" | "register" }) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card padding="lg" className="animate-fade-in w-full max-w-sm">
-        <form onSubmit={submit}>
-          <div className="mb-1 flex items-center gap-2">
-            <span className="grid size-7 place-items-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-caption font-bold text-white">
-              AW
+    <div
+      className="flex min-h-screen flex-col px-[26px] pt-[calc(env(safe-area-inset-top)+58px)] lg:items-center lg:justify-center lg:pt-0"
+      style={{ background: "radial-gradient(120% 46% at 50% 14%, #272a45 0%, #161826 68%)", color: "#e9e9ed" }}
+    >
+      <form onSubmit={submit} className="flex flex-1 flex-col justify-center gap-[26px] lg:max-w-[360px] lg:flex-none">
+        <div className="relative grid place-items-center">
+          <div
+            className="absolute size-[132px] rounded-full animate-pulse-glow"
+            style={{ background: "radial-gradient(closest-side, rgba(145,132,217,.26), transparent)" }}
+          />
+          <div
+            className="grid size-[76px] place-items-center rounded-[24px]"
+            style={{ background: "rgba(145,132,217,.14)", boxShadow: "0 0 0 1px rgba(181,171,252,.45)" }}
+          >
+            <span className="text-[31px] font-medium" style={{ letterSpacing: "-.03em", color: "#d2cefd" }}>
+              A
             </span>
-            <h1 className="text-heading font-semibold tracking-tight">AzubiWeg</h1>
           </div>
-          <p className="mb-5 text-body text-ink-600">
-            {mode === "login" ? "Welcome back. Weiter geht's!" : "Your companion for the journey to Germany."}
-          </p>
+        </div>
 
-          <div className="space-y-3">
-            {mode === "register" && (
-              <Input
+        <div className="text-center">
+          <div className="text-[27px] font-medium" style={{ letterSpacing: "-.025em" }}>
+            AzubiWeg
+          </div>
+          <p className="mt-[5px] text-[13px] leading-[1.5]" style={{ color: "rgba(233,233,237,.5)" }}>
+            {mode === "login" ? (
+              <>
+                Welcome back.
+                <br />
+                Weiter geht&rsquo;s.
+              </>
+            ) : (
+              <>
+                Your companion for the journey
+                <br />
+                to Germany.
+              </>
+            )}
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-[11px]">
+          {mode === "register" && (
+            <div>
+              <div className="mb-1.5 text-[11px]" style={FIELD_LABEL_STYLE}>
+                Name
+              </div>
+              <input
                 id="name"
-                label="Name"
                 autoComplete="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                aria-describedby={error ? "auth-error" : undefined}
                 required
+                className="box-border w-full rounded-[11px] px-[13px] text-[15px] outline-none"
+                style={{ minHeight: 46, background: "#20222f", color: "#e9e9ed", border: "1px solid rgba(233,233,237,.14)" }}
               />
-            )}
-            <Input
+            </div>
+          )}
+          <div>
+            <div className="mb-1.5 text-[11px]" style={FIELD_LABEL_STYLE}>
+              Email
+            </div>
+            <input
               id="email"
-              label="Email"
               type="email"
               autoComplete="email"
               value={email}
@@ -65,10 +116,16 @@ export default function Login({ mode }: { mode: "login" | "register" }) {
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? "auth-error" : undefined}
               required
+              className="box-border w-full rounded-[11px] px-[13px] text-[15px] outline-none"
+              style={{ minHeight: 46, background: "#20222f", color: "#e9e9ed", border: "1px solid rgba(233,233,237,.14)" }}
             />
-            <Input
+          </div>
+          <div>
+            <div className="mb-1.5 text-[11px]" style={FIELD_LABEL_STYLE}>
+              Password
+            </div>
+            <input
               id="password"
-              label="Password"
               type="password"
               autoComplete={mode === "login" ? "current-password" : "new-password"}
               value={password}
@@ -77,38 +134,52 @@ export default function Login({ mode }: { mode: "login" | "register" }) {
               aria-describedby={error ? "auth-error" : undefined}
               minLength={8}
               required
+              className="box-border w-full rounded-[11px] px-[13px] text-[15px] outline-none"
+              style={{ minHeight: 46, background: "#20222f", color: "#e9e9ed", border: "1px solid rgba(233,233,237,.14)" }}
             />
           </div>
+        </div>
 
-          {error && (
-            <p id="auth-error" role="alert" aria-live="assertive" className="mt-3 text-body text-danger-600">
-              {error}
-            </p>
-          )}
+        {error && (
+          <p id="auth-error" role="alert" aria-live="assertive" className="text-[12.5px]" style={{ color: "#e4c4b6" }}>
+            {error}
+          </p>
+        )}
 
-          <Button type="submit" size="lg" loading={busy} className="mt-4 w-full">
-            {mode === "login" ? "Sign in" : "Create account"}
-          </Button>
-
-          <p className="mt-4 text-center text-body text-ink-600">
+        <div className="flex flex-col gap-[10px]">
+          <button
+            type="submit"
+            disabled={!canSubmit || busy}
+            className="flex min-h-[48px] items-center justify-center gap-2 rounded-[12px] text-[15px] font-medium text-white transition-opacity disabled:opacity-45"
+            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+          >
+            {busy ? "…" : mode === "login" ? "Sign in" : "Create account"}
+            <ArrowRight size={16} weight="regular" aria-hidden="true" />
+          </button>
+          <p className="text-center text-[13px]" style={{ color: "rgba(233,233,237,.55)" }}>
             {mode === "login" ? (
               <>
                 New here?{" "}
-                <Link className="font-medium text-brand-700 hover:underline" to="/register">
+                <Link className="font-medium" style={{ color: "#b5abfc" }} to="/register">
                   Create an account
                 </Link>
               </>
             ) : (
               <>
                 Already registered?{" "}
-                <Link className="font-medium text-brand-700 hover:underline" to="/login">
+                <Link className="font-medium" style={{ color: "#b5abfc" }} to="/login">
                   Sign in
                 </Link>
               </>
             )}
           </p>
-        </form>
-      </Card>
+        </div>
+      </form>
+
+      <div className="flex items-start gap-2 pb-[30px] text-[11px] leading-[1.5]" style={{ color: "rgba(233,233,237,.32)" }}>
+        <LockSimple size={13} weight="regular" style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
+        Synced to your account — reachable from any device you sign into.
+      </div>
     </div>
   );
 }

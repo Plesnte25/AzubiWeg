@@ -45,14 +45,3 @@ export function SkeletonRow({ className }: { className?: string }) {
     </div>
   );
 }
-
-/** Loading shape for a single Stat.tsx tile — icon + value + label. */
-export function SkeletonStat({ className }: { className?: string }) {
-  return (
-    <div className={cn("flex flex-col items-center gap-1.5 text-center", className)}>
-      <Skeleton className="size-4 rounded-full" />
-      <Skeleton className="h-5 w-12" />
-      <Skeleton className="h-2.5 w-16" />
-    </div>
-  );
-}
