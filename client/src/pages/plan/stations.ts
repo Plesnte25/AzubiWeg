@@ -59,3 +59,26 @@ export function bestMatchingStation<T extends { theme: string }>(stations: T[], 
     .sort((a, b) => b.score - a.score);
   return scored[0]?.station ?? null;
 }
+
+/** Best-effort "which of your sources fit this station" ranking — same
+ * word-overlap recipe as bestMatchingStation() above, since StudySource has
+ * no theme/topic field to match exactly against (only level/title/notes),
+ * confirmed against schema.prisma. A real ranking on real text, not a
+ * fabricated relevance score: sources with no token overlap just sort last,
+ * `matched` tells the caller whether a source is actually suggested vs. only
+ * shown because the list has to include everything. Used by
+ * SyllabusSourcesDesktop.tsx's "relatable sources" column. */
+export function rankSourcesForStation<S extends { title: string; notes: string | null }>(
+  stationTheme: string,
+  sources: S[],
+): { source: S; matched: boolean }[] {
+  const themeTokens = tokenize(stationTheme);
+  return sources
+    .map((source) => {
+      const text = tokenize(`${source.title} ${source.notes ?? ""}`);
+      const score = [...themeTokens].filter((t) => text.has(t)).length;
+      return { source, score };
+    })
+    .sort((a, b) => b.score - a.score)
+    .map(({ source, score }) => ({ source, matched: score > 0 }));
+}

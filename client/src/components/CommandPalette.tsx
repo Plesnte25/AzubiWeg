@@ -39,7 +39,7 @@ interface Result {
  * same full lists Vocabulary.tsx/Notes.tsx already fetch, same pattern as
  * Vocabulary's own search box), plus static quick-links to every real
  * route. The keyboard shortcut works at any width; the visible trigger
- * button only shows in DesktopSidebar (lg+), matching the handoff.
+ * button only shows in Rail (lg+), matching the handoff.
  */
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { push, switchTab } = useNavStack();

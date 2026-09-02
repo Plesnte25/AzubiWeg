@@ -69,6 +69,7 @@ export interface Word {
   themenfeld: Themenfeld[];
   level: CefrLevel | null;
   leech: boolean;
+  starred: boolean;
   declension: DeclensionTable | null;
   conjugation: ConjugationTable | null;
   // computed at read time, never persisted (server/src/services/vocab/classify.ts)

@@ -74,7 +74,10 @@ export default function ReviewDial({
         aria-hidden="true"
       />
       <div className="absolute text-center">
-        <div className="tabular text-display-xl leading-none font-medium" style={{ letterSpacing: "-.045em" }}>
+        <div
+          className={`tabular leading-none font-medium whitespace-nowrap ${dueCount >= 100 ? "text-display-lg" : dueCount >= 10 ? "text-display" : "text-display-xl"}`}
+          style={{ letterSpacing: "-.045em" }}
+        >
           {dueCount}
         </div>
         <div className="mt-0.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>

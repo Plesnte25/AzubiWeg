@@ -8,6 +8,7 @@ import { toast } from "../../components/ui/Toast";
 import { youTubeVideoIdFromUrl } from "../../lib/youtube";
 import { nicosWegCourseIdFromUrl } from "../../lib/nicosweg";
 import { invalidateHub } from "../learning-hub/queryHelpers";
+import { SyllabusSourcesDesktop } from "./SyllabusSourcesDesktop";
 
 type FilterKey = "all" | StudySourceType;
 const FILTERS: { key: FilterKey; label: string }[] = [
@@ -23,7 +24,9 @@ function detectSourceType(url: string): StudySourceType {
   return "other";
 }
 
-function SourceRow({ source }: { source: StudySource }) {
+/** Exported for reuse by the desktop paired Syllabus+Sources screen
+ * (SyllabusSourcesDesktop.tsx). */
+export function SourceRow({ source }: { source: StudySource }) {
   const queryClient = useQueryClient();
   const bump = useMutation({
     mutationFn: () => {
@@ -236,8 +239,9 @@ export default function Sources() {
   const activeCount = sources.filter((s) => s.percent === null || s.percent < 100).length;
 
   return (
+    <>
     <div
-      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-[18px] pt-[calc(env(safe-area-inset-top)+18px)] lg:mx-auto lg:my-8 lg:min-h-0 lg:max-w-[640px] lg:rounded-[20px] lg:border lg:border-white/5 lg:pb-8"
+      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-[18px] pt-[calc(env(safe-area-inset-top)+18px)] lg:hidden"
       style={{ background: "radial-gradient(110% 38% at 22% 4%, #23253a, #161826 58%)" }}
     >
       <div className="flex items-center justify-between text-[13px]" style={{ color: "rgba(233,233,237,.55)" }}>
@@ -305,5 +309,14 @@ export default function Sources() {
         <SavedLinksSection />
       </div>
     </div>
+
+    {/* Desktop (lg+) — the paired Syllabus+Sources 3-pane screen (German
+        Companion Desktop.dc.html id="2d"); Syllabus renders the identical
+        component from its own route too, see SyllabusSourcesDesktop.tsx's
+        doc comment. */}
+    <div className="hidden lg:flex">
+      <SyllabusSourcesDesktop />
+    </div>
+    </>
   );
 }

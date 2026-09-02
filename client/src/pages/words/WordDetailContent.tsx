@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { CaretLeft, DotsThree, Flag, LinkSimple, NotePencil, SpeakerHigh, Trash } from "@phosphor-icons/react";
+import { CaretLeft, DotsThree, Flag, LinkSimple, NotePencil, SpeakerHigh, Star, Trash } from "@phosphor-icons/react";
 import { api, playWordAudio } from "../../api/client";
 import { BottomSheet } from "../../components/ui/BottomSheet";
 import { Skeleton } from "../../components/ui/Skeleton";
@@ -41,6 +41,10 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
 
   const toggleLeech = useMutation({
     mutationFn: (leech: boolean) => api.updateWord(id, { leech }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["words"] }),
+  });
+  const toggleStarred = useMutation({
+    mutationFn: (starred: boolean) => api.updateWord(id, { starred }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["words"] }),
   });
   const del = useMutation({
@@ -99,6 +103,36 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
             {backLabel}
           </button>
         )}
+        {embedded && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => toggleStarred.mutate(!word.starred)}
+              className="flex items-center gap-1.5 rounded-[9px] px-2.5 py-1.5 text-[12.5px] font-medium"
+              style={{ background: word.starred ? "rgba(145,132,217,.18)" : "#20222f", color: word.starred ? "#d2cefd" : "#e9e9ed" }}
+            >
+              <Star size={14} weight={word.starred ? "fill" : "regular"} aria-hidden="true" />
+              Star
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowFamily(true)}
+              className="flex items-center gap-1.5 rounded-[9px] px-2.5 py-1.5 text-[12.5px] font-medium"
+              style={{ background: "#20222f", color: "#e9e9ed" }}
+            >
+              <LinkSimple size={14} weight="regular" aria-hidden="true" />
+              Family
+            </button>
+            <button
+              type="button"
+              onClick={() => push("/review", { state: { words: [word] } })}
+              className="flex items-center gap-1.5 rounded-[9px] px-2.5 py-1.5 text-[12.5px] font-medium text-white"
+              style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+            >
+              Drill now
+            </button>
+          </div>
+        )}
         <button type="button" onClick={() => setShowActions(true)} aria-label="Word actions">
           <DotsThree size={19} weight="regular" aria-hidden="true" />
         </button>
@@ -112,6 +146,9 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
           <span className="text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
             {word.wortart} · {word.level ? word.level.toUpperCase() : "—"} · {word.lesson ?? "—"}
           </span>
+          {!embedded && word.starred && (
+            <Star size={14} weight="fill" style={{ color: "#b5abfc" }} aria-hidden="true" />
+          )}
         </div>
         <div className="mt-2 flex items-center gap-3 text-[36px] leading-tight font-medium" style={{ letterSpacing: "-.03em" }}>
           {word.headword}
@@ -165,28 +202,41 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
         </div>
       )}
 
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => push("/review", { state: { words: [word] } })}
-          className="min-h-[44px] flex-1 rounded-[10px] border text-[14px] font-medium"
-          style={{ borderColor: "rgba(233,233,237,.16)" }}
-        >
-          Drill now
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowFamily(true)}
-          className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[10px] text-[14px] font-medium text-white"
-          style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
-        >
-          <LinkSimple size={15} weight="regular" aria-hidden="true" />
-          Word family
-        </button>
-      </div>
+      {!embedded && (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => push("/review", { state: { words: [word] } })}
+            className="min-h-[44px] flex-1 rounded-[10px] border text-[14px] font-medium"
+            style={{ borderColor: "rgba(233,233,237,.16)" }}
+          >
+            Drill now
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowFamily(true)}
+            className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[10px] text-[14px] font-medium text-white"
+            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+          >
+            <LinkSimple size={15} weight="regular" aria-hidden="true" />
+            Word family
+          </button>
+        </div>
+      )}
 
       <BottomSheet open={showActions} onClose={() => setShowActions(false)}>
         <div className="flex flex-col gap-1 pb-1">
+          {!embedded && (
+            <button
+              type="button"
+              onClick={() => toggleStarred.mutate(!word.starred)}
+              className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px] text-left text-[13.5px]"
+              style={{ background: "#20222f" }}
+            >
+              <Star size={15} weight={word.starred ? "fill" : "regular"} aria-hidden="true" />
+              {word.starred ? "Remove star" : "Star this word"}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => toggleLeech.mutate(!word.leech)}

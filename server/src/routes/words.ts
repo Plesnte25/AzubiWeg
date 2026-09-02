@@ -178,12 +178,13 @@ const patchSchema = z.object({
   themenfeld: z.array(z.enum(THEMENFELD_VALUES)).max(2).optional(),
   level: z.enum(["a1", "a2", "b1"]).nullish(),
   leech: z.boolean().optional(),
+  starred: z.boolean().optional(),
 });
 
 wordsRouter.patch("/:id", async (req, res) => {
   const parsed = patchSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
-  const { themenfeld, level, leech, ...vaultPatch } = parsed.data;
+  const { themenfeld, level, leech, starred, ...vaultPatch } = parsed.data;
 
   const word = await prisma.word.findFirst({ where: { id: req.params.id, userId: req.userId } });
   if (!word) return res.status(404).json({ error: "Word not found" });
@@ -213,16 +214,17 @@ wordsRouter.patch("/:id", async (req, res) => {
       data: { ...fields, rawBlock: newLine + oldCard.srLines.join("") },
     });
   }
-  // themenfeld/level/leech bypass the vault entirely — they have no
+  // themenfeld/level/leech/starred bypass the vault entirely — they have no
   // representation in the card format, so they always go straight to
   // Postgres regardless of user.vaultPath (see schema.prisma's Word model).
-  if (themenfeld !== undefined || level !== undefined || leech !== undefined) {
+  if (themenfeld !== undefined || level !== undefined || leech !== undefined || starred !== undefined) {
     await prisma.word.update({
       where: { id: word.id },
       data: {
         ...(themenfeld !== undefined ? { themenfeld } : {}),
         ...(level !== undefined ? { level } : {}),
         ...(leech !== undefined ? { leech } : {}),
+        ...(starred !== undefined ? { starred } : {}),
       },
     });
   }

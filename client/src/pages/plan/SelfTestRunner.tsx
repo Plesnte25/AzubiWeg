@@ -173,7 +173,7 @@ export default function SelfTestRunner() {
   if (index >= session.questions.length) {
     return (
       <div
-        className="-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)]"
+        className="-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)] lg:mx-auto lg:max-w-[480px]"
         style={{ background: "radial-gradient(100% 42% at 50% 14%, #262a60 0%, #161826 70%)" }}
       >
         <SelfTestDone

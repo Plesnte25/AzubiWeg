@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { CaretLeft, Check, Flag, Lock } from "@phosphor-icons/react";
 import { api } from "../../api/client";
 import type { CefrLevel } from "../../api/types";
@@ -7,10 +7,11 @@ import { BottomSheet } from "../../components/ui/BottomSheet";
 import { useNavStack } from "../../lib/navStack";
 import { invalidateHub } from "../learning-hub/queryHelpers";
 import { StationDetailModal } from "./StationDetailModal";
+import { SyllabusSourcesDesktop } from "./SyllabusSourcesDesktop";
 import { deriveStations, stationStatus, type Station } from "./stations";
 
-const LEVEL_LABELS: Record<CefrLevel, string> = { a1: "A1", a2: "A2", b1: "B1" };
-const LEVELS: CefrLevel[] = ["a1", "a2", "b1"];
+export const LEVEL_LABELS: Record<CefrLevel, string> = { a1: "A1", a2: "A2", b1: "B1" };
+export const LEVELS: CefrLevel[] = ["a1", "a2", "b1"];
 
 /** One station's timeline node — the literal handoff vertical-timeline
  * treatment (checkmark/numbered/dashed-outline/locked bead + connecting
@@ -19,8 +20,9 @@ const LEVELS: CefrLevel[] = ["a1", "a2", "b1"];
  * own note to compare the two before assuming reuse — they don't match).
  * Tapping a reachable station opens the existing StationDetailModal for the
  * real item-management functionality (skip/add/delete/attachments) rather
- * than reimplementing all of that inline. */
-function StationNode({
+ * than reimplementing all of that inline. Exported for reuse by the
+ * desktop paired Syllabus+Sources screen (SyllabusSourcesDesktop.tsx). */
+export function StationNode({
   station,
   index,
   status,
@@ -149,7 +151,6 @@ export default function Syllabus() {
   if (currentIdx === -1) currentIdx = stations.length;
 
   const openStation = openStationTheme ? (stations.find((s) => s.theme === openStationTheme) ?? null) : null;
-  const openStationIdx = openStation ? stations.findIndex((s) => s.theme === openStation.theme) : -1;
 
   // exam-gate teaser: this level's syllabus is done but the level itself
   // isn't "done" per lockStates -> the real ExamAttempt gate is what's
@@ -162,8 +163,9 @@ export default function Syllabus() {
   const priorExamGate = priorLevel ? data.examGate[levelIdx - 1] : null;
 
   return (
+    <>
     <div
-      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col overflow-y-auto px-5 pt-[calc(env(safe-area-inset-top)+18px)] pb-6 lg:mx-auto lg:my-8 lg:min-h-0 lg:max-w-[640px] lg:rounded-[20px] lg:border lg:border-white/5 lg:pb-8"
+      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col overflow-y-auto px-5 pt-[calc(env(safe-area-inset-top)+18px)] pb-6 lg:hidden"
       style={{ background: "linear-gradient(180deg,#161826 0%,#1c1e30 60%,#161826 100%)" }}
     >
       <div className="flex items-center justify-between">
@@ -178,9 +180,8 @@ export default function Syllabus() {
               <button
                 key={l}
                 type="button"
-                disabled={ls === "locked"}
                 onClick={() => setUserLevel(l)}
-                className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold disabled:opacity-40"
+                className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold"
                 style={{ background: l === level ? "#9184d9" : "transparent", color: l === level ? "#161826" : ls === "done" ? "#b5abfc" : "rgba(233,233,237,.6)" }}
               >
                 {ls === "locked" && <Lock size={9} weight="fill" aria-hidden="true" />}
@@ -199,90 +200,98 @@ export default function Syllabus() {
         {LEVEL_LABELS[level]} route · {stations.length} station{stations.length === 1 ? "" : "s"} · {levelProgress.percent}%
       </div>
 
-      {lockState === "locked" ? (
-        <div className="mt-6 flex flex-1 flex-col items-center justify-center gap-2 text-center">
-          <Lock size={22} weight="regular" style={{ color: "rgba(233,233,237,.3)" }} aria-hidden="true" />
-          <p className="text-[14px]" style={{ color: "rgba(233,233,237,.6)" }}>
+      {lockState === "locked" && (
+        <div className="mt-5 flex items-center gap-2 rounded-xl p-3.5" style={{ background: "rgba(233,233,237,.06)" }}>
+          <Lock size={16} weight="regular" style={{ color: "rgba(233,233,237,.4)", flexShrink: 0 }} aria-hidden="true" />
+          <p className="text-[12.5px]" style={{ color: "rgba(233,233,237,.6)" }}>
             {priorProgress && priorProgress.percent < 100
-              ? `Finish ${LEVEL_LABELS[priorLevel!]} first.`
+              ? `Finish ${LEVEL_LABELS[priorLevel!]} first — previewing ${LEVEL_LABELS[level]} read-only.`
               : priorExamGate?.hasContent
-                ? `Pass the ${LEVEL_LABELS[priorLevel!]} exam to unlock ${LEVEL_LABELS[level]}.`
-                : `${LEVEL_LABELS[level]} unlocks after ${LEVEL_LABELS[priorLevel!]}.`}
+                ? `Pass the ${LEVEL_LABELS[priorLevel!]} exam to unlock ${LEVEL_LABELS[level]} — previewing read-only.`
+                : `${LEVEL_LABELS[level]} unlocks after ${LEVEL_LABELS[priorLevel!]} — previewing read-only.`}
           </p>
         </div>
-      ) : (
-        <div className="mt-6 flex-1" style={{ paddingLeft: 4 }}>
-          {stations.map((station, i) => (
+      )}
+      <div className="mt-6 flex-1" style={{ paddingLeft: 4 }}>
+        {stations.map((station, i) => (
+          <Fragment key={station.theme}>
             <StationNode
-              key={station.theme}
               station={station}
               index={i}
-              status={i < currentIdx ? "done" : i === currentIdx ? "current" : "upcoming"}
+              status={lockState === "locked" ? "upcoming" : i < currentIdx ? "done" : i === currentIdx ? "current" : "upcoming"}
               isLast={i === stations.length - 1 && !showExamGate}
               onOpen={() => setOpenStationTheme(station.theme)}
             />
-          ))}
+            {openStationTheme === station.theme && (
+              <StationDetailModal
+                station={station}
+                resolvedIdx={i}
+                isPreview={lockState === "locked" || i > currentIdx}
+                skipped={stationStatus(station) === "skipped"}
+                currentItemId={i === currentIdx ? (station.items.find((it) => it.completedAt === null && it.skippedAt === null)?.id ?? undefined) : undefined}
+                onToggleItem={(id, completed) => toggle.mutate({ id, completed })}
+                onDeleteItem={(id) => deleteItem.mutate(id)}
+                onSkip={() => {
+                  const skipped = stationStatus(station) === "skipped";
+                  if (skipped) {
+                    skipStation.mutate({ level, theme: station.theme, skipped: false });
+                    return;
+                  }
+                  if (confirm(`Skip station "${station.theme}"? Its items stay open but the route moves past it.`)) {
+                    skipStation.mutate({ level, theme: station.theme, skipped: true });
+                  }
+                }}
+                onAddItem={() => setShowAddItem(true)}
+                onChanged={() => invalidateHub(queryClient)}
+                onClose={() => setOpenStationTheme(null)}
+              />
+            )}
+          </Fragment>
+        ))}
 
-          {showExamGate && (
-            <div className="relative" style={{ paddingLeft: 34 }}>
-              <div
-                className="absolute grid size-7 place-items-center rounded-full"
-                style={{ left: 0, top: 2, border: "1px solid #5d5294", color: "#b5abfc" }}
-              >
-                <Flag size={14} weight="regular" aria-hidden="true" />
-              </div>
-              <button
-                type="button"
-                onClick={() => push("/plan/exam-gate")}
-                className="w-full rounded-xl p-3 py-3.5 text-left"
-                style={{ border: "1px solid rgba(145,132,217,.4)", background: "rgba(145,132,217,.08)" }}
-              >
-                <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "#b5abfc" }}>
-                  Self-test · gate to {LEVELS[levelIdx + 1] ? LEVEL_LABELS[LEVELS[levelIdx + 1]!] : "next level"}
-                </div>
-                <div className="mt-0.5 text-[15px] font-medium">{LEVEL_LABELS[level]} final exam</div>
-                <div className="mt-0.5 text-[11.5px]" style={{ color: "rgba(233,233,237,.45)" }}>
-                  {examGate.hasContent && "passed" in examGate ? (examGate.passed ? "Passed" : "Ready — syllabus complete") : "Not yet available"}
-                </div>
-              </button>
+        {showExamGate && (
+          <div className="relative" style={{ paddingLeft: 34 }}>
+            <div
+              className="absolute grid size-7 place-items-center rounded-full"
+              style={{ left: 0, top: 2, border: "1px solid #5d5294", color: "#b5abfc" }}
+            >
+              <Flag size={14} weight="regular" aria-hidden="true" />
             </div>
-          )}
-        </div>
-      )}
-
-      {openStation && (
-        <StationDetailModal
-          station={openStation}
-          resolvedIdx={openStationIdx}
-          isPreview={openStationIdx > currentIdx}
-          skipped={stationStatus(openStation) === "skipped"}
-          currentItemId={openStationIdx === currentIdx ? (openStation.items.find((i) => i.completedAt === null && i.skippedAt === null)?.id ?? undefined) : undefined}
-          onToggleItem={(id, completed) => toggle.mutate({ id, completed })}
-          onDeleteItem={(id) => deleteItem.mutate(id)}
-          onSkip={() => {
-            const skipped = stationStatus(openStation) === "skipped";
-            if (skipped) {
-              skipStation.mutate({ level, theme: openStation.theme, skipped: false });
-              return;
-            }
-            if (confirm(`Skip station "${openStation.theme}"? Its items stay open but the route moves past it.`)) {
-              skipStation.mutate({ level, theme: openStation.theme, skipped: true });
-            }
-          }}
-          onAddItem={() => setShowAddItem(true)}
-          onChanged={() => invalidateHub(queryClient)}
-          onClose={() => setOpenStationTheme(null)}
-        />
-      )}
+            <button
+              type="button"
+              onClick={() => push("/plan/exam-gate")}
+              className="w-full rounded-xl p-3 py-3.5 text-left"
+              style={{ border: "1px solid rgba(145,132,217,.4)", background: "rgba(145,132,217,.08)" }}
+            >
+              <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "#b5abfc" }}>
+                Self-test · gate to {LEVELS[levelIdx + 1] ? LEVEL_LABELS[LEVELS[levelIdx + 1]!] : "next level"}
+              </div>
+              <div className="mt-0.5 text-[15px] font-medium">{LEVEL_LABELS[level]} final exam</div>
+              <div className="mt-0.5 text-[11.5px]" style={{ color: "rgba(233,233,237,.45)" }}>
+                {examGate.hasContent && "passed" in examGate ? (examGate.passed ? "Passed" : "Ready — syllabus complete") : "Not yet available"}
+              </div>
+            </button>
+          </div>
+        )}
+      </div>
 
       {showAddItem && openStation && (
         <AddItemSheet level={level} theme={openStation.theme} onClose={() => setShowAddItem(false)} onAdded={() => invalidateHub(queryClient)} />
       )}
     </div>
+
+    {/* Desktop (lg+) — the paired Syllabus+Sources 3-pane screen (German
+        Companion Desktop.dc.html id="2d"); Sources renders the identical
+        component from its own route too, see SyllabusSourcesDesktop.tsx's
+        doc comment. */}
+    <div className="hidden lg:flex">
+      <SyllabusSourcesDesktop />
+    </div>
+    </>
   );
 }
 
-function AddItemSheet({ level, theme, onClose, onAdded }: { level: CefrLevel; theme: string; onClose: () => void; onAdded: () => void }) {
+export function AddItemSheet({ level, theme, onClose, onAdded }: { level: CefrLevel; theme: string; onClose: () => void; onAdded: () => void }) {
   const [title, setTitle] = useState("");
   const save = useMutation({
     mutationFn: () => api.addSyllabusItem({ level, category: "grammar", theme, title: title.trim() }),

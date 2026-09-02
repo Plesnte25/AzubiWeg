@@ -518,6 +518,49 @@ roadmapRouter.post("/backlog/spread", async (req, res) => {
   });
 });
 
+// how many days ahead "keep studying" is willing to reach into to find more
+// tasks — the whole 182-day plan already exists (buildUserRoadmapPlan
+// materializes it at activation), this just bounds how far a single pull
+// looks so an account near the very end of the plan gets a clean "nothing
+// left" instead of an unbounded scan.
+const PULL_FORWARD_LOOKAHEAD_DAYS = 21;
+
+/**
+ * "Keep studying past today" — once today's plan is done, pulls the next N
+ * not-yet-due tasks from upcoming days into today, same
+ * update-dayId-in-a-transaction shape as backlog pull-into-today/spread
+ * above (just reaching forward instead of backward), so completing a
+ * pulled-forward task logs real minutesSpent/time exactly like any other
+ * task — no separate time-tracking model needed. Returns the same
+ * `{ moved: [{id, fromDayOffset}] }` shape the backlog routes do, so the
+ * client's existing undo-via-reschedule flow (WeekOverview.tsx) works here
+ * unchanged.
+ */
+roadmapRouter.post("/pull-forward", async (req, res) => {
+  const parsed = z.object({ count: z.number().int().min(1).max(10).default(3) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid body" });
+
+  const today = await prisma.roadmapDay.findFirst({ where: { userId: req.userId, date: todayLocal() } });
+  if (!today) return res.status(404).json({ error: "Roadmap not activated" });
+
+  const upcomingDays = await prisma.roadmapDay.findMany({
+    where: { userId: req.userId, dayOffset: { gt: today.dayOffset, lte: today.dayOffset + PULL_FORWARD_LOOKAHEAD_DAYS } },
+    orderBy: { dayOffset: "asc" },
+    include: { tasks: { where: { completedAt: null, droppedAt: null }, orderBy: { sortOrder: "asc" } } },
+  });
+
+  const candidates = upcomingDays.flatMap((d) => d.tasks.map((task) => ({ task, fromDayOffset: d.dayOffset })));
+  const picked = candidates.slice(0, parsed.data.count);
+  if (picked.length === 0) return res.json({ moved: [] });
+
+  const maxSort = await prisma.roadmapTask.aggregate({ where: { dayId: today.id }, _max: { sortOrder: true } });
+  let nextSort = (maxSort._max.sortOrder ?? -1) + 1;
+  await prisma.$transaction(
+    picked.map(({ task }) => prisma.roadmapTask.update({ where: { id: task.id }, data: { dayId: today.id, sortOrder: nextSort++ } })),
+  );
+  res.json({ moved: picked.map(({ task, fromDayOffset }) => ({ id: task.id, fromDayOffset })) });
+});
+
 roadmapRouter.get("/journal/:skill", async (req, res) => {
   const parsed = SKILL_ENUM.safeParse(req.params.skill);
   if (!parsed.success) return res.status(400).json({ error: "Unknown skill" });

@@ -46,20 +46,20 @@ export default function Login({ mode }: { mode: "login" | "register" }) {
 
   return (
     <div
-      className="flex min-h-screen flex-col px-[26px] pt-[calc(env(safe-area-inset-top)+58px)] lg:items-center lg:justify-center lg:pt-0"
-      style={{ background: "radial-gradient(120% 46% at 50% 14%, #272a45 0%, #161826 68%)", color: "#e9e9ed" }}
+      className="flex min-h-screen flex-col bg-[radial-gradient(120%_46%_at_50%_14%,#272a45_0%,#161826_68%)] px-[26px] pt-[calc(env(safe-area-inset-top)+58px)] lg:items-center lg:justify-center lg:bg-[radial-gradient(120%_70%_at_50%_30%,#23263d,#161826_65%)] lg:pt-0"
+      style={{ color: "#e9e9ed" }}
     >
-      <form onSubmit={submit} className="flex flex-1 flex-col justify-center gap-[26px] lg:max-w-[360px] lg:flex-none">
+      <form onSubmit={submit} className="flex flex-1 flex-col justify-center gap-[26px] lg:max-w-[380px] lg:flex-none">
         <div className="relative grid place-items-center">
           <div
-            className="absolute size-[132px] rounded-full animate-pulse-glow"
+            className="absolute size-[132px] rounded-full animate-pulse-glow lg:hidden"
             style={{ background: "radial-gradient(closest-side, rgba(145,132,217,.26), transparent)" }}
           />
           <div
-            className="grid size-[76px] place-items-center rounded-[24px]"
+            className="grid size-[76px] place-items-center rounded-[24px] lg:size-[52px] lg:rounded-[16px]"
             style={{ background: "rgba(145,132,217,.14)", boxShadow: "0 0 0 1px rgba(181,171,252,.45)" }}
           >
-            <span className="text-[31px] font-medium" style={{ letterSpacing: "-.03em", color: "#d2cefd" }}>
+            <span className="text-[31px] font-medium lg:text-[22px]" style={{ letterSpacing: "-.03em", color: "#d2cefd" }}>
               A
             </span>
           </div>

@@ -31,24 +31,7 @@ re-deriving the investigation.
   viewport-height verification across a few device sizes — more than a
   drive-by fix.
 
-### 2. `/plan/self-tests` renders with a light card on the dark page
-
-- **Where**: `client/src/pages/learning-hub/SelfTestsPage.tsx`, reached via
-  the new real route `client/src/pages/plan/SelfTests.tsx` (Phase 11).
-- **Found**: Phase 11, screenshotted while verifying the new `/plan/*`
-  routes all load without errors.
-- **Cause**: not a regression — confirmed via `git log` that
-  `SelfTestsPage.tsx` was last touched in commit `466fb59`, *before* the
-  Nocturne redesign started. It's still fully pre-Nocturne styling (light
-  card, old token assumptions) now visible against the new dark app shell
-  for the first time because Phase 11 gave it a real, directly-reachable
-  route instead of hiding it behind the old `?view=` shell.
-- **Why not fixed yet**: this is exactly Phase 14's job ("Self-tests hub +
-  MCQ + Fill-in-the-blank — reskinning existing question-bank.ts/engine.ts
-  output onto the new visual spec"), not a bug to patch around — the real
-  fix is the Phase 14 reskin itself.
-
-### 3. Note Editor doesn't match the Claude Design handoff
+### 2. Note Editor doesn't match the Claude Design handoff
 
 - **Where**: `client/src/pages/plan/NoteEditor.tsx` (Phase 13).
 - **Found**: user review after Phase 13 shipped — "Note editor is not the
@@ -60,6 +43,61 @@ re-deriving the investigation.
   re-skin blind.
 - **Why not fixed yet**: per the standing "defer incidental bugs until all
   20 phases ship" instruction — this doesn't block Phase 14+.
+
+### 3. Jobs' click-through detail view is still pre-Nocturne styling
+
+- **Where**: `client/src/pages/job-search/ApplicationDetailModal.tsx` /
+  `ApplicationDetailSheet.tsx` / `ApplicationDetailContent.tsx` / `shared.tsx`
+  — opened by clicking a row in `BoardDesktop.tsx` (the new lg+ Jobs list) or
+  `BoardMobile.tsx`.
+- **Found**: the Nocturne desktop pass (2026-09-01), while rebuilding Jobs'
+  lg+ layout against `German Companion Desktop.dc.html` id="2e" — that
+  handoff spec covers the funnel/filter/list only, not a detail panel.
+- **Cause**: not a regression — these files still use the old `Modal`
+  primitive, `lucide-react` icons, and pre-Nocturne token classes
+  (`text-body`/`ink-*`/`border-hairline`), unchanged since before the
+  redesign. `BoardMobile.tsx` already reskinned the list it opens from;
+  the modal itself was never in scope for that.
+- **Why not fixed yet**: no handoff spec exists for this panel (attachments,
+  CV linking, event timeline) — reskinning it now would mean inventing new
+  Nocturne UI rather than reproducing a spec, a bigger and separately-scoped
+  piece of work. Deferred by explicit user decision when the desktop pass
+  was planned.
+
+### 4. Review session (`/review`) has no desktop (`lg:`) layout
+
+- **Where**: `client/src/pages/ReviewSession.tsx` (and its children —
+  the flip card, grade row).
+- **Found**: the Nocturne desktop pass (2026-09-01), while building the
+  Self-tests Runner's desktop sizing, which partly extrapolated from
+  Review's shape as the nearest transient-screen precedent.
+- **Cause**: Review's only handoff spec at desktop size is the exotic
+  2560×1080 ultrawide mock (`German Companion Desktop.dc.html` id="1c"),
+  which needs its own bespoke 5-pane layout (stack queue | flashcard |
+  dictionary entry | notes dock) — not something a standard 1440px `lg:`
+  breakpoint can reasonably approximate by just widening the mobile card.
+- **Why not fixed yet**: out of scope for the desktop pass, which targeted
+  the screens with a literal *standard-breakpoint* handoff spec (Plan,
+  Syllabus, Sources, Jobs, Stats, Self-tests, Settings, Login). Building
+  Review's real desktop layout means either scoping down the ultrawide mock
+  to 1440px (a real design judgment call, not just a reskin) or building
+  the ultrawide layout itself — both bigger, separately-scoped work.
+
+### 5. Desktop Jobs has no CV-management entry point
+
+- **Where**: `client/src/pages/job-search/index.tsx`'s lg+ block.
+- **Found**: the Nocturne desktop pass (2026-09-01), while rebuilding Jobs'
+  lg+ layout — the pre-existing desktop kanban had a "+ New CV" button
+  (`CvShelf.tsx`, deleted) that opened `AddCvModal`; the new dense-list
+  layout (`BoardDesktop.tsx`), matching the literal handoff spec, has no
+  CV shelf at all.
+- **Cause**: `German Companion Desktop.dc.html` id="2e" doesn't show a CV
+  panel on this screen — literal fidelity means not inventing one back in.
+- **Why not fixed yet**: mobile (`CvShelfMobile.tsx`, in the `lg:hidden`
+  block on the same page) still has full CV add/view — desktop users can
+  drop to a narrower viewport to manage CVs in the meantime. Worth a real
+  decision on whether desktop Jobs should get its own CV entry point, not
+  a drive-by fix.
 
 ## Resolved during the redesign (for reference — no action needed)
 
@@ -112,3 +150,69 @@ new. All of these were found by actually driving the app in a browser
   that row in `client/src/pages/plan/Plan.tsx`, a deliberate small
   deviation from literal fidelity for the sake of the feature being
   reachable at all.
+- **Phase 11 / stale by 2026-09-01** — the former open item "`/plan/self-tests`
+  renders with a light card on the dark page" (`SelfTestsPage.tsx`) turned
+  out to be resolved by the Phase 12-19 squash commit: that file no longer
+  exists, replaced by `client/src/pages/plan/SelfTests.tsx`/
+  `SelfTestRunner.tsx`/`SelfTestDone.tsx`, both fully Nocturne-styled.
+  Confirmed by checking the file no longer exists before removing the entry,
+  not just assuming it shipped alongside the rest.
+
+- **2026-09-01, user's post-desktop-pass testing pass** — 6 items reported
+  after driving the live app (not screenshots): (1) Dashboard's review dial
+  showed the due-count number overlapping the ring — confirmed a real,
+  breakpoint-independent bug: `ReviewDial.tsx`'s center number used a fixed
+  56px font with no width accommodation, so any 2-3 digit due count
+  overflowed the ring's ~103px usable diameter on mobile or desktop alike.
+  Fixed with a digit-count-based font-size step-down using the existing
+  `--text-display`/`--text-display-lg`/`--text-display-xl` tokens. (2)
+  Dashboard's 3 columns got real content additions: a 7-day streak strip in
+  column 1 (reuses `learningProgress(30d)`'s `streakGrid`, same query Stats
+  already fetches), the "Next in your plan" card's description shown
+  inline instead of requiring a click at `lg:`, a "+ Add task" control, a
+  "keep going" pull-forward flow once today's plan is done, a
+  "Chapter progress" tile in column 3 (reuses `Plan.tsx`'s
+  `ChapterProgressCard`, now hoisted to `planShared.tsx`), and `Applications`
+  pinned to the literal column bottom; the redundant "Capture note" button
+  in Dashboard's desktop header (duplicating the global `CaptureFab`) was
+  removed. (3) The "keep studying past today" ask turned out to need far
+  less new backend than it sounded — the full 182-day plan is already
+  materialized at activation (`roadmap-generator.ts`), so "out of tasks"
+  only meant today's *view* was empty; added one new route,
+  `POST /roadmap/pull-forward`, mirroring the existing backlog
+  pull-into-today/spread routes' transaction shape (just reaching into
+  future days instead of the backlog) — completing a pulled-forward task
+  logs real time exactly like any other task, no new time-tracking model.
+  (4) Words' desktop layout gained the 3rd "Notes" column from the original
+  handoff (confirmed via the literal handoff screenshot the user attached)
+  that a prior phase had deliberately deferred — `NotesDock.tsx`, using the
+  already-real `Note.wordId` relation and `updateNote({wordId})`; word rows
+  are now draggable and dropped directly onto a note card to link them (one
+  adaptation from the literal "drop onto the actively-typed note" — no
+  reusable embedded composer existed to put there, so each note card in the
+  list is its own drop target instead, same real capability). Added a real
+  `Word.starred` column + migration (distinct from the existing `leech`
+  "problem word" flag) and promoted Star/Family/Drill to a header row on
+  desktop, kept as footer+overflow-sheet on mobile. (5) Plan's "switch to
+  any date" turned out to need no backend work at all —
+  `GET /roadmap/day/:date` and `GET /roadmap/calendar` already existed;
+  added a date-input control to `PlanHeader` for Day view, normalizing
+  `roadmapToday`/`roadmapDay(date)`'s two different response shapes to one
+  `{date, tasks}` shape so the rest of the page doesn't care which it's
+  looking at; today-only actions (add task, keep-going, tomorrow preview)
+  hide themselves when viewing another date. (6) Syllabus's station-detail
+  panel was confirmed rendering as a sibling *after* the whole station list
+  instead of inline at the clicked station — `StationDetailModal` was never
+  a positioned overlay, just a plain div wherever its call site placed it;
+  fixed by interleaving it into the `stations.map()` loop right after the
+  clicked node. The desktop pane was rebuilt into a real 3rd
+  roadmap/detail/sources layout (`SyllabusSourcesDesktop.tsx`), level
+  switching unlocked for read-only preview of locked levels, and Sources
+  ranked by a new `rankSourcesForStation()` word-overlap heuristic
+  (`StudySource` has no theme field to match exactly, confirmed against
+  schema.prisma — same honest-best-effort approach `bestMatchingStation()`
+  already uses elsewhere). All 6 verified working end-to-end in a real
+  browser (Playwright against the demo account), not just typechecked.
+
+
+

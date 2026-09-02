@@ -144,6 +144,9 @@ model Word {
   level      CefrLevel?
   // manual problem-word flag; cleared automatically when graded "easy"
   leech      Boolean     @default(false)
+  // manual favorite/bookmark flag — distinct from leech (that's "struggling
+  // with this", starred is "I care about this one"), never auto-toggled
+  starred    Boolean     @default(false)
 
   @@unique([userId, sortKey])
 }

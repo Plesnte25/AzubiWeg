@@ -6,6 +6,7 @@ import type { Grade } from "../api/types";
 import { barColor, buildSparkline, chipColor, chipLabel, NO_DATA_HEIGHT, SPARKLINE_SLOTS } from "../lib/wordDisplay";
 import { useNavStack } from "../lib/navStack";
 import { AddWordsDialog } from "./vocabulary/AddWordsDialog";
+import { NotesDock } from "./words/NotesDock";
 import { WordDetailContent } from "./words/WordDetailContent";
 
 type FilterKey = "all" | "der" | "die" | "das" | "verb";
@@ -27,6 +28,7 @@ export default function Vocabulary() {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [showAdd, setShowAdd] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [draggingHeadword, setDraggingHeadword] = useState<string | null>(null);
 
   const sparklines = useMemo(() => {
     const byWord = new Map<string, Grade[]>();
@@ -179,13 +181,13 @@ export default function Vocabulary() {
 
     </div>
 
-    {/* ── lg+: master-detail (German Companion Desktop.dc.html, id="1b")
-        — same word list/filter/search state as mobile, a click selects
-        instead of navigating away. No notes dock/drag-to-link here: that's
-        real functionality with no equivalent anywhere else in the app yet
-        (word-linking today only happens from the Note Editor's own
-        detection, see lib/wordLink.ts), out of scope for a nav-pattern
-        pass. ── */}
+    {/* ── lg+: master-detail + docked Notes (German Companion
+        Desktop.dc.html id="1b") — same word list/filter/search state as
+        mobile, a click selects instead of navigating away. Word rows are
+        draggable onto NotesDock's note cards to link a word to a note
+        (Note.wordId, already real — see NotesDock.tsx's doc comment for
+        the one adaptation from the literal drag-onto-active-composer
+        interaction). ── */}
     <div className="hidden min-h-0 lg:flex lg:h-full">
       <div className="flex w-[300px] shrink-0 flex-col border-r" style={{ borderColor: "rgba(233,233,237,.08)" }}>
         <div className="px-[18px] pt-[18px] pb-3">
@@ -243,8 +245,15 @@ export default function Vocabulary() {
             return (
               <div
                 key={w.id}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("text/word-id", w.id);
+                  e.dataTransfer.effectAllowed = "link";
+                  setDraggingHeadword(w.headword);
+                }}
+                onDragEnd={() => setDraggingHeadword(null)}
                 onClick={() => setSelectedId(w.id)}
-                className="flex cursor-pointer items-center gap-[11px] px-[18px] py-[11px]"
+                className="flex cursor-grab items-center gap-[11px] px-[18px] py-[11px] active:cursor-grabbing"
                 style={{
                   background: active ? "linear-gradient(90deg,rgba(145,132,217,.14),transparent)" : "transparent",
                   boxShadow: active ? "inset 2px 0 0 #9184d9" : "none",
@@ -271,7 +280,7 @@ export default function Vocabulary() {
         </div>
       </div>
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 border-r" style={{ borderColor: "rgba(233,233,237,.08)" }}>
         {effectiveSelectedId ? (
           <WordDetailContent key={effectiveSelectedId} id={effectiveSelectedId} embedded />
         ) : (
@@ -279,6 +288,10 @@ export default function Vocabulary() {
             No words yet.
           </div>
         )}
+      </div>
+
+      <div className="w-[300px] shrink-0">
+        <NotesDock draggingHeadword={draggingHeadword} />
       </div>
     </div>
 

@@ -145,7 +145,7 @@ export const api = {
   updateWord: (
     id: string,
     data: Partial<
-      Pick<Word, "meaning" | "ipa" | "grammar" | "example" | "lesson" | "themenfeld" | "level" | "leech">
+      Pick<Word, "meaning" | "ipa" | "grammar" | "example" | "lesson" | "themenfeld" | "level" | "leech" | "starred">
     >,
   ) => request<{ word: Word }>(`/api/words/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteWord: (id: string) => request<void>(`/api/words/${id}`, { method: "DELETE" }),
@@ -396,6 +396,8 @@ export const api = {
     request<{ moved: MovedTask[] }>("/api/learning/roadmap/backlog/pull-into-today", { method: "POST" }),
   spreadBacklog: () =>
     request<{ moved: MovedTask[]; overDays: number }>("/api/learning/roadmap/backlog/spread", { method: "POST" }),
+  pullTasksForward: (count = 3) =>
+    request<{ moved: MovedTask[] }>("/api/learning/roadmap/pull-forward", { method: "POST", body: JSON.stringify({ count }) }),
   roadmapJournal: (skill: RoadmapSkill) =>
     request<{ tasks: RoadmapJournalTask[] }>(`/api/learning/roadmap/journal/${skill}`),
 

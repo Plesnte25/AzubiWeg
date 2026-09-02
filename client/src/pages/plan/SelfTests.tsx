@@ -34,8 +34,7 @@ export default function SelfTests() {
 
   return (
     <div
-      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col overflow-y-auto px-[18px] pt-[calc(env(safe-area-inset-top)+18px)] pb-[calc(env(safe-area-inset-bottom)+90px)] lg:mx-auto lg:my-8 lg:min-h-0 lg:max-w-[640px] lg:rounded-[20px] lg:border lg:border-white/5 lg:pb-8"
-      style={{ background: "radial-gradient(110% 42% at 78% 4%, #252a4d, #161826 60%)" }}
+      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col overflow-y-auto bg-[radial-gradient(110%_42%_at_78%_4%,#252a4d,#161826_60%)] px-[18px] pt-[calc(env(safe-area-inset-top)+18px)] pb-[calc(env(safe-area-inset-bottom)+90px)] lg:mx-0 lg:my-0 lg:min-h-0 lg:max-w-[760px] lg:bg-none lg:px-[60px] lg:py-[26px]"
     >
       <div className="flex items-center justify-between text-[13px]" style={{ color: "rgba(233,233,237,.55)" }}>
         <button type="button" onClick={goBack} className="flex items-center gap-[3px]" style={{ color: "inherit" }}>
@@ -137,7 +136,7 @@ export default function SelfTests() {
             type="button"
             onClick={() => push("/plan/exam-gate")}
             className="mt-auto flex items-center justify-between rounded-xl p-3 text-left"
-            style={{ background: "#1c1f2c" }}
+            style={{ border: "1px solid rgba(145,132,217,.35)", background: "rgba(145,132,217,.07)" }}
           >
             <div>
               <div className="text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.35)" }}>

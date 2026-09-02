@@ -2,20 +2,15 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Sparkle, X } from "@phosphor-icons/react";
 import { api } from "../../api/client";
-import { Button } from "../../components/ui/Button";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { useNavStack } from "../../lib/navStack";
 import ApplicationDetailModal from "./ApplicationDetailModal";
 import ApplicationDetailSheet from "./ApplicationDetailSheet";
-import Board from "./Board";
+import { BoardDesktop } from "./BoardDesktop";
 import BoardMobile from "./BoardMobile";
-import CvShelf from "./CvShelf";
 import CvShelfMobile from "./CvShelfMobile";
 import NewApplicationModal from "./NewApplicationModal";
-import AddCvModal from "./AddCvModal";
 import AddPortalModal from "./AddPortalModal";
-import PortalsCard from "./PortalsCard";
-import TrendChart from "./TrendChart";
 
 const STALE_DAYS = 7;
 const MS_PER_DAY = 86_400_000;
@@ -90,16 +85,16 @@ function PortalsMobile() {
 
 /**
  * Applications screen — Nocturne reskin of the handoff's sJobs (funnel bar
- * + stage-pill filter + flat list, now BoardMobile.tsx). The handoff's
- * lg-only 5-column kanban has no equivalent screen in the handoff at all
- * (it predates the redesign and is real, working functionality desktop
- * users rely on) — kept exactly as it was rather than dropped or
- * force-reskinned, per the redesign's mobile-first rollout (desktop
- * layouts are Phase 18's job).
+ * + stage-pill filter + flat list, now BoardMobile.tsx). The lg+ desktop
+ * layout (German Companion Desktop.dc.html id="2e") replaces the old
+ * pre-Nocturne 5-column kanban (Board.tsx, deleted) with the same dense
+ * list, wider — see BoardDesktop.tsx's doc comment for the two real-data
+ * deviations from the literal spec (no B1-nudge callout, jobProfile stands
+ * in for the "note" column) and docs/KNOWN_ISSUES.md for what's deferred
+ * (the detail modal's own reskin, and desktop CV management).
  */
 export default function JobSearch() {
   const { push } = useNavStack();
-  const [addingCv, setAddingCv] = useState(false);
   const [addingApplication, setAddingApplication] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -161,61 +156,51 @@ export default function JobSearch() {
         </button>
       </div>
 
-      {/* lg and up: unchanged, desktop kanban + CV sidebar (Phase 18's job) */}
-      <div className="mx-auto hidden max-w-[1320px] px-4 py-4 sm:px-6 lg:block">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      {/* lg and up: German Companion Desktop.dc.html id="2e" — labelled
+          sidebar (Layout.tsx) + the dense funnel/filter/list board. */}
+      <div className="hidden lg:mx-auto lg:my-8 lg:flex lg:max-w-[900px] lg:flex-col lg:gap-[13px]">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-heading font-bold">Job Search</h1>
-            {stats ? (
-              <p className="animate-fade-in text-caption text-ink-400">
-                {stats.total} application{stats.total === 1 ? "" : "s"} across 5 stages · {cvCount} CV{cvCount === 1 ? "" : "s"}
-              </p>
-            ) : (
-              <Skeleton className="mt-1 h-3.5 w-64" />
-            )}
+            <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+              Applications
+            </div>
+            <div className="mt-px text-[26px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
+              Jobs
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setAddingCv(true)}>
-              + New CV
-            </Button>
-            <Button onClick={() => setAddingApplication(true)}>+ New application</Button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setAddingApplication(true)}
+            className="flex shrink-0 items-center gap-[6px] rounded-[10px] px-3 py-2.5 text-[12.5px] font-medium text-white"
+            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+          >
+            <Plus size={15} weight="regular" aria-hidden="true" />
+            Log one
+          </button>
         </div>
-
-        <div className="mb-3 grid gap-3 sm:grid-cols-2">
-          <PortalsCard />
-          <div className="rounded-lg border border-hairline p-3">
-            <p className="mb-1 text-body font-medium text-ink-600">Applications per week</p>
-            <TrendChart data={stats?.weeklyActivity ?? []} />
+        {stats ? (
+          <div className="-mt-2 text-[12px]" style={{ color: "rgba(233,233,237,.5)" }}>
+            {stats.total} application{stats.total === 1 ? "" : "s"} · {cvCount} CV{cvCount === 1 ? "" : "s"}
           </div>
-        </div>
-
-        {stats && (
-          <div className="mb-4 flex rounded-lg border border-hairline">
-            <StatCell label="Active" value={stats.active} />
-            <StatCell
-              label="Response rate"
-              value={stats.responseRate === null ? "—" : `${Math.round(stats.responseRate * 100)}%`}
-            />
-            <StatCell
-              label="Interview rate"
-              value={stats.interviewRate === null ? "—" : `${Math.round(stats.interviewRate * 100)}%`}
-            />
-            <StatCell
-              label="Avg. days to response"
-              value={stats.avgDaysToResponse === null ? "—" : stats.avgDaysToResponse}
-              last
-            />
-          </div>
+        ) : (
+          <Skeleton className="-mt-2 h-3.5 w-48" />
         )}
 
-        <div className="flex gap-4">
-          <Board onOpen={setOpenId} />
-          <CvShelf />
-        </div>
+        <BoardDesktop onOpen={setOpenId} />
+
+        <button
+          type="button"
+          onClick={() => push("/plan/syllabus")}
+          className="flex shrink-0 items-center gap-[11px] rounded-xl p-3.5 text-left"
+          style={{ border: "1px solid rgba(145,132,217,.35)", background: "rgba(145,132,217,.07)" }}
+        >
+          <Sparkle size={17} weight="regular" style={{ color: "#b5abfc", flexShrink: 0 }} aria-hidden="true" />
+          <div className="flex-1 text-[12.5px]" style={{ color: "rgba(233,233,237,.7)" }}>
+            Your German level unlocks more roles as it climbs.
+          </div>
+        </button>
       </div>
 
-      {addingCv && <AddCvModal onClose={() => setAddingCv(false)} />}
       {addingApplication && <NewApplicationModal onClose={() => setAddingApplication(false)} />}
       {openId && (
         <>
@@ -224,14 +209,5 @@ export default function JobSearch() {
         </>
       )}
     </>
-  );
-}
-
-function StatCell({ label, value, last = false }: { label: string; value: string | number; last?: boolean }) {
-  return (
-    <div className={`flex-1 px-3.5 py-2.5 ${last ? "" : "border-r border-hairline-soft"}`}>
-      <p className="text-title font-bold">{value}</p>
-      <p className="mt-0.5 text-micro text-ink-300">{label}</p>
-    </div>
   );
 }

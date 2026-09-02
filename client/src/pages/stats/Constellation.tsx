@@ -51,7 +51,7 @@ export function Constellation({ words, highlightWordId }: { words: Word[]; highl
 
   return (
     <div className="relative grid place-items-center">
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-[246px] w-[296px]">
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-[246px] w-[296px] lg:h-[300px] lg:w-[360px]">
         <defs>
           <radialGradient id="constellationGlow">
             <stop offset="0%" stopColor="#b5abfc" stopOpacity=".5" />

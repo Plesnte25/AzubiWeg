@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Briefcase, Check, Fire, PencilSimple } from "@phosphor-icons/react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Briefcase, Check, Fire, Sparkle } from "@phosphor-icons/react";
 import { api, getUser } from "../api/client";
 import type { DashboardNextTask, RoadmapSkill } from "../api/types";
 import { ProfileSheet } from "../components/ProfileSheet";
@@ -10,7 +10,10 @@ import { Skeleton } from "../components/ui/Skeleton";
 import { levelStates } from "../lib/levels";
 import { SKILL_LABELS } from "../lib/skills";
 import { useNavStack } from "../lib/navStack";
+import { AddTaskComposer, ChapterProgressCard, localDateStr } from "./plan/planShared";
 import { ExamSchedule } from "./plan/ExamSchedule";
+import { bestMatchingStation, deriveStations } from "./plan/stations";
+import { invalidateHub } from "./learning-hub/queryHelpers";
 
 // The 5 skills this screen shows, in this exact order — literal per the
 // handoff (README §2.5), which deliberately does NOT use this app's usual
@@ -71,9 +74,11 @@ function initials(name: string | undefined): string {
 
 export default function Dashboard() {
   const { switchTab, push } = useNavStack();
+  const queryClient = useQueryClient();
   const [taskDetailOpen, setTaskDetailOpen] = useState(false);
   const [examScheduleOpen, setExamScheduleOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [addingTask, setAddingTask] = useState(false);
   const { data, isLoading } = useQuery({ queryKey: ["dashboard"], queryFn: api.dashboard });
   const { data: activity } = useQuery({ queryKey: ["activity", "summary", 1], queryFn: () => api.activitySummary(1) });
   // lg-only 3-column layout needs the full today's-task list (dashboard's
@@ -81,6 +86,23 @@ export default function Dashboard() {
   // real, both already fetched elsewhere in the app (Plan.tsx, Sources.tsx)
   const { data: todayFull } = useQuery({ queryKey: ["learning", "roadmap", "today"], queryFn: api.roadmapToday });
   const { data: sourcesData } = useQuery({ queryKey: ["learning", "sources"], queryFn: api.learningSources });
+  // same query keys Plan.tsx/Stats.tsx already fetch under, so mounting
+  // this page doesn't duplicate a request once either has loaded this
+  // session — used by the lg-only column 1 streak strip and column 3
+  // chapter-progress card below.
+  const { data: week } = useQuery({ queryKey: ["roadmap", "week", undefined], queryFn: () => api.roadmapWeek() });
+  const { data: syllabus } = useQuery({ queryKey: ["learning", "syllabus"], queryFn: api.learningSyllabus });
+  const { data: progress } = useQuery({ queryKey: ["learning", "progress", "30d"], queryFn: () => api.learningProgress("30d") });
+  const tomorrowDate = todayFull ? localDateStr(new Date(new Date(`${todayFull.date.slice(0, 10)}T00:00:00`).getTime() + 86_400_000)) : null;
+  const { data: tomorrowFull } = useQuery({
+    queryKey: ["roadmap", "day", tomorrowDate],
+    queryFn: () => api.roadmapDay(tomorrowDate!),
+    enabled: !!tomorrowDate,
+  });
+  const pullForward = useMutation({
+    mutationFn: (count: number) => api.pullTasksForward(count),
+    onSuccess: () => invalidateHub(queryClient),
+  });
 
   if (isLoading || !data) {
     return (
@@ -129,6 +151,15 @@ export default function Dashboard() {
     }
     ctaFor(nextTask, push, switchTab)();
   };
+
+  // lg-only: column 1's streak strip (last 7 days of a 30d window already
+  // fetched) and column 3's chapter-progress card (same station-matching
+  // Plan.tsx's desktop right column already does).
+  const last7Days = progress?.streakGrid.slice(-7) ?? [];
+  const syllabusActiveLevel = syllabus?.levels.find((l) => l.percent < 100)?.level ?? syllabus?.levels[syllabus.levels.length - 1]?.level;
+  const syllabusLevelItems = syllabus?.items.filter((i) => i.level === syllabusActiveLevel) ?? [];
+  const dashboardStations = deriveStations(syllabusLevelItems);
+  const matchedStation = week?.theme ? bestMatchingStation(dashboardStations, week.theme) : null;
 
   return (
     <>
@@ -364,15 +395,6 @@ export default function Dashboard() {
         <div className="flex items-center gap-[9px]">
           <button
             type="button"
-            onClick={() => push("/plan/notes/edit/new")}
-            className="flex min-h-[38px] items-center gap-[7px] rounded-[10px] px-[13px] text-[13px]"
-            style={{ background: "#20222f", color: "#e9e9ed" }}
-          >
-            <PencilSimple size={15} weight="regular" aria-hidden="true" />
-            Capture note
-          </button>
-          <button
-            type="button"
             onClick={() => push("/review")}
             className="flex min-h-[38px] items-center gap-[7px] rounded-[10px] px-[15px] text-[13.5px] font-medium text-white"
             style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
@@ -429,6 +451,27 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {last7Days.length > 0 && (
+            <button type="button" onClick={() => switchTab("/stats")} className="rounded-xl p-[14px] text-left" style={{ background: "#1c1f2c" }}>
+              <div className="text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>7-day streak</div>
+              <div className="mt-2.5 flex gap-[6px]">
+                {last7Days.map((cell, i) => {
+                  const isToday = i === last7Days.length - 1;
+                  const intensity = cell.minutes === 0 ? 0 : cell.minutes < 15 ? 1 : cell.minutes < 30 ? 2 : cell.minutes < 60 ? 3 : 4;
+                  const colors = ["#20222f", "#423a6a", "#5d5294", "#796cbf", "#9184d9"];
+                  return (
+                    <div
+                      key={cell.date}
+                      title={`${cell.date}: ${cell.minutes} min`}
+                      className="h-[22px] flex-1 rounded-[5px]"
+                      style={{ background: isToday ? "#b5abfc" : colors[intensity] }}
+                    />
+                  );
+                })}
+              </div>
+            </button>
+          )}
+
           <button type="button" onClick={() => switchTab("/stats")} className="mt-auto rounded-xl p-[14px] text-left" style={{ background: "#1c1f2c" }}>
             <div className="flex items-center gap-[9px]">
               <div className="text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>Weakest right now</div>
@@ -467,6 +510,11 @@ export default function Dashboard() {
             <div className="mt-2 text-[23px] font-medium" style={{ letterSpacing: "-.02em" }}>
               {!roadmapStarted ? "Start your 26-week roadmap" : nextTask ? nextTask.title : "Everything on today's plan is done."}
             </div>
+            {roadmapStarted && (
+              <div className="mt-1.5 text-[12.5px] leading-[1.5]" style={{ color: "rgba(233,233,237,.65)" }}>
+                {nextTask ? (nextTask.description ?? "Part of today's roadmap plan.") : "You can still open a self-test or work ahead on new words."}
+              </div>
+            )}
             <div className="mt-[15px] flex items-center gap-[14px]">
               <button
                 type="button"
@@ -494,10 +542,28 @@ export default function Dashboard() {
               <div className="text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
                 Today's plan · {data.roadmapToday?.tasksDone ?? 0} of {data.roadmapToday?.tasksTotal ?? 0} done
               </div>
-              <button type="button" onClick={() => switchTab("/plan")} className="flex items-center gap-[5px] text-[11.5px]" style={{ color: "#b5abfc" }}>
-                See plan
-              </button>
+              <div className="flex items-center gap-3">
+                {todayFull && (
+                  <button type="button" onClick={() => setAddingTask((v) => !v)} className="text-[11.5px]" style={{ color: "#b5abfc" }}>
+                    + Add task
+                  </button>
+                )}
+                <button type="button" onClick={() => switchTab("/plan")} className="flex items-center gap-[5px] text-[11.5px]" style={{ color: "#b5abfc" }}>
+                  See plan
+                </button>
+              </div>
             </div>
+            {addingTask && todayFull && (
+              <div className="px-4 pb-2.5">
+                <AddTaskComposer
+                  date={todayFull.date.slice(0, 10)}
+                  onDone={() => {
+                    setAddingTask(false);
+                    invalidateHub(queryClient);
+                  }}
+                />
+              </div>
+            )}
             <div className="flex min-h-0 flex-1 flex-col gap-[7px] overflow-y-auto px-4 pb-3.5">
               {(todayFull?.tasks ?? []).length === 0 ? (
                 <p className="text-[12.5px]" style={{ color: "rgba(233,233,237,.4)" }}>Nothing planned for today yet.</p>
@@ -537,12 +603,49 @@ export default function Dashboard() {
                   );
                 })
               )}
+
+              {todayFull && todayFull.tasks.length > 0 && todayFull.tasks.every((t) => t.completedAt !== null) && (
+                <div className="mt-1.5 rounded-[10px] p-3.5 text-center" style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a" }}>
+                  <div className="flex items-center justify-center gap-1.5 text-[13px] font-medium" style={{ color: "#d2cefd" }}>
+                    <Sparkle size={14} weight="regular" aria-hidden="true" />
+                    Nice work. Keep going?
+                  </div>
+                  <button
+                    type="button"
+                    disabled={pullForward.isPending}
+                    onClick={() => pullForward.mutate(3)}
+                    className="mt-2.5 min-h-[36px] rounded-[9px] px-4 text-[12.5px] font-medium text-white disabled:opacity-50"
+                    style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+                  >
+                    {pullForward.isPending ? "Pulling in more…" : "Pull in more tasks"}
+                  </button>
+                </div>
+              )}
+
+              {(todayFull?.tasks.length ?? 0) <= 3 && tomorrowFull && tomorrowFull.day.tasks.length > 0 && (
+                <button
+                  type="button"
+                  disabled={pullForward.isPending}
+                  onClick={() => pullForward.mutate(3)}
+                  className="mt-1.5 rounded-[10px] p-3 text-left transition-opacity hover:opacity-80"
+                  style={{ border: "1px dashed rgba(233,233,237,.16)", opacity: 0.55 }}
+                >
+                  <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>Next day tasks · tap to pull in</div>
+                  <div className="mt-1.5 flex flex-col gap-1">
+                    {tomorrowFull.day.tasks.slice(0, 3).map((t) => (
+                      <div key={t.id} className="truncate text-[12.5px]">{t.title}</div>
+                    ))}
+                  </div>
+                </button>
+              )}
             </div>
           </div>
         </div>
 
         {/* right column */}
         <div className="flex min-h-0 flex-col gap-3.5">
+          <ChapterProgressCard station={matchedStation} onOpen={() => switchTab("/plan/syllabus")} />
+
           {sourcesData && sourcesData.sources.length > 0 && (
             <div className="flex min-h-0 flex-col gap-[11px] overflow-hidden rounded-xl p-[14px]" style={{ background: "#1c1f2c" }}>
               <div className="flex items-center justify-between">
@@ -565,7 +668,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          <button type="button" onClick={() => switchTab("/jobs")} className="rounded-xl p-[14px] text-left" style={{ background: "#1c1f2c" }}>
+          <button type="button" onClick={() => switchTab("/jobs")} className="mt-auto rounded-xl p-[14px] text-left" style={{ background: "#1c1f2c" }}>
             <div className="flex items-center gap-2">
               <Briefcase size={14} weight="regular" style={{ color: "#b5abfc" }} aria-hidden="true" />
               <div className="text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>Applications</div>
