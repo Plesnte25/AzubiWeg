@@ -49,7 +49,7 @@ export function FillInBlankView({
 }) {
   return (
     <div
-      className="-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col overflow-y-auto px-5 pt-[calc(env(safe-area-inset-top)+18px)] pb-[calc(env(safe-area-inset-bottom)+20px)] lg:mx-auto lg:max-w-[480px]"
+      className="flex min-h-[calc(100dvh-40px)] flex-col overflow-y-auto px-5 pt-[calc(env(safe-area-inset-top)+18px)] pb-[calc(env(safe-area-inset-bottom)+20px)] lg:mx-auto lg:max-w-[480px]"
       style={{ background: "radial-gradient(120% 46% at 50% 0%, #1f2236, #161826 62%)" }}
     >
       <div className="flex items-center gap-[11px]">

@@ -89,7 +89,7 @@ export default function ExamRunner() {
 
   if (result) {
     return (
-      <div className="-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)]" style={{ background: "radial-gradient(100% 42% at 50% 14%, #262a60 0%, #161826 70%)" }}>
+      <div className="flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)]" style={{ background: "radial-gradient(100% 42% at 50% 14%, #262a60 0%, #161826 70%)" }}>
         <TestDone attempt={result} onHome={() => goBack()} onSeeNextLevel={() => goBack()} />
       </div>
     );
@@ -97,7 +97,7 @@ export default function ExamRunner() {
 
   if (startError) {
     return (
-      <div className="-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col items-center justify-center gap-3 px-5 text-center" style={{ background: "#161826" }}>
+      <div className="flex min-h-[calc(100dvh-40px)] flex-col items-center justify-center gap-3 px-5 text-center" style={{ background: "#161826" }}>
         <p style={{ color: "rgba(233,233,237,.6)" }}>{startError}</p>
         <button type="button" onClick={goBack} className="text-[13px]" style={{ color: "#b5abfc" }}>
           ‹ Back
@@ -108,7 +108,7 @@ export default function ExamRunner() {
 
   if (!session) {
     return (
-      <div className="-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col gap-3 px-5 pt-[calc(env(safe-area-inset-top)+18px)]" style={{ background: "#161826" }}>
+      <div className="flex min-h-[calc(100dvh-40px)] flex-col gap-3 px-5 pt-[calc(env(safe-area-inset-top)+18px)]" style={{ background: "#161826" }}>
         <Skeleton className="h-6 w-40" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -119,7 +119,7 @@ export default function ExamRunner() {
   const answered = answers[q.qid] !== undefined;
 
   return (
-    <div className="-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)]" style={{ background: "radial-gradient(120% 50% at 50% 0%, #1d2033, #161826 62%)" }}>
+    <div className="flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)]" style={{ background: "radial-gradient(120% 50% at 50% 0%, #1d2033, #161826 62%)" }}>
       <div className="flex items-center gap-2.5">
         <button type="button" onClick={close} aria-label="Leave exam" style={{ color: "rgba(233,233,237,.55)" }}>
           <X size={19} weight="regular" aria-hidden="true" />

@@ -75,15 +75,17 @@ export default function ReviewDial({
       />
       <div className="absolute text-center">
         <div
-          className={`tabular leading-none font-medium whitespace-nowrap ${dueCount >= 100 ? "text-display-lg" : dueCount >= 10 ? "text-display" : "text-display-xl"}`}
-          style={{ letterSpacing: "-.045em" }}
+          className={`tabular leading-none font-medium whitespace-nowrap ${
+            dueCount >= 1000 ? "text-display" : dueCount >= 100 ? "text-display" : dueCount >= 10 ? "text-display-lg" : "text-display-xl"
+          }`}
+          style={{ letterSpacing: "-.045em", ...(dueCount >= 1000 ? { fontSize: "2rem" } : undefined) }}
         >
           {dueCount}
         </div>
         <div className="mt-0.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
           due now
         </div>
-        <div className="mt-[3px] text-[10.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
+        <div className="mt-0.5 text-[10.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
           tap to review
         </div>
       </div>

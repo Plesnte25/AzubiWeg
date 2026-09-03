@@ -2,12 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
   ArrowCounterClockwise,
-  BookOpen,
   Cards,
   CaretDown,
   Check,
   ListChecks,
-  NotePencil,
   Path,
   Sparkle,
 } from "@phosphor-icons/react";
@@ -42,29 +40,60 @@ function fmtWeekday(iso: string): string {
   return new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { weekday: "narrow" });
 }
 
-/** The 7-cell read-only week strip (check/fraction/dot per day) shown in
- * Day mode — literal, matching the handoff's Plan screen exactly (no
- * chevrons/month-header; Week mode below uses its own WeekOverview). */
-function WeekStrip({ days }: { days: { date: string; status: RoadmapDayStatus; done: number; total: number }[] }) {
+/** The 7-cell week strip (check/fraction/dot per day) shown in Day mode —
+ * styling ported from the handoff's Plan screen, extended with two real
+ * behaviors the handoff's static mock didn't need to show: each cell picks
+ * that day (reusing Plan()'s existing selectedDate/roadmapDay(date)
+ * wiring, previously only reachable via the now-removed date-input) and an
+ * overdue day (real, already-fetched `status`) gets a distinct tint rather
+ * than being visually identical to any other incomplete day. "Today" is
+ * the server's own `status === "today"`, not a client-computed date-string
+ * match — the roadmap's notion of "today" (demo/seeded accounts especially)
+ * doesn't necessarily track the browser's wall-clock date. */
+function WeekStrip({
+  days,
+  selectedDate,
+  onSelect,
+}: {
+  days: { date: string; status: RoadmapDayStatus; done: number; total: number }[];
+  selectedDate: string | null;
+  onSelect: (date: string | null) => void;
+}) {
   return (
     <div className="flex gap-[5px]">
       {days.map((d) => {
+        // d.date is a full UTC-midnight ISO string (see fmtWeekday's own
+        // slice above) — selectedDate/roadmapDay(date) both expect a plain
+        // YYYY-MM-DD, the same shape the native date-input used to send.
+        const plainDate = d.date.slice(0, 10);
         const isToday = d.status === "today";
+        const isSelected = selectedDate === null ? isToday : selectedDate === plainDate;
         const isDone = d.status === "done" && d.total > 0;
+        const isOverdue = d.status === "overdue" && d.total > 0;
         return (
-          <div
+          <button
             key={d.date}
+            type="button"
+            onClick={() => onSelect(isToday ? null : plainDate)}
             className="flex flex-1 flex-col items-center gap-[3px] rounded-[9px] py-[7px]"
             style={{
-              background: isToday ? "linear-gradient(160deg,#2b2741,#232532)" : "#1c1f2c",
-              boxShadow: isToday ? "0 0 0 1px #423a6a" : "none",
+              background: isSelected ? "linear-gradient(160deg,#2b2741,#232532)" : isOverdue ? "rgba(209,155,134,.14)" : "#1c1f2c",
+              boxShadow: isSelected ? "0 0 0 1px #423a6a" : isOverdue ? "0 0 0 1px rgba(209,155,134,.35)" : "none",
             }}
           >
-            <span className="text-[9px] opacity-75">{fmtWeekday(d.date)}</span>
-            <span className="text-[11px] font-medium">
-              {isDone ? <Check size={11} weight="bold" aria-hidden="true" /> : d.total > 0 ? `${d.done}/${d.total}` : "·"}
+            <span className="text-[9px] opacity-75" style={{ color: isOverdue ? "#e4c4b6" : undefined }}>
+              {fmtWeekday(d.date)}
             </span>
-          </div>
+            <span className="text-[11px] font-medium" style={{ color: isOverdue ? "#e4c4b6" : undefined }}>
+              {isDone ? (
+                <Check size={11} weight="bold" aria-hidden="true" />
+              ) : d.total > 0 ? (
+                `${d.done}/${d.total}`
+              ) : (
+                "·"
+              )}
+            </span>
+          </button>
         );
       })}
     </div>
@@ -100,41 +129,42 @@ function TaskRow({ task, onToggle, onOpen }: { task: RoadmapTask; onToggle: (c: 
   );
 }
 
+// Sources dropped (redundant — it's the same combined page as Syllabus)
+// and Notes dropped (redundant — it already has its own rail tab); Tests
+// stays, since it was added deliberately as the only discoverable entry
+// point into self-tests outside a finished review session.
 const SECTION_NAV_ITEMS = [
   { label: "Syllabus", icon: Path, to: "/plan/syllabus" },
-  { label: "Sources", icon: BookOpen, to: "/plan/sources" },
-  { label: "Notes", icon: NotePencil, to: "/plan/notes" },
   { label: "Tests", icon: ListChecks, to: "/plan/self-tests" },
 ];
 
 /** Day view's title switches between "Today" and the picked date's own
- * weekday name; Week mode still always means the current week (this app's
- * only endpoint for "an arbitrary week" is per-week-number, not wired to a
- * picker here — the date-switching ask was specifically about Day view). */
+ * weekday name (now driven by WeekStrip's own day-click, not a standalone
+ * date input); Week mode still always means the current week (this app's
+ * only endpoint for "an arbitrary week" is per-week-number). The Day/Week
+ * toggle and the section CTAs share one row, per the reference design —
+ * no separate CTA row, no visible date field. */
 function PlanHeader({
   view,
   onView,
   selectedDate,
-  onSelectDate,
+  push,
 }: {
   view: ViewMode;
   onView: (v: ViewMode) => void;
   selectedDate: string | null;
-  onSelectDate: (d: string | null) => void;
+  push: (to: string) => void;
 }) {
-  const todayStr = localDateStr(new Date());
   const titleDate = selectedDate ? new Date(`${selectedDate}T00:00:00`) : null;
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
-            Roadmap
-          </div>
-          <div className="mt-px text-[26px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
-            {view === "week" ? "This week" : titleDate ? titleDate.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }) : "Today"}
-          </div>
-        </div>
+      <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+        Roadmap
+      </div>
+      <div className="mt-px text-[26px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
+        {view === "week" ? "This week" : titleDate ? titleDate.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }) : "Today"}
+      </div>
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
         <div className="flex gap-1 rounded-full p-1" style={{ background: "#20222f" }}>
           {(["day", "week"] as const).map((v) => (
             <button
@@ -148,42 +178,19 @@ function PlanHeader({
             </button>
           ))}
         </div>
+        {SECTION_NAV_ITEMS.map(({ label, icon: Icon, to }) => (
+          <button
+            key={to}
+            type="button"
+            onClick={() => push(to)}
+            className="flex min-h-[30px] items-center gap-1.5 rounded-full px-3 text-[11.5px] font-medium"
+            style={{ background: "#20222f", color: "rgba(233,233,237,.75)" }}
+          >
+            <Icon size={13} weight="regular" aria-hidden="true" />
+            {label}
+          </button>
+        ))}
       </div>
-      {view === "day" && (
-        <div className="mt-2.5 flex items-center gap-2.5">
-          <input
-            type="date"
-            value={selectedDate ?? todayStr}
-            onChange={(e) => onSelectDate(e.target.value === todayStr ? null : e.target.value)}
-            className="rounded-[9px] px-2.5 py-1.5 text-[12px] outline-none"
-            style={{ background: "#20222f", color: "#e9e9ed", border: "1px solid rgba(233,233,237,.14)" }}
-          />
-          {selectedDate && (
-            <button type="button" onClick={() => onSelectDate(null)} className="text-[11.5px] font-medium" style={{ color: "#b5abfc" }}>
-              Back to today
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SectionNavRow({ push }: { push: (to: string) => void }) {
-  return (
-    <div className="mt-[13px] flex gap-[7px]">
-      {SECTION_NAV_ITEMS.map(({ label, icon: Icon, to }) => (
-        <button
-          key={to}
-          type="button"
-          onClick={() => push(to)}
-          className="flex min-h-[38px] flex-1 items-center justify-center gap-1.5 rounded-[10px] text-[12.5px]"
-          style={{ background: "#20222f" }}
-        >
-          <Icon size={14} weight="regular" aria-hidden="true" />
-          {label}
-        </button>
-      ))}
     </div>
   );
 }
@@ -308,8 +315,7 @@ export default function Plan() {
         className="-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-[18px] pt-[calc(env(safe-area-inset-top)+18px)] lg:hidden"
         style={{ background: "radial-gradient(110% 40% at 20% 4%, #22253c, #161826 58%)" }}
       >
-        <PlanHeader view={view} onView={setView} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
-        <SectionNavRow push={push} />
+        <PlanHeader view={view} onView={setView} selectedDate={selectedDate} push={push} />
 
         {todayLoading || !today ? (
           <div className="mt-4 space-y-3">
@@ -322,7 +328,7 @@ export default function Plan() {
           <>
             {weekDays && (
               <div className="mt-[15px]">
-                <WeekStrip days={weekDays} />
+                <WeekStrip days={weekDays} selectedDate={selectedDate} onSelect={setSelectedDate} />
               </div>
             )}
 
@@ -369,8 +375,7 @@ export default function Plan() {
           progress + tomorrow preview) in Day mode; Week mode reuses
           WeekOverview widened, since the handoff has no desktop spec for it. */}
       <div className="hidden lg:mx-auto lg:my-8 lg:flex lg:max-w-[1040px] lg:flex-col lg:gap-[18px]">
-        <PlanHeader view={view} onView={setView} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
-        <SectionNavRow push={push} />
+        <PlanHeader view={view} onView={setView} selectedDate={selectedDate} push={push} />
 
         {todayLoading || !today ? (
           <div className="space-y-3">
@@ -380,19 +385,22 @@ export default function Plan() {
         ) : view === "week" ? (
           <WeekOverview onOpenTask={setOpenTask} />
         ) : (
-          <div className="grid gap-5" style={{ gridTemplateColumns: "1.4fr 1fr" }}>
-            <div className="flex flex-col gap-4">
-              {weekDays && <WeekStrip days={weekDays} />}
+          <div className="flex flex-col gap-4">
+            {/* Calendar row — the day strip and its progress bar span the
+                full pane width; tasks and chapter-progress/tomorrow sit in
+                their own row below, not beside it. */}
+            {weekDays && <WeekStrip days={weekDays} selectedDate={selectedDate} onSelect={setSelectedDate} />}
 
-              <div className="flex items-center gap-2.5">
-                <div className="h-[5px] flex-1 overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
-                  <div className="h-full rounded-[3px] transition-[width] duration-300" style={{ width: `${progressPct}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }} />
-                </div>
-                <span className="text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
-                  {today.tasks.filter((t) => t.completedAt !== null).length} of {today.tasks.length} · {minutesLeft} min left
-                </span>
+            <div className="flex items-center gap-2.5">
+              <div className="h-[5px] flex-1 overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
+                <div className="h-full rounded-[3px] transition-[width] duration-300" style={{ width: `${progressPct}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }} />
               </div>
+              <span className="text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
+                {today.tasks.filter((t) => t.completedAt !== null).length} of {today.tasks.length} · {minutesLeft} min left
+              </span>
+            </div>
 
+            <div className="grid gap-5" style={{ gridTemplateColumns: "1.4fr 1fr" }}>
               <div className="flex flex-col gap-2">
                 {today.tasks.length === 0 ? (
                   <p className="py-6 text-center text-[13.5px]" style={{ color: "rgba(233,233,237,.45)" }}>
@@ -408,11 +416,11 @@ export default function Plan() {
                 )}
                 {!selectedDate && <AddTaskComposer date={today.date.slice(0, 10)} onDone={() => invalidateHub(queryClient)} />}
               </div>
-            </div>
 
-            <div className="flex flex-col gap-3">
-              <ChapterProgressCard station={matchedStation} onOpen={() => push("/plan/syllabus")} />
-              {!selectedDate && <TomorrowCard tomorrow={tomorrow} />}
+              <div className="flex flex-col gap-3">
+                <ChapterProgressCard station={matchedStation} onOpen={() => push("/plan/syllabus")} />
+                {!selectedDate && <TomorrowCard tomorrow={tomorrow} />}
+              </div>
             </div>
           </div>
         )}

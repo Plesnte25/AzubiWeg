@@ -2,12 +2,72 @@ import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useActivityHeartbeat } from "../hooks/useActivityHeartbeat";
 import { cn } from "../lib/cn";
-import { isTransientPath, NavStackProvider } from "../lib/navStack";
+import { isTransientPath, NavStackProvider, useNavStack } from "../lib/navStack";
+import { QUICK_LINKS } from "../lib/navDestinations";
 import BottomTabBar from "./BottomTabBar";
 import CaptureFab from "./CaptureFab";
 import { CommandPalette } from "./CommandPalette";
 import DemoBanner from "./DemoBanner";
 import { Rail } from "./Rail";
+
+/**
+ * Gmail/Superhuman-style "G then a letter" quick-nav, active app-wide
+ * whenever the command palette is closed and focus isn't in a text field
+ * (checked on every keypress, not just the first — typing into a field
+ * that gains focus mid-chord must still cancel it). Targets QUICK_LINKS,
+ * the same registry the palette's own "Jump to" section and its "G <letter>"
+ * hint legend read from, so the two can't drift apart. Needs to live inside
+ * NavStackProvider (for useNavStack) — Layout() itself renders that
+ * provider, so this can't be inlined there directly.
+ */
+function GlobalShortcuts({ armed }: { armed: boolean }) {
+  const { switchTab } = useNavStack();
+
+  useEffect(() => {
+    if (!armed) return;
+    let waitingForLetter = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const disarm = () => {
+      waitingForLetter = false;
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+    const isTyping = (target: EventTarget | null) => {
+      const el = target as HTMLElement | null;
+      const tag = el?.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!el?.isContentEditable;
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) {
+        disarm();
+        return;
+      }
+      const key = e.key.toLowerCase();
+      if (!waitingForLetter) {
+        if (key === "g") {
+          waitingForLetter = true;
+          timer = setTimeout(disarm, 900);
+        }
+        return;
+      }
+      const dest = QUICK_LINKS.find((l) => l.shortcut === key);
+      disarm();
+      if (dest) {
+        e.preventDefault();
+        switchTab(dest.to);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      disarm();
+    };
+  }, [armed, switchTab]);
+
+  return null;
+}
 
 export default function Layout() {
   const location = useLocation();
@@ -48,8 +108,22 @@ export default function Layout() {
 
         <main
           className={cn(
-            !isTransient && "pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0 lg:pl-[84px]",
-            isDashboard ? "px-4 py-4 lg:h-dvh lg:min-h-[760px] lg:py-3" : "mx-auto max-w-6xl px-4 py-6",
+            !isTransient && "lg:pl-[84px]",
+            // Dashboard owns its own edge-to-edge padding and bottom
+            // clearance (see Dashboard.tsx) instead of main reserving it,
+            // so the two don't fight over the same padding box — every
+            // other route still gets its clearance from here.
+            !isTransient && !isDashboard && "pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0",
+            // Transient screens (see the comment above) own the whole
+            // viewport themselves, full-bleed — they must not also be
+            // capped at max-w-6xl here, or a real full-width desktop
+            // layout (e.g. ReviewSession's lg: 4-pane layout) can never
+            // use more than main's own capped width.
+            // lg:pr-4 (not lg:px-4) — px would reset the padding-left that
+            // lg:pl-[84px] above already set for rail clearance, since
+            // tailwind-merge treats them as the same conflicting group and
+            // keeps whichever is later in this list.
+            !isTransient && (isDashboard ? "lg:h-dvh lg:min-h-[760px] lg:pr-4 lg:py-3" : "mx-auto max-w-6xl px-4 py-6"),
           )}
         >
           <Outlet />
@@ -65,6 +139,7 @@ export default function Layout() {
         )}
 
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+        <GlobalShortcuts armed={!paletteOpen} />
       </div>
     </NavStackProvider>
   );

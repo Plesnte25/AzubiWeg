@@ -188,8 +188,8 @@ export default function Vocabulary() {
         (Note.wordId, already real — see NotesDock.tsx's doc comment for
         the one adaptation from the literal drag-onto-active-composer
         interaction). ── */}
-    <div className="hidden min-h-0 lg:flex lg:h-full">
-      <div className="flex w-[300px] shrink-0 flex-col border-r" style={{ borderColor: "rgba(233,233,237,.08)" }}>
+    <div className="hidden min-h-0 lg:grid lg:h-full lg:grid-cols-[300px_1fr_300px] lg:gap-5">
+      <div className="flex min-h-0 flex-col">
         <div className="px-[18px] pt-[18px] pb-3">
           <div className="flex items-center justify-between">
             <div>
@@ -280,7 +280,7 @@ export default function Vocabulary() {
         </div>
       </div>
 
-      <div className="min-w-0 flex-1 border-r" style={{ borderColor: "rgba(233,233,237,.08)" }}>
+      <div className="min-h-0 min-w-0">
         {effectiveSelectedId ? (
           <WordDetailContent key={effectiveSelectedId} id={effectiveSelectedId} embedded />
         ) : (
@@ -290,7 +290,7 @@ export default function Vocabulary() {
         )}
       </div>
 
-      <div className="w-[300px] shrink-0">
+      <div className="min-h-0">
         <NotesDock draggingHeadword={draggingHeadword} />
       </div>
     </div>

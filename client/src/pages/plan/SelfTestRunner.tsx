@@ -113,7 +113,7 @@ export default function SelfTestRunner() {
 
   if (startError) {
     return (
-      <div className="-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col items-center justify-center gap-3 px-6 text-center" style={{ background: "#161826" }}>
+      <div className="flex min-h-[calc(100dvh-40px)] flex-col items-center justify-center gap-3 px-6 text-center" style={{ background: "#161826" }}>
         <p className="text-[13.5px]" style={{ color: "rgba(233,233,237,.6)" }}>
           {startError}
         </p>
@@ -125,7 +125,7 @@ export default function SelfTestRunner() {
   }
 
   if (!session) {
-    return <div className="-mx-4 -my-4 min-h-[calc(100dvh-40px)]" style={{ background: "#1f2236" }} />;
+    return <div className="min-h-[calc(100dvh-40px)]" style={{ background: "#1f2236" }} />;
   }
 
   const q = session.questions[index];
@@ -173,7 +173,7 @@ export default function SelfTestRunner() {
   if (index >= session.questions.length) {
     return (
       <div
-        className="-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)] lg:mx-auto lg:max-w-[480px]"
+        className="flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)] lg:mx-auto lg:max-w-[480px]"
         style={{ background: "radial-gradient(100% 42% at 50% 14%, #262a60 0%, #161826 70%)" }}
       >
         <SelfTestDone

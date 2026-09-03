@@ -12,8 +12,8 @@ const CATEGORY_LABELS: Record<Cv["category"], string> = {
 
 /** Compact horizontal CV chip row — not in the handoff's 22 screens, kept
  * (real, already-working) alongside the reskinned Applications list rather
- * than dropped. */
-export default function CvShelfMobile() {
+ * than dropped. Shared by both the mobile and desktop Applications layouts. */
+export default function CvShelf() {
   const { data } = useQuery({ queryKey: ["cvs"], queryFn: api.cvs });
   const [adding, setAdding] = useState(false);
   const cvs = data?.cvs ?? [];

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Flag, HandTap, Lock, Sparkle } from "@phosphor-icons/react";
 import { api } from "../../api/client";
 import type { CefrLevel } from "../../api/types";
@@ -28,11 +29,19 @@ import { deriveStations, rankSourcesForStation, stationStatus } from "./stations
  */
 export function SyllabusSourcesDesktop() {
   const { push } = useNavStack();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["learning", "syllabus"], queryFn: api.learningSyllabus });
   const { data: sourcesData } = useQuery({ queryKey: ["learning", "sources"], queryFn: api.learningSources });
   const [userLevel, setUserLevel] = useState<CefrLevel | null>(null);
-  const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
+  // A command-palette deep link ("Syllabus — Chapter N") arrives as router
+  // state — same one-time-read pattern as the mobile Syllabus() component's
+  // own openStationTheme; this is a *separate* component (not shared state)
+  // since desktop's dedicated detail column is a different rendering path
+  // from mobile's inline-in-timeline expansion, so both need the read.
+  const [selectedTheme, setSelectedTheme] = useState<string | null>(
+    () => (location.state as { openStationTheme?: string } | null)?.openStationTheme ?? null,
+  );
   const [showAddItem, setShowAddItem] = useState(false);
 
   const toggle = useMutation({
@@ -80,8 +89,8 @@ export function SyllabusSourcesDesktop() {
   const rankedSources = selectedStation && sourcesData ? rankSourcesForStation(selectedStation.theme, sourcesData.sources) : null;
 
   return (
-    <div className="flex w-full gap-0">
-      <div className="flex-[0.9] overflow-y-auto border-r pr-5" style={{ borderColor: "rgba(233,233,237,.08)" }}>
+    <div className="grid w-full min-h-0 grid-cols-[340px_1fr_300px] gap-5">
+      <div className="min-h-0 overflow-y-auto">
         <div className="flex items-center justify-between">
           <div className="text-[22px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
             Syllabus
@@ -161,7 +170,7 @@ export function SyllabusSourcesDesktop() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto border-r px-5" style={{ borderColor: "rgba(233,233,237,.08)" }}>
+      <div className="min-h-0 overflow-y-auto">
         {selectedStation ? (
           <StationDetailModal
             station={selectedStation}
@@ -196,7 +205,7 @@ export function SyllabusSourcesDesktop() {
         )}
       </div>
 
-      <div className="flex-[0.8] overflow-y-auto pl-5">
+      <div className="min-h-0 overflow-y-auto">
         <div className="text-[22px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
           Sources
         </div>

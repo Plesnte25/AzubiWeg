@@ -8,6 +8,9 @@ import { Skeleton } from "../../components/ui/Skeleton";
 import { chipColor, fullArtLabel } from "../../lib/wordDisplay";
 import { THEMENFELD_LABELS } from "../../lib/vocab";
 import { useNavStack } from "../../lib/navStack";
+import { WordDetailContent } from "../words/WordDetailContent";
+import { ReviewNotesPane } from "./ReviewNotesPane";
+import { ReviewQueuePane } from "./ReviewQueuePane";
 import { SessionDone } from "./SessionDone";
 import { useReviewSession } from "./useReviewSession";
 
@@ -57,7 +60,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
   // general due+fresh queue (useReviewSession's own fetch).
   const curatedWords = state?.words;
 
-  const { loading, current, total, sessionSize, progressPercent, revealed, setRevealed, done, grade, elapsedSeconds } = useReviewSession({
+  const { loading, queue, current, total, sessionSize, progressPercent, revealed, setRevealed, done, grade, elapsedSeconds } = useReviewSession({
     words: curatedWords,
   });
   const [flipped, setFlipped] = useState(false);
@@ -84,8 +87,9 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
   const isDone = !loading && !current;
 
   return (
+    <>
     <div
-      className="-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)]"
+      className="flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)] lg:hidden"
       style={{ background: isDone ? "radial-gradient(100% 44% at 50% 16%, #2b2741 0%, #161826 68%)" : "radial-gradient(120% 50% at 50% 0%, #1d2033, #161826 62%)" }}
     >
       {isDone ? (
@@ -271,5 +275,206 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
         </>
       )}
     </div>
+
+    {/* lg+: German Companion Desktop.dc.html id="1c" (ultrawide 2560px
+        5-pane: queue | flashcard | dictionary entry | notes), scaled down to
+        a real 1440px lg: layout instead of the exotic ultrawide mock itself
+        -- queue and notes narrowed to fixed side columns, the flashcard and
+        dictionary-entry panes sharing the remaining width. Review is a
+        transient route (no Rail/tab bar -- see Layout.tsx), so this owns
+        the full viewport, same as the mobile block above. */}
+    <div
+      className="hidden min-h-0 lg:flex lg:h-dvh"
+      style={{ background: isDone ? "radial-gradient(100% 44% at 50% 16%, #2b2741 0%, #161826 68%)" : "radial-gradient(120% 50% at 50% 0%, #1d2033, #161826 62%)" }}
+    >
+      {isDone ? (
+        <div className="mx-auto flex w-full max-w-[640px] flex-col px-8 py-10">
+          <SessionDone done={done} total={total} elapsedSeconds={elapsedSeconds} onHome={() => goBack()} onTakeTest={() => push("/plan/self-tests")} />
+        </div>
+      ) : loading || !current ? (
+        <div className="grid w-full place-items-center">
+          <Skeleton className="h-[430px] w-full max-w-[380px] rounded-[20px]" />
+        </div>
+      ) : (
+        <>
+          <div className="w-[280px] shrink-0 border-r" style={{ borderColor: "rgba(233,233,237,.08)" }}>
+            <ReviewQueuePane queue={queue} total={total} sessionSize={sessionSize} progressPercent={progressPercent} done={done} />
+          </div>
+
+          {/* items-center is deliberately omitted here: with it, this
+              flex-col's children shrink-wrap instead of stretching to the
+              column's full cross-axis width, which collapses the card's own
+              w-full sizing (both card faces are position:absolute, so they
+              contribute no intrinsic width to size against) -- the same
+              reason the mobile block above doesn't use it either. Centering
+              is done per-child instead (justify-center on each row, mx-auto
+              on the width-capped grade-row). */}
+          <div className="relative flex min-w-0 flex-1 flex-col justify-center gap-5 border-r px-8 py-8" style={{ borderColor: "rgba(233,233,237,.08)" }}>
+            <button
+              type="button"
+              onClick={goBack}
+              aria-label="Close review session"
+              className="absolute top-6 left-6"
+              style={{ color: "rgba(233,233,237,.55)" }}
+            >
+              <X size={19} weight="regular" aria-hidden="true" />
+            </button>
+
+            <div className="flex justify-center gap-1.5">
+              {current.themenfeld[0] && (
+                <span className="rounded-full px-2 py-1 text-[9.5px]" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
+                  {THEMENFELD_LABELS[current.themenfeld[0]]}
+                </span>
+              )}
+              <span
+                className="flex items-center gap-1 rounded-full px-2 py-1 text-[9.5px]"
+                style={{ background: "rgba(145,132,217,.14)", color: "#b5abfc" }}
+              >
+                <Timer size={10} weight="regular" aria-hidden="true" />
+                {formatElapsed(elapsedSeconds)} elapsed
+              </span>
+            </div>
+
+            <div className="flex items-center justify-center" style={{ perspective: 1400 }}>
+              <div
+                onClick={flip}
+                className="relative h-[420px] w-full max-w-[380px] cursor-pointer"
+                style={{
+                  transformStyle: "preserve-3d",
+                  transition: "transform .6s cubic-bezier(.2,.85,.25,1)",
+                  transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)",
+                }}
+              >
+                {/* front */}
+                <div
+                  className="absolute inset-0 flex flex-col items-center justify-center gap-3.5 rounded-[20px] p-6 text-center"
+                  style={{
+                    backfaceVisibility: "hidden",
+                    background: "linear-gradient(165deg,#252838,#1d2030)",
+                    boxShadow: "0 0 0 1px #3f424d, 0 18px 44px rgba(0,0,0,.5)",
+                  }}
+                >
+                  <div className="text-[10px] tracking-[.14em] uppercase" style={{ color: chipColor(current) }}>
+                    {fullArtLabel(current)}
+                  </div>
+                  <div className="text-[38px] leading-[1.1] font-medium" style={{ letterSpacing: "-.03em" }}>
+                    {current.headword}
+                  </div>
+                  <div className="absolute bottom-[22px] left-0 right-0 flex flex-col items-center gap-1.5">
+                    <HandTap size={21} weight="regular" className="animate-bob" style={{ color: "rgba(233,233,237,.35)" }} aria-hidden="true" />
+                    <span className="text-[11.5px]" style={{ color: "rgba(233,233,237,.38)" }}>
+                      Click to flip
+                    </span>
+                  </div>
+                </div>
+
+                {/* back */}
+                <div
+                  className="absolute inset-0 flex flex-col justify-center gap-2.5 rounded-[20px] p-6"
+                  style={{
+                    backfaceVisibility: "hidden",
+                    transform: "rotateY(180deg)",
+                    background: "linear-gradient(165deg,#2b2741,#20222f)",
+                    boxShadow: "0 0 0 1px #423a6a, 0 18px 44px rgba(0,0,0,.5)",
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="text-[12px]" style={{ letterSpacing: ".04em", color: chipColor(current) }}>
+                      {fullArtLabel(current)} {current.headword}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void playWordAudio(current.id).catch(() => {});
+                      }}
+                      aria-label="Play pronunciation"
+                      className="grid size-8 shrink-0 place-items-center rounded-full text-white"
+                      style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+                    >
+                      <SpeakerHigh size={15} weight="fill" aria-hidden="true" />
+                    </button>
+                  </div>
+                  <div className="text-[28px] leading-[1.1] font-medium" style={{ letterSpacing: "-.025em" }}>
+                    {current.meaning ?? "no meaning yet"}
+                  </div>
+                  <div
+                    className="h-px"
+                    style={{
+                      background:
+                        "linear-gradient(to right, transparent, rgba(233,233,237,.18) 30px, rgba(233,233,237,.18) calc(100% - 30px), transparent)",
+                    }}
+                  />
+                  {current.example && <div className="text-[14px] leading-[1.5]" style={{ color: "rgba(233,233,237,.85)" }}>{current.example}</div>}
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    {current.declension?.nom?.pl && (
+                      <span className="rounded-full px-2 py-1 text-[10.5px]" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
+                        plural: {current.declension.nom.pl}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mx-auto w-full max-w-[380px]">
+              <div
+                className="transition-[opacity,transform] duration-300"
+                style={{
+                  opacity: revealed ? 1 : 0,
+                  transform: revealed ? "translateY(0)" : "translateY(14px)",
+                  pointerEvents: revealed ? "auto" : "none",
+                }}
+              >
+                <div className="mb-2.5 text-center text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+                  How did that go?
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {GRADE_BUTTONS.map(({ grade: g, label, icon: Icon }) => {
+                    const emphasized = g === "good";
+                    return (
+                      <button
+                        key={g}
+                        type="button"
+                        disabled={grade.isPending}
+                        onClick={() => submitGrade(g)}
+                        className="flex flex-col items-center gap-1 rounded-[11px] px-0.5 py-3 disabled:opacity-50"
+                        style={{
+                          border: `1px solid ${emphasized ? "#9184d9" : "rgba(233,233,237,.16)"}`,
+                          background: emphasized ? "rgba(145,132,217,.13)" : "transparent",
+                          color: emphasized ? "#d2cefd" : "#e9e9ed",
+                        }}
+                      >
+                        <Icon size={17} weight="regular" aria-hidden="true" />
+                        <span className="text-[11.5px] font-medium">{label}</span>
+                        <span className="text-[9px]" style={{ color: emphasized ? "rgba(210,206,253,.6)" : "rgba(233,233,237,.4)" }}>
+                          {preview ? formatInterval(preview[g].interval) : "…"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {!revealed && (
+                <div className="mt-2 grid h-[24px] place-items-center">
+                  <div className="text-[12px]" style={{ color: "rgba(233,233,237,.4)" }}>
+                    See the answer first, then grade it
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="min-w-0 flex-1 border-r" style={{ borderColor: "rgba(233,233,237,.08)" }}>
+            <WordDetailContent key={current.id} id={current.id} embedded />
+          </div>
+
+          <div className="w-[300px] shrink-0">
+            <ReviewNotesPane wordId={current.id} />
+          </div>
+        </>
+      )}
+    </div>
+    </>
   );
 }

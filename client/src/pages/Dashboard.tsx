@@ -164,7 +164,7 @@ export default function Dashboard() {
   return (
     <>
     <div
-      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)] lg:hidden"
+      className="animate-fade-in-screen flex min-h-[calc(100dvh-40px-88px-env(safe-area-inset-bottom))] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)] pb-3 lg:hidden"
       style={{ background: "radial-gradient(120% 48% at 50% 6%, #23263d 0%, #161826 64%)" }}
     >
       {/* ── header ── */}
@@ -376,9 +376,14 @@ export default function Dashboard() {
     </div>
 
     {/* ── lg+: 3-column desktop layout (German Companion Desktop.dc.html,
-        id="1a") — same data as the mobile column above, laid out wider. ── */}
+        id="1a") — same data as the mobile column above, laid out wider.
+        lg:pl-5: main's own lg:pl-[84px] is exactly the rail's bare width
+        with no breathing room (every other route gets extra clearance from
+        its own mx-auto max-w-6xl px-4) — without this the left column sits
+        flush against the rail's hairline border; lg:pl-4 matches main's own
+        lg:pr-4 on the right for symmetric clearance. ── */}
     <div
-      className="hidden min-h-0 lg:flex lg:h-full lg:flex-col"
+      className="hidden min-h-0 lg:flex lg:h-full lg:flex-col lg:pl-4"
       style={{ background: "radial-gradient(120% 48% at 50% 6%, #23263d 0%, #161826 64%)" }}
     >
       <div className="flex items-end justify-between">

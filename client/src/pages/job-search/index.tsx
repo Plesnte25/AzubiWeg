@@ -8,7 +8,7 @@ import ApplicationDetailModal from "./ApplicationDetailModal";
 import ApplicationDetailSheet from "./ApplicationDetailSheet";
 import { BoardDesktop } from "./BoardDesktop";
 import BoardMobile from "./BoardMobile";
-import CvShelfMobile from "./CvShelfMobile";
+import CvShelf from "./CvShelf";
 import NewApplicationModal from "./NewApplicationModal";
 import AddPortalModal from "./AddPortalModal";
 
@@ -133,7 +133,7 @@ export default function JobSearch() {
         )}
 
         <div className="mt-4">
-          <CvShelfMobile />
+          <CvShelf />
         </div>
         <div className="mt-3.5">
           <PortalsMobile />
@@ -185,6 +185,8 @@ export default function JobSearch() {
         ) : (
           <Skeleton className="-mt-2 h-3.5 w-48" />
         )}
+
+        <CvShelf />
 
         <BoardDesktop onOpen={setOpenId} />
 

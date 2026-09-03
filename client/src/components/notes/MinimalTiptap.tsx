@@ -1,8 +1,8 @@
 import { type ReactNode, useEffect } from "react";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
-import { Bold, Italic, List, ListOrdered } from "lucide-react";
+import { TextB, TextItalic, ListBullets, ListNumbers } from "@phosphor-icons/react";
 import { cn } from "../../lib/cn";
 
 function ToolbarButton({
@@ -40,9 +40,13 @@ function ToolbarButton({
  * A deliberately small rich-text editor for freeform Notes (Note.body) —
  * bold/italic/bullet/numbered list only, no headings/tables/images (images
  * are handled by the existing Attachments component, not inline here).
- * Styled with the same ghost-composer chrome as Textarea's ghost variant
- * (bg-paper box, bg-hairline-soft on focus) so it matches every other
- * note-composer surface in the app.
+ * Renders flush (no card/background/padding of its own — the handoff's Note
+ * Editor textarea is fully transparent), matching whatever surface the
+ * caller places it on. Doesn't render its own toolbar: the handoff has one
+ * bottom toolbar row shared with the word count, not one bolted directly
+ * under the body, so callers render `MinimalTiptapToolbar` wherever that
+ * row belongs (see NoteEditor.tsx) using the editor instance handed back
+ * via `onEditorReady`.
  */
 export function MinimalTiptap({
   content,
@@ -51,6 +55,7 @@ export function MinimalTiptap({
   placeholder,
   className,
   autoFocus,
+  onEditorReady,
 }: {
   content: string;
   onChange: (html: string) => void;
@@ -58,6 +63,7 @@ export function MinimalTiptap({
   placeholder?: string;
   className?: string;
   autoFocus?: boolean;
+  onEditorReady?: (editor: Editor | null) => void;
 }) {
   const editor = useEditor({
     extensions: [
@@ -81,40 +87,58 @@ export function MinimalTiptap({
   });
 
   // keep the editor synced if `content` changes from outside (e.g. switching
-  // which note is being edited) without fighting the user's own typing
+  // which note is being edited) without fighting the user's own typing.
+  // isDestroyed guard: this effect can still fire with a stale `editor`
+  // reference after the editor itself has torn down (e.g. a route change
+  // that unmounts this component in the same commit as an unrelated state
+  // update elsewhere) — calling .getHTML() on a destroyed editor throws
+  // inside ProseMirror's DOMSerializer, crashing the whole route.
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || editor.isDestroyed) return;
     if (content !== editor.getHTML()) editor.commands.setContent(content, { emitUpdate: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content, editor]);
 
+  useEffect(() => {
+    onEditorReady?.(editor ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor]);
+
   if (!editor) return null;
 
+  return <EditorContent editor={editor} className={className} />;
+}
+
+/** The handoff's single bottom toolbar row — formatting icons plus the
+ * note's word count, right-aligned, sitting below the tag row at the very
+ * bottom of the screen (not directly under the body). See NoteEditor.tsx. */
+export function MinimalTiptapToolbar({ editor, wordCount }: { editor: Editor | null; wordCount: number }) {
+  if (!editor) return null;
   return (
-    <div className={cn("rounded-md bg-paper p-2.5 transition-colors focus-within:bg-hairline-soft", className)}>
-      <EditorContent editor={editor} />
-      <div className="mt-1.5 flex items-center gap-0.5 border-t border-hairline pt-1.5">
-        <ToolbarButton active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} title="Bold">
-          <Bold className="size-3.5" aria-hidden="true" />
-        </ToolbarButton>
-        <ToolbarButton active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()} title="Italic">
-          <Italic className="size-3.5" aria-hidden="true" />
-        </ToolbarButton>
-        <ToolbarButton
-          active={editor.isActive("bulletList")}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          title="Bullet list"
-        >
-          <List className="size-3.5" aria-hidden="true" />
-        </ToolbarButton>
-        <ToolbarButton
-          active={editor.isActive("orderedList")}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          title="Numbered list"
-        >
-          <ListOrdered className="size-3.5" aria-hidden="true" />
-        </ToolbarButton>
-      </div>
+    <div className="flex items-center gap-0.5 border-t border-hairline pt-1.5">
+      <ToolbarButton active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} title="Bold">
+        <TextB size={14} weight="regular" aria-hidden="true" />
+      </ToolbarButton>
+      <ToolbarButton active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()} title="Italic">
+        <TextItalic size={14} weight="regular" aria-hidden="true" />
+      </ToolbarButton>
+      <ToolbarButton
+        active={editor.isActive("bulletList")}
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        title="Bullet list"
+      >
+        <ListBullets size={14} weight="regular" aria-hidden="true" />
+      </ToolbarButton>
+      <ToolbarButton
+        active={editor.isActive("orderedList")}
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        title="Numbered list"
+      >
+        <ListNumbers size={14} weight="regular" aria-hidden="true" />
+      </ToolbarButton>
+      <span className="ml-auto text-[11px]" style={{ color: "rgba(233,233,237,.35)" }}>
+        {wordCount} words
+      </span>
     </div>
   );
 }

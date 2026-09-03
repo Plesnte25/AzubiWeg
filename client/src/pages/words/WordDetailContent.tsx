@@ -131,11 +131,31 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
             >
               Drill now
             </button>
+            {/* Desktop gets a direct delete icon instead of the mobile
+                dots-menu → sheet detour — a native confirm() is enough for
+                a single destructive action, no custom modal needed (same
+                pattern as NoteEditor.tsx's delete button). Flag-as-problem-
+                word has no desktop affordance by design; it stays mobile-
+                only, reachable through the sheet below. */}
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm(`Delete "${word.headword}"? This also removes it from your vault.`)) del.mutate();
+              }}
+              aria-label="Delete word"
+              title="Delete word"
+              className="grid size-8 shrink-0 place-items-center rounded-[9px]"
+              style={{ background: "#20222f", color: "#e9e9ed" }}
+            >
+              <Trash size={14} weight="regular" aria-hidden="true" />
+            </button>
           </div>
         )}
-        <button type="button" onClick={() => setShowActions(true)} aria-label="Word actions">
-          <DotsThree size={19} weight="regular" aria-hidden="true" />
-        </button>
+        {!embedded && (
+          <button type="button" onClick={() => setShowActions(true)} aria-label="Word actions">
+            <DotsThree size={19} weight="regular" aria-hidden="true" />
+          </button>
+        )}
       </div>
 
       <div>

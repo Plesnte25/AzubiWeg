@@ -52,9 +52,14 @@ export function WordFamilySheet({ wordId, headword, open, onClose }: { wordId: s
                 {label}
               </div>
               <div className="flex flex-col gap-1">
-                {rows.map((m) => (
+                {rows.map((m, i) => (
                   <div
-                    key={m.headword}
+                    // headword alone isn't guaranteed unique — DErivBase
+                    // family lookups can return the same headword twice
+                    // within a tier (e.g. a word related to itself via two
+                    // different derivation paths), confirmed live against
+                    // the demo data.
+                    key={`${m.headword}-${i}`}
                     onClick={m.ownedWordId ? () => { onClose(); push(`/words/${m.ownedWordId}`); } : undefined}
                     className="flex items-center justify-between rounded-[11px] px-3 py-[9px]"
                     style={{ background: "#20222f", cursor: m.ownedWordId ? "pointer" : "default" }}

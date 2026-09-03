@@ -1,17 +1,22 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import type { Editor } from "@tiptap/react";
 import { Plus, Trash2 } from "lucide-react";
 import { api } from "../../api/client";
 import type { Note } from "../../api/types";
+import { stripHtml } from "../../lib/text";
 import { Attachments } from "../Attachments";
 import { CircleIconButton } from "../ui/CircleIconButton";
-import { MinimalTiptap } from "./MinimalTiptap";
+import { MinimalTiptap, MinimalTiptapToolbar } from "./MinimalTiptap";
 
 /** Freeform-note editor — edit-on-blur (matches every other edit-an-existing-
  * row textarea in the app), attachments, delete. Shared by the Notes tab and
  * a task's Notes section. */
 export function NoteEditor({ note, onChanged }: { note: Note; onChanged: () => void }) {
   const [draft, setDraft] = useState(note.body ?? "");
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const plain = stripHtml(draft).trim();
+  const wordCount = plain ? plain.split(/\s+/).length : 0;
   const update = useMutation({
     mutationFn: (body: string) => api.updateNote(note.id, { body: body || null }),
     onSuccess: onChanged,
@@ -23,10 +28,12 @@ export function NoteEditor({ note, onChanged }: { note: Note; onChanged: () => v
       <MinimalTiptap
         content={draft}
         onChange={setDraft}
+        onEditorReady={setEditor}
         onBlur={() => {
           if (draft !== (note.body ?? "")) update.mutate(draft);
         }}
       />
+      <MinimalTiptapToolbar editor={editor} wordCount={wordCount} />
       <div className="mt-1.5 flex items-center gap-1.5">
         <Attachments
           files={note.files}

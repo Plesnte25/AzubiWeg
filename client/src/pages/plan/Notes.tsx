@@ -12,6 +12,7 @@ import { stripHtml } from "../../lib/text";
 import type { Destination } from "../learning-hub/destinations";
 import { invalidateHub } from "../learning-hub/queryHelpers";
 import { TaskDetailDrawer } from "../learning-hub/TaskDetailDrawer";
+import { NoteEditorContent } from "./NoteEditor";
 
 type Bucket = "all" | "mine" | "surfaced";
 
@@ -159,6 +160,61 @@ function UnitNoteEditor({ item, onChanged }: { item: SurfacedUnitNote; onChanged
   );
 }
 
+/** One feed row — shared by the mobile list and the lg: desktop list
+ * (item click behavior differs per caller: mobile navigates away, desktop
+ * sets local selection state instead). `isSelected` (desktop's currently-
+ * open note) and a linked-to-word note both get the same accent-tinted
+ * card treatment already used for "current/active" state elsewhere (e.g.
+ * Dashboard.tsx's next-task card). */
+function NoteRow({
+  row,
+  isOpen,
+  isSelected = false,
+  onOpen,
+  onChanged,
+}: {
+  row: FeedRow;
+  isOpen: boolean;
+  isSelected?: boolean;
+  onOpen: () => void;
+  onChanged: () => void;
+}) {
+  const skill = rowSkill(row);
+  const preview = rowPreview(row);
+  const isLinked = row.source === "note" && row.item.wordId !== null;
+  const highlight = isSelected || isLinked;
+  return (
+    <div
+      className="rounded-xl p-[13px]"
+      style={{
+        background: highlight ? "linear-gradient(160deg,#2b2741,#232532)" : "#1c1f2c",
+        boxShadow: highlight ? "0 0 0 1px #423a6a" : "none",
+      }}
+    >
+      <button type="button" className="flex w-full items-start gap-3 text-left" onClick={onOpen}>
+        <NotePencil size={16} weight="regular" style={{ color: "#796cbf", marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "#20222f", color: "rgba(233,233,237,.6)" }}>
+              {SOURCE_LABEL[row.source]}
+            </span>
+            {skill && (
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "#20222f", color: "rgba(233,233,237,.6)" }}>
+                {SKILL_LABELS[skill]}
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-[14.5px] font-medium">{rowTitle(row)}</p>
+          {preview && <p className="mt-0.5 text-[11.5px] leading-[1.45]" style={{ color: "rgba(233,233,237,.5)" }}>{preview}</p>}
+          <p className="mt-[5px] text-[10px]" style={{ color: "rgba(233,233,237,.32)" }}>{rowMeta(row)}</p>
+        </div>
+      </button>
+      {isOpen && row.source === "notebook" && <NotebookEditor item={row.item} onChanged={onChanged} />}
+      {isOpen && row.source === "unit" && <UnitNoteEditor item={row.item} onChanged={onChanged} />}
+    </div>
+  );
+}
+
 const BUCKETS: { key: Bucket; label: string }[] = [
   { key: "all", label: "all" },
   { key: "mine", label: "my notes" },
@@ -173,6 +229,10 @@ export default function Notes() {
   const [skillFilter, setSkillFilter] = useState<RoadmapSkill | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [openTask, setOpenTask] = useState<RoadmapJournalTask | null>(null);
+  // lg: master-detail selection — a "note"-source row's real id, or "new";
+  // journal/notebook/unit rows still use their own inline/drawer handling
+  // below, unchanged from mobile.
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
 
   const invalidate = () => invalidateHub(queryClient);
   const onNavigate = (d: Destination) => push(d === "sources" ? "/plan/sources" : "/plan");
@@ -211,8 +271,9 @@ export default function Notes() {
   const linkedCount = data.notes.filter((n) => n.wordId !== null).length;
 
   return (
+    <>
     <div
-      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col overflow-y-auto px-[18px] pt-[calc(env(safe-area-inset-top)+18px)] pb-[calc(env(safe-area-inset-bottom)+90px)] lg:mx-auto lg:my-8 lg:min-h-0 lg:max-w-[640px] lg:rounded-[20px] lg:border lg:border-white/5 lg:pb-8"
+      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col overflow-y-auto px-[18px] pt-[calc(env(safe-area-inset-top)+18px)] pb-[calc(env(safe-area-inset-bottom)+90px)] lg:hidden"
       style={{ background: "#161826" }}
     >
       <div className="flex items-center justify-between">
@@ -307,47 +368,159 @@ export default function Notes() {
         </div>
       ) : (
         <div className="mt-3.5 flex flex-col gap-[9px]">
-          {filtered.map((row) => {
-            const isOpen = expanded === row.key;
-            const skill = rowSkill(row);
-            const preview = rowPreview(row);
-            return (
-              <div key={row.key} className="rounded-xl p-[13px]" style={{ background: "#1c1f2c" }}>
-                <button
-                  type="button"
-                  className="flex w-full items-start gap-3 text-left"
-                  onClick={() => {
-                    if (row.source === "journal") setOpenTask(row.item);
-                    else if (row.source === "note") push(`/plan/notes/edit/${row.item.id}`);
-                    else setExpanded(isOpen ? null : row.key);
-                  }}
-                >
-                  <NotePencil size={16} weight="regular" style={{ color: "#796cbf", marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "#20222f", color: "rgba(233,233,237,.6)" }}>
-                        {SOURCE_LABEL[row.source]}
-                      </span>
-                      {skill && (
-                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "#20222f", color: "rgba(233,233,237,.6)" }}>
-                          {SKILL_LABELS[skill]}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 text-[14.5px] font-medium">{rowTitle(row)}</p>
-                    {preview && <p className="mt-0.5 text-[11.5px] leading-[1.45]" style={{ color: "rgba(233,233,237,.5)" }}>{preview}</p>}
-                    <p className="mt-[5px] text-[10px]" style={{ color: "rgba(233,233,237,.32)" }}>{rowMeta(row)}</p>
-                  </div>
-                </button>
-                {isOpen && row.source === "notebook" && <NotebookEditor item={row.item} onChanged={invalidate} />}
-                {isOpen && row.source === "unit" && <UnitNoteEditor item={row.item} onChanged={invalidate} />}
-              </div>
-            );
-          })}
+          {filtered.map((row) => (
+            <NoteRow
+              key={row.key}
+              row={row}
+              isOpen={expanded === row.key}
+              onOpen={() => {
+                if (row.source === "journal") setOpenTask(row.item);
+                else if (row.source === "note") push(`/plan/notes/edit/${row.item.id}`);
+                else setExpanded(expanded === row.key ? null : row.key);
+              }}
+              onChanged={invalidate}
+            />
+          ))}
         </div>
       )}
-
-      {openTask && <TaskDetailDrawer task={openTask} onClose={() => setOpenTask(null)} onNavigate={onNavigate} />}
     </div>
+
+    {/* lg+: real desktop layout — notes list | selected note's editor,
+        master-detail (the same pattern Vocabulary.tsx's word list +
+        embedded WordDetailContent, and SyllabusSourcesDesktop.tsx's
+        station list + detail column, already use), matching Dashboard's
+        grid+gap spacing instead of the old "just recenter the mobile
+        column in a bordered card" lg: treatment this replaces. Selecting
+        or creating a note updates selectedNoteId locally — no navigation,
+        so the list and editor share one window, per an explicit user
+        decision (simpler than a modal-over-dimmed-background, and doesn't
+        need React Router's background-location pattern). */}
+    <div className="hidden min-h-0 lg:mx-auto lg:my-8 lg:grid lg:h-full lg:max-w-[1040px] lg:grid-cols-[1fr_420px] lg:gap-5">
+      <div className="flex min-h-0 flex-col">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[22px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
+              Notes
+            </div>
+            <div className="text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+              {data.notes.length} notes{linkedCount > 0 ? ` · ${linkedCount} linked to words` : ""}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedNoteId("new")}
+            className="flex shrink-0 items-center gap-[6px] rounded-[10px] px-3 py-2.5 text-[13.5px] font-medium text-white"
+            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+          >
+            <Plus size={16} weight="regular" aria-hidden="true" />
+            New
+          </button>
+        </div>
+
+        <div className="mt-3 flex items-center gap-1.5">
+          {BUCKETS.map((b) => (
+            <button
+              key={b.key}
+              type="button"
+              onClick={() => setBucket(b.key)}
+              className="rounded-full px-2.5 py-1 text-[11.5px] capitalize"
+              style={{
+                background: bucket === b.key ? "rgba(145,132,217,.22)" : "#20222f",
+                color: bucket === b.key ? "#d2cefd" : "rgba(233,233,237,.6)",
+              }}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-2 flex flex-nowrap gap-1.5 overflow-x-auto pb-1">
+          <button
+            type="button"
+            onClick={() => setSkillFilter(null)}
+            className="shrink-0 rounded-full px-2.5 py-1 text-[11.5px] font-medium"
+            style={{
+              background: skillFilter === null ? "rgba(145,132,217,.22)" : "#20222f",
+              color: skillFilter === null ? "#d2cefd" : "rgba(233,233,237,.6)",
+            }}
+          >
+            all
+          </button>
+          {ALL_SKILLS.filter((s) => skillCounts[s]).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setSkillFilter(skillFilter === s ? null : s)}
+              className="shrink-0 rounded-full px-2.5 py-1 text-[11.5px] font-medium"
+              style={{
+                background: skillFilter === s ? "rgba(145,132,217,.22)" : "#20222f",
+                color: skillFilter === s ? "#d2cefd" : "rgba(233,233,237,.6)",
+              }}
+            >
+              {SKILL_LABELS[s]} {skillCounts[s]}
+            </button>
+          ))}
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="mt-8 flex flex-col items-center gap-2 px-6 text-center">
+            <NotePencil size={28} weight="regular" style={{ color: "rgba(233,233,237,.3)" }} aria-hidden="true" />
+            <p className="text-[14px] font-medium">{bucket !== "all" || skillFilter ? "No notes match these filters" : "No notes yet"}</p>
+            <p className="text-[12px]" style={{ color: "rgba(233,233,237,.45)" }}>
+              {bucket !== "all" || skillFilter ? "Try a different bucket or skill." : "Click New to write one, or check back after your next lesson."}
+            </p>
+            {(bucket !== "all" || skillFilter) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setBucket("all");
+                  setSkillFilter(null);
+                }}
+                className="mt-1 text-[12.5px] font-medium"
+                style={{ color: "#b5abfc" }}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="mt-3.5 flex min-h-0 flex-1 flex-col gap-[9px] overflow-y-auto pb-2">
+            {filtered.map((row) => (
+              <NoteRow
+                key={row.key}
+                row={row}
+                isOpen={expanded === row.key}
+                isSelected={row.source === "note" && selectedNoteId === row.item.id}
+                onOpen={() => {
+                  if (row.source === "journal") setOpenTask(row.item);
+                  else if (row.source === "note") setSelectedNoteId(row.item.id);
+                  else setExpanded(expanded === row.key ? null : row.key);
+                }}
+                onChanged={invalidate}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="min-h-0 overflow-hidden rounded-[20px]" style={{ background: "#1c1f2c" }}>
+        {selectedNoteId ? (
+          <NoteEditorContent
+            key={selectedNoteId}
+            id={selectedNoteId}
+            embedded
+            onClose={() => setSelectedNoteId(null)}
+            onCreated={(id) => setSelectedNoteId(id)}
+          />
+        ) : (
+          <div className="grid h-full place-items-center px-6 text-center text-[13px]" style={{ color: "rgba(233,233,237,.4)" }}>
+            Select a note, or create a new one.
+          </div>
+        )}
+      </div>
+    </div>
+
+    {openTask && <TaskDetailDrawer task={openTask} onClose={() => setOpenTask(null)} onNavigate={onNavigate} />}
+    </>
   );
 }

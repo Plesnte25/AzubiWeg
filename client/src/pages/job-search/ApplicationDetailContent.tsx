@@ -1,6 +1,6 @@
 import { type ReactNode, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Trash2 } from "lucide-react";
+import { Check, FileText, Trash } from "@phosphor-icons/react";
 import { api, downloadFile } from "../../api/client";
 import type { ApplicationDetail, ApplicationStatus } from "../../api/types";
 import { Button } from "../../components/ui/Button";
@@ -86,7 +86,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
                     i > stepIndex && "border-hairline text-ink-300",
                   )}
                 >
-                  {i < stepIndex ? <Check className="size-3.5" aria-hidden="true" /> : i + 1}
+                  {i < stepIndex ? <Check size={14} weight="regular" aria-hidden="true" /> : i + 1}
                 </div>
                 <span className={cn("text-micro", i <= stepIndex ? "text-ink-900" : "text-ink-300")}>
                   {s.label}
@@ -164,10 +164,11 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
         </Field>
         {app.cv && (
           <button
-            className="rounded-full bg-brand-50 px-3 py-1 text-caption font-semibold text-brand-700 hover:bg-brand-100"
+            className="flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-caption font-semibold text-brand-700 hover:bg-brand-100"
             onClick={() => downloadFile(app.cv!.file.id, app.cv!.file.originalName)}
           >
-            📄 {app.cv.title}
+            <FileText size={13} weight="regular" aria-hidden="true" />
+            {app.cv.title}
           </button>
         )}
       </div>
@@ -225,7 +226,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
         <Button
           variant="outline"
           className="text-danger-600 hover:border-danger-100 hover:bg-danger-50"
-          leftIcon={<Trash2 className="size-3.5" aria-hidden="true" />}
+          leftIcon={<Trash size={14} weight="regular" aria-hidden="true" />}
           onClick={() => {
             if (confirm(`Delete the application at ${app.company}?`)) remove.mutate();
           }}

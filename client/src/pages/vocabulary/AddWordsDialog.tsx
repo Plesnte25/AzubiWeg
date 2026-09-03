@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarCheck, Sparkle } from "@phosphor-icons/react";
 import { api } from "../../api/client";
 import type { CefrLevel, Genus, Themenfeld } from "../../api/types";
@@ -45,11 +45,18 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
   const [themeMode, setThemeMode] = useState<ThemeMode>("auto");
   const [pickedThemes, setPickedThemes] = useState<Themenfeld[]>([]);
   const queryClient = useQueryClient();
+  const wordsInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Stays mounted at all times (BottomSheet handles its own open/close
   // transition — see Dashboard.tsx's task-detail sheet for the same
   // pattern), so reset the form on every open rather than relying on
-  // mount/unmount to do it.
+  // mount/unmount to do it. Focus is driven from here too, not a static
+  // autoFocus prop on the textarea below — autoFocus fires once at real
+  // DOM mount regardless of `open`, which (since this component is always
+  // mounted) would silently steal page focus the instant this component's
+  // parent mounts, closed or not. That's a real bug here: CommandPalette.tsx
+  // now mounts this app-wide via Layout.tsx, so a static autoFocus would
+  // steal focus on every single page load, not just while this is open.
   useEffect(() => {
     if (!open) return;
     setWordsInput(initialWord);
@@ -57,6 +64,7 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
     setLevel("auto");
     setThemeMode("auto");
     setPickedThemes([]);
+    wordsInputRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -118,11 +126,11 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
             German word{words.length > 1 ? "s" : ""}
           </div>
           <textarea
+            ref={wordsInputRef}
             value={wordsInput}
             onChange={(e) => setWordsInput(e.target.value)}
             placeholder={"Genehmigung\n(comma or newline separated for more than one)"}
             rows={singleWord ? 1 : 3}
-            autoFocus
             className="w-full resize-none bg-transparent text-[24px] leading-tight font-medium outline-none"
             style={{ color: "#e9e9ed", letterSpacing: "-.02em", borderBottom: "2px solid #9184d9", paddingBottom: 7 }}
           />

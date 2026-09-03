@@ -73,6 +73,7 @@ export function useReviewSession({ words }: { words?: Word[] }) {
 
   return {
     loading,
+    queue: queue ?? [],
     current,
     total,
     remaining,

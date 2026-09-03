@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { CaretLeft, Check, Flag, Lock } from "@phosphor-icons/react";
 import { api } from "../../api/client";
 import type { CefrLevel } from "../../api/types";
@@ -113,10 +114,17 @@ export function StationNode({
 
 export default function Syllabus() {
   const { goBack, backLabel, push } = useNavStack();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["learning", "syllabus"], queryFn: api.learningSyllabus });
   const [userLevel, setUserLevel] = useState<CefrLevel | null>(null);
-  const [openStationTheme, setOpenStationTheme] = useState<string | null | undefined>(undefined);
+  // A deep link from the command palette (a word's contextual "Syllabus —
+  // Chapter N" jump) arrives as router state — open on that station instead
+  // of the default "nothing open" state, same one-time-read pattern
+  // ReviewSession.tsx uses for its own curated router state.
+  const [openStationTheme, setOpenStationTheme] = useState<string | null | undefined>(
+    () => (location.state as { openStationTheme?: string } | null)?.openStationTheme ?? undefined,
+  );
   const [showAddItem, setShowAddItem] = useState(false);
 
   const toggle = useMutation({
