@@ -43,6 +43,17 @@ const SOURCE_LABEL: Record<FeedRow["source"], string> = {
   unit: "Source note",
 };
 
+// distinct per-source tint so a freeform Note and an auto-surfaced Grammar
+// Notebook/Source-note entry with similar content don't read as an
+// accidental duplicate at a glance — reuses existing genus/accent tokens
+// rather than inventing new colors.
+const SOURCE_BADGE: Record<FeedRow["source"], { bg: string; color: string }> = {
+  note: { bg: "rgba(145,132,217,.18)", color: "#d2cefd" },
+  journal: { bg: "#20222f", color: "rgba(233,233,237,.6)" },
+  notebook: { bg: "rgba(120,170,180,.18)", color: "#bcdde2" },
+  unit: { bg: "rgba(199,150,180,.18)", color: "#e6c3d5" },
+};
+
 function firstLine(text: string | null): string {
   if (!text) return "";
   return text.split("\n").find((l) => l.trim()) ?? "";
@@ -195,7 +206,7 @@ function NoteRow({
         <NotePencil size={16} weight="regular" style={{ color: "#796cbf", marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "#20222f", color: "rgba(233,233,237,.6)" }}>
+            <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: SOURCE_BADGE[row.source].bg, color: SOURCE_BADGE[row.source].color }}>
               {SOURCE_LABEL[row.source]}
             </span>
             {skill && (
@@ -217,8 +228,8 @@ function NoteRow({
 
 const BUCKETS: { key: Bucket; label: string }[] = [
   { key: "all", label: "all" },
-  { key: "mine", label: "my notes" },
-  { key: "surfaced", label: "surfaced" },
+  { key: "mine", label: "my notes only" },
+  { key: "surfaced", label: "from syllabus & sources" },
 ];
 
 export default function Notes() {
@@ -286,7 +297,7 @@ export default function Notes() {
             Notes
           </div>
           <div className="text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
-            {data.notes.length} notes{linkedCount > 0 ? ` · ${linkedCount} linked to words` : ""}
+            {rows.length} notes{linkedCount > 0 ? ` · ${linkedCount} linked to words` : ""}
           </div>
         </div>
         <button
@@ -403,7 +414,7 @@ export default function Notes() {
               Notes
             </div>
             <div className="text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
-              {data.notes.length} notes{linkedCount > 0 ? ` · ${linkedCount} linked to words` : ""}
+              {rows.length} notes{linkedCount > 0 ? ` · ${linkedCount} linked to words` : ""}
             </div>
           </div>
           <button

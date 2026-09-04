@@ -55,6 +55,7 @@ export function MinimalTiptap({
   placeholder,
   className,
   autoFocus,
+  editable = true,
   onEditorReady,
 }: {
   content: string;
@@ -63,6 +64,9 @@ export function MinimalTiptap({
   placeholder?: string;
   className?: string;
   autoFocus?: boolean;
+  /** Read-only "reading view" when false — larger line-height, no cursor,
+   * same content. Toggled by NoteEditor.tsx's Read/Edit switch. */
+  editable?: boolean;
   onEditorReady?: (editor: Editor | null) => void;
 }) {
   const editor = useEditor({
@@ -71,6 +75,7 @@ export function MinimalTiptap({
       Placeholder.configure({ placeholder: placeholder ?? "Type a note…" }),
     ],
     content,
+    editable,
     autofocus: autoFocus ? "end" : false,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     onBlur: () => onBlur?.(),
@@ -81,6 +86,7 @@ export function MinimalTiptap({
           "[&_p]:my-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5",
           "[&_blockquote]:my-1 [&_blockquote]:border-l-2 [&_blockquote]:border-hairline [&_blockquote]:pl-2 [&_blockquote]:text-ink-600",
           "[&_.is-editor-empty:first-child]:before:float-left [&_.is-editor-empty:first-child]:before:h-0 [&_.is-editor-empty:first-child]:before:text-ink-400 [&_.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]",
+          !editable && "[&_p]:my-2.5 text-[15px] leading-[1.75]",
         ),
       },
     },
@@ -98,6 +104,13 @@ export function MinimalTiptap({
     if (content !== editor.getHTML()) editor.commands.setContent(content, { emitUpdate: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content, editor]);
+
+  // Tiptap's `editable` option isn't reactive — flipping the Read/Edit
+  // toggle needs an explicit setEditable call, not just a re-render.
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    editor.setEditable(editable);
+  }, [editable, editor]);
 
   useEffect(() => {
     onEditorReady?.(editor ?? null);

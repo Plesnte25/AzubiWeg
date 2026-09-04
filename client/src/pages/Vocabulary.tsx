@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { CaretRight, MagnifyingGlass, Plus, SlidersHorizontal } from "@phosphor-icons/react";
 import { api } from "../api/client";
 import type { Grade } from "../api/types";
-import { barColor, buildSparkline, chipColor, chipLabel, NO_DATA_HEIGHT, SPARKLINE_SLOTS } from "../lib/wordDisplay";
+import { barColor, buildSparkline, chipBg, chipColor, chipLabel, NO_DATA_HEIGHT, SPARKLINE_SLOTS } from "../lib/wordDisplay";
 import { useNavStack } from "../lib/navStack";
 import { AddWordsDialog } from "./vocabulary/AddWordsDialog";
 import { NotesDock } from "./words/NotesDock";
@@ -140,7 +140,7 @@ export default function Vocabulary() {
             >
               <div
                 className="grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[11px] font-medium"
-                style={{ background: "rgba(233,233,237,.08)", color: chipColor(w) }}
+                style={{ background: chipBg(w), color: chipColor(w) }}
               >
                 {chipLabel(w)}
               </div>
@@ -188,7 +188,7 @@ export default function Vocabulary() {
         (Note.wordId, already real — see NotesDock.tsx's doc comment for
         the one adaptation from the literal drag-onto-active-composer
         interaction). ── */}
-    <div className="hidden min-h-0 lg:grid lg:h-full lg:grid-cols-[300px_1fr_300px] lg:gap-5">
+    <div className="hidden min-h-0 lg:grid lg:h-full lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:gap-5">
       <div className="flex min-h-0 flex-col">
         <div className="px-[18px] pt-[18px] pb-3">
           <div className="flex items-center justify-between">
@@ -260,7 +260,7 @@ export default function Vocabulary() {
                   borderBottom: "1px solid rgba(233,233,237,.05)",
                 }}
               >
-                <div className="grid size-8 shrink-0 place-items-center rounded-[9px] text-[10.5px] font-medium" style={{ background: "rgba(233,233,237,.08)", color: chipColor(w) }}>
+                <div className="grid size-8 shrink-0 place-items-center rounded-[9px] text-[10.5px] font-medium" style={{ background: chipBg(w), color: chipColor(w) }}>
                   {chipLabel(w)}
                 </div>
                 <div className="min-w-0 flex-1">

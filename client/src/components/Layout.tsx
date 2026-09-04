@@ -72,6 +72,12 @@ function GlobalShortcuts({ armed }: { armed: boolean }) {
 export default function Layout() {
   const location = useLocation();
   const isDashboard = location.pathname === "/";
+  // Words and Notes both have a desktop 3-column layout with one column
+  // meant to scroll internally (word list / note list) — that only works
+  // if some ancestor actually bounds main's height, same as Dashboard's own
+  // lg:h-dvh below. Unlike Dashboard they keep the normal centered
+  // max-w-6xl width, they just also need the height cap.
+  const needsBoundedHeight = isDashboard || location.pathname === "/words" || location.pathname === "/plan/notes";
   // Transient screens (the review session so far) own the whole viewport
   // distraction-free, same as the handoff — no tab bar/FAB/rail to tap
   // away through mid-session, and no reserved padding for chrome that
@@ -124,6 +130,7 @@ export default function Layout() {
             // tailwind-merge treats them as the same conflicting group and
             // keeps whichever is later in this list.
             !isTransient && (isDashboard ? "lg:h-dvh lg:min-h-[760px] lg:pr-4 lg:py-3" : "mx-auto max-w-6xl px-4 py-6"),
+            !isTransient && !isDashboard && needsBoundedHeight && "lg:h-dvh lg:min-h-[760px]",
           )}
         >
           <Outlet />

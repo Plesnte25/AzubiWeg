@@ -1,5 +1,5 @@
 import type { Grade, ReviewHistoryEntry, Word } from "../api/types";
-import { GENUS_COLORS, WORTART_COLORS } from "./vocab";
+import { GENUS_BG, GENUS_COLORS, WORTART_COLORS } from "./vocab";
 
 // last-N-review grade -> bar height, tiered the same way the handoff's demo
 // bars are (taller/lighter = stronger); "hard" is the only real grade that
@@ -33,6 +33,12 @@ export function chipLabel(word: Word): string {
 
 export function chipColor(word: Word): string {
   return word.genus ? GENUS_COLORS[word.genus] : WORTART_COLORS[word.wortart];
+}
+
+/** Gender-tinted badge background (der/die/das only) — a neutral fallback
+ * for non-noun words, which have no genus to tint by. */
+export function chipBg(word: Word): string {
+  return word.genus ? GENUS_BG[word.genus] : "rgba(233,233,237,.08)";
 }
 
 /** "der"/"die"/"das"/"verb", or the lowercased wortart for anything else

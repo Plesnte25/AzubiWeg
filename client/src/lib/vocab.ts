@@ -52,6 +52,12 @@ export const GENUS_COLORS: Record<NonNullable<Genus>, string> = {
   das: "var(--color-genus-das)",
 };
 
+export const GENUS_BG: Record<NonNullable<Genus>, string> = {
+  der: "var(--color-genus-der-bg)",
+  die: "var(--color-genus-die-bg)",
+  das: "var(--color-genus-das-bg)",
+};
+
 /** Prefixes a gendered article onto a headword for display ("Bahnhof" -> "der Bahnhof"). */
 export function articleFront(headword: string, genus: Genus): string {
   return genus ? `${genus} ${headword}` : headword;

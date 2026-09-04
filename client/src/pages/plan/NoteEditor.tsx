@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useParams } from "react-router-dom";
 import type { Editor } from "@tiptap/react";
-import { CaretLeft, LinkSimple, Tag, Trash, X } from "@phosphor-icons/react";
+import { CaretLeft, Eye, LinkSimple, PencilSimple, Tag, Trash, X } from "@phosphor-icons/react";
 import { api } from "../../api/client";
 import type { Note, Word } from "../../api/types";
 import { MinimalTiptap, MinimalTiptapToolbar } from "../../components/notes/MinimalTiptap";
@@ -69,6 +69,10 @@ export function NoteEditorContent({
   const [title, setTitle] = useState(note?.title ?? "");
   const [bodyHtml, setBodyHtml] = useState(note?.body ?? "");
   const [editor, setEditor] = useState<Editor | null>(null);
+  // Obsidian-style reading/editing split: an existing note opens in a calm
+  // read-only view by default; a brand-new note (nothing to read yet) opens
+  // straight into edit mode.
+  const [mode, setMode] = useState<"read" | "edit">(isNew ? "edit" : "read");
   // A contextTag prefill only ever comes from router state on a real
   // push("/plan/notes/edit/new", {state}) navigation (CaptureFab, the
   // command palette) — embedded new-notes are created directly from
@@ -207,6 +211,20 @@ export function NoteEditorContent({
           {!isNew && (
             <button
               type="button"
+              title={mode === "read" ? "Edit note" : "Read note"}
+              onClick={() => setMode((m) => (m === "read" ? "edit" : "read"))}
+              style={{ color: "inherit" }}
+            >
+              {mode === "read" ? (
+                <PencilSimple size={16} weight="regular" aria-hidden="true" />
+              ) : (
+                <Eye size={16} weight="regular" aria-hidden="true" />
+              )}
+            </button>
+          )}
+          {!isNew && (
+            <button
+              type="button"
               title="Delete note"
               onClick={() => {
                 if (confirm("Delete this note? This can't be undone.")) remove.mutate();
@@ -232,6 +250,7 @@ export function NoteEditorContent({
         onBlur={() => {
           if (!isNew && title !== (note!.title ?? "")) update.mutate({ title: title || null });
         }}
+        readOnly={mode === "read"}
         placeholder="Note title"
         className="mt-1.5 border-0 bg-transparent p-0 text-[22px] font-medium outline-none"
         style={{ color: "#e9e9ed", letterSpacing: "-.02em" }}
@@ -248,6 +267,7 @@ export function NoteEditorContent({
           placeholder="Write what you noticed…"
           className="min-h-[140px] bg-transparent p-0"
           autoFocus={isNew}
+          editable={mode === "edit"}
         />
       </div>
 
@@ -301,9 +321,11 @@ export function NoteEditorContent({
         )}
       </div>
 
-      <div className="mt-auto">
-        <MinimalTiptapToolbar editor={editor} wordCount={wordCount} />
-      </div>
+      {mode === "edit" && (
+        <div className="mt-auto">
+          <MinimalTiptapToolbar editor={editor} wordCount={wordCount} />
+        </div>
+      )}
     </div>
   );
 }
