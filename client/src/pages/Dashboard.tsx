@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Briefcase, Check, Fire, Sparkle } from "@phosphor-icons/react";
+import { Briefcase, Check, Clock, Fire, Sparkle } from "@phosphor-icons/react";
 import { api, getUser } from "../api/client";
 import type { DashboardNextTask, RoadmapSkill } from "../api/types";
 import { ProfileSheet } from "../components/ProfileSheet";
 import ReviewDial from "../components/ReviewDial";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { Skeleton } from "../components/ui/Skeleton";
+import { toast } from "../components/ui/Toast";
 import { levelStates } from "../lib/levels";
 import { SKILL_LABELS } from "../lib/skills";
 import { useNavStack } from "../lib/navStack";
@@ -103,6 +104,11 @@ export default function Dashboard() {
     mutationFn: (count: number) => api.pullTasksForward(count),
     onSuccess: () => invalidateHub(queryClient),
   });
+  const toggle = useMutation({
+    mutationFn: ({ id, completed }: { id: string; completed: boolean }) => api.toggleRoadmapTask(id, completed),
+    onSuccess: () => invalidateHub(queryClient),
+    onError: () => toast.error("Couldn't update that task — try again."),
+  });
 
   if (isLoading || !data) {
     return (
@@ -138,6 +144,12 @@ export default function Dashboard() {
   const skillPerfMap = new Map(data.learning.skillPerformance.map((s) => [s.skill, s.percent]));
   const weakestStrip = WEAKEST_STRIP_SKILLS.map((s) => ({ ...s, pct: skillPerfMap.get(s.skill) ?? 0 }));
   const weakest = [...weakestStrip].sort((a, b) => a.pct - b.pct)[0]!;
+
+  // the dashboard payload's nextTask is only a lightweight summary
+  // (DashboardNextTask) — the full RoadmapTask (already fetched for the
+  // middle column's own task list) carries real syllabus context the sheet
+  // below can show instead of generic boilerplate.
+  const liveNextTask = nextTask ? (todayFull?.tasks.find((t) => t.id === nextTask.id) ?? null) : null;
 
   const startNextTask = () => {
     setTaskDetailOpen(false);
@@ -326,6 +338,7 @@ export default function Dashboard() {
           </button>
           {nextTask && (
             <div className="flex items-center gap-1.5 text-[11.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+              <Clock size={12} weight="regular" aria-hidden="true" />
               {estimateFor(nextTask)}
             </div>
           )}
@@ -397,7 +410,11 @@ export default function Dashboard() {
             {greeting()}{firstName ? `, ${firstName}` : ""}.
           </div>
         </div>
-        <div className="flex items-center gap-[9px]">
+        <div className="flex items-center gap-[15px]">
+          <span className="flex items-center gap-1 text-[11px]" style={{ color: "rgba(233,233,237,.55)" }}>
+            <Fire size={12} weight="fill" aria-hidden="true" />
+            {data.streak} days
+          </span>
           <button
             type="button"
             onClick={() => push("/review")}
@@ -458,7 +475,11 @@ export default function Dashboard() {
 
           {last7Days.length > 0 && (
             <button type="button" onClick={() => switchTab("/stats")} className="rounded-xl p-[14px] text-left" style={{ background: "#1c1f2c" }}>
-              <div className="text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>7-day streak</div>
+              {/* labeled "activity", not "streak" — this is a per-day minutes
+                  heatmap with no gap/break logic, so it can't represent a
+                  real streak; the one authoritative streak number lives in
+                  the header badge above. */}
+              <div className="text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>7-day activity</div>
               <div className="mt-2.5 flex gap-[6px]">
                 {last7Days.map((cell, i) => {
                   const isToday = i === last7Days.length - 1;
@@ -537,7 +558,10 @@ export default function Dashboard() {
                 {!roadmapStarted ? "Get started" : nextTask ? "Start" : "Practise anyway"} →
               </button>
               {nextTask && (
-                <div className="text-[11.5px]" style={{ color: "rgba(233,233,237,.55)" }}>{estimateFor(nextTask)}</div>
+                <div className="flex items-center gap-1.5 text-[11.5px]" style={{ color: "rgba(233,233,237,.55)" }}>
+                  <Clock size={12} weight="regular" aria-hidden="true" />
+                  {estimateFor(nextTask)}
+                </div>
               )}
             </div>
           </div>
@@ -588,12 +612,18 @@ export default function Dashboard() {
                         cursor: isNext ? "pointer" : "default",
                       }}
                     >
-                      <div
+                      <button
+                        type="button"
+                        aria-label={done ? "Mark task not done" : "Mark task done"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggle.mutate({ id: task.id, completed: !done });
+                        }}
                         className="grid size-5 shrink-0 place-items-center rounded-[6px]"
                         style={{ background: done ? "#9184d9" : "transparent", border: done ? "none" : "1.5px solid rgba(233,233,237,.28)" }}
                       >
                         {done && <Check size={12} weight="regular" style={{ color: "#161826" }} aria-hidden="true" />}
-                      </div>
+                      </button>
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-[13.5px] font-medium" style={{ textDecoration: done ? "line-through" : "none", textDecorationColor: "rgba(233,233,237,.35)" }}>
                           {task.title}
@@ -659,7 +689,7 @@ export default function Dashboard() {
               </div>
               <div className="flex flex-col gap-[11px] overflow-hidden">
                 {sourcesData.sources.slice(0, 3).map((s) => (
-                  <div key={s.id}>
+                  <button key={s.id} type="button" onClick={() => switchTab("/plan/sources")} className="block w-full text-left">
                     <div className="flex items-center gap-[9px]">
                       <span className="min-w-0 flex-1 truncate text-[12.5px]">{s.title}</span>
                       <span className="text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>{s.percent ?? s.completedUnits}{s.percent !== null ? "%" : ""}</span>
@@ -667,7 +697,7 @@ export default function Dashboard() {
                     <div className="mt-1.5 h-1 overflow-hidden rounded-[2px]" style={{ background: "#292b31" }}>
                       <div className="h-full" style={{ width: `${s.percent ?? 0}%`, background: "linear-gradient(90deg,#5d5294,#9184d9)" }} />
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -701,13 +731,23 @@ export default function Dashboard() {
           {!roadmapStarted
             ? "Generates a day-by-day plan to Goethe-exam readiness from your syllabus progress."
             : nextTask
-              ? (nextTask.description ?? "Part of today's roadmap plan.")
+              ? ((liveNextTask?.description ?? nextTask.description) || "Part of today's roadmap plan.")
               : "You can still open a self-test or work ahead on new words."}
         </div>
+        {liveNextTask?.syllabusItem && (
+          <div className="mt-[9px] text-[12.5px] leading-[1.5] text-pretty" style={{ color: "rgba(233,233,237,.55)" }}>
+            {liveNextTask.syllabusItem.level.toUpperCase()}
+            {liveNextTask.syllabusItem.theme ? ` · ${liveNextTask.syllabusItem.theme}` : ""}
+            {liveNextTask.syllabusItem.description ? ` — ${liveNextTask.syllabusItem.description}` : ""}
+          </div>
+        )}
         <div className="mt-[15px] flex flex-col gap-[9px]">
           <div className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px]" style={{ background: "#20222f" }}>
             <span className="flex-1 text-[12.5px]" style={{ color: "rgba(233,233,237,.6)" }}>Estimated</span>
-            <span className="text-[12.5px] font-medium">{nextTask ? estimateFor(nextTask) : "—"}</span>
+            <span className="flex items-center gap-1.5 text-[12.5px] font-medium">
+              <Clock size={12} weight="regular" aria-hidden="true" />
+              {nextTask ? estimateFor(nextTask) : "—"}
+            </span>
           </div>
           <div className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px]" style={{ background: "#20222f" }}>
             <span className="flex-1 text-[12.5px]" style={{ color: "rgba(233,233,237,.6)" }}>Moves</span>
@@ -715,10 +755,12 @@ export default function Dashboard() {
               {nextTask?.skill ? SKILL_LABELS[nextTask.skill] : nextTask ? "Your own goal" : "Your choice"}
             </span>
           </div>
-          <div className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px]" style={{ background: "#20222f" }}>
-            <span className="flex-1 text-[12.5px]" style={{ color: "rgba(233,233,237,.6)" }}>If you skip</span>
-            <span className="text-[12.5px] font-medium">{nextTask ? "Rolls into your backlog" : "—"}</span>
-          </div>
+          {liveNextTask && liveNextTask.minutesSpent !== null && (
+            <div className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px]" style={{ background: "#20222f" }}>
+              <span className="flex-1 text-[12.5px]" style={{ color: "rgba(233,233,237,.6)" }}>Already logged</span>
+              <span className="text-[12.5px] font-medium">{liveNextTask.minutesSpent} min</span>
+            </div>
+          )}
         </div>
         <div className="mt-4 flex gap-[9px]">
           <button

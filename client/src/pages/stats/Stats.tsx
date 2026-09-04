@@ -66,11 +66,15 @@ export default function Stats() {
 
   const lastReviewed = historyData?.entries[0]?.wordId ?? null;
 
-  const bySkill: SkillProgressDatum[] = (progress?.bySkill ?? []).map((s) => ({
+  // Mastery gauges use self-test accuracy (skillPerformance), not
+  // bySkill's plan-completion rate — "weakest skill" means "worst
+  // accuracy," and this is the same metric Dashboard's weakest-skill strip
+  // reads, so both screens agree on the same underlying numbers.
+  const bySkill: SkillProgressDatum[] = (progress?.skillPerformance ?? []).map((s) => ({
     skill: s.skill,
-    total: s.planned,
-    done: s.done,
-    percent: s.planned === 0 ? 0 : Math.round((s.done / s.planned) * 100),
+    total: s.total,
+    done: s.correct,
+    percent: s.percent,
   }));
 
   const accuracy = reviewStats

@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { z } from "zod";
+import type { RoadmapSkill } from "@prisma/client";
 import { prisma } from "../db.js";
 import { deleteStoredFile } from "./files.js";
 import { requireAuth } from "../middleware/auth.js";
 import { computeBestStreak, computeDayStreak, localDateKey } from "../services/learning/activity.js";
 import { setRoadmapTaskCompletion } from "../services/learning/completion-sync.js";
 import { levelProgress, levelStates } from "../services/learning/progress.js";
-import { aggregateReview, goetheReadiness, weakAreasFromBreakdowns } from "../services/learning/review.js";
+import { aggregateReview, goetheReadiness, skillPerformance, weakAreasFromBreakdowns } from "../services/learning/review.js";
 import { computeRoadmapPace } from "../services/learning/pace.js";
 import { addDaysUTC, computeBacklog, dayStatus, diffReseed } from "../services/learning/roadmap.js";
 import { DEFAULT_ROADMAP_DAYS, ROADMAP_VERSION, type DefaultRoadmapDay } from "../services/learning/roadmap-defaults.js";
@@ -735,6 +736,22 @@ roadmapRouter.get("/progress", async (req, res) => {
   }
   const bySkill = [...bySkillMap.entries()].map(([skill, v]) => ({ skill, ...v }));
 
+  // self-test accuracy by skill, scoped to the same period — the same
+  // computation dashboard.ts uses (all-time there), reused here so "weakest
+  // skill" means the same thing (mastery/accuracy, not plan completion rate)
+  // on both the Today screen and Stats. bySkill above (done/planned/dropped
+  // roadmap tasks) is a pace metric, not a mastery one — real per-skill
+  // percentages disagreed between screens because Stats used to source its
+  // gauges from bySkill's completion-rate instead of this accuracy figure.
+  const skillTestRows = await prisma.selfTestResult.findMany({
+    where: { userId: req.userId, takenAt: { gte: rangeStart, lt: rangeEnd } },
+    select: { breakdown: true },
+  });
+  const skillTestBreakdownEntries = skillTestRows.flatMap((r) =>
+    Array.isArray(r.breakdown) ? (r.breakdown as { skill?: RoadmapSkill; correct: number; total: number }[]) : [],
+  );
+  const skillPerf = skillPerformance(skillTestBreakdownEntries);
+
   // improved-most: topics present in both periods, biggest percent gain first
   const prevWeakAreas = previous ? weakAreasFromBreakdowns(previous.weakAreas.map((w) => ({ topic: w.topic, correct: w.correct, total: w.total }))) : [];
   const prevByTopic = new Map(prevWeakAreas.map((w) => [w.topic, w.percent]));
@@ -745,18 +762,24 @@ roadmapRouter.get("/progress", async (req, res) => {
     .sort((a, b) => b.deltaPoints - a.deltaPoints)
     .slice(0, 5);
 
-  // streak: current + best, over the account's whole history (not period-scoped)
-  const [syllabusActivity, sourceActivity, testActivity, roadmapActivity] = await Promise.all([
+  // streak: current + best, over the account's whole history (not
+  // period-scoped) — includes review activity (reviewLogActivity) so this
+  // matches dashboard.ts's consolidated streak exactly; the two used to
+  // disagree because dashboard.ts's header badge was review-only while this
+  // one excluded reviews entirely.
+  const [syllabusActivity, sourceActivity, testActivity, roadmapActivity, reviewLogActivity] = await Promise.all([
     prisma.syllabusItem.findMany({ where: { userId: req.userId, completedAt: { not: null } }, select: { completedAt: true } }),
     prisma.studySourceLog.findMany({ where: { source: { userId: req.userId } }, select: { loggedAt: true } }),
     prisma.selfTestResult.findMany({ where: { userId: req.userId }, select: { takenAt: true } }),
     prisma.roadmapTask.findMany({ where: { day: { userId: req.userId }, completedAt: { not: null } }, select: { completedAt: true } }),
+    prisma.reviewLog.findMany({ where: { word: { userId: req.userId } }, select: { reviewedAt: true } }),
   ]);
   const learningTimestamps = [
     ...syllabusActivity.map((r) => r.completedAt as Date),
     ...sourceActivity.map((r) => r.loggedAt),
     ...testActivity.map((r) => r.takenAt),
     ...roadmapActivity.map((r) => r.completedAt as Date),
+    ...reviewLogActivity.map((r) => r.reviewedAt),
   ];
 
   // streak grid: last 28 days of real in-app time (DailyActiveMinutes), not
@@ -805,6 +828,7 @@ roadmapRouter.get("/progress", async (req, res) => {
       previous: previous ? dailyTotals(previous.dailyMinutesBySkill, prevStart, days) : [],
     },
     bySkill,
+    skillPerformance: skillPerf,
     weakAreas: current.weakAreas.filter((w) => w.percent < 60),
     improvedMost,
     streakGrid,

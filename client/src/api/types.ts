@@ -686,6 +686,11 @@ export interface ProgressResponse {
   };
   chart: { labels: string[]; current: number[]; previous: number[] };
   bySkill: { skill: RoadmapSkill; done: number; planned: number; dropped: number }[];
+  /** Self-test accuracy by skill, scoped to `period` — the mastery/accuracy
+   * metric ("how good are you at this"), distinct from bySkill's plan-
+   * completion rate ("how much of your plan did you finish"). This is what
+   * "weakest skill" should be computed from everywhere. */
+  skillPerformance: { skill: RoadmapSkill; correct: number; total: number; percent: number }[];
   weakAreas: RoadmapTopicWeakness[];
   improvedMost: { topic: string; percent: number; deltaPoints: number }[];
   streakGrid: { date: string; minutes: number }[];

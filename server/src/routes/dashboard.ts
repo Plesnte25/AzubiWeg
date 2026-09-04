@@ -129,8 +129,11 @@ dashboardRouter.get("/", async (req, res) => {
     }),
   ]);
 
-  // review activity per day (last 14 days) + study streak
-  const reviewDays = new Set(recentLogs.map((l) => localDateKey(l.reviewedAt)));
+  // review activity per day (last 14 days), for the heatmap only — the
+  // streak itself is computed below from the same consolidated
+  // learningTimestamps used for `learning.streak`, so the header badge and
+  // `learning.streak` can no longer disagree (they used to: this used to be
+  // a second, hand-rolled streak algorithm counting review activity only).
   const activity: { date: string; count: number }[] = [];
   const counts = new Map<string, number>();
   for (const log of recentLogs) {
@@ -142,14 +145,6 @@ dashboardRouter.get("/", async (req, res) => {
     d.setDate(d.getDate() - i);
     const key = localDateKey(d);
     activity.push({ date: key, count: counts.get(key) ?? 0 });
-  }
-
-  let streak = 0;
-  const cursor = new Date();
-  if (!reviewDays.has(localDateKey(cursor))) cursor.setDate(cursor.getDate() - 1);
-  while (reviewDays.has(localDateKey(cursor))) {
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
   }
 
   // learning: per-level syllabus progress + activity streak across all hub actions
@@ -191,7 +186,9 @@ dashboardRouter.get("/", async (req, res) => {
     ...sourceActivity.map((r) => r.loggedAt),
     ...testActivity.map((r) => r.takenAt),
     ...roadmapActivity.map((r) => r.completedAt as Date),
+    ...recentLogs.map((r) => r.reviewedAt),
   ];
+  const streak = computeDayStreak(learningTimestamps, new Date());
 
   // GitHub-style heatmap: last 15 full weeks of reviews + learning activity,
   // aligned so the grid starts on a Monday and ends today
