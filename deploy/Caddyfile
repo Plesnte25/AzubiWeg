@@ -1,9 +1,18 @@
 (app) {
+	# Compresses both the static client bundle (JS/CSS under /assets/*) and
+	# proxied API JSON responses. Placed at the Caddy layer rather than as
+	# Express `compression` middleware because Caddy serves the static files
+	# directly (file_server below) — an Express-only fix would miss the
+	# larger of the two wins. Declared inside each handle block (not once at
+	# the top level) since encode only reliably applies to the block it's
+	# matched into.
 	handle /api/* {
+		encode zstd gzip
 		reverse_proxy localhost:3000
 	}
 
 	handle {
+		encode zstd gzip
 		root * /opt/azubiweg/client-dist
 		# Vite content-hashes everything under /assets/* (filename changes on
 		# every rebuild), so it's safe to cache those forever.

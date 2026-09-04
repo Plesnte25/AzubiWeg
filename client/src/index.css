@@ -391,6 +391,22 @@ details summary::-webkit-details-marker {
   display: none;
 }
 
+/* iOS Safari auto-zooms the page when a focused input's computed font-size
+   is under 16px. Several fields (e.g. Login.tsx) use text-[15px], which is a
+   class selector and would otherwise beat a plain type-selector rule here on
+   specificity. !important is deliberate: this is a single, documented choke
+   point protecting an accessibility/UX property that a future arbitrary
+   text-[Npx] class could otherwise silently reintroduce. Only applies below
+   the sm breakpoint — desktop keeps whatever size each field was designed
+   with. */
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

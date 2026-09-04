@@ -56,6 +56,12 @@ Config files referenced below live in [`deploy/`](../deploy).
    sudo swapon /swapfile
    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
    ```
+   Lower swappiness so the kernel favors RAM and only reaches for swap under
+   real pressure, rather than swapping preemptively:
+   ```bash
+   sudo sysctl vm.swappiness=20
+   echo 'vm.swappiness=20' | sudo tee -a /etc/sysctl.conf
+   ```
 
 ## 2. Base packages
 
