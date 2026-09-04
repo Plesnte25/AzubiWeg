@@ -9,8 +9,9 @@ re-deriving the investigation.
 
 ## Open — needs a fix
 
-Nothing open right now — see the 2026-09-03 bug-fixing pass below for the
-5 items cleared in one sitting.
+Nothing open right now — see the 2026-09-04 bug-fixing pass below for the
+full backlog (Dashboard/Words/Plan/Syllabus/Notes plus a breakpoint audit)
+cleared in one sitting.
 
 ## Resolved during the redesign (for reference — no action needed)
 
@@ -19,6 +20,144 @@ new. All of these were found by actually driving the app in a browser
 (Playwright + a real seeded account), not by reading code or trusting
 `tsc`/`npm test` alone.
 
+- **2026-09-04, fourth bug-fixing pass** — the full backlog logged this
+  session (Dashboard, Words, Plan, Syllabus, Notes, plus a full sm/md/lg
+  breakpoint audit), cleared in one sitting. Verified live against a fresh
+  demo account (Playwright + `/api/auth/demo-login`), not just typechecked —
+  see specific verification notes per item below.
+  1. **Shared root cause behind two "whole page scrolls instead of one
+     column" reports (Words, Notes)** — `Layout.tsx`'s `<main>` only gave
+     the Dashboard route a bounded `lg:h-dvh lg:min-h-[760px]` height; every
+     other route got `mx-auto max-w-6xl px-4 py-6` with no height cap, so
+     Words'/Notes' own correctly-written `overflow-y-auto` list columns had
+     no bounded ancestor to actually overflow against. Extended the height
+     bound to also cover `/words` and `/plan/notes`. Verified live: the
+     Words list column's `scrollHeight` (1464px) genuinely exceeds its
+     `clientHeight` (724px) and accepts `scrollTop` while `window.scrollY`
+     stays 0.
+  2. **Words desktop columns** — `Vocabulary.tsx`'s fixed
+     `grid-cols-[300px_1fr_300px]` became
+     `grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]` — verified live
+     as exactly 253px/506px/253px (a true 1:2:1). Gender badges gained a
+     per-article tinted background (`chipBg()` in `wordDisplay.ts`, reusing
+     the already-defined-but-unused `--color-genus-*-bg` tokens) — verified
+     live: der badge `rgba(145,132,217,.2)`, die badge `rgba(199,150,180,.19)`,
+     non-genus words keep the neutral `rgba(233,233,237,.08)`.
+  2. **Dashboard**: wired the decorative task checkbox to the real
+     `api.toggleRoadmapTask` mutation (same one `Plan.tsx`/`TaskDetailDrawer`
+     already use); made "Sources in play" rows navigate to `/plan/sources`;
+     added the desktop header's missing streak badge; added a clock icon
+     next to every "estimated time" display; replaced the bespoke
+     boilerplate task-detail `BottomSheet` (hardcoded "if you skip → rolls
+     into your backlog" for every task) with real syllabus context
+     (`liveNextTask.syllabusItem`) looked up from the already-fetched full
+     task list — no new import needed (an earlier attempt to reuse
+     `TaskDetailDrawer` directly regressed the eagerly-bundled Dashboard
+     chunk by ~30KB gzip regardless of `React.lazy`/manual dynamic import;
+     reverted in favor of this lighter fix, verified back to baseline).
+     Consolidated the **3-way streak mismatch** (`dashboard.ts`'s header
+     badge secretly used a second, review-only hand-rolled streak algorithm
+     while `learning.streak`/`progress.kpis.streak` used a different
+     activity set entirely, excluding reviews) onto one
+     `computeDayStreak(learningTimestamps)` call that now includes review
+     activity everywhere it's used — verified live the header reads the
+     same number after completing a task. Relabeled the 7-day widget
+     "7-day activity" (it's a plain per-day minutes heatmap with no
+     streak/gap logic, not a real streak). Fixed the real
+     over-counting bug behind "465 minutes logged in a day": a demo
+     account was found with **1439 minutes in a single day** (near 24h) —
+     `useActivityHeartbeat.ts` pinged purely on tab visibility with zero
+     idle detection, so a visible-but-abandoned tab clustered into one
+     giant session. Added real input-activity tracking (mousemove/keydown/
+     scroll/touchstart) with a 5-minute idle threshold, comfortably under
+     `session.ts`'s 10-minute session-gap so an idle tab now reliably
+     breaks the session. Historical `DailyActiveMinutes` rows are not
+     retroactively corrected (real user data, left as-is). Verified "Writing
+     52% vs 4%" was **not** a display/taxonomy bug as first suspected — the
+     two screens were computing genuinely different metrics
+     (`dashboard.ts`'s self-test *accuracy* vs. `roadmap.ts`'s roadmap-task
+     *completion rate*, both mislabeled as the same "skill %"). Added the
+     same accuracy-based `skillPerformance` (scoped to Stats' selected
+     period) to the `learningProgress` endpoint and switched Stats'
+     `SkillProgressGauges` to read it, so "weakest skill" now means the same
+     thing on both screens. Confirmed the garbled "plesnte" display name is
+     real, intentionally-entered account data (`User.name`, no seed script
+     produces it) — not a rendering bug, no fix applied.
+  3. **Plan page** — Day view's task-detail modal
+     (`TaskDetailDrawer.tsx`) was two bespoke hand-rolled shells (a
+     right-anchored slide-over at lg, a colored-blur centered card below
+     lg), predating the `BottomSheet` primitive; rebuilt on `BottomSheet`
+     (plain dark scrim, no blur, no duplicated focus-trap code). The
+     duration dial (`DurationPicker`, already a real custom dial) is now
+     shown directly instead of hidden behind a toggle-to-reveal step, with
+     its save debounced (drag fires `onChange` continuously) instead of
+     only committing on toggle-close. Week view: the "Week X of Y" and
+     "late across the plan" tiles now sit side by side (`flex gap-3`,
+     falling back to full-width when the late tile is absent); the
+     planned/actual/days-left row became 3 separate icon-labeled,
+     center-aligned tiles instead of one bare `grid-cols-3` of stacked
+     text. Rebuilt `WeekOverview` into the literal handoff's vertical
+     agenda calendar: today auto-expands (gradient card, gradient date
+     chip, "Today" tag) with its full task list; every other day collapses
+     to a one-line date-chip + summary row, tap-to-expand (accordion — only
+     one day open at a time) — verified live by expanding a collapsed day
+     with no console errors.
+  4. **Syllabus** — `StationNode`'s "current" node now uses the spec's
+     `linear-gradient(150deg,#a99dfa,#9184d9)` fill instead of flat
+     `#9184d9`; node size adjusted from a uniform 28px to 26px (the spec's
+     sm size; a literal sm/lg split wasn't attempted — a 2px cosmetic
+     delta, and the connecting-line's `left:13` position actually centers
+     more precisely under a 26px node than the old 28px one). The
+     duplicate "In progress"/"you are here" tag was judged not worth adding
+     since the existing "you are here" caption already conveys it.
+  5. **Notes page** — the always-0 count badge read `data.notes.length`
+     (real `Note` rows only); changed to `rows.length` (everything actually
+     rendered, including Grammar Notebook/source-unit entries) — verified
+     live showing "4 notes · 2 linked to words" on a seeded account. Bucket
+     labels clarified ("my notes only" / "from syllabus & sources") — the
+     underlying filter logic was already correct; the "nothing renders"
+     report was a UX-labeling gap (being on the "mine" bucket, which by
+     design excludes non-`Note` sources), not a data bug. Per-source badge
+     colors (`SOURCE_BADGE`) added so a `Note` and a `Grammar Notebook`
+     entry with similar content don't read as an accidental duplicate at a
+     glance — confirmed the reported duplicate "wäre, hätte, würde,
+     könnte" entry is two genuinely separate DB rows (one freeform `Note`,
+     one `SyllabusItem`-scoped notebook entry) from two independent
+     note-taking features, not a query/render bug to de-dup. Added a
+     Read/Edit view-mode toggle (`MinimalTiptap`'s `editable` prop, wired
+     through `editor.setEditable()` since Tiptap's option isn't reactive) —
+     existing notes open in a calm read-only view by default, a new note
+     opens straight into edit mode; not a full Obsidian clone, a scoped
+     reading/editing split plus the toolbar hidden in read mode. The
+     master-detail layout report ("editor not opening on the right") turned
+     out to already be correct in code — item 1's height fix was the actual
+     gap (the list's own scroll never engaged for the same reason as
+     Words').
+  6. **Breakpoint audit** — confirmed the app is genuinely a 2-layout
+     system (`lg:` sidebar shell vs. an identical md/sm bottom-tab shell,
+     no intermediate md-specific nav). Two real bugs fixed:
+     **`/plan/sources` was functionally broken at `lg`** — it delegated to
+     the same shared `SyllabusSourcesDesktop` component `/plan/syllabus`
+     uses, whose 3rd column only ever reused `SourceRow`, never the
+     `ActivityFeed`/`SavedLinksSection` that make Sources a real page — so
+     both routes rendered pixel-identical screens and the Activity log +
+     Saved Links were unreachable at desktop width. Gave `Sources.tsx` its
+     own real 2-column `lg:` layout (list+filters+progress on the left,
+     Activity + Saved Links on the right) instead of delegating — verified
+     live both sections now render at 1440px. **`/plan/notes` had no
+     reachable entry point at md/sm** — the only nav path was the
+     `lg:`-gated sidebar, and the sm-only capture FAB only opens a blank
+     new note, never the list. Added a "Notes" entry to `Plan.tsx`'s
+     existing Syllabus/Tests CTA row, gated `lg:hidden` (revisiting a prior
+     "redundant with its own rail tab" decision, since that reasoning only
+     held at `lg`) — verified live at 768px, clicking it navigates to
+     `/plan/notes`. Everything else the audit flagged (Today's
+     desktop-only Chapter Progress/Sources-in-Play/Applications
+     tile/7-day-streak widget, Words' inline 3-column split vs. md/sm's
+     full-page detail) was confirmed intentional per the original Nocturne
+     handoff's own mobile/desktop density difference — not bugs, no fix
+     applied. The 3-way streak mismatch this audit re-surfaced is the same
+     one fixed under Dashboard above.
 - **2026-09-03, third bug-fixing pass** — 5 items, cleared in one sitting:
   1. **Dashboard desktop left column flush against the rail** —
      `Layout.tsx`'s `<main>` gives the dashboard route exactly
