@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, X } from "lucide-react";
+import { Check, Clock } from "@phosphor-icons/react";
 import { api } from "../../api/client";
 import type { RoadmapTask, RoadmapTaskType } from "../../api/types";
 import { Attachments } from "../../components/Attachments";
@@ -8,7 +8,7 @@ import AudioRecorder from "../../components/AudioRecorder";
 import { NoteComposer } from "../../components/notes/NoteComposer";
 import { NoteEditor } from "../../components/notes/NoteEditor";
 import { Button } from "../../components/ui/Button";
-import { CircleIconButton } from "../../components/ui/CircleIconButton";
+import { BottomSheet } from "../../components/ui/BottomSheet";
 import { DurationPicker } from "../../components/ui/DurationPicker";
 import type { Destination } from "./destinations";
 import { invalidateHub } from "./queryHelpers";
@@ -30,8 +30,6 @@ const SKILL_LABEL: Record<string, string> = {
   milestone: "Milestone",
   reflection: "Rest",
 };
-
-const FOCUSABLE = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
 
 /** This task's own Notes — proper `Note` rows linked via roadmapTaskId
  * (inheriting the task's skill), not the old single journalEntry field.
@@ -82,7 +80,16 @@ function TaskDetailBody({
   invalidate: () => void;
   onDone: () => void;
 }) {
-  const [showMinutes, setShowMinutes] = useState(minutesDraft !== "");
+  // DurationPicker's onChange fires on every drag tick (each 5-min snap),
+  // not just on release — debounce the actual save so dragging across the
+  // dial doesn't fire a PATCH per tick.
+  const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const commitMinutes = (n: number) => {
+    if (commitTimer.current) clearTimeout(commitTimer.current);
+    commitTimer.current = setTimeout(() => {
+      if (n !== task.minutesSpent) update.mutate({ minutesSpent: n === 0 ? null : n });
+    }, 400);
+  };
 
   return (
     <div className="space-y-4">
@@ -103,29 +110,21 @@ function TaskDetailBody({
         </button>
       )}
 
-      <div className="flex items-center gap-1.5 rounded-md bg-paper p-2.5">
-        {showMinutes && (
-          <DurationPicker
-            value={minutesDraft === "" ? 0 : Number(minutesDraft)}
-            onChange={(n) => setMinutesDraft(String(n))}
-            max={180}
-          />
-        )}
-        <CircleIconButton
-          icon={<Clock className="size-3.5" aria-hidden="true" />}
-          title="Log minutes spent"
-          active={showMinutes}
-          onClick={() => {
-            setShowMinutes((wasOpen) => {
-              if (wasOpen) {
-                const n = minutesDraft === "" ? null : Number(minutesDraft);
-                if (n !== task.minutesSpent) update.mutate({ minutesSpent: n });
-              }
-              return !wasOpen;
-            });
+      {/* the dial is the primary, always-visible control here — no toggle
+          hiding it behind a plain-text "12 min" state, per an explicit
+          user ask for a more efficient minimal dial matching the rest of
+          the app's UI (the dial itself, DurationPicker, was already real —
+          it was just hidden behind an extra click most of the time). */}
+      <div className="flex items-center gap-2.5 rounded-md bg-paper p-2.5">
+        <Clock className="size-3.5 shrink-0 text-ink-400" aria-hidden="true" />
+        <DurationPicker
+          value={minutesDraft === "" ? 0 : Number(minutesDraft)}
+          onChange={(n) => {
+            setMinutesDraft(String(n));
+            commitMinutes(n);
           }}
+          max={180}
         />
-        {!showMinutes && task.minutesSpent !== null && <span className="tabular text-caption font-medium text-ink-600">{task.minutesSpent} min</span>}
       </div>
 
       {task.files.length > 0 && <Attachments files={task.files} parent={{ roadmapTaskId: task.id }} onChanged={invalidate} renderTrigger={() => null} />}
@@ -142,12 +141,11 @@ function TaskDetailBody({
 }
 
 /**
- * Task detail — a right-anchored slide-over at lg (same focus-trap/Escape
- * behavior as Modal.tsx), and a centered "flashcard" card below lg matching
- * vocabulary/ReviewModal.tsx's shell (blurred backdrop, no separate
- * title-bar chrome). Both shells share the same state/mutations, defined
- * once here, and both render the same TaskDetailBody — only the header
- * chrome and outer wrapper differ.
+ * Task detail on the standard `BottomSheet` primitive (slide-up sheet below
+ * md, centered dialog at md+) — previously two bespoke shells (a right-
+ * anchored slide-over at lg, a blurred-backdrop centered card below lg),
+ * each with its own hand-rolled focus-trap. That predated BottomSheet and
+ * used a colored/blurred scrim BottomSheet doesn't.
  */
 export function TaskDetailDrawer({
   task,
@@ -159,47 +157,16 @@ export function TaskDetailDrawer({
   onNavigate: (d: Destination) => void;
 }) {
   const queryClient = useQueryClient();
-  const drawerRef = useRef<HTMLDivElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
   const [minutesDraft, setMinutesDraft] = useState(task.minutesSpent?.toString() ?? "");
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    // mount closed, then flip on next frame so the drawer's slide-in transition runs
-    const id = requestAnimationFrame(() => setVisible(true));
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    drawerRef.current?.focus();
-
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") close();
-      const activeRef = window.innerWidth >= 1024 ? drawerRef : cardRef;
-      if (e.key === "Tab" && activeRef.current) {
-        const focusables = activeRef.current.querySelectorAll<HTMLElement>(FOCUSABLE);
-        if (focusables.length === 0) return;
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      cancelAnimationFrame(id);
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", onKeyDown);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Local open state (rather than requiring every caller to keep this
+  // permanently mounted, the usual BottomSheet pattern) so the close
+  // animation still plays even though callers conditionally render this
+  // component itself (`{openTask && <TaskDetailDrawer .../>}`).
+  const [open, setOpen] = useState(true);
 
   function close() {
-    setVisible(false);
-    setTimeout(onClose, 200);
+    setOpen(false);
+    setTimeout(onClose, 400);
   }
 
   const invalidate = () => invalidateHub(queryClient);
@@ -219,101 +186,35 @@ export function TaskDetailDrawer({
   // more, even without a dedicated task type of its own
   const cta = TYPE_CTA[task.type] ?? (task.type === "generic" && task.syllabusItem ? { label: "View in Syllabus →", to: "syllabus" as Destination } : undefined);
 
-  const body = (
-    <TaskDetailBody
-      task={task}
-      minutesDraft={minutesDraft}
-      setMinutesDraft={setMinutesDraft}
-      update={update}
-      cta={cta}
-      done={done}
-      onNavigate={onNavigate}
-      invalidate={invalidate}
-      onDone={close}
-    />
-  );
-
   return (
-    <>
-      {/* below lg: centered flashcard-style card over a blurred backdrop */}
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4 backdrop-blur-[6px] lg:hidden"
-        onMouseDown={(e) => {
-          if (e.target === e.currentTarget) close();
-        }}
-      >
-        <div
-          ref={cardRef}
-          role="dialog"
-          aria-modal="true"
-          aria-label={task.title}
-          tabIndex={-1}
-          className="relative max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-xl bg-card p-5 shadow-lg outline-none"
-        >
-          <button className="absolute right-3 top-3 grid size-7 place-items-center rounded-full hover:bg-paper" onClick={close} title="Close">
-            <X className="size-4" aria-hidden="true" />
+    <BottomSheet open={open} onClose={close}>
+      <div className="mb-4 pr-8">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => toggle.mutate(!done)}
+            className={`grid size-5 shrink-0 place-items-center rounded-sm border text-micro text-white ${done ? "border-ink-900 bg-ink-900" : "border-hairline"}`}
+          >
+            {done && <Check size={12} weight="bold" aria-hidden="true" />}
           </button>
-          <div className="mb-4 pr-8">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => toggle.mutate(!done)}
-                className={`grid size-5 shrink-0 place-items-center rounded-sm border text-micro text-white ${done ? "border-ink-900 bg-ink-900" : "border-hairline"}`}
-              >
-                {done && "✓"}
-              </button>
-              <h2 className={`text-body-lg font-semibold ${done ? "text-ink-400 line-through" : ""}`}>{task.title}</h2>
-            </div>
-            {task.skill && (
-              <span className="mt-1.5 inline-block rounded-full bg-paper px-2.5 py-0.5 text-caption font-semibold text-ink-600">
-                {SKILL_LABEL[task.skill]}
-              </span>
-            )}
-          </div>
-          {body}
+          <h2 className={`text-body-lg font-semibold ${done ? "text-ink-400 line-through" : ""}`}>{task.title}</h2>
         </div>
+        {task.skill && (
+          <span className="mt-1.5 inline-block rounded-full bg-paper px-2.5 py-0.5 text-caption font-semibold text-ink-600">
+            {SKILL_LABEL[task.skill]}
+          </span>
+        )}
       </div>
-
-      {/* lg: right-anchored slide-over */}
-      <div
-        className={`fixed inset-0 z-50 hidden justify-end bg-ink-900/40 transition-opacity duration-200 lg:flex ${visible ? "opacity-100" : "opacity-0"}`}
-        onMouseDown={(e) => {
-          if (e.target === e.currentTarget) close();
-        }}
-      >
-        <div
-          ref={drawerRef}
-          role="dialog"
-          aria-modal="true"
-          aria-label={task.title}
-          tabIndex={-1}
-          className={`flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-hairline bg-card p-5 shadow-lg outline-none transition-transform duration-200 ${
-            visible ? "translate-x-0" : "translate-x-full"
-          }`}
-        >
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => toggle.mutate(!done)}
-                  className={`grid size-5 shrink-0 place-items-center rounded-sm border text-micro text-white ${done ? "border-ink-900 bg-ink-900" : "border-hairline"}`}
-                >
-                  {done && "✓"}
-                </button>
-                <h2 className={`text-title font-semibold ${done ? "text-ink-400 line-through" : ""}`}>{task.title}</h2>
-              </div>
-              {task.skill && (
-                <span className="mt-1.5 inline-block rounded-full bg-paper px-2.5 py-0.5 text-caption font-semibold text-ink-600">
-                  {SKILL_LABEL[task.skill]}
-                </span>
-              )}
-            </div>
-            <button className="shrink-0 text-ink-400 hover:text-ink-900" onClick={close} title="Close">
-              <X className="size-5" aria-hidden="true" />
-            </button>
-          </div>
-          {body}
-        </div>
-      </div>
-    </>
+      <TaskDetailBody
+        task={task}
+        minutesDraft={minutesDraft}
+        setMinutesDraft={setMinutesDraft}
+        update={update}
+        cta={cta}
+        done={done}
+        onNavigate={onNavigate}
+        invalidate={invalidate}
+        onDone={close}
+      />
+    </BottomSheet>
   );
 }

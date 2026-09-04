@@ -48,11 +48,11 @@ export function StationNode({
         />
       )}
       <div
-        className="absolute grid size-7 place-items-center rounded-full text-[12px] font-semibold"
+        className="absolute grid size-[26px] place-items-center rounded-full text-[12px] font-semibold"
         style={{
           left: 0,
           top: 2,
-          background: status === "done" ? "#9184d9" : status === "current" ? "#9184d9" : "transparent",
+          background: status === "done" ? "#9184d9" : status === "current" ? "linear-gradient(150deg,#a99dfa,#9184d9)" : "transparent",
           boxShadow: status === "current" ? "0 0 0 5px rgba(145,132,217,.18)" : "none",
           border: status === "upcoming" ? "1px solid #3f424d" : "none",
           color: status === "upcoming" ? "rgba(233,233,237,.35)" : "#161826",

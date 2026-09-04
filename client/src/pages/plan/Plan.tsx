@@ -4,15 +4,21 @@ import {
   ArrowCounterClockwise,
   Cards,
   CaretDown,
+  CaretRight,
   Check,
   ListChecks,
+  NotePencil,
   Path,
   Sparkle,
+  Target,
+  Timer,
+  TrendUp,
 } from "@phosphor-icons/react";
 import { api } from "../../api/client";
 import type { RoadmapDayStatus, RoadmapTask } from "../../api/types";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { toast } from "../../components/ui/Toast";
+import { cn } from "../../lib/cn";
 import { useNavStack } from "../../lib/navStack";
 import { SKILL_LABELS } from "../../lib/skills";
 import type { Destination } from "../learning-hub/destinations";
@@ -129,13 +135,17 @@ function TaskRow({ task, onToggle, onOpen }: { task: RoadmapTask; onToggle: (c: 
   );
 }
 
-// Sources dropped (redundant — it's the same combined page as Syllabus)
-// and Notes dropped (redundant — it already has its own rail tab); Tests
-// stays, since it was added deliberately as the only discoverable entry
-// point into self-tests outside a finished review session.
+// Sources dropped (redundant — it's the same combined page as Syllabus).
+// Tests stays, since it was added deliberately as the only discoverable
+// entry point into self-tests outside a finished review session. Notes is
+// "redundant with its own rail tab" only at lg — at md/sm there is no rail,
+// and the sm-only capture FAB only opens a blank new note, never the list —
+// so Notes is mobileOnly here, filling that real gap without duplicating
+// the lg sidebar's own entry.
 const SECTION_NAV_ITEMS = [
-  { label: "Syllabus", icon: Path, to: "/plan/syllabus" },
-  { label: "Tests", icon: ListChecks, to: "/plan/self-tests" },
+  { label: "Syllabus", icon: Path, to: "/plan/syllabus", mobileOnly: false },
+  { label: "Tests", icon: ListChecks, to: "/plan/self-tests", mobileOnly: false },
+  { label: "Notes", icon: NotePencil, to: "/plan/notes", mobileOnly: true },
 ];
 
 /** Day view's title switches between "Today" and the picked date's own
@@ -178,12 +188,12 @@ function PlanHeader({
             </button>
           ))}
         </div>
-        {SECTION_NAV_ITEMS.map(({ label, icon: Icon, to }) => (
+        {SECTION_NAV_ITEMS.map(({ label, icon: Icon, to, mobileOnly }) => (
           <button
             key={to}
             type="button"
             onClick={() => push(to)}
-            className="flex min-h-[30px] items-center gap-1.5 rounded-full px-3 text-[11.5px] font-medium"
+            className={cn("flex min-h-[30px] items-center gap-1.5 rounded-full px-3 text-[11.5px] font-medium", mobileOnly && "lg:hidden")}
             style={{ background: "#20222f", color: "rgba(233,233,237,.75)" }}
           >
             <Icon size={13} weight="regular" aria-hidden="true" />
@@ -444,6 +454,12 @@ function WeekOverview({ onOpenTask }: { onOpenTask: (t: RoadmapTask) => void }) 
   const { data, isLoading } = useQuery({ queryKey: ["roadmap", "week", undefined], queryFn: () => api.roadmapWeek() });
   const { data: syllabus } = useQuery({ queryKey: ["learning", "syllabus"], queryFn: api.learningSyllabus });
   const [pendingUndo, setPendingUndo] = useState<{ id: string; fromDayOffset: number }[] | null>(null);
+  // Vertical agenda calendar (handoff 8c): today auto-expanded with its full
+  // task list, every other day collapsed to a one-line summary until tapped
+  // — an accordion, so opening one collapses whichever was open before.
+  // `null` here means "use today" (the common case) rather than baking
+  // today's offset into the initial state before `data` has loaded.
+  const [expandedDayOffset, setExpandedDayOffset] = useState<number | null>(null);
 
   useEffect(() => {
     if (!pendingUndo) return;
@@ -497,94 +513,150 @@ function WeekOverview({ onOpenTask }: { onOpenTask: (t: RoadmapTask) => void }) 
   const stations = deriveStations(levelItems);
   const matchedStation = data.theme ? bestMatchingStation(stations, data.theme) : null;
 
+  const todayOffset = data.days.find((d) => d.status === "today")?.dayOffset ?? null;
+  const effectiveExpanded = expandedDayOffset ?? todayOffset;
+
   return (
     <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pb-2.5">
-      <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-        <div className="flex items-baseline justify-between">
-          <span className="text-[12px]" style={{ color: "rgba(233,233,237,.5)" }}>
-            Week {data.week} of {data.totalWeeks}
-          </span>
-          <span className="tabular text-[13px] font-medium">
-            {data.thisWeek.done}/{data.thisWeek.total} kept
-          </span>
+      <div className={data.lateAcrossPlan > 0 ? "flex gap-3" : undefined}>
+        <div className="flex-1 rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+          <div className="flex items-baseline justify-between">
+            <span className="text-[12px]" style={{ color: "rgba(233,233,237,.5)" }}>
+              Week {data.week} of {data.totalWeeks}
+            </span>
+            <span className="tabular text-[13px] font-medium">
+              {data.thisWeek.done}/{data.thisWeek.total} kept
+            </span>
+          </div>
+          {data.theme && (
+            <>
+              <div className="mt-1.5 text-[14px] font-medium">{data.theme}</div>
+              {matchedStation && (
+                <button type="button" onClick={() => push("/plan/syllabus")} className="mt-1 text-[11.5px]" style={{ color: "#b5abfc" }}>
+                  Open in syllabus →
+                </button>
+              )}
+            </>
+          )}
         </div>
-        {data.theme && (
-          <>
-            <div className="mt-1.5 text-[14px] font-medium">{data.theme}</div>
-            {matchedStation && (
-              <button type="button" onClick={() => push("/plan/syllabus")} className="mt-1 text-[11.5px]" style={{ color: "#b5abfc" }}>
-                Open in syllabus →
+
+        {data.lateAcrossPlan > 0 && (
+          <div className="flex-1 rounded-xl p-3.5" style={{ background: "rgba(209,155,134,.14)" }}>
+            <div className="flex items-baseline justify-between">
+              <span className="text-[11px] tracking-[.08em] uppercase" style={{ color: "#e4c4b6" }}>
+                Late across the plan
+              </span>
+              <span className="tabular text-[15px] font-medium" style={{ color: "#e4c4b6" }}>
+                {data.lateAcrossPlan}
+              </span>
+            </div>
+            {pendingUndo ? (
+              <button
+                type="button"
+                onClick={() => undo.mutate(pendingUndo)}
+                className="mt-2 flex items-center gap-1.5 text-[12px] font-medium"
+                style={{ color: "#e4c4b6" }}
+              >
+                <ArrowCounterClockwise size={13} weight="regular" aria-hidden="true" />
+                Undo ({pendingUndo.length} moved)
               </button>
+            ) : (
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button type="button" onClick={() => pullIntoToday.mutate()} className="rounded-[9px] px-2.5 py-1.5 text-[12px] font-medium" style={{ background: "rgba(233,233,237,.1)", color: "#e4c4b6" }}>
+                  Pull into today
+                </button>
+                <button type="button" onClick={() => spread.mutate()} className="rounded-[9px] px-2.5 py-1.5 text-[12px] font-medium" style={{ background: "rgba(233,233,237,.1)", color: "#e4c4b6" }}>
+                  Spread over 3 days
+                </button>
+              </div>
             )}
-          </>
+          </div>
         )}
       </div>
 
-      {data.lateAcrossPlan > 0 && (
-        <div className="rounded-xl p-3.5" style={{ background: "rgba(209,155,134,.14)" }}>
-          <div className="flex items-baseline justify-between">
-            <span className="text-[11px] tracking-[.08em] uppercase" style={{ color: "#e4c4b6" }}>
-              Late across the plan
-            </span>
-            <span className="tabular text-[15px] font-medium" style={{ color: "#e4c4b6" }}>
-              {data.lateAcrossPlan}
-            </span>
+      <div className="grid grid-cols-3 gap-2.5">
+        {[
+          { icon: Target, value: data.pace.plannedTasksPerDay, label: "planned/day" },
+          { icon: TrendUp, value: data.pace.actualTasksPerDay, label: "actual/day" },
+          { icon: Timer, value: data.pace.daysLeft, label: "days left" },
+        ].map(({ icon: Icon, value, label }) => (
+          <div key={label} className="flex flex-col items-center gap-1 rounded-xl p-3 text-center" style={{ background: "#1c1f2c" }}>
+            <Icon size={15} weight="regular" style={{ color: "#9184d9" }} aria-hidden="true" />
+            <div className="tabular text-[15px] font-medium text-white">{value}</div>
+            <div className="text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>{label}</div>
           </div>
-          {pendingUndo ? (
-            <button
-              type="button"
-              onClick={() => undo.mutate(pendingUndo)}
-              className="mt-2 flex items-center gap-1.5 text-[12px] font-medium"
-              style={{ color: "#e4c4b6" }}
-            >
-              <ArrowCounterClockwise size={13} weight="regular" aria-hidden="true" />
-              Undo ({pendingUndo.length} moved)
-            </button>
-          ) : (
-            <div className="mt-2 flex gap-2">
-              <button type="button" onClick={() => pullIntoToday.mutate()} className="rounded-[9px] px-2.5 py-1.5 text-[12px] font-medium" style={{ background: "rgba(233,233,237,.1)", color: "#e4c4b6" }}>
-                Pull into today
-              </button>
-              <button type="button" onClick={() => spread.mutate()} className="rounded-[9px] px-2.5 py-1.5 text-[12px] font-medium" style={{ background: "rgba(233,233,237,.1)", color: "#e4c4b6" }}>
-                Spread over 3 days
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-        <div className="grid grid-cols-3 gap-2 text-[12px]" style={{ color: "rgba(233,233,237,.5)" }}>
-          <div>
-            <div className="tabular text-[15px] font-medium text-white">{data.pace.plannedTasksPerDay}</div>
-            planned/day
-          </div>
-          <div>
-            <div className="tabular text-[15px] font-medium text-white">{data.pace.actualTasksPerDay}</div>
-            actual/day
-          </div>
-          <div>
-            <div className="tabular text-[15px] font-medium text-white">{data.pace.daysLeft}</div>
-            days left
-          </div>
-        </div>
+        ))}
       </div>
 
       {data.days.map((day) => {
         const active = day.tasks.filter((t) => !t.droppedAt);
         const done = active.filter((t) => t.completedAt !== null).length;
+        const isToday = day.status === "today";
+        const isExpanded = day.dayOffset === effectiveExpanded;
+        const dateObj = new Date(`${day.date.slice(0, 10)}T00:00:00`);
+        const dayAbbrev = dateObj.toLocaleDateString(undefined, { weekday: "short" });
+        const dayNum = dateObj.getDate();
+
+        const dateChip = (
+          <div
+            className="grid size-[34px] shrink-0 place-items-center rounded-[10px] text-center leading-none"
+            style={{ background: isToday ? "linear-gradient(150deg,#a99dfa,#9184d9)" : "#292b31", color: isToday ? "#161826" : "rgba(233,233,237,.75)" }}
+          >
+            <span className="block text-[8.5px] font-medium tracking-[.06em] uppercase opacity-80">{dayAbbrev}</span>
+            <span className="block text-[13px] font-semibold">{dayNum}</span>
+          </div>
+        );
+
+        if (!isExpanded) {
+          return (
+            <button
+              key={day.dayOffset}
+              type="button"
+              onClick={() => setExpandedDayOffset(day.dayOffset)}
+              className="flex items-center gap-2.5 rounded-xl p-3 text-left"
+              style={{ background: "#1c1f2c", opacity: day.status === "done" ? 0.6 : 1 }}
+            >
+              {dateChip}
+              <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+                {dateObj.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
+              </span>
+              <span className="flex shrink-0 items-center gap-1.5 text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+                {active.length === 0 ? "rest day" : day.status === "done" ? `${done}/${active.length} kept` : `${active.length} planned`}
+                {day.status === "done" && active.length > 0 && done === active.length && (
+                  <Check size={12} weight="bold" style={{ color: "#9184d9" }} aria-hidden="true" />
+                )}
+                <CaretRight size={13} weight="regular" aria-hidden="true" />
+              </span>
+            </button>
+          );
+        }
+
         return (
-          <div key={day.dayOffset} className="rounded-xl p-3.5" style={{ background: day.status === "today" ? "rgba(145,132,217,.1)" : "#1c1f2c", boxShadow: day.status === "today" ? "0 0 0 1px #9184d9" : "none" }}>
-            <div className="flex items-baseline justify-between">
-              <span className="text-[13px] font-medium">
-                {new Date(`${day.date.slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
-              </span>
-              <span className="text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>
-                {active.length === 0 ? "rest day" : `${done}/${active.length} done`}
-              </span>
+          <div
+            key={day.dayOffset}
+            className="rounded-xl p-3.5"
+            style={{ background: isToday ? "linear-gradient(160deg,#2b2741,#232532)" : "#1c1f2c", boxShadow: isToday ? "0 0 0 1px #423a6a" : "none" }}
+          >
+            <div className="flex w-full items-center gap-2.5 text-left">
+              {dateChip}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[13px] font-medium">
+                    {dateObj.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
+                  </span>
+                  {isToday && (
+                    <span className="rounded-full px-1.5 py-px text-[9.5px] font-semibold" style={{ background: "rgba(145,132,217,.22)", color: "#d2cefd" }}>
+                      Today
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>
+                  {active.length === 0 ? "rest day" : `${done}/${active.length} done`}
+                </span>
+              </div>
             </div>
             {active.length > 0 && (
-              <div className="mt-2 flex flex-col gap-1.5">
+              <div className="mt-2.5 flex flex-col gap-1.5">
                 {active.map((t) => (
                   <div key={t.id} className="flex items-center gap-2">
                     <button

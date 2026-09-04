@@ -8,7 +8,6 @@ import { toast } from "../../components/ui/Toast";
 import { youTubeVideoIdFromUrl } from "../../lib/youtube";
 import { nicosWegCourseIdFromUrl } from "../../lib/nicosweg";
 import { invalidateHub } from "../learning-hub/queryHelpers";
-import { SyllabusSourcesDesktop } from "./SyllabusSourcesDesktop";
 
 type FilterKey = "all" | StudySourceType;
 const FILTERS: { key: FilterKey; label: string }[] = [
@@ -310,12 +309,75 @@ export default function Sources() {
       </div>
     </div>
 
-    {/* Desktop (lg+) — the paired Syllabus+Sources 3-pane screen (German
-        Companion Desktop.dc.html id="2d"); Syllabus renders the identical
-        component from its own route too, see SyllabusSourcesDesktop.tsx's
-        doc comment. */}
-    <div className="hidden lg:flex">
-      <SyllabusSourcesDesktop />
+    {/* Desktop (lg+) — a real Sources layout, not delegated to
+        SyllabusSourcesDesktop: that shared component's 3rd column only ever
+        reused SourceRow, so /plan/sources and /plan/syllabus rendered
+        pixel-identical screens at lg and the Activity feed + Saved Links
+        were unreachable at desktop width entirely. Two columns instead:
+        source list (with the same header/progress/filter/add controls as
+        mobile) on the left, Activity + Saved Links on the right. */}
+    <div className="hidden lg:grid lg:grid-cols-[1fr_340px] lg:gap-5">
+      <div className="flex flex-col gap-3.5">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[19px] leading-tight font-medium" style={{ letterSpacing: "-.02em" }}>
+              Sources
+            </div>
+            <div className="text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+              {sources.length} resources · {activeCount} active
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAdd((v) => !v)}
+            className="flex items-center gap-[5px] rounded-[10px] px-3 py-2 text-[12.5px] font-medium text-white"
+            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+          >
+            <Plus size={14} weight="regular" aria-hidden="true" />
+            Add
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <div className="h-[6px] flex-1 overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
+            <div className="h-full rounded-[3px] transition-[width] duration-500" style={{ width: `${overallPct}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }} />
+          </div>
+          <span className="text-[11px] whitespace-nowrap" style={{ color: "rgba(233,233,237,.5)" }}>
+            {overallPct}% through them all
+          </span>
+        </div>
+
+        <div className="flex gap-1.5">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setFilter(f.key)}
+              className="rounded-full px-[11px] py-[5px] text-[12px] whitespace-nowrap"
+              style={{ background: filter === f.key ? "rgba(145,132,217,.22)" : "#20222f", color: filter === f.key ? "#d2cefd" : "rgba(233,233,237,.6)" }}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {showAdd && <AddSourceSheet onClose={() => setShowAdd(false)} />}
+
+        <div className="flex flex-col gap-2.5">
+          {shown.length === 0 ? (
+            <p className="py-8 text-center text-[13.5px]" style={{ color: "rgba(233,233,237,.4)" }}>
+              No sources yet — add one above.
+            </p>
+          ) : (
+            shown.map((s) => <SourceRow key={s.id} source={s} />)
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3.5">
+        <ActivityFeed />
+        <SavedLinksSection />
+      </div>
     </div>
     </>
   );
