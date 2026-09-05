@@ -26,7 +26,10 @@ export function NotesDock({ draggingHeadword }: { draggingHeadword: string | nul
   const queryClient = useQueryClient();
   const { data } = useQuery({ queryKey: ["notes"], queryFn: () => api.notesFeed() });
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
+  // "new" = creating a fresh note, a real id = editing an existing one —
+  // clicking an existing note previously did nothing (only drag-and-drop
+  // linking and "+" for a brand-new note worked).
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const link = useMutation({
     mutationFn: ({ noteId, wordId }: { noteId: string; wordId: string }) => api.updateNote(noteId, { wordId }),
@@ -39,15 +42,16 @@ export function NotesDock({ draggingHeadword }: { draggingHeadword: string | nul
 
   const notes = data?.notes ?? [];
 
-  if (creating) {
+  if (editingId) {
     return (
       <div className="flex h-full flex-col overflow-y-auto rounded-xl" style={{ background: "#1c1f2c" }}>
         <NoteEditorContent
-          id="new"
+          key={editingId}
+          id={editingId}
           embedded
-          onClose={() => setCreating(false)}
+          onClose={() => setEditingId(null)}
           onCreated={() => {
-            setCreating(false);
+            setEditingId(null);
             queryClient.invalidateQueries({ queryKey: ["notes"] });
           }}
         />
@@ -63,7 +67,7 @@ export function NotesDock({ draggingHeadword }: { draggingHeadword: string | nul
         </div>
         <button
           type="button"
-          onClick={() => setCreating(true)}
+          onClick={() => setEditingId("new")}
           aria-label="New note"
           title="New note"
           className="grid size-6 place-items-center rounded-full"
@@ -87,6 +91,12 @@ export function NotesDock({ draggingHeadword }: { draggingHeadword: string | nul
             return (
               <div
                 key={note.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => setEditingId(note.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") setEditingId(note.id);
+                }}
                 onDragOver={(e) => {
                   e.preventDefault();
                   setDragOverId(note.id);
@@ -98,7 +108,7 @@ export function NotesDock({ draggingHeadword }: { draggingHeadword: string | nul
                   const wordId = e.dataTransfer.getData("text/word-id");
                   if (wordId) link.mutate({ noteId: note.id, wordId });
                 }}
-                className="rounded-xl p-3 transition-colors"
+                className="cursor-pointer rounded-xl p-3 transition-colors"
                 style={{
                   background: isDragOver ? "rgba(145,132,217,.16)" : "#1c1f2c",
                   boxShadow: isDragOver ? "0 0 0 1px #9184d9" : "none",

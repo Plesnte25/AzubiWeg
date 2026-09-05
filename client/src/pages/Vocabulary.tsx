@@ -223,7 +223,7 @@ export default function Vocabulary() {
             />
             <MagnifyingGlass size={15} weight="regular" className="absolute top-[11px] left-[11px]" style={{ color: "rgba(233,233,237,.45)" }} aria-hidden="true" />
           </div>
-          <div className="mt-[9px] flex gap-1.5">
+          <div className="mt-[9px] flex flex-wrap gap-1.5">
             {FILTERS.map((f) => {
               const active = filter === f.key;
               return (
