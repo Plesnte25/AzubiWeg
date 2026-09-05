@@ -83,12 +83,14 @@ wordsRouter.post("/", async (req, res) => {
   const rejected: { word: string; reason: "loanword" | "not-german" }[] = [];
   for (const [i, word] of words.entries()) {
     let sortKey: string;
-    // declension/conjugation are app-only columns (never part of the vault
-    // card format, same status as themenfeld/level below) — captured here
-    // from whichever branch resolved the word, applied in the unified
-    // app-only update after both branches, never through Card.fields.
+    // declension/conjugation/exampleTranslation are app-only columns (never
+    // part of the vault card format, same status as themenfeld/level below)
+    // — captured here from whichever branch resolved the word, applied in
+    // the unified app-only update after both branches, never through
+    // Card.fields.
     let declension: unknown = null;
     let conjugation: unknown = null;
+    let exampleTranslation: string | null = null;
     if (user.vaultPath) {
       // resolution + lemma merging + typed-form dedupe all live in the
       // vault sync service (same behavior as the Python script)
@@ -101,6 +103,7 @@ wordsRouter.post("/", async (req, res) => {
       sortKey = result.headword.toLowerCase();
       declension = result.declension;
       conjugation = result.conjugation;
+      exampleTranslation = result.exampleTranslation;
     } else {
       const {
         found: _found,
@@ -109,6 +112,7 @@ wordsRouter.post("/", async (req, res) => {
         rejected: whyRejected,
         declension: entryDeclension,
         conjugation: entryConjugation,
+        exampleTranslation: entryExampleTranslation,
         ...fields
       } = await enrichWord(word, audioDir, lesson ?? null);
       if (whyRejected) {
@@ -118,6 +122,7 @@ wordsRouter.post("/", async (req, res) => {
       }
       declension = entryDeclension;
       conjugation = entryConjugation;
+      exampleTranslation = entryExampleTranslation;
       const card = makeCard(headword, fields, null);
       sortKey = card.sortKey;
       await prisma.word.upsert({
@@ -136,9 +141,9 @@ wordsRouter.post("/", async (req, res) => {
       }
     }
 
-    // themenfeld/level/declension/conjugation are app-only columns (never
-    // part of the vault card format), so this always writes straight to
-    // Postgres regardless of user.vaultPath.
+    // themenfeld/level/declension/conjugation/exampleTranslation are
+    // app-only columns (never part of the vault card format), so this
+    // always writes straight to Postgres regardless of user.vaultPath.
     const created = await prisma.word.findUniqueOrThrow({
       where: { userId_sortKey: { userId: user.id, sortKey } },
     });
@@ -152,6 +157,7 @@ wordsRouter.post("/", async (req, res) => {
       // write a real SQL NULL rather than an ambiguous JSON-null value.
       declension: (declension ?? Prisma.JsonNull) as Prisma.InputJsonValue,
       conjugation: (conjugation ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+      exampleTranslation,
     };
     const withClassification = await prisma.word.update({
       where: { id: created.id },

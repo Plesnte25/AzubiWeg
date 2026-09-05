@@ -13,6 +13,7 @@
     "import:kaikki": "tsx scripts/import-kaikki.ts",
     "import:derivbase": "tsx scripts/import-derivbase.ts",
     "backfill:kaikki": "tsx scripts/backfill-kaikki.ts",
+    "backfill:example-translation": "tsx scripts/backfill-example-translation.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

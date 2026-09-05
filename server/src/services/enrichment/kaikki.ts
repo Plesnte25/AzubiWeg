@@ -400,11 +400,23 @@ export function firstMeaning(senses: KaikkiSenseRaw[]): string | null {
   return null;
 }
 
+// Wiktionary's own unfilled-template placeholder for an example with no
+// translation contributed yet — a literal, exact boilerplate string (not a
+// real translation), found verbatim on 178 imported KaikkiEntry rows.
+// Filtered wherever exampleTranslation is read, not just at import time, so
+// already-imported rows (and the one-off backfill script, which reads
+// KaikkiEntry directly) get the same treatment without a re-import.
+const UNTRANSLATED_PLACEHOLDER = "(please add an English translation of this quotation)";
+
+export function cleanExampleTranslation(text: string | null): string | null {
+  return text && text.trim() !== UNTRANSLATED_PLACEHOLDER ? text : null;
+}
+
 /** First sense with a usable example sentence, if any. */
 export function firstExample(senses: KaikkiSenseRaw[]): { text: string | null; translation: string | null } {
   for (const s of senses) {
     const ex = s.examples?.find((e) => e.text);
-    if (ex) return { text: ex.text ?? null, translation: ex.translation ?? null };
+    if (ex) return { text: ex.text ?? null, translation: cleanExampleTranslation(ex.translation ?? null) };
   }
   return { text: null, translation: null };
 }

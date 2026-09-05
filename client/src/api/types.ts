@@ -72,6 +72,7 @@ export interface Word {
   starred: boolean;
   declension: DeclensionTable | null;
   conjugation: ConjugationTable | null;
+  exampleTranslation: string | null;
   // computed at read time, never persisted (server/src/services/vocab/classify.ts)
   wortart: Wortart;
   genus: Genus;

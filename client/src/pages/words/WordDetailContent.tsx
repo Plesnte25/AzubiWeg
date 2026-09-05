@@ -5,10 +5,11 @@ import { api, playWordAudio } from "../../api/client";
 import { BottomSheet } from "../../components/ui/BottomSheet";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { NoteEditor } from "../../components/notes/NoteEditor";
-import { chipColor, fullArtLabel } from "../../lib/wordDisplay";
+import { chipColor, fullArtLabel, stripLeadingPosTag } from "../../lib/wordDisplay";
 import { useNavStack } from "../../lib/navStack";
 import { ConjugationCard } from "./ConjugationCard";
 import { DeclensionCard } from "./DeclensionCard";
+import { GrammarCallout } from "./GrammarCallout";
 import { ReviewHistoryCard } from "./ReviewHistoryCard";
 import { WordFamilySheet } from "./WordFamilySheet";
 
@@ -164,7 +165,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
             {fullArtLabel(word)}
           </span>
           <span className="text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
-            {word.wortart} · {word.level ? word.level.toUpperCase() : "—"} · {word.lesson ?? "—"}
+            {word.level ? word.level.toUpperCase() : "—"} · {word.lesson ?? "—"}
           </span>
           {!embedded && word.starred && (
             <Star size={14} weight="fill" style={{ color: "#b5abfc" }} aria-hidden="true" />
@@ -183,13 +184,17 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
           </button>
         </div>
         <div className="text-[15px]" style={{ color: "rgba(233,233,237,.6)" }}>
-          {word.meaning ?? "no meaning yet"}
+          {word.meaning ? stripLeadingPosTag(word.meaning) : "no meaning yet"}
           {word.ipa && <span className="ml-1.5 font-mono text-[12px]">{word.ipa}</span>}
         </div>
       </div>
 
-      {word.declension && <DeclensionCard declension={word.declension} form={word.form} />}
-      {word.conjugation && <ConjugationCard headword={word.headword} conjugation={word.conjugation} />}
+      {(word.declension || word.grammar) && (
+        <div className={word.declension && word.grammar ? "grid grid-cols-2 gap-3" : undefined}>
+          {word.declension && <DeclensionCard declension={word.declension} form={word.form} />}
+          {word.grammar && <GrammarCallout grammar={word.grammar} />}
+        </div>
+      )}
 
       {word.example && (
         <div>
@@ -199,10 +204,22 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
           <div className="pl-3 text-[14px] leading-[1.5]" style={{ borderLeft: "2px solid #5d5294" }}>
             {word.example}
           </div>
+          {word.exampleTranslation && (
+            <div className="mt-1 pl-3 text-[12.5px] leading-[1.5]" style={{ color: "rgba(233,233,237,.5)", borderLeft: "2px solid transparent" }}>
+              {word.exampleTranslation}
+            </div>
+          )}
         </div>
       )}
 
-      <ReviewHistoryCard word={word} entries={wordHistory} />
+      {word.conjugation ? (
+        <div className="grid grid-cols-2 gap-3">
+          <ReviewHistoryCard word={word} entries={wordHistory} />
+          <ConjugationCard headword={word.headword} conjugation={word.conjugation} />
+        </div>
+      ) : (
+        <ReviewHistoryCard word={word} entries={wordHistory} />
+      )}
 
       {note && (
         <div

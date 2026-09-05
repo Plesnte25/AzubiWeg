@@ -3,6 +3,7 @@ import { downloadCommonsAudio, synthesizeTts } from "./audio.js";
 import {
   type Resolution,
   TransientLookupError,
+  cleanExampleTranslation,
   findPrimaryEntry,
   isEnglishCognate,
   resolveWord,
@@ -24,6 +25,9 @@ export interface EnrichmentResult extends CardFields {
   typed: string;
   declension: unknown | null;
   conjugation: unknown | null;
+  // English translation of `example` — same app-only status as declension/
+  // conjugation above (see Word's schema comment), never part of CardFields.
+  exampleTranslation: string | null;
   // set (and no card written by the caller) when the word was an English
   // loanword or confirmed not German -- null on a transient failure, which
   // still gets a placeholder card so a bad network day never looks like a
@@ -99,6 +103,7 @@ export async function enrichResolved(
     audioPath: null,
     declension: null,
     conjugation: null,
+    exampleTranslation: null,
     lesson,
     headword: res.headword,
     typed: res.typed,
@@ -127,6 +132,7 @@ export async function enrichResolved(
     audioPath,
     declension: entry?.declension ?? null,
     conjugation: entry?.conjugation ?? null,
+    exampleTranslation: cleanExampleTranslation(entry?.exampleTranslation ?? null),
     lesson,
     found: res.meaning !== null,
     headword: res.headword,

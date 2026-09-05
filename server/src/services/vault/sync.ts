@@ -269,6 +269,7 @@ class VaultSyncService {
     rejected: "loanword" | "not-german" | null;
     declension: unknown | null;
     conjugation: unknown | null;
+    exampleTranslation: string | null;
   }> {
     const { master, audioDir } = vaultFiles(vaultPath);
     const { res, transient } = await resolveWordSafe(word);
@@ -289,20 +290,21 @@ class VaultSyncService {
           rejected: null,
           declension: null,
           conjugation: null,
+          exampleTranslation: null,
         };
       }
     }
 
-    // strip found/headword/typed/rejected/declension/conjugation before this
-    // reaches Card.fields — those aren't CardFields, and declension/
-    // conjugation specifically are app-only columns (same status as
-    // themenfeld/level — see Word's schema comment) that must never round-
-    // trip through vault markdown: a later resync re-parses CardFields fresh
-    // from the file (no declension/conjugation in it) and would silently
-    // wipe them back to null if they'd been let into Card.fields here. They
-    // ride back out via this method's own return value instead, for the
-    // caller (routes/words.ts) to apply through the same separate app-only
-    // update themenfeld/level already use.
+    // strip found/headword/typed/rejected/declension/conjugation/
+    // exampleTranslation before this reaches Card.fields — those aren't
+    // CardFields, and declension/conjugation/exampleTranslation specifically
+    // are app-only columns (same status as themenfeld/level — see Word's
+    // schema comment) that must never round-trip through vault markdown: a
+    // later resync re-parses CardFields fresh from the file (none of these
+    // in it) and would silently wipe them back to null if they'd been let
+    // into Card.fields here. They ride back out via this method's own
+    // return value instead, for the caller (routes/words.ts) to apply
+    // through the same separate app-only update themenfeld/level already use.
     const {
       found,
       headword: _headword,
@@ -310,6 +312,7 @@ class VaultSyncService {
       rejected,
       declension,
       conjugation,
+      exampleTranslation,
       ...cardFields
     } = await enrichResolved(res, audioDir, lesson, transient);
     if (rejected) {
@@ -321,12 +324,13 @@ class VaultSyncService {
         rejected,
         declension: null,
         conjugation: null,
+        exampleTranslation: null,
       };
     }
     await this.applyToVault(userId, vaultPath, (cards) =>
       upsertEnrichedCard(cards, word, res.headword, cardFields),
     );
-    return { headword: res.headword, typed: word, found, merged: false, rejected: null, declension, conjugation };
+    return { headword: res.headword, typed: word, found, merged: false, rejected: null, declension, conjugation, exampleTranslation };
   }
 
   /** Port of cmd_enrich_inbox: enrich every raw word, then reset the file. */

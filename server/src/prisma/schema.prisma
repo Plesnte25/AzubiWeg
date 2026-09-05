@@ -123,6 +123,11 @@ model Word {
   // every entry has one — see the kaikki.org coverage note there).
   declension  Json?
   conjugation Json?
+  // English translation of `example`, sourced from the same KaikkiEntry
+  // row's own exampleTranslation column — additive/app-only like
+  // declension/conjugation above (never part of CardFields/the vault
+  // markdown format), null when the source entry has no translation.
+  exampleTranslation String?
   lesson     String?
   srDue      DateTime?   @db.Date
   srInterval Int?
