@@ -6,10 +6,10 @@ import { BottomSheet } from "../../components/ui/BottomSheet";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { NoteEditor } from "../../components/notes/NoteEditor";
 import { chipColor, fullArtLabel, stripLeadingPosTag } from "../../lib/wordDisplay";
+import { generateGrammarTip } from "../../lib/grammarTips";
 import { useNavStack } from "../../lib/navStack";
 import { ConjugationCard } from "./ConjugationCard";
 import { DeclensionCard } from "./DeclensionCard";
-import { GrammarCallout } from "./GrammarCallout";
 import { ReviewHistoryCard } from "./ReviewHistoryCard";
 import { WordFamilySheet } from "./WordFamilySheet";
 
@@ -92,6 +92,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
 
   const note = notesData?.notes[0];
   const wordHistory = (historyData?.entries ?? []).filter((e) => e.wordId === word.id);
+  const grammarTip = generateGrammarTip(word);
 
   return (
     <div className={outerClass} style={outerStyle}>
@@ -189,10 +190,10 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
         </div>
       </div>
 
-      {(word.declension || word.grammar) && (
-        <div className={word.declension && word.grammar ? "grid grid-cols-2 gap-3" : undefined}>
-          {word.declension && <DeclensionCard declension={word.declension} form={word.form} />}
-          {word.grammar && <GrammarCallout grammar={word.grammar} />}
+      {word.declension && (
+        <div className="grid grid-cols-2 gap-3">
+          <DeclensionCard declension={word.declension} form={word.form} tip={grammarTip} />
+          <ReviewHistoryCard word={word} entries={wordHistory} />
         </div>
       )}
 
@@ -215,10 +216,13 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
       {word.conjugation ? (
         <div className="grid grid-cols-2 gap-3">
           <ReviewHistoryCard word={word} entries={wordHistory} />
-          <ConjugationCard headword={word.headword} conjugation={word.conjugation} />
+          <ConjugationCard headword={word.headword} conjugation={word.conjugation} tip={grammarTip} />
         </div>
       ) : (
-        <ReviewHistoryCard word={word} entries={wordHistory} />
+        // declension already paired its own ReviewHistoryCard above — only
+        // render one here standalone when neither declension nor
+        // conjugation applies (every word still gets review history).
+        !word.declension && <ReviewHistoryCard word={word} entries={wordHistory} />
       )}
 
       {note && (
