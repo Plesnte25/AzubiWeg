@@ -20,13 +20,23 @@ notesRouter.get("/", async (req, res) => {
   const q = typeof req.query.q === "string" && req.query.q.trim() ? req.query.q.trim() : undefined;
   const roadmapTaskId = typeof req.query.roadmapTaskId === "string" ? req.query.roadmapTaskId : undefined;
   const wordId = typeof req.query.wordId === "string" ? req.query.wordId : undefined;
+  const syllabusItemId = typeof req.query.syllabusItemId === "string" ? req.query.syllabusItemId : undefined;
 
-  // scoped to one task (TaskDetailDrawer's Notes section) or one word (Word
-  // Detail's "Your note" card) — skip the 3 cross-app aggregate queries
+  // scoped to one task (TaskDetailDrawer's Notes section), one word (Word
+  // Detail's "Your note" card), or one syllabus item (StationDetailModal's
+  // per-item notes section) — skip the 3 cross-app aggregate queries
   // entirely, nothing else needs them
   if (roadmapTaskId) {
     const notes = await prisma.note.findMany({
       where: { userId: req.userId, roadmapTaskId },
+      include: { files: true },
+      orderBy: { createdAt: "desc" },
+    });
+    return res.json({ notes, taskJournals: [], grammarNotebook: [], sourceNotes: [] });
+  }
+  if (syllabusItemId) {
+    const notes = await prisma.note.findMany({
+      where: { userId: req.userId, syllabusItemId },
       include: { files: true },
       orderBy: { createdAt: "desc" },
     });

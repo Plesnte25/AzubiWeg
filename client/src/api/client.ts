@@ -404,6 +404,7 @@ export const api = {
   notesFeed: (q?: string) => request<NotesFeedResponse>(`/api/notes${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   taskNotes: (roadmapTaskId: string) => request<{ notes: Note[] }>(`/api/notes?roadmapTaskId=${roadmapTaskId}`),
   wordNotes: (wordId: string) => request<{ notes: Note[] }>(`/api/notes?wordId=${wordId}`),
+  syllabusItemNotes: (syllabusItemId: string) => request<{ notes: Note[] }>(`/api/notes?syllabusItemId=${syllabusItemId}`),
   createNote: (data: {
     title?: string | null;
     body?: string | null;

@@ -74,18 +74,20 @@ export default function Layout() {
   const isDashboard = location.pathname === "/";
   const isWords = location.pathname === "/words";
   const isNotes = location.pathname === "/plan/notes";
-  // Words and Notes both have a desktop 3-column layout with one column
-  // meant to scroll internally (word list / note list) — that only works
-  // if some ancestor actually bounds main's height, same as Dashboard's own
-  // lg:h-dvh below.
-  const needsBoundedHeight = isDashboard || isWords || isNotes;
-  // Words' and Notes' master-detail layouts read as power pages like
-  // Dashboard — they want the same edge-to-edge treatment (list column
-  // flush against the Rail), not the centered max-w-6xl reading-width box
-  // every other route gets. (Notes.tsx has its own lg:mx-auto max-w-[1040px]
-  // wrapper too — that has to come off in the same change, or the page
-  // stays double-boxed even with this flag flipped.)
-  const isEdgeToEdge = isDashboard || isWords || isNotes;
+  const isSyllabusOrSources = location.pathname === "/plan/syllabus" || location.pathname === "/plan/sources";
+  // Words, Notes, and Syllabus/Sources all have a desktop 3-column layout
+  // with columns meant to scroll internally (word list / note list /
+  // station list) — that only works if some ancestor actually bounds
+  // main's height, same as Dashboard's own lg:h-dvh below.
+  const needsBoundedHeight = isDashboard || isWords || isNotes || isSyllabusOrSources;
+  // Words', Notes', and Syllabus/Sources' master-detail layouts read as
+  // power pages like Dashboard — they want the same edge-to-edge treatment
+  // (list column flush against the Rail), not the centered max-w-6xl
+  // reading-width box every other route gets. (Notes.tsx has its own
+  // lg:mx-auto max-w-[1040px] wrapper too — that has to come off in the
+  // same change, or the page stays double-boxed even with this flag
+  // flipped.)
+  const isEdgeToEdge = isDashboard || isWords || isNotes || isSyllabusOrSources;
   // Transient screens (the review session so far) own the whole viewport
   // distraction-free, same as the handoff — no tab bar/FAB/rail to tap
   // away through mid-session, and no reserved padding for chrome that

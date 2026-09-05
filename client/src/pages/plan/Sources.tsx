@@ -24,19 +24,31 @@ function detectSourceType(url: string): StudySourceType {
 }
 
 /** Exported for reuse by the desktop paired Syllabus+Sources screen
- * (SyllabusSourcesDesktop.tsx). */
+ * (SyllabusSourcesDesktop.tsx).
+ *
+ * A source with real per-lesson data (`units`, scraped from a playlist)
+ * expands on tap into that lesson list instead of blindly marking
+ * whichever unit happens to be `next` done — the user picks the specific
+ * video they actually watched. A manually-added source with no unit data
+ * has nothing to pick from, so it keeps the old one-tap "log a session"
+ * bump (`logSourceProgress`) as a fallback. */
 export function SourceRow({ source }: { source: StudySource }) {
   const queryClient = useQueryClient();
+  const [expanded, setExpanded] = useState(false);
+  const hasUnits = source.units.length > 0;
+
   const bump = useMutation({
-    mutationFn: () => {
-      const next = source.units.find((u) => u.completedAt === null);
-      return next ? api.toggleSourceUnit(source.id, next.id, true) : api.logSourceProgress(source.id, 1);
-    },
+    mutationFn: () => api.logSourceProgress(source.id, 1),
     onSuccess: () => {
       invalidateHub(queryClient);
       toast.success(`Logged today's session on ${source.title}`);
     },
     onError: () => toast.error("Couldn't log that session — try again."),
+  });
+  const toggleUnit = useMutation({
+    mutationFn: ({ unitId, done }: { unitId: string; done: boolean }) => api.toggleSourceUnit(source.id, unitId, done),
+    onSuccess: () => invalidateHub(queryClient),
+    onError: () => toast.error("Couldn't update that lesson — try again."),
   });
 
   const pct = source.percent;
@@ -46,11 +58,10 @@ export function SourceRow({ source }: { source: StudySource }) {
 
   return (
     <div
-      onClick={() => bump.mutate()}
-      className="cursor-pointer rounded-xl p-[13px]"
+      className="rounded-xl p-[13px]"
       style={{ background: live ? "linear-gradient(160deg,#252338,#20222f)" : "#1c1f2c", boxShadow: live ? "0 0 0 1px #3a3559" : "none" }}
     >
-      <div className="flex items-center gap-[11px]">
+      <div onClick={() => (hasUnits ? setExpanded((v) => !v) : bump.mutate())} className="flex cursor-pointer items-center gap-[11px]">
         <div
           className="grid size-[34px] shrink-0 place-items-center rounded-[10px] text-[13px] font-medium"
           style={{ background: live ? "rgba(145,132,217,.18)" : "#292b31", color: live ? "#d2cefd" : "rgba(233,233,237,.6)" }}
@@ -76,6 +87,38 @@ export function SourceRow({ source }: { source: StudySource }) {
           style={{ width: `${pct ?? Math.min(100, source.completedUnits * 10)}%`, background: pct !== null && pct >= 100 ? "#b5abfc" : "linear-gradient(90deg,#5d5294,#9184d9)" }}
         />
       </div>
+
+      {expanded && hasUnits && (
+        <div className="mt-3 flex flex-col gap-0.5 border-t pt-2.5" style={{ borderColor: "rgba(233,233,237,.08)" }}>
+          {source.units.map((unit) => {
+            const done = unit.completedAt !== null;
+            return (
+              <button
+                key={unit.id}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleUnit.mutate({ unitId: unit.id, done: !done });
+                }}
+                className="flex items-center gap-2.5 rounded-lg px-1 py-1.5 text-left"
+              >
+                <span
+                  className="grid size-[16px] shrink-0 place-items-center rounded-full text-[9px] text-white"
+                  style={{ background: done ? "#9184d9" : "transparent", border: done ? "none" : "1px solid rgba(233,233,237,.3)" }}
+                >
+                  {done ? "✓" : ""}
+                </span>
+                <span
+                  className="min-w-0 flex-1 truncate text-[12.5px]"
+                  style={{ color: done ? "rgba(233,233,237,.45)" : "rgba(233,233,237,.85)", textDecoration: done ? "line-through" : "none" }}
+                >
+                  {unit.position}. {unit.title}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -286,7 +329,7 @@ export default function Sources() {
 
       <div className="mt-3 flex items-center gap-2 text-[11px]" style={{ color: "rgba(233,233,237,.35)" }}>
         <HandTap size={13} weight="regular" aria-hidden="true" />
-        Tap a source to log today's session
+        Tap a source to see its lessons, or log a session
       </div>
 
       {showAdd && (

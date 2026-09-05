@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { ArrowCounterClockwise, Plus, SkipForward, Trash, X } from "@phosphor-icons/react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { ArrowCounterClockwise, Paperclip, Plus, SkipForward, Trash, X } from "@phosphor-icons/react";
 import { api } from "../../api/client";
 import type { SyllabusItem } from "../../api/types";
 import { Attachments } from "../../components/Attachments";
+import { NoteComposer } from "../../components/notes/NoteComposer";
+import { NoteEditor } from "../../components/notes/NoteEditor";
 import { CircleIconButton } from "../../components/ui/CircleIconButton";
 import { Textarea } from "../../components/ui/Textarea";
 import type { Station } from "./stations";
@@ -58,6 +60,60 @@ function NotesComposer({ item, onChanged }: { item: SyllabusItem; onChanged: () 
           />
         }
       />
+    </div>
+  );
+}
+
+/** A non-current or non-grammar item's "+ notes" affordance — previously a
+ * bare Attachments default button labeled "+ notes" that actually only
+ * opened the OS file picker (no note editor at all). Now opens a real
+ * NoteComposer (a proper Note row linked via syllabusItemId, browsable
+ * later in the Notes tab, same pattern as TaskDetailDrawer's
+ * TaskNotesSection for roadmap tasks) and lists any notes already linked to
+ * this item; file attachment stays available as its own, separately
+ * labeled paperclip trigger rather than being folded into "+ notes". */
+function ItemNotesSection({ item, onChanged }: { item: SyllabusItem; onChanged: () => void }) {
+  const [composing, setComposing] = useState(false);
+  const { data } = useQuery({ queryKey: ["notes", "syllabusItem", item.id], queryFn: () => api.syllabusItemNotes(item.id) });
+  const notes = data?.notes ?? [];
+
+  return (
+    <div className="mt-1.5 pl-[26px]">
+      {notes.length > 0 && (
+        <div className="mb-1.5 space-y-2">
+          {notes.map((note) => (
+            <NoteEditor key={note.id} note={note} onChanged={onChanged} />
+          ))}
+        </div>
+      )}
+      {composing ? (
+        <NoteComposer
+          syllabusItemId={item.id}
+          onCreated={() => {
+            setComposing(false);
+            onChanged();
+          }}
+        />
+      ) : (
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setComposing(true)} className="text-caption text-ink-400 hover:text-ink-600">
+            + notes
+          </button>
+          <Attachments
+            files={item.files}
+            parent={{ syllabusItemId: item.id }}
+            onChanged={onChanged}
+            renderTrigger={({ onClick, uploading }) => (
+              <CircleIconButton
+                icon={<Paperclip size={13} weight="regular" aria-hidden="true" />}
+                title={uploading ? "Uploading…" : "Attach a file"}
+                onClick={onClick}
+                disabled={uploading}
+              />
+            )}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -144,7 +200,7 @@ export function StationDetailModal({
         </div>
       </div>
 
-      <div className="max-h-[60vh] divide-y divide-hairline overflow-y-auto rounded-xl border border-hairline">
+      <div className="divide-y divide-hairline">
         {station.items.map((item) => {
           const isCurrent = currentItemId === item.id;
           return (
@@ -178,11 +234,7 @@ export function StationDetailModal({
                 )}
               </div>
               {!isPreview && isCurrent && item.category === "grammar" && <NotesComposer item={item} onChanged={onChanged} />}
-              {!isPreview && !(isCurrent && item.category === "grammar") && (
-                <div className="mt-1.5 pl-[26px]">
-                  <Attachments files={item.files} parent={{ syllabusItemId: item.id }} onChanged={onChanged} />
-                </div>
-              )}
+              {!isPreview && !(isCurrent && item.category === "grammar") && <ItemNotesSection item={item} onChanged={onChanged} />}
             </div>
           );
         })}

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Flag, HandTap, Lock, Sparkle } from "@phosphor-icons/react";
 import { api } from "../../api/client";
@@ -43,6 +43,13 @@ export function SyllabusSourcesDesktop() {
     () => (location.state as { openStationTheme?: string } | null)?.openStationTheme ?? null,
   );
   const [showAddItem, setShowAddItem] = useState(false);
+  // Auto-scroll the current station into view on load, without moving the
+  // heading/level-pill row above it — the user shouldn't have to scroll the
+  // left column just to see where they are in the route.
+  const currentStationRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    currentStationRef.current?.scrollIntoView({ block: "nearest" });
+  }, []);
 
   const toggle = useMutation({
     mutationFn: ({ id, completed }: { id: string; completed: boolean }) => api.toggleSyllabusItem(id, completed),
@@ -90,7 +97,7 @@ export function SyllabusSourcesDesktop() {
 
   return (
     <div className="grid w-full min-h-0 grid-cols-[340px_1fr_300px] gap-5">
-      <div className="min-h-0 overflow-y-auto">
+      <div className="flex min-h-0 flex-col">
         <div className="flex items-center justify-between">
           <div className="text-[22px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
             Syllabus
@@ -134,17 +141,28 @@ export function SyllabusSourcesDesktop() {
           </div>
         )}
 
-        <div className="mt-5" style={{ paddingLeft: 4 }}>
-          {stations.map((station, i) => (
-            <StationNode
-              key={station.theme}
-              station={station}
-              index={i}
-              status={lockState === "locked" ? "upcoming" : i < currentIdx ? "done" : i === currentIdx ? "current" : "upcoming"}
-              isLast={i === stations.length - 1 && !showExamGate}
-              onOpen={() => setSelectedTheme(station.theme)}
-            />
-          ))}
+        {/* Only this list scrolls — the heading/level-pills/locked-banner
+            above stay put, and the current station is scrolled into view on
+            load (see the currentStationRef effect above) instead of
+            requiring the user to find it by scrolling. */}
+        <div
+          className="mt-5 min-h-0 flex-1 overflow-y-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          style={{ paddingLeft: 4 }}
+        >
+          {stations.map((station, i) => {
+            const status = lockState === "locked" ? "upcoming" : i < currentIdx ? "done" : i === currentIdx ? "current" : "upcoming";
+            return (
+              <div key={station.theme} ref={status === "current" ? currentStationRef : undefined}>
+                <StationNode
+                  station={station}
+                  index={i}
+                  status={status}
+                  isLast={i === stations.length - 1 && !showExamGate}
+                  onOpen={() => setSelectedTheme(station.theme)}
+                />
+              </div>
+            );
+          })}
 
           {showExamGate && (
             <div className="relative" style={{ paddingLeft: 34 }}>
@@ -244,7 +262,7 @@ export function SyllabusSourcesDesktop() {
 
         <div className="mt-3 flex items-center gap-2 text-[11px]" style={{ color: "rgba(233,233,237,.35)" }}>
           <HandTap size={13} weight="regular" aria-hidden="true" />
-          Tap a source to log today's session
+          Tap a source to see its lessons, or log a session
         </div>
       </div>
     </div>
