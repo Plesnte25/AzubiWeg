@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CaretLeft, NotePencil, Plus } from "@phosphor-icons/react";
+import { CaretLeft, NotePencil, Plus, Trash, X } from "@phosphor-icons/react";
 import { api } from "../../api/client";
 import type { Note, RoadmapJournalTask, RoadmapSkill, SurfacedNotebookEntry, SurfacedUnitNote } from "../../api/types";
 import { Attachments } from "../../components/Attachments";
@@ -124,19 +124,37 @@ function NotebookEditor({ item, onChanged }: { item: SurfacedNotebookEntry; onCh
         className="box-border w-full resize-none rounded-[10px] px-3 py-2 text-[13px] outline-none"
         style={{ background: "#20222f", color: "#e9e9ed", border: "1px solid rgba(233,233,237,.14)" }}
       />
-      <Attachments
-        files={item.files}
-        parent={{ syllabusItemId: item.id }}
-        onChanged={onChanged}
-        renderTrigger={({ onClick, uploading }) => (
-          <CircleIconButton
-            icon={<Plus className="size-3.5" aria-hidden="true" />}
-            title={uploading ? "Uploading…" : "Attach a file"}
-            onClick={onClick}
-            disabled={uploading}
-          />
+      <div className="flex items-center justify-between">
+        <Attachments
+          files={item.files}
+          parent={{ syllabusItemId: item.id }}
+          onChanged={onChanged}
+          renderTrigger={({ onClick, uploading }) => (
+            <CircleIconButton
+              icon={<Plus className="size-3.5" aria-hidden="true" />}
+              title={uploading ? "Uploading…" : "Attach a file"}
+              onClick={onClick}
+              disabled={uploading}
+            />
+          )}
+        />
+        {draft && (
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm("Clear this grammar notebook entry? This can't be undone.")) {
+                setDraft("");
+                update.mutate("");
+              }
+            }}
+            className="flex items-center gap-1 text-[12px]"
+            style={{ color: "rgba(233,233,237,.45)" }}
+          >
+            <Trash size={13} weight="regular" aria-hidden="true" />
+            Clear notes
+          </button>
         )}
-      />
+      </div>
     </div>
   );
 }
@@ -150,16 +168,85 @@ function UnitNoteEditor({ item, onChanged }: { item: SurfacedUnitNote; onChanged
   });
 
   return (
-    <textarea
-      value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => {
-        if (draft !== (item.notes ?? "")) update.mutate(draft);
-      }}
-      rows={3}
-      className="mt-2 box-border w-full resize-none rounded-[10px] px-3 py-2 text-[13px] outline-none"
-      style={{ background: "#20222f", color: "#e9e9ed", border: "1px solid rgba(233,233,237,.14)" }}
-    />
+    <div className="mt-2 flex flex-col gap-2">
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          if (draft !== (item.notes ?? "")) update.mutate(draft);
+        }}
+        rows={3}
+        className="box-border w-full resize-none rounded-[10px] px-3 py-2 text-[13px] outline-none"
+        style={{ background: "#20222f", color: "#e9e9ed", border: "1px solid rgba(233,233,237,.14)" }}
+      />
+      {draft && (
+        <button
+          type="button"
+          onClick={() => {
+            if (confirm("Clear this note? This can't be undone.")) {
+              setDraft("");
+              update.mutate("");
+            }
+          }}
+          className="flex items-center gap-1 self-start text-[12px]"
+          style={{ color: "rgba(233,233,237,.45)" }}
+        >
+          <Trash size={13} weight="regular" aria-hidden="true" />
+          Clear notes
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Shared header for the detail column's notebook/unit editors — these are
+ * bare {item, onChanged} components with no chrome of their own (unlike
+ * NoteEditorContent's full header for real notes), so opening one here
+ * previously looked like a naked textarea with no title and no way to
+ * close it except clicking the same list row again. */
+function NotebookUnitDetailPane({
+  row,
+  onClose,
+  onChanged,
+}: {
+  row: Extract<FeedRow, { source: "notebook" } | { source: "unit" }>;
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-start justify-between gap-3 border-b px-[18px] py-3.5" style={{ borderColor: "rgba(233,233,237,.08)" }}>
+        <div className="min-w-0">
+          <span
+            className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+            style={{ background: SOURCE_BADGE[row.source].bg, color: SOURCE_BADGE[row.source].color }}
+          >
+            {SOURCE_LABEL[row.source]}
+          </span>
+          <p className="mt-1.5 truncate text-[15px] font-medium">{rowTitle(row)}</p>
+          <p className="mt-0.5 text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+            {rowMeta(row)}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          title="Close"
+          className="grid size-7 shrink-0 place-items-center rounded-full"
+          style={{ background: "#20222f", color: "rgba(233,233,237,.6)" }}
+        >
+          <X size={14} weight="regular" aria-hidden="true" />
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-[18px]">
+        {row.source === "notebook" ? (
+          <NotebookEditor item={row.item} onChanged={onChanged} />
+        ) : (
+          <UnitNoteEditor item={row.item} onChanged={onChanged} />
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -498,14 +585,8 @@ export default function Notes() {
             onClose={() => setSelectedNoteId(null)}
             onCreated={(id) => setSelectedNoteId(id)}
           />
-        ) : expandedRow?.source === "notebook" ? (
-          <div className="h-full overflow-y-auto p-[18px]">
-            <NotebookEditor item={expandedRow.item} onChanged={invalidate} />
-          </div>
-        ) : expandedRow?.source === "unit" ? (
-          <div className="h-full overflow-y-auto p-[18px]">
-            <UnitNoteEditor item={expandedRow.item} onChanged={invalidate} />
-          </div>
+        ) : expandedRow?.source === "notebook" || expandedRow?.source === "unit" ? (
+          <NotebookUnitDetailPane row={expandedRow} onClose={() => setExpanded(null)} onChanged={invalidate} />
         ) : (
           <div className="grid h-full place-items-center px-6 text-center text-[13px]" style={{ color: "rgba(233,233,237,.4)" }}>
             Select a note, or create a new one.

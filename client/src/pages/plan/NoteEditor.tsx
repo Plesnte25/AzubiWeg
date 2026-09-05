@@ -17,6 +17,11 @@ function formatStamp(note: Note | null): string {
   return `${d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" })} · saved`;
 }
 
+function firstBodyLine(body: string | null): string {
+  if (!body) return "";
+  return stripHtml(body).split("\n").find((l) => l.trim()) ?? "";
+}
+
 /**
  * Note.body is Tiptap HTML (existing notes already store real bold/list
  * formatting, edited elsewhere via MinimalTiptap) — a literal plain
@@ -209,16 +214,28 @@ export function NoteEditorContent({
         )}
         <span className="flex items-center gap-4" style={{ color: "rgba(233,233,237,.5)" }}>
           {!isNew && (
+            // A bare icon here previously looked like a static status
+            // indicator next to Delete/Done rather than a clickable toggle
+            // — an existing note opening read-only with no obvious way in
+            // was read as "the old note is broken." A labeled button makes
+            // the edit affordance unmistakable.
             <button
               type="button"
               title={mode === "read" ? "Edit note" : "Read note"}
               onClick={() => setMode((m) => (m === "read" ? "edit" : "read"))}
+              className="flex items-center gap-1 text-[13px] font-medium"
               style={{ color: "inherit" }}
             >
               {mode === "read" ? (
-                <PencilSimple size={16} weight="regular" aria-hidden="true" />
+                <>
+                  <PencilSimple size={16} weight="regular" aria-hidden="true" />
+                  Edit
+                </>
               ) : (
-                <Eye size={16} weight="regular" aria-hidden="true" />
+                <>
+                  <Eye size={16} weight="regular" aria-hidden="true" />
+                  Read
+                </>
               )}
             </button>
           )}
@@ -251,7 +268,12 @@ export function NoteEditorContent({
           if (!isNew && title !== (note!.title ?? "")) update.mutate({ title: title || null });
         }}
         readOnly={mode === "read"}
-        placeholder="Note title"
+        // An untitled existing note falls back to its body's first line for
+        // the placeholder too, matching what the notes list already shows
+        // for it (Notes.tsx's rowTitle()) — a blank "Note title" hint on an
+        // existing note read as "this note didn't load" since it didn't
+        // match the title the list just showed for the same row.
+        placeholder={isNew ? "Note title" : firstBodyLine(note?.body ?? null) || "Untitled note"}
         className="mt-1.5 border-0 bg-transparent p-0 text-[22px] font-medium outline-none"
         style={{ color: "#e9e9ed", letterSpacing: "-.02em" }}
       />
