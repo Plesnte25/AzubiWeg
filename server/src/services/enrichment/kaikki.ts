@@ -160,24 +160,47 @@ async function getWithRetry(url: string): Promise<Response> {
   return res;
 }
 
-/** Free, unofficial fallback for whenever the local dump has no entry at
- * all -- same endpoint/behavior as the old wiktionary.ts's translateLiteral. */
-async function translateLiteral(word: string): Promise<string | null> {
-  if (!word) return null;
-  const params = new URLSearchParams({ client: "gtx", sl: "de", tl: "en", dt: "t", q: word });
-  let translated: string;
+/** Low-level call to the free, unofficial Google Translate endpoint (no API
+ * key) -- shared by translateLiteral (single-word meaning fallback) and
+ * translateText (sentence fallback for exampleTranslation) below. Returns
+ * the raw trimmed translation, or null on any failure/empty result -- no
+ * word-specific "did this actually translate" judgment here, callers apply
+ * their own. */
+async function googleTranslateDe(text: string): Promise<string | null> {
+  if (!text) return null;
+  const params = new URLSearchParams({ client: "gtx", sl: "de", tl: "en", dt: "t", q: text });
   try {
     const res = await getWithRetry(`https://translate.googleapis.com/translate_a/single?${params}`);
     if (!res.ok) return null;
     const data = (await res.json()) as [[string, string][]];
-    translated = data[0].map((chunk) => chunk[0]).join("");
+    const translated = data[0].map((chunk) => chunk[0]).join("").trim();
+    return translated || null;
   } catch (e) {
     if (e instanceof TransientLookupError) throw e;
     return null;
   }
-  translated = translated.trim();
+}
+
+/** Free, unofficial fallback for whenever the local dump has no entry at
+ * all -- same endpoint/behavior as the old wiktionary.ts's translateLiteral.
+ * The no-op guard below is specific to a single word: Google's endpoint
+ * often just echoes back a proper noun or an already-English word instead
+ * of failing outright, which for a lone word means "didn't really
+ * translate" and should be treated as no translation. */
+async function translateLiteral(word: string): Promise<string | null> {
+  const translated = await googleTranslateDe(word);
   if (!translated || translated.toLowerCase() === word.trim().toLowerCase()) return null;
   return translated;
+}
+
+/** Sentence-level fallback for Word.exampleTranslation, used when a real
+ * German example exists but no sourced KaikkiEntry translation does. Skips
+ * translateLiteral's single-word echo check -- a real sentence translating
+ * to something that happens to look similar isn't the same "didn't
+ * translate" failure mode a lone word has, and would false-negative on
+ * legitimate short sentences. */
+export async function translateText(text: string): Promise<string | null> {
+  return googleTranslateDe(text);
 }
 
 export async function resolveWord(word: string): Promise<Resolution> {

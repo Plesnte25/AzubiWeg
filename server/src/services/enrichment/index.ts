@@ -7,6 +7,7 @@ import {
   findPrimaryEntry,
   isEnglishCognate,
   resolveWord,
+  translateText,
 } from "./kaikki.js";
 
 export { resolveWord, type Resolution, TransientLookupError } from "./kaikki.js";
@@ -123,16 +124,24 @@ export async function enrichResolved(
     audioPath = await synthesizeTts(res.headword, audioDir);
   }
 
+  const example = entry?.example ?? null;
+  // Prefer the sourced KaikkiEntry translation; when a real German example
+  // exists but no sourced translation does, fall back to a live machine
+  // translation rather than leave it blank — same free endpoint
+  // translateLiteral already uses for the meaning fallback above.
+  let exampleTranslation = cleanExampleTranslation(entry?.exampleTranslation ?? null);
+  if (example && !exampleTranslation) exampleTranslation = await translateText(example);
+
   return {
     meaning: res.meaning,
     ipa: entry?.ipa ?? null,
     grammar: buildGrammarNote(entry),
     form: res.formNote,
-    example: entry?.example ?? null,
+    example,
     audioPath,
     declension: entry?.declension ?? null,
     conjugation: entry?.conjugation ?? null,
-    exampleTranslation: cleanExampleTranslation(entry?.exampleTranslation ?? null),
+    exampleTranslation,
     lesson,
     found: res.meaning !== null,
     headword: res.headword,
