@@ -10,6 +10,8 @@ import { generateGrammarTip } from "../../lib/grammarTips";
 import { useNavStack } from "../../lib/navStack";
 import { ConjugationCard } from "./ConjugationCard";
 import { DeclensionCard } from "./DeclensionCard";
+import { EmptyStateCard } from "./EmptyStateCard";
+import { GrammarTipCard } from "./GrammarTipCard";
 import { ReviewHistoryCard } from "./ReviewHistoryCard";
 import { WordFamilySheet } from "./WordFamilySheet";
 
@@ -190,40 +192,43 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
         </div>
       </div>
 
-      {word.declension && (
-        <div className="grid grid-cols-2 gap-3">
-          <DeclensionCard declension={word.declension} form={word.form} tip={grammarTip} />
-          <ReviewHistoryCard word={word} entries={wordHistory} />
-        </div>
-      )}
+      {/* Fixed skeleton for every word — grammar table + tip, review
+          history, then an example block, always in this shape with a
+          placeholder standing in for whatever a given word lacks, per the
+          user's explicit request that no word's pane look structurally
+          different from another's. */}
+      <div className="grid grid-cols-2 gap-3">
+        {word.declension ? (
+          <DeclensionCard declension={word.declension} form={word.form} />
+        ) : word.conjugation ? (
+          <ConjugationCard headword={word.headword} conjugation={word.conjugation} />
+        ) : (
+          <EmptyStateCard label="Grammar table" message="No grammar table available for this word type yet." />
+        )}
+        <GrammarTipCard tip={grammarTip} />
+      </div>
 
-      {word.example && (
-        <div>
-          <div className="mb-2 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
-            In a sentence
-          </div>
-          <div className="pl-3 text-[14px] leading-[1.5]" style={{ borderLeft: "2px solid #5d5294" }}>
-            {word.example}
-          </div>
-          {word.exampleTranslation && (
-            <div className="mt-1 pl-3 text-[12.5px] leading-[1.5]" style={{ color: "rgba(233,233,237,.5)", borderLeft: "2px solid transparent" }}>
-              {word.exampleTranslation}
+      <ReviewHistoryCard word={word} entries={wordHistory} />
+
+      <div>
+        <div className="mb-2 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+          In a sentence
+        </div>
+        {word.example ? (
+          <>
+            <div className="pl-3 text-[14px] leading-[1.5]" style={{ borderLeft: "2px solid #5d5294" }}>
+              {word.example}
             </div>
-          )}
-        </div>
-      )}
-
-      {word.conjugation ? (
-        <div className="grid grid-cols-2 gap-3">
-          <ReviewHistoryCard word={word} entries={wordHistory} />
-          <ConjugationCard headword={word.headword} conjugation={word.conjugation} tip={grammarTip} />
-        </div>
-      ) : (
-        // declension already paired its own ReviewHistoryCard above — only
-        // render one here standalone when neither declension nor
-        // conjugation applies (every word still gets review history).
-        !word.declension && <ReviewHistoryCard word={word} entries={wordHistory} />
-      )}
+            <div className="mt-1 pl-3 text-[12.5px] leading-[1.5]" style={{ color: "rgba(233,233,237,.5)", borderLeft: "2px solid transparent" }}>
+              {word.exampleTranslation ?? "Translation not available yet."}
+            </div>
+          </>
+        ) : (
+          <div className="pl-3 text-[13px] leading-[1.5]" style={{ color: "rgba(233,233,237,.4)", borderLeft: "2px solid transparent" }}>
+            No example sentence available for this word yet.
+          </div>
+        )}
+      </div>
 
       {note && (
         <div

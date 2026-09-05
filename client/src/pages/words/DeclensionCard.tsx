@@ -13,7 +13,7 @@ const CASES: { key: keyof DeclensionTable; label: string }[] = [
  * guess, this renders exactly what was actually looked up and dashes out
  * whatever kaikki.org didn't have a table for (its coverage is real but
  * incomplete). Not rendered at all when `declension` is null. */
-export function DeclensionCard({ declension, form, tip }: { declension: DeclensionTable; form: string | null; tip?: string | null }) {
+export function DeclensionCard({ declension, form }: { declension: DeclensionTable; form: string | null }) {
   const plural = declension.nom?.pl;
   return (
     <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c", boxShadow: "0 0 0 1px rgba(233,233,237,.06)" }}>
@@ -53,11 +53,6 @@ export function DeclensionCard({ declension, form, tip }: { declension: Declensi
       {form && (
         <div className="mt-2 rounded-lg px-2.5 py-2 text-[11px]" style={{ color: "rgba(233,233,237,.45)", background: "rgba(145,132,217,.08)" }}>
           {form}
-        </div>
-      )}
-      {tip && (
-        <div className="mt-2 rounded-lg px-2.5 py-2 text-[11px]" style={{ color: "rgba(233,233,237,.45)", background: "rgba(145,132,217,.08)" }}>
-          {tip}
         </div>
       )}
     </div>
