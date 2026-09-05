@@ -9,10 +9,10 @@ re-deriving the investigation.
 
 ## Open — needs a fix
 
-See the 2026-09-05 second follow-up pass below for what was just fixed
-(Notes page filters/detail-pane/layout, Words middle-column revamp +
-bilingual coverage). One item from this batch is still open, not yet
-scoped or started:
+See the 2026-09-05 third follow-up pass below for what was just fixed
+(Words middle-column consistency, Notes detail-pane chrome, a
+KaikkiEntry-pairing translation-quality bug, Syllabus/Sources layout and
+completion-tracking). One item is still open, not yet scoped or started:
 
 ### Stats page
  - This page needs more details & information regarding the learning.
@@ -26,6 +26,110 @@ Kept here as an audit trail so nothing on this list gets "rediscovered" as
 new. All of these were found by actually driving the app in a browser
 (Playwright + a real seeded account), not by reading code or trusting
 `tsc`/`npm test` alone.
+
+- **2026-09-05, seventh bug-fixing pass** — a third follow-up on the same
+  day: a fixed always-present skeleton for Words' middle column (every
+  word now shows the same 3-row structure — grammar table + tip, review
+  history, example — with a placeholder standing in for whatever a word
+  lacks, replacing the previous three-way conditional layout that made
+  different words look structurally unrelated), a chrome/mode-visibility/
+  delete pass on the Notes detail column, a real fix for a KaikkiEntry
+  sourced-data pairing bug that had been grafting mismatched translations
+  onto ~49% of Word rows with a bilingual example (confirmed via a
+  read-only DB check, then a reviewed dry-run + real corrective backfill
+  run against production data), and a Syllabus/Sources pass (independent
+  left-column scroll + auto-scroll-to-current, a dropped nested scrollbar,
+  a real note composer replacing a mislabeled file-upload "+ notes"
+  button, and a real per-lesson completion picker replacing a blind
+  whole-source "mark next unit done" tap). Verified live via Playwright
+  against a seeded demo account (declension/conjugation/example-rich
+  words, a temporary test source with units, cleaned up after).
+  1. **Words: inconsistent middle-column layout per word** — three
+     mutually-exclusive branches (noun: Declension+ReviewHistory; verb:
+     ReviewHistory+Conjugation; neither: bare ReviewHistory) plus an
+     independently-conditional example block made a data-sparse word
+     (e.g. "ledig") look structurally unrelated to a data-rich one (e.g.
+     "entschuldigung"). Replaced with one fixed 3-row template every word
+     renders: Row 1 (grammar table-or-placeholder + a new standalone
+     `GrammarTipCard`, decoupled from being nested inside Declension/
+     Conjugation), Row 2 (ReviewHistoryCard, unconditional — it already
+     self-handles the empty state), Row 3 (example-or-placeholder). A
+     deliberate, scoped exception to this project's normal "hide missing
+     data" convention, per an explicit user request for this view.
+     Verified live: an adjective with no declension/conjugation/
+     translation now shows the same skeleton as a fully-enriched verb,
+     with "No grammar table available for this word type yet." / "No
+     grammar tip for this word yet." standing in for the gaps.
+  2. **Notes: notebook/unit rows opened as a bare, chromeless textarea in
+     the detail column** — no title, no source label, and no close
+     button (only closable by clicking the same list row again). Added a
+     shared header (source badge, item title/context, a close button) and
+     a "Clear notes" action wired to the existing
+     `updateSyllabusNotebook`/`updateUnitNotes` mutations with a null
+     payload — this is "delete" in the sense that applies to these
+     derived, non-standalone rows (clearing text, not removing a row).
+     Verified live.
+  3. **Notes: an existing note's Edit toggle was easy to miss** — a small
+     icon-only pencil/eye button among Delete/Done read as a static
+     status indicator, not a clickable affordance, which combined with
+     bug #2 plausibly read as "old notes are broken." Labeled the button
+     ("Edit"/"Read") and made an untitled note's title placeholder fall
+     back to the body's first line (matching what the list row already
+     shows for it) instead of a generic "Note title" hint. Verified live.
+  4. **Translation-fallback quality — a real KaikkiEntry pairing bug, not
+     a `translateText()` bug.** Confirmed via a read-only DB check: for
+     words enriched before `exampleTranslation` existed,
+     `backfill-example-translation.ts` trusted a matched KaikkiEntry's
+     `exampleTranslation` whenever present, without checking that the
+     entry's own `example` was actually the same sentence as the Word's
+     real `example` — grafting a translation from an unrelated Wiktionary
+     citation onto the Word's real example (confirmed concretely for
+     "Lehrer": the entry's `example` was an unrelated bibliographic
+     fragment, but its `exampleTranslation` got stored as if it
+     translated the Word's real, different sentence). A live isolation
+     test confirmed `translateText()` itself was correct. Added a
+     same-sentence guard to the backfill (falls through to a live
+     `translateText()` call when the KaikkiEntry's example doesn't match),
+     plus a `--fix-mismatched` corrective mode for rows that already got a
+     wrong value before the guard existed. Dry-run against production
+     found **62 of 127** words with bilingual examples were mismatched —
+     far more widespread than the single reported case — then applied for
+     real after review.
+  5. **Syllabus/Sources: left column didn't scroll independently, current
+     stage not visible without scrolling** — `Layout.tsx`'s
+     `isEdgeToEdge`/`needsBoundedHeight` flags didn't cover
+     `/plan/syllabus`/`/plan/sources`, so `main` had no bounded height and
+     the columns' `overflow-y-auto` was a no-op (same root cause Words/
+     Notes had before their own fixes). Added the routes to both flags,
+     restructured the left column into a fixed header (heading/level
+     pills) + a separately-scrolling station list, and added a
+     `scrollIntoView` effect so the current station is visible on load.
+     Verified live: current station visible immediately, only the list
+     scrolls.
+  6. **Syllabus: middle column had a nested scrollbar; "+ notes" opened a
+     file picker, not a note editor** — `StationDetailModal`'s checklist
+     had its own `max-h-[60vh] overflow-y-auto` box nested inside the
+     already-scrolling middle column; separately, every non-current item's
+     "+ notes" button was literally `Attachments`' default file-upload
+     trigger (correctly labeled "notes", but wired to open the OS file
+     picker). Dropped the nested scroll box; added a real per-item notes
+     section (a new `syllabusItemId` filter on `GET /api/notes`, mirroring
+     the existing `roadmapTaskId`/`wordId` ones) using the same
+     `NoteComposer`/`NoteEditor` components `TaskDetailDrawer` already
+     uses for tasks, with file attachment kept as its own, separately
+     labeled paperclip trigger. Verified live.
+  7. **Sources: tapping a source blindly completed whichever unit
+     happened to be "next," with no visibility into which lesson that
+     was** — same bug on both `/plan/sources` and the Syllabus page's
+     3rd column, since both render the same `SourceRow`. The data model
+     already had real per-lesson data (`StudySourceUnit`, a working
+     `PATCH /sources/:id/units/:unitId`) that the UI simply wasn't using.
+     `SourceRow` now expands into the real per-lesson list on tap, letting
+     a specific lesson be marked complete individually; a source with no
+     unit data (manually added, nothing to pick from) keeps the old
+     one-tap "log a session" fallback. Verified live: toggling a specific
+     mid-list lesson updated that lesson only, and the activity feed
+     logged it by name.
 
 - **2026-09-05, sixth bug-fixing pass** — a second follow-up on the same
   day: Notes page filters/detail-pane/layout, a Words middle-column
