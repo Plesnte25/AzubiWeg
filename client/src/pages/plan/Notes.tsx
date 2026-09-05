@@ -14,21 +14,13 @@ import { invalidateHub } from "../learning-hub/queryHelpers";
 import { TaskDetailDrawer } from "../learning-hub/TaskDetailDrawer";
 import { NoteEditorContent } from "./NoteEditor";
 
-type Bucket = "all" | "mine" | "surfaced";
-
-// every RoadmapSkill, not just the 6 "core" ones — task journals/notes can
-// carry bureaucracy/milestone/reflection too
-const ALL_SKILLS: RoadmapSkill[] = [
-  "grammar",
-  "vocab",
-  "listening",
-  "speaking",
-  "writing",
-  "reading",
-  "bureaucracy",
-  "milestone",
-  "reflection",
-];
+// One bucket per real FeedRow["source"], plus "all" — mutually exclusive by
+// construction (every row has exactly one source), so counts are never
+// coincidentally empty the way the old skill-filter chips were for most
+// freeform notes, and there's no double-representation like the old
+// "Grammar Notebook" source badge + "grammar" skill chip both matching the
+// same row.
+type Bucket = "all" | FeedRow["source"];
 
 type FeedRow =
   | { key: string; source: "note"; item: Note }
@@ -181,12 +173,17 @@ function NoteRow({
   row,
   isOpen,
   isSelected = false,
+  desktop = false,
   onOpen,
   onChanged,
 }: {
   row: FeedRow;
   isOpen: boolean;
   isSelected?: boolean;
+  /** Desktop routes notebook/unit editing to the right-hand detail column
+   * instead of expanding inline in the row (mobile has no such column, so
+   * it keeps the inline behavior — this only suppresses it here). */
+  desktop?: boolean;
   onOpen: () => void;
   onChanged: () => void;
 }) {
@@ -220,16 +217,18 @@ function NoteRow({
           <p className="mt-[5px] text-[10px]" style={{ color: "rgba(233,233,237,.32)" }}>{rowMeta(row)}</p>
         </div>
       </button>
-      {isOpen && row.source === "notebook" && <NotebookEditor item={row.item} onChanged={onChanged} />}
-      {isOpen && row.source === "unit" && <UnitNoteEditor item={row.item} onChanged={onChanged} />}
+      {!desktop && isOpen && row.source === "notebook" && <NotebookEditor item={row.item} onChanged={onChanged} />}
+      {!desktop && isOpen && row.source === "unit" && <UnitNoteEditor item={row.item} onChanged={onChanged} />}
     </div>
   );
 }
 
 const BUCKETS: { key: Bucket; label: string }[] = [
   { key: "all", label: "all" },
-  { key: "mine", label: "my notes only" },
-  { key: "surfaced", label: "from syllabus & sources" },
+  { key: "note", label: SOURCE_LABEL.note },
+  { key: "journal", label: SOURCE_LABEL.journal },
+  { key: "notebook", label: SOURCE_LABEL.notebook },
+  { key: "unit", label: SOURCE_LABEL.unit },
 ];
 
 export default function Notes() {
@@ -237,7 +236,6 @@ export default function Notes() {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["notes"], queryFn: () => api.notesFeed() });
   const [bucket, setBucket] = useState<Bucket>("all");
-  const [skillFilter, setSkillFilter] = useState<RoadmapSkill | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [openTask, setOpenTask] = useState<RoadmapJournalTask | null>(null);
   // lg: master-detail selection — a "note"-source row's real id, or "new";
@@ -258,22 +256,34 @@ export default function Notes() {
     ];
   }, [data]);
 
-  const skillCounts = useMemo(() => {
-    const counts: Partial<Record<RoadmapSkill, number>> = {};
-    for (const row of rows) {
-      const s = rowSkill(row);
-      if (s) counts[s] = (counts[s] ?? 0) + 1;
-    }
+  const bucketCounts = useMemo(() => {
+    const counts: Partial<Record<FeedRow["source"], number>> = {};
+    for (const row of rows) counts[row.source] = (counts[row.source] ?? 0) + 1;
     return counts;
   }, [rows]);
 
-  const filtered = rows.filter((row) => {
-    if (bucket === "mine" && row.source !== "note") return false;
-    if (bucket === "surfaced" && row.source === "note") return false;
-    // source-unit notes have no skill to filter by — always shown, regardless
-    if (skillFilter && row.source !== "unit" && rowSkill(row) !== skillFilter) return false;
-    return true;
-  });
+  const filtered = rows.filter((row) => bucket === "all" || row.source === bucket);
+
+  // Grouped by source when "all" is selected, so similar notes sit
+  // together instead of one flat unsorted list — each already-filtered
+  // bucket is homogeneous, so no grouping needed there.
+  const grouped = useMemo(() => {
+    if (bucket !== "all") return [{ source: bucket, rows: filtered }] as { source: Bucket; rows: FeedRow[] }[];
+    const bySource = new Map<FeedRow["source"], FeedRow[]>();
+    for (const row of filtered) {
+      const list = bySource.get(row.source);
+      if (list) list.push(row);
+      else bySource.set(row.source, [row]);
+    }
+    return (["note", "journal", "notebook", "unit"] as const)
+      .filter((s) => bySource.has(s))
+      .map((s) => ({ source: s, rows: bySource.get(s)! }));
+  }, [bucket, filtered]);
+
+  // desktop: which notebook/unit row (if any) is open in the right-hand
+  // detail column — reuses the same `expanded` state mobile already uses
+  // to toggle its inline editor, just also driving the detail column here.
+  const expandedRow = rows.find((r) => r.key === expanded) ?? null;
 
   if (isLoading || !data) {
     return <div className="-mx-4 -my-4 min-h-[calc(100dvh-40px)]" style={{ background: "#161826" }} />;
@@ -311,7 +321,7 @@ export default function Notes() {
         </button>
       </div>
 
-      <div className="mt-3 flex items-center gap-1.5">
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
         {BUCKETS.map((b) => (
           <button
             key={b.key}
@@ -323,35 +333,7 @@ export default function Notes() {
               color: bucket === b.key ? "#d2cefd" : "rgba(233,233,237,.6)",
             }}
           >
-            {b.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-2 flex flex-nowrap gap-1.5 overflow-x-auto pb-1">
-        <button
-          type="button"
-          onClick={() => setSkillFilter(null)}
-          className="shrink-0 rounded-full px-2.5 py-1 text-[11.5px] font-medium"
-          style={{
-            background: skillFilter === null ? "rgba(145,132,217,.22)" : "#20222f",
-            color: skillFilter === null ? "#d2cefd" : "rgba(233,233,237,.6)",
-          }}
-        >
-          all
-        </button>
-        {ALL_SKILLS.filter((s) => skillCounts[s]).map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setSkillFilter(skillFilter === s ? null : s)}
-            className="shrink-0 rounded-full px-2.5 py-1 text-[11.5px] font-medium"
-            style={{
-              background: skillFilter === s ? "rgba(145,132,217,.22)" : "#20222f",
-              color: skillFilter === s ? "#d2cefd" : "rgba(233,233,237,.6)",
-            }}
-          >
-            {SKILL_LABELS[s]} {skillCounts[s]}
+            {b.label} {b.key === "all" ? rows.length : (bucketCounts[b.key] ?? 0)}
           </button>
         ))}
       </div>
@@ -359,17 +341,14 @@ export default function Notes() {
       {filtered.length === 0 ? (
         <div className="mt-8 flex flex-col items-center gap-2 px-6 text-center">
           <NotePencil size={28} weight="regular" style={{ color: "rgba(233,233,237,.3)" }} aria-hidden="true" />
-          <p className="text-[14px] font-medium">{bucket !== "all" || skillFilter ? "No notes match these filters" : "No notes yet"}</p>
+          <p className="text-[14px] font-medium">{bucket !== "all" ? "No notes match this filter" : "No notes yet"}</p>
           <p className="text-[12px]" style={{ color: "rgba(233,233,237,.45)" }}>
-            {bucket !== "all" || skillFilter ? "Try a different bucket or skill." : "Tap New to write one, or check back after your next lesson."}
+            {bucket !== "all" ? "Try a different bucket." : "Tap New to write one, or check back after your next lesson."}
           </p>
-          {(bucket !== "all" || skillFilter) && (
+          {bucket !== "all" && (
             <button
               type="button"
-              onClick={() => {
-                setBucket("all");
-                setSkillFilter(null);
-              }}
+              onClick={() => setBucket("all")}
               className="mt-1 text-[12.5px] font-medium"
               style={{ color: "#b5abfc" }}
             >
@@ -379,18 +358,27 @@ export default function Notes() {
         </div>
       ) : (
         <div className="mt-3.5 flex flex-col gap-[9px]">
-          {filtered.map((row) => (
-            <NoteRow
-              key={row.key}
-              row={row}
-              isOpen={expanded === row.key}
-              onOpen={() => {
-                if (row.source === "journal") setOpenTask(row.item);
-                else if (row.source === "note") push(`/plan/notes/edit/${row.item.id}`);
-                else setExpanded(expanded === row.key ? null : row.key);
-              }}
-              onChanged={invalidate}
-            />
+          {grouped.map((group) => (
+            <div key={group.source} className="flex flex-col gap-[9px]">
+              {bucket === "all" && (
+                <div className="mt-2 text-[10px] tracking-[.12em] uppercase first:mt-0" style={{ color: "rgba(233,233,237,.4)" }}>
+                  {SOURCE_LABEL[group.source as FeedRow["source"]]} · {group.rows.length}
+                </div>
+              )}
+              {group.rows.map((row) => (
+                <NoteRow
+                  key={row.key}
+                  row={row}
+                  isOpen={expanded === row.key}
+                  onOpen={() => {
+                    if (row.source === "journal") setOpenTask(row.item);
+                    else if (row.source === "note") push(`/plan/notes/edit/${row.item.id}`);
+                    else setExpanded(expanded === row.key ? null : row.key);
+                  }}
+                  onChanged={invalidate}
+                />
+              ))}
+            </div>
           ))}
         </div>
       )}
@@ -406,7 +394,7 @@ export default function Notes() {
         so the list and editor share one window, per an explicit user
         decision (simpler than a modal-over-dimmed-background, and doesn't
         need React Router's background-location pattern). */}
-    <div className="hidden min-h-0 lg:mx-auto lg:my-8 lg:grid lg:h-full lg:max-w-[1040px] lg:grid-cols-[1fr_420px] lg:gap-5">
+    <div className="hidden min-h-0 lg:grid lg:h-full lg:grid-cols-[1fr_420px] lg:gap-5">
       <div className="flex min-h-0 flex-col">
         <div className="flex items-center justify-between">
           <div>
@@ -419,7 +407,10 @@ export default function Notes() {
           </div>
           <button
             type="button"
-            onClick={() => setSelectedNoteId("new")}
+            onClick={() => {
+              setSelectedNoteId("new");
+              setExpanded(null);
+            }}
             className="flex shrink-0 items-center gap-[6px] rounded-[10px] px-3 py-2.5 text-[13.5px] font-medium text-white"
             style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
           >
@@ -428,7 +419,7 @@ export default function Notes() {
           </button>
         </div>
 
-        <div className="mt-3 flex items-center gap-1.5">
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
           {BUCKETS.map((b) => (
             <button
               key={b.key}
@@ -440,35 +431,7 @@ export default function Notes() {
                 color: bucket === b.key ? "#d2cefd" : "rgba(233,233,237,.6)",
               }}
             >
-              {b.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-2 flex flex-nowrap gap-1.5 overflow-x-auto pb-1">
-          <button
-            type="button"
-            onClick={() => setSkillFilter(null)}
-            className="shrink-0 rounded-full px-2.5 py-1 text-[11.5px] font-medium"
-            style={{
-              background: skillFilter === null ? "rgba(145,132,217,.22)" : "#20222f",
-              color: skillFilter === null ? "#d2cefd" : "rgba(233,233,237,.6)",
-            }}
-          >
-            all
-          </button>
-          {ALL_SKILLS.filter((s) => skillCounts[s]).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setSkillFilter(skillFilter === s ? null : s)}
-              className="shrink-0 rounded-full px-2.5 py-1 text-[11.5px] font-medium"
-              style={{
-                background: skillFilter === s ? "rgba(145,132,217,.22)" : "#20222f",
-                color: skillFilter === s ? "#d2cefd" : "rgba(233,233,237,.6)",
-              }}
-            >
-              {SKILL_LABELS[s]} {skillCounts[s]}
+              {b.label} {b.key === "all" ? rows.length : (bucketCounts[b.key] ?? 0)}
             </button>
           ))}
         </div>
@@ -476,17 +439,14 @@ export default function Notes() {
         {filtered.length === 0 ? (
           <div className="mt-8 flex flex-col items-center gap-2 px-6 text-center">
             <NotePencil size={28} weight="regular" style={{ color: "rgba(233,233,237,.3)" }} aria-hidden="true" />
-            <p className="text-[14px] font-medium">{bucket !== "all" || skillFilter ? "No notes match these filters" : "No notes yet"}</p>
+            <p className="text-[14px] font-medium">{bucket !== "all" ? "No notes match this filter" : "No notes yet"}</p>
             <p className="text-[12px]" style={{ color: "rgba(233,233,237,.45)" }}>
-              {bucket !== "all" || skillFilter ? "Try a different bucket or skill." : "Click New to write one, or check back after your next lesson."}
+              {bucket !== "all" ? "Try a different bucket." : "Click New to write one, or check back after your next lesson."}
             </p>
-            {(bucket !== "all" || skillFilter) && (
+            {bucket !== "all" && (
               <button
                 type="button"
-                onClick={() => {
-                  setBucket("all");
-                  setSkillFilter(null);
-                }}
+                onClick={() => setBucket("all")}
                 className="mt-1 text-[12.5px] font-medium"
                 style={{ color: "#b5abfc" }}
               >
@@ -495,20 +455,35 @@ export default function Notes() {
             )}
           </div>
         ) : (
-          <div className="mt-3.5 flex min-h-0 flex-1 flex-col gap-[9px] overflow-y-auto pb-2">
-            {filtered.map((row) => (
-              <NoteRow
-                key={row.key}
-                row={row}
-                isOpen={expanded === row.key}
-                isSelected={row.source === "note" && selectedNoteId === row.item.id}
-                onOpen={() => {
-                  if (row.source === "journal") setOpenTask(row.item);
-                  else if (row.source === "note") setSelectedNoteId(row.item.id);
-                  else setExpanded(expanded === row.key ? null : row.key);
-                }}
-                onChanged={invalidate}
-              />
+          <div className="mt-3.5 flex min-h-0 flex-1 flex-col gap-[9px] overflow-y-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {grouped.map((group) => (
+              <div key={group.source} className="flex flex-col gap-[9px]">
+                {bucket === "all" && (
+                  <div className="mt-2 text-[10px] tracking-[.12em] uppercase first:mt-0" style={{ color: "rgba(233,233,237,.4)" }}>
+                    {SOURCE_LABEL[group.source as FeedRow["source"]]} · {group.rows.length}
+                  </div>
+                )}
+                {group.rows.map((row) => (
+                  <NoteRow
+                    key={row.key}
+                    row={row}
+                    desktop
+                    isOpen={expanded === row.key}
+                    isSelected={(row.source === "note" && selectedNoteId === row.item.id) || expanded === row.key}
+                    onOpen={() => {
+                      if (row.source === "journal") setOpenTask(row.item);
+                      else if (row.source === "note") {
+                        setSelectedNoteId(row.item.id);
+                        setExpanded(null);
+                      } else {
+                        setSelectedNoteId(null);
+                        setExpanded(expanded === row.key ? null : row.key);
+                      }
+                    }}
+                    onChanged={invalidate}
+                  />
+                ))}
+              </div>
             ))}
           </div>
         )}
@@ -523,6 +498,14 @@ export default function Notes() {
             onClose={() => setSelectedNoteId(null)}
             onCreated={(id) => setSelectedNoteId(id)}
           />
+        ) : expandedRow?.source === "notebook" ? (
+          <div className="h-full overflow-y-auto p-[18px]">
+            <NotebookEditor item={expandedRow.item} onChanged={invalidate} />
+          </div>
+        ) : expandedRow?.source === "unit" ? (
+          <div className="h-full overflow-y-auto p-[18px]">
+            <UnitNoteEditor item={expandedRow.item} onChanged={invalidate} />
+          </div>
         ) : (
           <div className="grid h-full place-items-center px-6 text-center text-[13px]" style={{ color: "rgba(233,233,237,.4)" }}>
             Select a note, or create a new one.

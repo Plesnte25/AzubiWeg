@@ -73,18 +73,19 @@ export default function Layout() {
   const location = useLocation();
   const isDashboard = location.pathname === "/";
   const isWords = location.pathname === "/words";
+  const isNotes = location.pathname === "/plan/notes";
   // Words and Notes both have a desktop 3-column layout with one column
   // meant to scroll internally (word list / note list) — that only works
   // if some ancestor actually bounds main's height, same as Dashboard's own
   // lg:h-dvh below.
-  const needsBoundedHeight = isDashboard || isWords || location.pathname === "/plan/notes";
-  // Words' 3-column master-detail reads as a power page like Dashboard —
-  // it wants the same edge-to-edge treatment (list column flush against
-  // the Rail), not the centered max-w-6xl reading-width box every other
-  // route gets. Notes keeps the centered box (its 2-column list+editor
-  // layout doesn't need the extra width, and it wasn't reported as an
-  // issue) — it still gets needsBoundedHeight's height cap on top of that.
-  const isEdgeToEdge = isDashboard || isWords;
+  const needsBoundedHeight = isDashboard || isWords || isNotes;
+  // Words' and Notes' master-detail layouts read as power pages like
+  // Dashboard — they want the same edge-to-edge treatment (list column
+  // flush against the Rail), not the centered max-w-6xl reading-width box
+  // every other route gets. (Notes.tsx has its own lg:mx-auto max-w-[1040px]
+  // wrapper too — that has to come off in the same change, or the page
+  // stays double-boxed even with this flag flipped.)
+  const isEdgeToEdge = isDashboard || isWords || isNotes;
   // Transient screens (the review session so far) own the whole viewport
   // distraction-free, same as the handoff — no tab bar/FAB/rail to tap
   // away through mid-session, and no reserved padding for chrome that
