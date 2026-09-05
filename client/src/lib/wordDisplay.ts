@@ -41,6 +41,20 @@ export function chipBg(word: Word): string {
   return word.genus ? GENUS_BG[word.genus] : "rgba(233,233,237,.08)";
 }
 
+const LEADING_POS_TAG = /^\((?:Noun|Verb|Adjective|Adverb|Interjection|Pronoun|Preposition|Conjunction|Numeral|Article)\)\s*/i;
+
+/** Display-only: strips a redundant leading "(Noun)"/"(Verb)"/etc. tag from
+ * a word's meaning — the word class is already shown via the header chip
+ * and doesn't need repeating inside the meaning text too. Only the
+ * *leading* tag is stripped; a later tag mid-string (e.g. a second sense
+ * with a genuinely different class, "(Adverb) also...; (Interjection)
+ * in answering...") is real, distinguishing information and stays.
+ * Doesn't touch the stored data — meaning keeps its authored form for the
+ * vault round-trip, this only affects what's rendered. */
+export function stripLeadingPosTag(meaning: string): string {
+  return meaning.replace(LEADING_POS_TAG, "");
+}
+
 /** "der"/"die"/"das"/"verb", or the lowercased wortart for anything else
  * (adjective, adverb, ...) — the article/kind label shown on Word Detail's
  * and the review card's header chip. */

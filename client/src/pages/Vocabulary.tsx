@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { CaretRight, MagnifyingGlass, Plus, SlidersHorizontal } from "@phosphor-icons/react";
 import { api } from "../api/client";
 import type { Grade } from "../api/types";
-import { barColor, buildSparkline, chipBg, chipColor, chipLabel, NO_DATA_HEIGHT, SPARKLINE_SLOTS } from "../lib/wordDisplay";
+import { barColor, buildSparkline, chipBg, chipColor, chipLabel, NO_DATA_HEIGHT, SPARKLINE_SLOTS, stripLeadingPosTag } from "../lib/wordDisplay";
 import { useNavStack } from "../lib/navStack";
 import { AddWordsDialog } from "./vocabulary/AddWordsDialog";
 import { NotesDock } from "./words/NotesDock";
@@ -54,6 +54,8 @@ export default function Vocabulary() {
   );
 
   const shakyCount = allWords.filter((w) => w.leech).length;
+  const countFor = (key: FilterKey) =>
+    key === "all" ? allWords.length : key === "verb" ? allWords.filter((w) => w.wortart === "Verb").length : allWords.filter((w) => w.genus === key).length;
   const resultLabel = q ? `${filtered.length} match${filtered.length === 1 ? "" : "es"}` : "All words";
   const effectiveSelectedId = selectedId ?? filtered[0]?.id ?? null;
 
@@ -111,7 +113,7 @@ export default function Vocabulary() {
                   color: active ? "#d2cefd" : "rgba(233,233,237,.6)",
                 }}
               >
-                {f.label}
+                {f.label} ({countFor(f.key)})
               </button>
             );
           })}
@@ -147,7 +149,7 @@ export default function Vocabulary() {
               <div className="min-w-0 flex-1">
                 <div className="text-[15.5px] font-medium">{w.headword}</div>
                 <div className="truncate text-[11.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
-                  {w.meaning ?? "no meaning yet"}
+                  {w.meaning ? stripLeadingPosTag(w.meaning) : "no meaning yet"}
                   {plural ? ` · Pl. ${plural}` : ""}
                 </div>
               </div>
@@ -232,13 +234,13 @@ export default function Vocabulary() {
                   className="rounded-full px-[10px] py-1 text-[10.5px] whitespace-nowrap"
                   style={{ background: active ? "rgba(145,132,217,.22)" : "#20222f", color: active ? "#d2cefd" : "rgba(233,233,237,.6)" }}
                 >
-                  {f.label}
+                  {f.label} ({countFor(f.key)})
                 </button>
               );
             })}
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto pb-3">
+        <div className="min-h-0 flex-1 overflow-y-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {filtered.map((w) => {
             const bars = sparklines.get(w.id) ?? Array<number>(SPARKLINE_SLOTS).fill(NO_DATA_HEIGHT);
             const active = w.id === effectiveSelectedId;
@@ -266,7 +268,7 @@ export default function Vocabulary() {
                 <div className="min-w-0 flex-1">
                   <div className="text-[14px] font-medium">{w.headword}</div>
                   <div className="truncate text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
-                    {w.meaning ?? "no meaning yet"}
+                    {w.meaning ? stripLeadingPosTag(w.meaning) : "no meaning yet"}
                   </div>
                 </div>
                 <div className="flex h-4 shrink-0 items-end gap-[2.5px]">

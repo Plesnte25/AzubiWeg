@@ -72,12 +72,19 @@ function GlobalShortcuts({ armed }: { armed: boolean }) {
 export default function Layout() {
   const location = useLocation();
   const isDashboard = location.pathname === "/";
+  const isWords = location.pathname === "/words";
   // Words and Notes both have a desktop 3-column layout with one column
   // meant to scroll internally (word list / note list) — that only works
   // if some ancestor actually bounds main's height, same as Dashboard's own
-  // lg:h-dvh below. Unlike Dashboard they keep the normal centered
-  // max-w-6xl width, they just also need the height cap.
-  const needsBoundedHeight = isDashboard || location.pathname === "/words" || location.pathname === "/plan/notes";
+  // lg:h-dvh below.
+  const needsBoundedHeight = isDashboard || isWords || location.pathname === "/plan/notes";
+  // Words' 3-column master-detail reads as a power page like Dashboard —
+  // it wants the same edge-to-edge treatment (list column flush against
+  // the Rail), not the centered max-w-6xl reading-width box every other
+  // route gets. Notes keeps the centered box (its 2-column list+editor
+  // layout doesn't need the extra width, and it wasn't reported as an
+  // issue) — it still gets needsBoundedHeight's height cap on top of that.
+  const isEdgeToEdge = isDashboard || isWords;
   // Transient screens (the review session so far) own the whole viewport
   // distraction-free, same as the handoff — no tab bar/FAB/rail to tap
   // away through mid-session, and no reserved padding for chrome that
@@ -129,8 +136,8 @@ export default function Layout() {
             // lg:pl-[84px] above already set for rail clearance, since
             // tailwind-merge treats them as the same conflicting group and
             // keeps whichever is later in this list.
-            !isTransient && (isDashboard ? "lg:h-dvh lg:min-h-[760px] lg:pr-4 lg:py-3" : "mx-auto max-w-6xl px-4 py-6"),
-            !isTransient && !isDashboard && needsBoundedHeight && "lg:h-dvh lg:min-h-[760px]",
+            !isTransient && (isEdgeToEdge ? "lg:h-dvh lg:min-h-[760px] lg:pr-4 lg:py-3" : "mx-auto max-w-6xl px-4 py-6"),
+            !isTransient && !isEdgeToEdge && needsBoundedHeight && "lg:h-dvh lg:min-h-[760px]",
           )}
         >
           <Outlet />

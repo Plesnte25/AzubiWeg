@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { NotePencil } from "@phosphor-icons/react";
+import { NotePencil, Plus } from "@phosphor-icons/react";
 import { api } from "../../api/client";
 import { toast } from "../../components/ui/Toast";
+import { NoteEditorContent } from "../plan/NoteEditor";
 
 function noteSnippet(body: string | null): string {
   if (!body) return "";
@@ -25,6 +26,7 @@ export function NotesDock({ draggingHeadword }: { draggingHeadword: string | nul
   const queryClient = useQueryClient();
   const { data } = useQuery({ queryKey: ["notes"], queryFn: () => api.notesFeed() });
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const link = useMutation({
     mutationFn: ({ noteId, wordId }: { noteId: string; wordId: string }) => api.updateNote(noteId, { wordId }),
@@ -37,10 +39,38 @@ export function NotesDock({ draggingHeadword }: { draggingHeadword: string | nul
 
   const notes = data?.notes ?? [];
 
+  if (creating) {
+    return (
+      <div className="flex h-full flex-col overflow-y-auto rounded-xl" style={{ background: "#1c1f2c" }}>
+        <NoteEditorContent
+          id="new"
+          embedded
+          onClose={() => setCreating(false)}
+          onCreated={() => {
+            setCreating(false);
+            queryClient.invalidateQueries({ queryKey: ["notes"] });
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col overflow-y-auto px-[18px] py-[18px]">
-      <div className="text-[13px] font-medium" style={{ letterSpacing: "-.01em" }}>
-        Notes
+      <div className="flex items-center justify-between">
+        <div className="text-[13px] font-medium" style={{ letterSpacing: "-.01em" }}>
+          Notes
+        </div>
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          aria-label="New note"
+          title="New note"
+          className="grid size-6 place-items-center rounded-full"
+          style={{ background: "#20222f", color: "#e9e9ed" }}
+        >
+          <Plus size={13} weight="bold" aria-hidden="true" />
+        </button>
       </div>
       <div className="mt-0.5 text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
         {notes.length} note{notes.length === 1 ? "" : "s"}

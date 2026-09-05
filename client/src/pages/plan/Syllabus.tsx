@@ -7,6 +7,7 @@ import type { CefrLevel } from "../../api/types";
 import { BottomSheet } from "../../components/ui/BottomSheet";
 import { useNavStack } from "../../lib/navStack";
 import { invalidateHub } from "../learning-hub/queryHelpers";
+import { SourceRow } from "./Sources";
 import { StationDetailModal } from "./StationDetailModal";
 import { SyllabusSourcesDesktop } from "./SyllabusSourcesDesktop";
 import { deriveStations, stationStatus, type Station } from "./stations";
@@ -126,6 +127,12 @@ export default function Syllabus() {
     () => (location.state as { openStationTheme?: string } | null)?.openStationTheme ?? undefined,
   );
   const [showAddItem, setShowAddItem] = useState(false);
+  // md-only: at md the page keeps just the roadmap/station-detail columns
+  // (lg's SyllabusSourcesDesktop 3rd column doesn't fit), so Sources is
+  // reached via this small tab instead of being unreachable — reuses the
+  // same SourceRow list content lg's own 3rd column already renders.
+  const [mdView, setMdView] = useState<"syllabus" | "sources">("syllabus");
+  const { data: sourcesData } = useQuery({ queryKey: ["learning", "sources"], queryFn: api.learningSources, enabled: mdView === "sources" });
 
   const toggle = useMutation({
     mutationFn: ({ id, completed }: { id: string; completed: boolean }) => api.toggleSyllabusItem(id, completed),
@@ -201,6 +208,32 @@ export default function Syllabus() {
         </div>
       </div>
 
+      <div className="mt-3 hidden gap-1 rounded-full p-1 md:flex lg:hidden" style={{ background: "#20222f", width: "fit-content" }}>
+        {(["syllabus", "sources"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setMdView(v)}
+            className="rounded-full px-3 py-1 text-[12px] font-medium capitalize"
+            style={{ background: mdView === v ? "#9184d9" : "transparent", color: mdView === v ? "#161826" : "rgba(233,233,237,.6)" }}
+          >
+            {v}
+          </button>
+        ))}
+      </div>
+
+      {mdView === "sources" ? (
+        <div className="mt-4 flex flex-col gap-2.5">
+          {(sourcesData?.sources.length ?? 0) === 0 ? (
+            <p className="py-8 text-center text-[13.5px]" style={{ color: "rgba(233,233,237,.4)" }}>
+              No sources yet.
+            </p>
+          ) : (
+            sourcesData!.sources.map((s) => <SourceRow key={s.id} source={s} />)
+          )}
+        </div>
+      ) : (
+        <>
       <div className="mt-3 text-[26px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
         Syllabus
       </div>
@@ -285,6 +318,8 @@ export default function Syllabus() {
 
       {showAddItem && openStation && (
         <AddItemSheet level={level} theme={openStation.theme} onClose={() => setShowAddItem(false)} onAdded={() => invalidateHub(queryClient)} />
+      )}
+        </>
       )}
     </div>
 
