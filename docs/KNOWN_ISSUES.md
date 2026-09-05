@@ -9,9 +9,9 @@ re-deriving the investigation.
 
 ## Open — needs a fix
 
-Nothing open right now — see the 2026-09-04 bug-fixing pass below for the
-full backlog (Dashboard/Words/Plan/Syllabus/Notes plus a breakpoint audit)
-cleared in one sitting.
+Nothing open right now — see the 2026-09-05 follow-up pass below for this
+batch (Words polish, Syllabus md tab, two reports that turned out to
+already be fixed) and the 2026-09-04 pass above it for the full backlog.
 
 ## Resolved during the redesign (for reference — no action needed)
 
@@ -20,6 +20,109 @@ new. All of these were found by actually driving the app in a browser
 (Playwright + a real seeded account), not by reading code or trusting
 `tsc`/`npm test` alone.
 
+- **2026-09-05, fifth bug-fixing pass** — a smaller follow-up batch (Words
+  polish, one real Syllabus gap, two reports that turned out to already be
+  fixed), verified live against a fresh demo account plus a targeted check
+  against a seeded word with full enrichment data (grammar/example/
+  translation), not just typechecked.
+  1. **Words desktop layout sat in a centered, padded box instead of
+     edge-to-edge** — `Layout.tsx`'s `<main>` only gave the Dashboard route
+     the edge-to-edge `lg:pr-4 lg:py-3` treatment; every other route
+     (including `/words`) got a centered `mx-auto max-w-6xl px-4 py-6` box
+     layered on top of the 3-column grid inside it. Extended the
+     edge-to-edge branch to `/words` too (not `/plan/notes` — not reported,
+     and its 2-column layout has less need for it). Verified live: the
+     grid's left edge now sits at exactly 84px (the Rail's own width) —
+     the list column and its active-row highlight are genuinely flush
+     against the sidebar.
+  2. **Visible scrollbar on the word list** — added the
+     `[scrollbar-width:none] [&::-webkit-scrollbar]:hidden` pattern to
+     `Vocabulary.tsx`'s list scroll container (scoped to the word list
+     only). Verified live: `scrollbar-width` computes to `none` on that
+     element, still scrolls via `scrollTop`.
+  3. **Word class shown three times for the same word** — confirmed three
+     real, overlapping renders: the header chip (`fullArtLabel`), a raw
+     `word.wortart` repeat on the meta line, and a leading `(Noun)`/`(Verb)`
+     tag baked into `word.meaning` itself (e.g. "Apfel" was literally
+     `"(Noun) apple"`). Dropped the meta-line repeat entirely (level/lesson
+     only now); added a display-only `stripLeadingPosTag()` helper
+     (`wordDisplay.ts`) that strips just the *leading* tag from meaning
+     wherever it's shown (`WordDetailContent.tsx`, `Vocabulary.tsx`'s list
+     rows) — a later, genuinely distinguishing tag on a multi-sense word
+     (e.g. "auch": `"(Adverb) also...; (Interjection) in answering..."`)
+     is left alone, since that's real information, not redundant. Doesn't
+     touch the stored data or the vault round-trip.
+  4. **Word-detail middle column was missing a grammar-rule callout and
+     bilingual examples** — `DeclensionCard`/`ConjugationCard` are
+     genuinely data-driven and mutually exclusive by design (a word is
+     either a noun or a verb, never both), not a bug; `ConjugationCard`
+     already *is* the present-tense grid the design spec asked for. Added
+     the one real missing piece: a `GrammarCallout` card driven by the
+     real (if modest) `Word.grammar` field, which existed in the schema
+     but was never rendered anywhere — paired beside `DeclensionCard` in a
+     two-up row, with `ReviewHistoryCard` similarly paired beside
+     `ConjugationCard`. **Bilingual examples were real missing data, not
+     fabricated**: the global `KaikkiEntry` enrichment table already had
+     `exampleTranslation` with real English translations, but `Word` only
+     ever copied across the German `example` — added `exampleTranslation`
+     as a proper app-only column (schema migration
+     `20260905035606_add_word_example_translation`, following the exact
+     `declension`/`conjugation` precedent — never part of `CardFields`/the
+     vault markdown format, threaded through `enrichResolved()`,
+     `vaultSync.enrichIntoVault()`, and `routes/words.ts`'s write path),
+     rendered under the German example in `WordDetailContent.tsx`, and
+     backfilled onto 63 existing words via a new
+     `npm run backfill:example-translation` script. Found and filtered a
+     real data-quality artifact along the way: 178 `KaikkiEntry` rows had
+     Wiktionary's own unfilled-template placeholder
+     ("(please add an English translation of this quotation)") as their
+     `exampleTranslation` — added `cleanExampleTranslation()`
+     (`kaikki.ts`) so that placeholder is treated as no-translation
+     everywhere it's read, not displayed as if it were real content.
+     Verified live against a seeded word ("Haus") with full data: header
+     shows a single "das" tag, DECLENSION and GRAMMAR cards render side by
+     side, IN A SENTENCE shows both the German example and its English
+     translation beneath it, REVIEW HISTORY still renders on its own.
+  5. **Filter chips had no per-chip count** — `Vocabulary.tsx`'s
+     all/der/die/das/verbs chips now show a live count computed from the
+     already-loaded word list (e.g. "der (1)"), no new query. Verified
+     live.
+  6. **Notes column had no way to create a new note** — drag-and-drop
+     (word → existing note) was already fully working; added a "+" button
+     to `NotesDock.tsx`'s header that opens the same embedded
+     `NoteEditorContent({id: "new", embedded: true})` flow the rest of the
+     app already uses, in place of the note list. Verified live.
+  7. **Syllabus had no way to reach Sources at `md` width** — real,
+     confirmed gap (the page only ever had an `lg:hidden` mobile/md block
+     and a separate `lg:`-only desktop block, no md-specific affordance).
+     Added a small "syllabus"/"sources" segmented toggle, visible only at
+     md (`hidden md:flex lg:hidden`), that swaps the content column to a
+     Sources list reusing `SourceRow` from `Sources.tsx` — the same
+     component lg's own 3rd column already renders. Verified live at
+     768px.
+  8. **Two reports investigated and found already correct — no code
+     change made:**
+     - *Plan/Roadmap "Week" tab "still shows the old flat pattern"*: the
+       accordion rebuild from the 2026-09-04 pass is genuinely live —
+       confirmed both in source (`git diff` against that commit was empty)
+       and by actually toggling to Week view live, which showed the
+       "kept"/"planned" collapsed-row wording, the "Today" tag, and the
+       "Open in syllabus →" link exactly as designed. The reported
+       behavior (a horizontal day-strip of pills, clicking a day swaps a
+       flat single-column checklist below) maps exactly onto **Day
+       view's** own `WeekStrip` component instead — most likely the two
+       views got crossed while testing, or a stale cache/tab predated the
+       09-04 fix.
+     - *Sidebar "Sources" link shows Syllabus instead*: `Rail.tsx`'s
+       Sources nav item correctly points to `/plan/sources`, which
+       correctly routes to the real `Sources` component (confirmed
+       already fixed in the 09-04 pass, zero remaining references to
+       `SyllabusSourcesDesktop` in `Sources.tsx`). Live click-through
+       confirmed the sidebar's Sources icon navigates to `/plan/sources`
+       and renders the real Saved Links section. (The icon-only rail
+       button has no visible text — only a `title` tooltip — which is
+       likely why a first glance made it hard to tell apart from
+       Syllabus's own icon before actually clicking it.)
 - **2026-09-04, fourth bug-fixing pass** — the full backlog logged this
   session (Dashboard, Words, Plan, Syllabus, Notes, plus a full sm/md/lg
   breakpoint audit), cleared in one sitting. Verified live against a fresh
