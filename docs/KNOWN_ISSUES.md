@@ -9,9 +9,16 @@ re-deriving the investigation.
 
 ## Open — needs a fix
 
-Nothing open right now — see the 2026-09-05 follow-up pass below for this
-batch (Words polish, Syllabus md tab, two reports that turned out to
-already be fixed) and the 2026-09-04 pass above it for the full backlog.
+See the 2026-09-05 second follow-up pass below for what was just fixed
+(Notes page filters/detail-pane/layout, Words middle-column revamp +
+bilingual coverage). One item from this batch is still open, not yet
+scoped or started:
+
+### Stats page
+ - This page needs more details & information regarding the learning.
+   (Not investigated yet — needs its own pass to figure out what specific
+   metrics/views are missing before planning a fix.)
+
 
 ## Resolved during the redesign (for reference — no action needed)
 
@@ -20,6 +27,113 @@ new. All of these were found by actually driving the app in a browser
 (Playwright + a real seeded account), not by reading code or trusting
 `tsc`/`npm test` alone.
 
+- **2026-09-05, sixth bug-fixing pass** — a second follow-up on the same
+  day: Notes page filters/detail-pane/layout, a Words middle-column
+  revamp per a design screenshot pointed at directly, and a live
+  translation-API fallback for bilingual examples (added a new dependency
+  on the user's explicit choice, reusing an existing free/unofficial
+  Google Translate call already in the codebase rather than a new one).
+  Verified live via screenshots against a fresh demo account plus a
+  seeded dev account with real declension/conjugation/example data.
+  1. **Notes: odd left padding** — same root cause as Words' identical
+     report a pass earlier, plus one extra wrinkle: `Notes.tsx` had its
+     *own* `lg:mx-auto lg:max-w-[1040px]` wrapper on top of `Layout.tsx`'s
+     centered box, so flipping the Layout flag alone would have left it
+     double-boxed. Fixed both — added `/plan/notes` to `Layout.tsx`'s
+     `isEdgeToEdge`, and dropped Notes' own centering wrapper. Verified
+     live: grid now starts at exactly 84px (the Rail's width).
+  2. **Notes list scrollbar** — hidden via the same
+     `[scrollbar-width:none] [&::-webkit-scrollbar]:hidden` pattern used
+     on Words. Verified live.
+  3. **Notes filters were mostly dead and double-represented content** —
+     the skill-filter chips were close to useless for real usage (freeform
+     notes rarely carry a skill tag), and a `notebook`-source row's
+     "Grammar Notebook" badge plus its `"grammar"` skill chip
+     double-represented the same content across two filter dimensions.
+     Dropped the skill-filter row entirely; replaced the 3-option
+     all/mine/surfaced bucket with 5 concrete, mutually-exclusive options
+     mapped 1:1 onto each row's real source (All/Notes/Task Journals/
+     Grammar Notebook/Source Notes) — every row has exactly one source, so
+     counts are never coincidentally empty and nothing double-counts.
+     Verified live: buttons show real counts ("Note 3", "Grammar Notebook
+     1", etc.) matching the account's actual data.
+  4. **Notebook/source-note rows opened inline instead of in the detail
+     pane** — `note`-source rows already opened correctly in the real
+     right-hand column; `notebook`/`unit` rows instead expanded their
+     editor inline inside the same list row. Minimal-diff fix (both editor
+     components were already small and self-contained, no rewrite
+     needed): a `desktop` prop on the shared row component suppresses the
+     inline render at desktop width only (mobile has no separate detail
+     column, so it keeps the original inline behavior), and the existing
+     `expanded` state (previously only used for that inline toggle) now
+     also drives the same detail column `note` rows already used. No new
+     state introduced. Verified live via screenshot: clicking a Grammar
+     Notebook row opens its editor in the right column, list row
+     unaffected.
+  5. **Notes grouping** — rows are now grouped by source with section
+     headers when "All" is selected (each single-source bucket is already
+     homogeneous, so no grouping needed there). Verified live.
+  6. **Words filter chips overflowed into the middle column** — a real
+     regression from the previous pass's own change: appending a live
+     count to each chip label made the row wider than its column, and
+     unlike the mobile row (which already had `overflow-hidden`), the
+     desktop row had neither `overflow-hidden` nor `flex-wrap`, so it
+     bled into the sibling column (CSS grid doesn't clip overflowing
+     children by default). Fixed with `flex-wrap`. Verified live: the row
+     wraps to two lines within its own column, no bleed.
+  7. **Words middle column revamped per a design screenshot the user
+     pointed at directly** (`Screenshot From 2026-09-05 08-01-19.png`,
+     viewed directly, not worked from memory): Declension now pairs with
+     Review History (previously paired with the raw-`Word.grammar`-text
+     callout from the prior pass) — Conjugation+Review History for verbs
+     was already correct, unchanged. Removed `GrammarCallout.tsx`
+     entirely (dead code once its usage was replaced). Added a rule-based
+     "P.S."-style tip (`client/src/lib/grammarTips.ts`,
+     `generateGrammarTip()`) — a small, well-known set of German-learner
+     suffix/prefix rules (noun endings like -ung/-heit/-chen/-ling, verb
+     separable/inseparable prefixes), deliberately conservative: a
+     noun-ending rule only fires when it agrees with the word's own real
+     stored genus, so it can never contradict a real exception — a
+     confirming pattern-note, not a fabricated claim. Rendered inside
+     `DeclensionCard`/`ConjugationCard`'s existing nested-callout slot
+     (previously only used for the real `form` field). The mockup's
+     related-verb conjugation bonus (showing "wohnen" alongside the noun
+     "Wohnung") and its two-examples-side-by-side layout were scoped out —
+     the former needs a disproportionate new word-family→verb→conjugation
+     lookup path, the latter is the handoff's own placeholder data (the
+     app has one real example per word, not two) — per CLAUDE.md's
+     "don't fabricate" convention. Verified live via screenshot: a noun
+     ("Ausbildung", die, ends in -ung) shows the tip
+     ("Nouns ending in -ung are almost always die.") inside Declension,
+     correctly absent for words with no matching rule or unclassified
+     genus.
+  8. **Bilingual examples — added a live translation fallback (user's
+     explicit choice)**: coverage was a real, honest ~50% gap from
+     Wiktionary/kaikki.org's own coverage limits, not a bug. Rather than
+     accept that gap, added a fallback reusing `kaikki.ts`'s existing
+     free/unofficial Google Translate call (already used for word-meaning
+     fallback) — refactored its HTTP logic into a shared
+     `googleTranslateDe()` helper, with a new `translateText()` (skips the
+     single-word "did this actually translate" echo-check that doesn't
+     apply to a full sentence) used both in live enrichment
+     (`enrichResolved()`, when a German example exists but no sourced
+     translation does) and in `backfill-example-translation.ts` (extended
+     with a politeness delay + try/catch per word, matching the existing
+     batch-add convention, so one transient network hiccup can't abort
+     the run). Re-ran the backfill against the dev DB: went from 63/127 to
+     **127/127** words with an example now having a translation. Spot-
+     checked quality — fluent and accurate for every sample checked
+     (one idiom translated literally rather than idiomatically, an
+     inherent machine-translation limitation the user accepted alongside
+     this choice).
+  9. **NotesDock (Words page right column) had nothing to do** —
+     drag-and-drop linking and the "+" (new note) button already worked;
+     clicking an *existing* note did nothing. Added a click handler
+     opening the same embedded note-editor flow the "+" button already
+     used, parameterized by the real note's id instead of `"new"`.
+     Verified live via screenshot: clicking "Test note" opens its full
+     editor (title, body, saved timestamp, linked-word chip) in place of
+     the list.
 - **2026-09-05, fifth bug-fixing pass** — a smaller follow-up batch (Words
   polish, one real Syllabus gap, two reports that turned out to already be
   fixed), verified live against a fresh demo account plus a targeted check
