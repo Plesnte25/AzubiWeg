@@ -197,5 +197,4 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full ecosystem plan and feature s
 
 Designed, built, and maintained solo. AI pair-programming (Claude Code and
 Claude Design) is used deliberately as part of the toolchain — for
-implementation speed and to prototype UI handoffs — but every product
-decision, architecture call, and line of shipped scope is mine.
+implementation speed and to prototype UI handoffs.
