@@ -10,20 +10,18 @@ sketches the next features in enough detail to start implementation from.
 | # | Planner module | Status | What exists / what's missing |
 |---|---|---|---|
 | 1 | Deutsch Vault | **Mostly built** (V1) | Vocab manager with enrichment, pronunciation audio, grammar data, SM-2 spaced revision, Obsidian two-way sync, search. Missing: vocab PDF export, CLI. |
-| 2 | Ausbildung Opportunity Tracker | **Partially built** (V2) | We track applications *after* they're made (kanban + stats, merged into the Job Search page), plus portal quick-links with stale-check reminders and best-effort autofill from a pasted posting URL. An app-wide notifications engine existed briefly and was removed (see below) — portal stale-checks are the one on-demand reminder that survived it. Job *discovery* — listing search, filters by salary/German level, bookmarks — doesn't exist yet. Planned for V4. |
-| 3 | Bureaucracy Companion | **Removed, no replacement yet** | A document checklist (seeded with ~24 non-EU Ausbildung items, file attachments, expiry reminders, search, category filters, an urgency-first "Up Next" view) shipped in V2 and was removed during the Nocturne redesign (Phase 1 — see [CLAUDE.md](../CLAUDE.md#the-nocturne-redesign-complete)), along with the notifications engine (Phase 2). Neither has a replacement in the new nav yet; guided explanatory content per topic (the original plan for this module) stays long-run/deferred regardless. |
-| 4 | European Resume Builder | **Retired, replaced with a simpler model** (V2) | Originally a form + live PDF preview (German Lebenslauf / ATS-friendly English templates, multiple CVs per account). Replaced 2026-07-31: a CV is now just a file you already have, uploaded and tagged, living on a shelf beside the application kanban — no in-app builder to keep in sync with a PDF export. Missing (if ever revisited): Europass template, cover letters, automated ATS checks (V4). |
+| 2 | Ausbildung Opportunity Tracker | **Partially built** (V2) | We track applications *after* they're made (kanban + stats, merged into the Job Search page), plus portal quick-links with stale-check reminders and best-effort autofill from a pasted posting URL. Job *discovery* — listing search, filters by salary/German level, bookmarks — doesn't exist yet. Planned for V4. |
+| 3 | Bureaucracy Companion | **Not yet built — long-run, deliberately deferred** | Guided explanatory content per topic for the Ausbildung visa/bureaucracy process. Needs a home in the current 5-tab nav before it can start. |
+| 4 | European Resume Builder | **Built, simplified** (V2) | A CV is just a file you already have, uploaded and tagged, living on a shelf beside the application kanban — no in-app builder to keep in sync with a PDF export. Missing (if ever revisited): Europass template, cover letters, automated ATS checks (V4). |
 | 5 | Salary & Cost Planner | **Missing — long-run, deliberately deferred** | City comparison, taxes, rent, budget, savings projections. Carried forward from V3, not yet started. |
-| 6 | Deutschland Dashboard | **Built** (V2/V3), rebuilt again for Nocturne (Phase 7) | The Nocturne "Today" screen shows a review dial, day-strip stats (minutes/tasks/exam countdown), the next plan task, and a weakest-skill strip — it has no "documents needing attention" widget (that tracked the now-removed checklist) or application-stats widget carried over from the pre-Nocturne dashboard; neither has a new home yet. Missing: certificates, GitHub activity (V4). |
+| 6 | Deutschland Dashboard | **Built** (V2/V3), rebuilt again for Nocturne (Phase 7) | The Nocturne "Today" screen shows a review dial, day-strip stats (minutes/tasks/exam countdown), the next plan task, and a weakest-skill strip. Missing: certificates, GitHub activity (V4). |
 | 7 | Germany Knowledge Base | **Missing — long-run, deliberately deferred** | Guides for visa, Anmeldung, blocked account, insurance, housing, FAQs. Carried forward from V3, not yet started; a community-wiki model with contributions is a possible later evolution. |
 
 **V3 (Learning Progress Hub) shipped**: CEFR syllabus (174 items, A1→B1), a
 generated day-by-day 182-day roadmap, study-source registry (YouTube/Nicos
 Weg/Duolingo), self-test quizzes (163-question bank), weekly/monthly review
-and Goethe-readiness rollups, day-streaks, and session-based activity
-tracking (gamification — points, 15 badges — shipped in V3 and was later
-removed, 2026-08-08, in favor of this plain activity/streak tracking). See
-the [README](../README.md#what-v3-adds)
+and Goethe-readiness rollups, and day-streaks with session-based activity
+tracking. See the [README](../README.md#what-v3-adds)
 for the user-facing feature list. What's left from the original V3 scope —
 the salary & cost planner and the Germany knowledge base — carries forward
 (see Phasing below).
@@ -66,7 +64,7 @@ next thing to study.
   to pre-populate a source's lesson list.
 - **Notes upload** — attach study notes (PDF/images/markdown) to a source or a
   syllabus item, reusing the existing multer per-user upload storage and
-  auth-checked streaming from the document checklist.
+  auth-checked streaming.
 - **Self-tests** — quizzes generated from the existing vocab + SRS data (and
   later, syllabus-topic question banks) to verify a topic before marking it done.
 - **Dashboard integration** — study-streak and level-progress tiles on the
@@ -87,26 +85,22 @@ next thing to study.
 
 ## Phasing
 
-- ~~**V3** — Learning Progress Hub~~ ✅ shipped.
-- ~~**The Nocturne redesign**~~ ✅ shipped. A complete UI/UX rebuild against
+- **V3 — Learning Progress Hub** ✅ shipped.
+- **The Nocturne redesign** ✅ shipped. A complete UI/UX rebuild against
   a Claude Design handoff: dark-only design system, new 5-tab + back-stack
   navigation, 3 new backend subsystems (kaikki.org/DErivBase enrichment
-  pipeline replacing live Wiktionary scraping, exam-gated CEFR progression,
-  word-linked notes), and a real desktop (lg+) layout (sidebar + ⌘K
-  palette shell, pixel-precise Dashboard/Words desktop layouts, every other
-  screen centered in that shell). All 20 phases landed, including a full
-  regression pass and dead-code cleanup. History at
+  pipeline, exam-gated CEFR progression, word-linked notes), and a real
+  desktop (lg+) layout (sidebar + ⌘K palette shell, pixel-precise
+  Dashboard/Words desktop layouts, every other screen centered in that
+  shell). All 20 phases landed, including a full regression pass and
+  dead-code cleanup. History at
   `~/.claude/plans/so-we-are-going-wondrous-axolotl.md` and
-  [CLAUDE.md](../CLAUDE.md#the-nocturne-redesign-complete). A bug backlog
-  deliberately deferred until the rebuild shipped now lives in
-  `docs/KNOWN_ISSUES.md` and is being worked through.
-- **Now** — the pre-redesign priority, reprioritized 2026-08-05, resumed
-  now that Nocturne has shipped, cutting across strict version order to
-  pull forward what matters most instead of shipping V4 then V5 in sequence:
+  [CLAUDE.md](../CLAUDE.md#the-nocturne-redesign-complete). A small bug
+  backlog lives in `docs/KNOWN_ISSUES.md` and is being worked through.
+- **Now** — cutting across strict version order to pull forward what
+  matters most instead of shipping V4 then V5 in sequence:
   1. **App-wide bug-fixing pass** — top priority, ahead of any new feature
-     work. First tranche landed 2026-08-27 (design system, accessibility,
-     pagination fixes) before the redesign took over; a second tranche is
-     now clearing the Nocturne-era backlog in `docs/KNOWN_ISSUES.md`.
+     work. Tracked in `docs/KNOWN_ISSUES.md`.
   2. Vocab PDF export + vocabulary CLI — the last piece of module 1 (Deutsch
      Vault)'s V1 scope.
   3. Dashboard upgrades — certificates, GitHub activity (pulled forward out of
@@ -122,5 +116,4 @@ next thing to study.
   - Salary & Cost Planner (module 5) — carried forward from V3.
   - Germany Knowledge Base (module 7) — carried forward from V3.
   - Bureaucracy Companion's guided explanatory content per topic (module 3) —
-    the checklist that would have hosted it is gone (see module 3's row
-    above), so this needs a new home decided before it can restart.
+    needs a home in the current 5-tab nav before it can start.

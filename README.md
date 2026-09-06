@@ -11,18 +11,24 @@ posting URL). **V3** adds a Learning Progress Hub — a CEFR syllabus, a day-by-
 study roadmap, exam-gated level progression, and self-tests — feeding a richer
 dashboard.
 
-> **Recently rebuilt**: the whole UI now runs on a dark-only design system
-> ("Nocturne") with a new 5-tab navigation model and a real desktop layout —
+> The whole UI runs on a dark-only design system ("Nocturne") with a 5-tab
+> navigation model (Today/Words/Plan/Jobs/Stats) and a real desktop layout —
 > see [CLAUDE.md](CLAUDE.md#the-nocturne-redesign-complete) for what changed.
-> The screenshots below are from the previous design and are queued for a
-> refresh; the feature descriptions in this README stay current either way.
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-sm.png" width="200" alt="Today — mobile" />
+  <img src="docs/screenshots/dashboard-lg.png" width="520" alt="Today — desktop" />
+</p>
 
 ## What V1 does
 
 - **Accounts** — email + password, JWT sessions.
 - **Vocabulary manager** — search, filter by lesson, expand for full detail
   (meaning, IPA, grammar, example, pronunciation audio).
-  ![Vocabulary](docs/screenshots/3-vocabulary.png)
+  <p>
+    <img src="docs/screenshots/vocabulary-sm.png" width="200" alt="Words — mobile" />
+    <img src="docs/screenshots/vocabulary-lg.png" width="520" alt="Words — desktop" />
+  </p>
 - **Automatic enrichment** — type `Zug, Bahnhof, fahren` and the backend fetches
   meaning (en.wiktionary), IPA + gender/plural/verb forms + an example sentence
   (de.wiktionary wikitext), and pronunciation audio (Wikimedia Commons recording,
@@ -58,17 +64,15 @@ snapshot). Reviews done in the app and in Obsidian update the same
   APIs), and stats: response rate, interview rate, average days to response,
   applications per week.
 
-(A document checklist for the Ausbildung visa process shipped in V2 and was
-later removed in favor of the Learning Hub's roadmap absorbing that content;
-an in-app notifications engine was also removed — see
-[docs/ROADMAP.md](docs/ROADMAP.md) for what replaced them, if anything has.)
-
 ## What V3 adds
 
 - **CEFR syllabus** — 174 seeded topics (grammar/vocab/skill) across A1, A2, and
   B1. Checking items off drives per-level completion percentage and "what's
   next" suggestions.
-  ![Syllabus](docs/screenshots/13-syllabus.png)
+  <p>
+    <img src="docs/screenshots/syllabus-sm.png" width="200" alt="Syllabus — mobile" />
+    <img src="docs/screenshots/syllabus-lg.png" width="520" alt="Syllabus — desktop" />
+  </p>
 - **Exam-gated level progression** — sequential CEFR unlocking: a dedicated,
   separately-authored exam question bank (distinct from the practice-quiz
   bank below) gates each level, with a real pass-threshold/time-limit/
@@ -167,35 +171,31 @@ OneDrive/rclone when the app isn't on the same machine as the vault).
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for the full ecosystem plan and feature specs.
 
-- ~~**V2** — CV builder (live preview, German/ATS templates, PDF export),
-  application tracker (kanban + stats), document checklist with expiry
-  reminders.~~ ✅ (2026-07-31: CV builder retired in favor of plain file
-  uploads; CV + application tracking merged into one **Job Search** page with
-  best-effort autofill from a pasted posting URL; checklist redesigned around
-  search, an urgency-first "Up Next" panel, and category filters.)
-- ~~**V3 — Learning Progress Hub**~~ ✅ CEFR syllabus, day-by-day roadmap,
-  self-tests, activity tracking. (2026-08-08: gamification — points, badges —
-  removed in favor of the plain activity/streak tracking above; the document
-  checklist and an in-app notifications engine were also removed around the
-  same time.)
-- ~~**The Nocturne redesign**~~ ✅ a complete UI/UX rebuild against a
-  dark-only design system, a new 5-tab navigation model, and a real desktop
-  (lg+) layout. Full 20-phase history in
+- **V1** — vocabulary manager, SM-2 spaced repetition, automatic Wiktionary
+  enrichment, two-way Obsidian vault sync.
+- **V2** — Job Search: a kanban application tracker with a CV shelf,
+  best-effort autofill from a pasted posting URL, portal quick-links, and
+  application stats.
+- **V3 — Learning Progress Hub** — CEFR syllabus, a generated day-by-day
+  study roadmap, exam-gated level progression, self-tests, word family
+  lookups, word-linked notes, and activity tracking.
+- **The Nocturne redesign** — a complete UI/UX rebuild against a dark-only
+  design system, a 5-tab navigation model, and a real desktop (lg+) layout.
+  Full 20-phase history in
   [CLAUDE.md](CLAUDE.md#the-nocturne-redesign-complete). A small bug backlog
-  deliberately deferred until the whole rebuild shipped is tracked in
-  `docs/KNOWN_ISSUES.md` and is being worked through now.
-- **Now** — the pre-redesign priority list, picked back up now that
-  Nocturne has shipped: an app-wide bug-fixing pass (first tranche already
-  landed 2026-08-27: a unified type/elevation/motion design system, kanban
-  keyboard accessibility, ARIA/chart accessibility fixes, consistent "Show
-  more" pagination; a second tranche is clearing the Nocturne-era backlog
-  above), vocab PDF export + CLI (the last of V1's scope), dashboard
-  upgrades (certificates, GitHub activity, pulled forward from V4), and the
+  is tracked in `docs/KNOWN_ISSUES.md` and is being worked through now.
+- **Now** — an app-wide bug-fixing pass, vocab PDF export + CLI (the last of
+  V1's scope), dashboard upgrades (certificates, GitHub activity), and the
   rest of V5 (GitHub Actions CI, calendar integration, grammar
   micro-lessons).
-- **Long run, unscheduled** — deliberately deferred, not dropped: the rest of
-  V4 (Ausbildung opportunity discovery, cover letter assistant, Europass CV
-  template, ATS checks), the **salary & cost planner**, the **Germany
-  knowledge base**, and guided explanatory content for the bureaucracy
-  process (the checklist that would have hosted it is gone; this would need
-  a new home).
+- **Long run, unscheduled** — Ausbildung opportunity discovery (search/
+  filters/bookmarks), a cover letter assistant, a Europass CV template,
+  automated ATS checks, a salary & cost planner, and a Germany knowledge
+  base.
+
+## Acknowledgments
+
+Designed, built, and maintained solo. AI pair-programming (Claude Code and
+Claude Design) is used deliberately as part of the toolchain — for
+implementation speed and to prototype UI handoffs — but every product
+decision, architecture call, and line of shipped scope is mine.
