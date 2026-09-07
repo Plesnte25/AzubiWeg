@@ -235,6 +235,34 @@ function TomorrowCard({ tomorrow }: { tomorrow: { day: { tasks: { id: string; ti
   );
 }
 
+/** Shown in place of the day/week content until the user has activated a
+ * roadmap at all — `roadmapToday`/`roadmapDay` 404 ("Roadmap not activated")
+ * for an account past onboarding but never activated, which without this
+ * check left the page stuck on the loading skeleton forever (the query
+ * settles into an error state, so `today` never stops being `undefined`).
+ * Demo/seeded accounts never hit this because `scripts/seed-demo.ts` calls
+ * `activateRoadmapForUser()` directly — a real sign-up is the only path that
+ * reaches here. */
+function ActivationPrompt({ onActivate, pending }: { onActivate: () => void; pending: boolean }) {
+  return (
+    <div className="mt-4 rounded-2xl p-5 text-center" style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a" }}>
+      <div className="text-[15px] font-medium">Start your 26-week roadmap</div>
+      <p className="mx-auto mt-1.5 max-w-[280px] text-[12.5px] leading-[1.5]" style={{ color: "rgba(233,233,237,.6)" }}>
+        Generates a day-by-day plan to Goethe-exam readiness from your syllabus progress.
+      </p>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={onActivate}
+        className="mt-3.5 min-h-[42px] rounded-[10px] px-5 text-[14px] font-medium text-white disabled:opacity-50"
+        style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+      >
+        {pending ? "Starting…" : "Start my plan"} →
+      </button>
+    </div>
+  );
+}
+
 /** Shown once every task on the viewed day is complete — pulls tasks from
  * upcoming days into today via the same reschedule-in-a-transaction route
  * the backlog pull-into-today/spread actions already use (see
@@ -272,6 +300,12 @@ export default function Plan() {
   // doesn't need to know which source it came from.
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
+  const { data: roadmapStatus, isLoading: statusLoading } = useQuery({ queryKey: ["roadmap", "status"], queryFn: api.roadmapStatus });
+  const activateRoadmap = useMutation({
+    mutationFn: () => api.activateRoadmap(),
+    onSuccess: () => invalidateHub(queryClient),
+    onError: () => toast.error("Couldn't start your plan — try again."),
+  });
   const { data: todayResp, isLoading: todayRespLoading } = useQuery({
     queryKey: ["roadmap", "today"],
     queryFn: api.roadmapToday,
@@ -327,7 +361,14 @@ export default function Plan() {
       >
         <PlanHeader view={view} onView={setView} selectedDate={selectedDate} push={push} />
 
-        {todayLoading || !today ? (
+        {statusLoading ? (
+          <div className="mt-4 space-y-3">
+            <Skeleton className="h-14 w-full" />
+            <Skeleton className="h-40 w-full" />
+          </div>
+        ) : roadmapStatus && !roadmapStatus.activated ? (
+          <ActivationPrompt onActivate={() => activateRoadmap.mutate()} pending={activateRoadmap.isPending} />
+        ) : todayLoading || !today ? (
           <div className="mt-4 space-y-3">
             <Skeleton className="h-14 w-full" />
             <Skeleton className="h-40 w-full" />
@@ -387,7 +428,14 @@ export default function Plan() {
       <div className="hidden lg:mx-auto lg:my-8 lg:flex lg:max-w-[1040px] lg:flex-col lg:gap-[18px]">
         <PlanHeader view={view} onView={setView} selectedDate={selectedDate} push={push} />
 
-        {todayLoading || !today ? (
+        {statusLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-14 w-full" />
+            <Skeleton className="h-40 w-full" />
+          </div>
+        ) : roadmapStatus && !roadmapStatus.activated ? (
+          <ActivationPrompt onActivate={() => activateRoadmap.mutate()} pending={activateRoadmap.isPending} />
+        ) : todayLoading || !today ? (
           <div className="space-y-3">
             <Skeleton className="h-14 w-full" />
             <Skeleton className="h-40 w-full" />
