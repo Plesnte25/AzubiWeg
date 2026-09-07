@@ -50,6 +50,15 @@ azubiweg.duckdns.org {
 # later. Explicit http:// scheme disables Caddy's automatic-HTTPS for this
 # block only; the real domains above still get proper Let's Encrypt certs
 # once their DNS goes live.
+#
+# 2026-09-07: migrating from GCP (34.42.175.158) to Oracle
+# (80.225.236.36) — this same pattern doubles as a way to verify the new
+# box end-to-end before switching azubiweg.duckdns.org's DNS over. Remove
+# the GCP block once cutover is confirmed and that instance is decommissioned.
 http://34.42.175.158 {
+	import app
+}
+
+http://80.225.236.36 {
 	import app
 }
