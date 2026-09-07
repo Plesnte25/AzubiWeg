@@ -245,7 +245,9 @@ export type CefrLevel = "a1" | "a2" | "b1";
 
 export type SyllabusCategory = "grammar" | "vocab_theme" | "skill";
 
-export type StudySourceType = "youtube" | "nicos_weg" | "duolingo" | "other";
+export type StudySourceType = "youtube" | "audio" | "video" | "book" | "course" | "article" | "link";
+
+export type StudySourceUnitLabel = "lessons" | "episodes" | "pages" | "chapters" | "modules";
 
 export type QuizDirection = "de_to_meaning" | "meaning_to_de";
 
@@ -270,6 +272,10 @@ export interface SyllabusItem {
   // set when this topic is scheduled on the active roadmap (same fact,
   // synced via the roadmap/syllabus completion link)
   roadmapDayOffset: number | null;
+  // the linked RoadmapTask's own id, when scheduled — lets the Syllabus
+  // station accordion's "Practice" action jump straight to that task's
+  // real Task Detail modal instead of just the day it's scheduled on
+  roadmapTaskId: string | null;
 }
 
 export interface RoutePace {
@@ -310,20 +316,26 @@ export interface StudySourceUnit {
 export interface StudySource {
   id: string;
   type: StudySourceType;
+  provider: string | null;
   title: string;
   url: string | null;
   level: CefrLevel | null;
   totalUnits: number | null;
   completedUnits: number;
+  unitLabel: StudySourceUnitLabel;
   notes: string | null;
   percent: number | null;
   units: StudySourceUnit[];
   files: UploadedFileMeta[];
+  // a user-uploaded cover (via the file-upload route, kind: "source_cover")
+  // always wins for display over coverImageUrl's auto-fetched thumbnail
+  coverFileId: string | null;
+  coverImageUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export type PlaylistFetchOutcome = "playlist" | "course" | "manual" | "failed";
+export type PlaylistFetchOutcome = "playlist" | "course" | "book" | "podcast" | "preview" | "manual" | "failed";
 
 export type LevelState = "done" | "active" | "locked";
 
@@ -370,6 +382,7 @@ export interface ExamStatus {
   reason: "already_passed" | "cooldown" | null;
   nextAvailableAt: string | null;
   lastAttempt: ExamAttempt | null;
+  attempts: ExamAttempt[];
   timeLimitMinutes: number;
   cooldownDays: number;
   passThreshold: number;
@@ -426,6 +439,8 @@ export interface RoadmapTask {
   description: string | null;
   journalEntry: string | null;
   minutesSpent: number | null;
+  timerSeconds: number;
+  timerRunningSince: string | null;
   completedAt: string | null;
   droppedAt: string | null;
   files: UploadedFileMeta[];
@@ -638,21 +653,10 @@ export interface ActivitySummary {
   history: { date: string; minutes: number }[];
 }
 
-export interface SavedLink {
-  id: string;
-  title: string;
-  url: string;
-  skill: RoadmapSkill | null;
-  note: string | null;
-  createdAt: string;
-}
-
-export type ActivityFeedFilter = "all" | "lessons" | "links";
-
 export interface ActivityFeedEntry {
   id: string;
   at: string;
-  kind: "lesson" | "manual" | "link";
+  kind: "lesson" | "manual" | "added" | "completed";
   sourceId: string | null;
   sourceTitle: string | null;
   title: string;

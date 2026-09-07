@@ -1,5 +1,4 @@
 import type {
-  ActivityFeedFilter,
   ActivityFeedResponse,
   ActivitySummary,
   Application,
@@ -39,11 +38,12 @@ import type {
   RoadmapTodayResponse,
   RoadmapWeeklyReview,
   RoadmapWeekResponse,
-  SavedLink,
+  RoutePace,
   SelfTestResult,
   SessionQuestion,
   StudySource,
   StudySourceType,
+  StudySourceUnitLabel,
   SyllabusCategory,
   SyllabusItem,
   SyllabusResponse,
@@ -223,6 +223,7 @@ export const api = {
     request<void>(`/api/applications/${id}/events/${eventId}`, { method: "DELETE" }),
 
   learningSyllabus: () => request<SyllabusResponse>("/api/learning/syllabus"),
+  learningPace: () => request<RoutePace>("/api/learning/pace"),
   toggleSyllabusItem: (id: string, completed: boolean) =>
     request<{ item: SyllabusItem }>(`/api/learning/syllabus/${id}`, {
       method: "PATCH",
@@ -258,9 +259,11 @@ export const api = {
     type: StudySourceType;
     title: string;
     url?: string | null;
+    provider?: string | null;
     level?: CefrLevel | null;
     totalUnits?: number | null;
     completedUnits?: number;
+    unitLabel?: StudySourceUnitLabel;
     notes?: string | null;
     autoFetch?: boolean;
   }) =>
@@ -284,10 +287,15 @@ export const api = {
       type: StudySourceType;
       title: string;
       url: string | null;
+      provider: string | null;
       level: CefrLevel | null;
       totalUnits: number | null;
       completedUnits: number;
+      unitLabel: StudySourceUnitLabel;
       notes: string | null;
+      // set via the two-step flow: upload (kind: "source_cover") then PATCH
+      // with the new file's id; null clears the cover
+      coverFileId: string | null;
     }>,
   ) =>
     request<{ source: StudySource }>(`/api/learning/sources/${id}`, {
@@ -301,18 +309,10 @@ export const api = {
     }),
   deleteStudySource: (id: string) =>
     request<void>(`/api/learning/sources/${id}`, { method: "DELETE" }),
-  sourcesActivity: (opts: { cursor?: string; type?: ActivityFeedFilter } = {}) =>
+  sourcesActivity: (opts: { cursor?: string } = {}) =>
     request<ActivityFeedResponse>(
-      `/api/learning/sources/activity?${new URLSearchParams({
-        ...(opts.cursor ? { cursor: opts.cursor } : {}),
-        ...(opts.type ? { type: opts.type } : {}),
-      })}`,
+      `/api/learning/sources/activity${opts.cursor ? `?${new URLSearchParams({ cursor: opts.cursor })}` : ""}`,
     ),
-
-  savedLinks: () => request<{ links: SavedLink[] }>("/api/learning/saved-links"),
-  addSavedLink: (data: { title: string; url: string; skill?: RoadmapSkill | null; note?: string | null }) =>
-    request<{ link: SavedLink }>("/api/learning/saved-links", { method: "POST", body: JSON.stringify(data) }),
-  deleteSavedLink: (id: string) => request<void>(`/api/learning/saved-links/${id}`, { method: "DELETE" }),
 
   startSelfTest: (opts: { size?: number } = {}) =>
     request<{ questions: SessionQuestion[]; level: CefrLevel }>("/api/learning/quiz", {
@@ -362,6 +362,7 @@ export const api = {
   roadmapToday: () => request<RoadmapTodayResponse>("/api/learning/roadmap/today"),
   roadmapBacklog: () => request<RoadmapBacklogResponse>("/api/learning/roadmap/backlog"),
   roadmapDay: (date: string) => request<{ day: RoadmapDayDetail }>(`/api/learning/roadmap/day/${date}`),
+  roadmapTask: (id: string) => request<{ task: RoadmapTask }>(`/api/learning/roadmap/tasks/${id}`),
   roadmapCalendar: (month: string) =>
     request<{ days: RoadmapCalendarDay[] }>(`/api/learning/roadmap/calendar?month=${month}`),
   roadmapWeek: (week?: number) =>
@@ -374,6 +375,8 @@ export const api = {
       journalEntry: string | null;
       minutesSpent: number | null;
       dayOffset: number;
+      timerAction: "start" | "pause" | "reset";
+      setSeconds: number;
     }>,
   ) =>
     request<{ task: RoadmapTask }>(`/api/learning/roadmap/tasks/${id}`, {
@@ -405,6 +408,8 @@ export const api = {
   taskNotes: (roadmapTaskId: string) => request<{ notes: Note[] }>(`/api/notes?roadmapTaskId=${roadmapTaskId}`),
   wordNotes: (wordId: string) => request<{ notes: Note[] }>(`/api/notes?wordId=${wordId}`),
   syllabusItemNotes: (syllabusItemId: string) => request<{ notes: Note[] }>(`/api/notes?syllabusItemId=${syllabusItemId}`),
+  syllabusStationNotes: (level: CefrLevel, theme: string) =>
+    request<{ notes: Note[] }>(`/api/learning/syllabus/stations/${level}/${encodeURIComponent(theme)}/notes`),
   createNote: (data: {
     title?: string | null;
     body?: string | null;
@@ -461,7 +466,7 @@ export const api = {
 export async function uploadFile(
   file: File,
   opts: {
-    kind: "document" | "cv_photo" | "audio_recording";
+    kind: "document" | "cv_photo" | "audio_recording" | "source_cover";
     syllabusItemId?: string;
     studySourceId?: string;
     roadmapTaskId?: string;
