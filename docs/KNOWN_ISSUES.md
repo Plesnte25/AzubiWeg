@@ -9,18 +9,81 @@ re-deriving the investigation.
 
 ## Open — needs a fix
 
-See the 2026-09-05 third follow-up pass below for what was just fixed
-(Words middle-column consistency, Notes detail-pane chrome, a
-KaikkiEntry-pairing translation-quality bug, Syllabus/Sources layout and
-completion-tracking). One item is still open, not yet scoped or started:
-
-### Stats page
- - This page needs more details & information regarding the learning.
-   (Not investigated yet — needs its own pass to figure out what specific
-   metrics/views are missing before planning a fix.)
-
+Nothing open as of the 2026-09-07 pass below — see that entry for what was
+just closed out (Task Detail modal, Syllabus 3-pane rework, Sources rebuild
++ Google Books/podcast/generic-preview engines, Stats expansion).
 
 ## Resolved during the redesign (for reference — no action needed)
+
+- **2026-09-07, Claude Design turn 9a/7a/10a + Stats expansion pass** — the
+  3 items logged below (Redesign, Google Books, Stats) all closed in one
+  phased pass (Task Detail modal → Syllabus → Sources → Stats), each phase
+  build-verified (`tsc`/`npm test`/`npm run build`) and live-browser-verified
+  via Playwright against the demo account before moving to the next.
+  1. **Task Detail modal (turn 9a)** — `TaskDetailDrawer.tsx` rewritten:
+     a real running stopwatch (`timerSeconds`/`timerRunningSince` on
+     `RoadmapTask`, persists across close/reopen and across devices — the
+     server is the single source of truth for elapsed time, not the
+     client's own clock), quick-add/manual-correct time, a persistent notes
+     composer, and a real skill+syllabus-location chip header. Fixed a real
+     pre-existing bug along the way: "View in syllabus →" was a dead link
+     in both `Plan.tsx` and `Notes.tsx`. Dashboard's "Next in your plan"
+     card opens the same real modal via a `push("/plan",
+     {state:{openTaskId}})` deep link (not a direct import — that
+     regressed the eager bundle by ~30KB gzip, a known gotcha from an
+     earlier pass; the deep-link approach avoids it entirely and doubles as
+     the fix for "Practice" needing to jump to a task on any day, not just
+     today).
+  2. **Syllabus page (turn 7a)** — `SyllabusSourcesDesktop.tsx` (the old
+     paired Syllabus+Sources desktop screen) deleted outright, replaced by
+     `SyllabusDesktop.tsx`: a real fixed-header + independently-scrolling
+     timeline (column 1), an inline single-open accordion replacing the
+     click-to-open modal (column 2, `StationAccordion.tsx` — "Practice"
+     jumps to that item's real scheduled task via the same openTaskId deep
+     link), and a real per-station notes panel replacing Sources entirely
+     (column 3, `StationNotesPanel.tsx` — drag-and-drop or click-to-target
+     the persistent composer, same convention as Vocabulary→NotesDock's
+     existing word-drop pattern). Mobile untouched, per the spec being
+     desktop-only. Caught and fixed a real bug: a `<button>` nested inside
+     another `<button>` in the accordion row.
+  3. **Sources page (turn 10a) + Google Books** — full rebuild:
+     `StudySourceType` expanded from 4 to 7 values
+     (youtube/audio/video/book/course/article/link), each with its own real
+     fetch engine (Google Books, Apple's iTunes Search API, and a shared
+     OpenGraph scraper extracted from the job-posting preview fetcher,
+     alongside the existing YouTube/Nicos Weg scrapers) — no API keys
+     needed for any of them. All 160 `SavedLink` rows (across accounts)
+     migrated into `StudySource` as real `link`-type rows; the `SavedLink`
+     model/routes/seed files are gone. New cover-image system
+     (`coverFileId`, a real unique FK) and extensible type-filter chips
+     (only shows types actually present). Caught and fixed a real Zod bug:
+     the PATCH schema's `.omit().partial()` derivation from the create
+     schema still applied `.default()` values for any field left out of a
+     partial update — saving just a cover image would have silently reset
+     a source's type and title. Google Books hit an external rate limit
+     during verification (Google's shared anonymous-tier quota, confirmed
+     via direct `curl`, not a code issue) and degraded to manual entry
+     exactly as designed; iTunes and the OpenGraph scraper were confirmed
+     live with real fetched metadata (real episode counts, real cover art,
+     real page titles).
+  4. **Stats page expansion** — no design spec for this one (open-ended
+     "needs more detail"); built everything findable rather than just the
+     zero-effort wins, per the user's own choice: real topic-level weak
+     areas + most-improved topics, a restored "projected exam-ready date"
+     tile (the base Nocturne mock's own turn `2f` shows this — the shipped
+     Stats had quietly dropped it for "avg interval" with no comment), a
+     105-day activity heatmap and an all-time hour-of-day chart (both
+     already fully computed elsewhere, never rendered anywhere until now),
+     a real exam-attempt history/trend (previously trimmed to just the
+     single last attempt), word-level rollups (leech/starred counts,
+     top themenfeld, CEFR-level distribution, kaikki-enrichment coverage %
+     framed as a minor caveat not a headline), and an external-sources
+     completion rollup by type. Desktop brought up to parity with mobile's
+     Activity KPIs/streak-grid/Goethe-readiness section, previously
+     mobile-only. New `GET /api/learning/pace` endpoint (shared by Stats
+     and the Syllabus route, replacing a duplicated inline computation);
+     the word/source rollups needed zero new backend at all — the data was
+     already fully loaded client-side.
 
 Kept here as an audit trail so nothing on this list gets "rediscovered" as
 new. All of these were found by actually driving the app in a browser
