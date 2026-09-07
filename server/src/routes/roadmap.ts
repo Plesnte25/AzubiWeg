@@ -381,6 +381,13 @@ const toggleSchema = z
     // RoadmapDay owns the task, so the immutable date-from-offset invariant
     // (schema.prisma's RoadmapDay comment) is untouched.
     dayOffset: z.int().min(0).optional(),
+    // Task Detail modal's running stopwatch — start/pause toggle the running
+    // state, reset zeroes it, setSeconds is "Enter manually" (a correction to
+    // the exact total, not an add). Quick-add pills go through setSeconds too
+    // (current elapsed + delta, computed client-side) rather than a separate
+    // "add" action, so there's one code path for "the total is now exactly N".
+    timerAction: z.enum(["start", "pause", "reset"]).optional(),
+    setSeconds: z.int().min(0).max(24 * 3600).optional(),
   })
   .refine(
     (d) =>
@@ -388,9 +395,20 @@ const toggleSchema = z
       d.dropped !== undefined ||
       d.journalEntry !== undefined ||
       d.minutesSpent !== undefined ||
-      d.dayOffset !== undefined,
+      d.dayOffset !== undefined ||
+      d.timerAction !== undefined ||
+      d.setSeconds !== undefined,
     { message: "Nothing to update" },
   );
+
+/** Elapsed seconds right now — the stored total plus whatever's accrued
+ * since it was last started, if it's currently running. The single source
+ * of truth both the PATCH response and any read route should use, so the
+ * client never has to (mis)trust its own clock across a stale tab/reopen. */
+function liveTimerSeconds(task: { timerSeconds: number; timerRunningSince: Date | null }): number {
+  if (!task.timerRunningSince) return task.timerSeconds;
+  return task.timerSeconds + Math.max(0, Math.floor((Date.now() - task.timerRunningSince.getTime()) / 1000));
+}
 
 /** Every dayOffset in [0, DEFAULT_ROADMAP_DAYS.length) always has a materialized
  * RoadmapDay row from activation onward — reschedule/custom-add targets never
@@ -398,6 +416,21 @@ const toggleSchema = z
 async function dayByOffset(userId: string, dayOffset: number) {
   return prisma.roadmapDay.findUnique({ where: { userId_dayOffset: { userId, dayOffset } } });
 }
+
+/** A single task by id, regardless of which day it's scheduled on — used by
+ * the Syllabus station accordion's "Practice" deep link
+ * (push("/plan", {state:{openTaskId}})), since a syllabus-linked task can
+ * live on an overdue backlog day or a future day, not just today's list
+ * Plan.tsx already has loaded. Registered before PATCH /tasks/:id for
+ * clarity even though Express dispatches by method, not just path. */
+roadmapRouter.get("/tasks/:id", async (req, res) => {
+  const task = await prisma.roadmapTask.findFirst({
+    where: { id: req.params.id, day: { userId: req.userId } },
+    include: { files: true, syllabusItem: { select: { level: true, theme: true, description: true } } },
+  });
+  if (!task) return res.status(404).json({ error: "Task not found" });
+  res.json({ task });
+});
 
 roadmapRouter.patch("/tasks/:id", async (req, res) => {
   const parsed = toggleSchema.safeParse(req.body);
@@ -414,6 +447,30 @@ roadmapRouter.patch("/tasks/:id", async (req, res) => {
     if (!targetDay) return res.status(400).json({ error: "No roadmap day at that offset" });
   }
 
+  // Timer fields are folded down to a single new (seconds, runningSince) pair
+  // before touching the DB — setSeconds is a correction to the base ("as of
+  // now, elapsed is exactly X"), applied before start/pause/reset so the two
+  // can combine predictably even though the client only ever sends one kind
+  // of intent at a time.
+  const timerTouched = parsed.data.setSeconds !== undefined || parsed.data.timerAction !== undefined;
+  let timerSeconds = existing.timerSeconds;
+  let timerRunningSince = existing.timerRunningSince;
+  if (parsed.data.setSeconds !== undefined) {
+    timerSeconds = parsed.data.setSeconds;
+    if (timerRunningSince) timerRunningSince = new Date();
+  }
+  if (parsed.data.timerAction === "start") {
+    if (!timerRunningSince) timerRunningSince = new Date();
+  } else if (parsed.data.timerAction === "pause") {
+    if (timerRunningSince) {
+      timerSeconds = liveTimerSeconds({ timerSeconds, timerRunningSince });
+      timerRunningSince = null;
+    }
+  } else if (parsed.data.timerAction === "reset") {
+    timerSeconds = 0;
+    timerRunningSince = null;
+  }
+
   const task = await prisma.$transaction(async (tx) => {
     if (parsed.data.completed !== undefined) {
       // also mirrors onto the linked SyllabusItem, if any (completion-sync.ts)
@@ -422,7 +479,12 @@ roadmapRouter.patch("/tasks/:id", async (req, res) => {
     const fieldUpdate = {
       ...(parsed.data.dropped !== undefined ? { droppedAt: parsed.data.dropped ? new Date() : null } : {}),
       ...(parsed.data.journalEntry !== undefined ? { journalEntry: parsed.data.journalEntry ?? null } : {}),
-      ...(parsed.data.minutesSpent !== undefined ? { minutesSpent: parsed.data.minutesSpent ?? null } : {}),
+      ...(parsed.data.minutesSpent !== undefined
+        ? { minutesSpent: parsed.data.minutesSpent ?? null }
+        : timerTouched
+          ? { minutesSpent: Math.round(timerSeconds / 60) }
+          : {}),
+      ...(timerTouched ? { timerSeconds, timerRunningSince } : {}),
       ...(targetDay ? { dayId: targetDay.id, sortOrder: 1_000_000 } : {}),
     };
     if (Object.keys(fieldUpdate).length > 0) {

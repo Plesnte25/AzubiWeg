@@ -21,8 +21,10 @@ import {
 } from "../services/learning/exam.js";
 import { weakAreasFromBreakdowns } from "../services/learning/review.js";
 import { ensureSyllabusSeeded } from "../services/learning/syllabus-seed.js";
-import { ensureSavedLinksSeeded } from "../services/learning/saved-links-seed.js";
 import { extractCourseId, fetchCourse } from "../services/learning/nicosweg.js";
+import { fetchBook } from "../services/learning/googleBooks.js";
+import { fetchPodcast } from "../services/learning/itunesPodcasts.js";
+import { fetchGenericPreview } from "../services/learning/genericPreview.js";
 import { buildCourseUnits, buildManualUnits, buildPlaylistUnits, resizeManualUnits, unitProgress } from "../services/learning/units.js";
 import { extractPlaylistId, fetchPlaylist } from "../services/learning/youtube.js";
 import { deleteStoredFile } from "./files.js";
@@ -31,7 +33,8 @@ export const learningRouter = Router();
 learningRouter.use(requireAuth);
 
 const LEVEL = z.enum(["a1", "a2", "b1"]);
-const SOURCE_TYPE = z.enum(["youtube", "nicos_weg", "duolingo", "other"]);
+const SOURCE_TYPE = z.enum(["youtube", "audio", "video", "book", "course", "article", "link"]);
+const UNIT_LABEL = z.enum(["lessons", "episodes", "pages", "chapters", "modules"]);
 const DIRECTION = z.enum(["de_to_meaning", "meaning_to_de"]);
 // the 6 skills a self-test breakdown can be tagged with — a subset of the
 // full RoadmapSkill enum (bureaucracy/milestone/reflection aren't quiz topics)
@@ -53,26 +56,60 @@ async function examGateForUser(userId: string) {
   );
 }
 
+/** Route pace for a user's current active level — shared by the Syllabus
+ * route's own ROUTE PACE card and Stats' restored "projected" tile (the
+ * base Nocturne handoff's own Stats mock shows a "B1 Feb / projected" tile
+ * that the shipped Stats.tsx quietly dropped; this is real backing data for
+ * it, not a new invention). Re-fetches syllabus items independently rather
+ * than sharing the Syllabus route's own broader (files/roadmapTasks-
+ * included) query — a second, minimal-select query is cheap and keeps this
+ * genuinely reusable from a route that has none of that data loaded. */
+async function routePaceForUser(userId: string) {
+  const [items, user, examGate] = await Promise.all([
+    prisma.syllabusItem.findMany({ where: { userId }, select: { level: true, completedAt: true, skippedAt: true } }),
+    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { examTargetDate: true } }),
+    examGateForUser(userId),
+  ]);
+  const levels = levelProgress(items.map((i, idx) => ({ id: String(idx), level: i.level, title: "", sortOrder: idx, completedAt: i.completedAt })));
+  const lockStates = levelStatesWithExamGate(levels, examGate);
+  const activeIdx = lockStates.indexOf("active");
+  const activeLevel = activeIdx === -1 ? levels[levels.length - 1]?.level : levels[activeIdx]?.level;
+  const activeItems = items.filter((i) => i.level === activeLevel);
+  return computeRoutePace({
+    remainingItems: activeItems.filter((i) => i.completedAt === null && i.skippedAt === null).length,
+    recentCompletions: activeItems.filter((i) => i.completedAt !== null).map((i) => i.completedAt as Date),
+    examTargetDate: user.examTargetDate,
+    today: new Date(),
+  });
+}
+
+learningRouter.get("/pace", async (req, res) => {
+  res.json(await routePaceForUser(req.userId));
+});
+
 learningRouter.get("/syllabus", async (req, res) => {
   await ensureSyllabusSeeded(req.userId);
 
-  const [items, user, examGate] = await Promise.all([
+  const [items, examGate] = await Promise.all([
     prisma.syllabusItem.findMany({
       where: { userId: req.userId },
       include: {
         files: true,
         // just enough to show "Scheduled -> Day N" when this topic is on the
-        // active roadmap; a syllabus item links to at most one roadmap task
-        roadmapTasks: { select: { day: { select: { dayOffset: true } } }, take: 1 },
+        // active roadmap, and to let the Syllabus station accordion's
+        // "Practice" action jump straight to that task's Task Detail modal
+        // (push("/plan", {state:{openTaskId}})) — a syllabus item links to
+        // at most one roadmap task
+        roadmapTasks: { select: { id: true, day: { select: { dayOffset: true } } }, take: 1 },
       },
       orderBy: [{ level: "asc" }, { sortOrder: "asc" }],
     }),
-    prisma.user.findUniqueOrThrow({ where: { id: req.userId }, select: { examTargetDate: true } }),
     examGateForUser(req.userId),
   ]);
   const withRoadmapDay = items.map(({ roadmapTasks, ...item }) => ({
     ...item,
     roadmapDayOffset: roadmapTasks[0]?.day.dayOffset ?? null,
+    roadmapTaskId: roadmapTasks[0]?.id ?? null,
   }));
 
   const levels = levelProgress(items);
@@ -80,20 +117,11 @@ learningRouter.get("/syllabus", async (req, res) => {
   // route pace still keys off the syllabus-only "active" level (matches
   // /exam/status's activeLevelFor(), which now also folds in the exam
   // gate) -- a level that's syllabus-100%-but-exam-gated is "active" under
-  // both, so this stays correct.
-  const activeIdx = lockStates.indexOf("active");
-  const activeLevel = activeIdx === -1 ? levels[levels.length - 1]?.level : levels[activeIdx]?.level;
-
-  // ROUTE PACE: remaining/recently-completed items in the active level only —
-  // a skipped item doesn't count as remaining (it's off the route), but
-  // doesn't count as done either
-  const activeItems = items.filter((i) => i.level === activeLevel);
-  const routePace = computeRoutePace({
-    remainingItems: activeItems.filter((i) => i.completedAt === null && i.skippedAt === null).length,
-    recentCompletions: activeItems.filter((i) => i.completedAt !== null).map((i) => i.completedAt as Date),
-    examTargetDate: user.examTargetDate,
-    today: new Date(),
-  });
+  // both, so this stays correct. Shared with GET /pace (Stats' "projected"
+  // tile) via routePaceForUser() — a second, minimal-select query, not
+  // reusing `items`/`user`/`examGate` above (see that function's own
+  // comment for why).
+  const routePace = await routePaceForUser(req.userId);
 
   res.json({ levels, items: withRoadmapDay, routePace, lockStates, examGate });
 });
@@ -102,6 +130,28 @@ learningRouter.get("/syllabus", async (req, res) => {
 // separate table (see schema.prisma's SyllabusItem.skippedAt comment).
 // Registered before PATCH /syllabus/:id — Express matches route registration
 // order, and "station" would otherwise be swallowed by :id.
+
+/** All notes across every item in one station — the Syllabus desktop
+ * accordion's 3rd column needs this joined view (`Note.syllabusItemId` only
+ * links to a single item), so one query here beats N per-item calls for a
+ * typically-small (3-8 item) station. */
+learningRouter.get("/syllabus/stations/:level/:theme/notes", async (req, res) => {
+  const level = LEVEL.safeParse(req.params.level);
+  if (!level.success) return res.status(400).json({ error: "Invalid level" });
+
+  const items = await prisma.syllabusItem.findMany({
+    where: { userId: req.userId, level: level.data, theme: req.params.theme },
+    select: { id: true },
+  });
+  if (items.length === 0) return res.status(404).json({ error: "No station with that theme" });
+
+  const notes = await prisma.note.findMany({
+    where: { syllabusItemId: { in: items.map((i) => i.id) } },
+    include: { files: true },
+    orderBy: { createdAt: "desc" },
+  });
+  res.json({ notes });
+});
 
 const stationSchema = z.object({ level: LEVEL, theme: z.string().trim().min(1), skipped: z.boolean() });
 
@@ -306,6 +356,15 @@ const withPercent = <T extends { completedUnits: number; totalUnits: number | nu
   percent: sourcePercent(s.completedUnits, s.totalUnits),
 });
 
+/** Deletes an UploadedFile's bytes + row outright — used when a cover image
+ * is replaced or cleared, so the old one doesn't linger unreferenced. */
+async function deleteUploadedFile(userId: string, fileId: string): Promise<void> {
+  const file = await prisma.uploadedFile.findFirst({ where: { id: fileId, userId } });
+  if (!file) return;
+  await deleteStoredFile(userId, file.storedName);
+  await prisma.uploadedFile.delete({ where: { id: file.id } });
+}
+
 const SOURCE_INCLUDE = {
   files: true,
   units: { orderBy: { position: "asc" as const } },
@@ -321,20 +380,30 @@ learningRouter.get("/sources", async (req, res) => {
 });
 
 const createSourceSchema = z.object({
-  type: SOURCE_TYPE.default("other"),
-  // may be blank on create when a playlist URL is given — the scraped
-  // playlist title fills it (validated after the fetch)
+  type: SOURCE_TYPE.default("link"),
+  // may be blank on create when a playlist/course URL or a book/podcast
+  // title-search is given and matches — the fetched title fills it
+  // (validated after the fetch)
   title: z.string().trim().max(200).default(""),
   url: z.url().max(500).nullish(),
+  // free-text provider/author/channel — filled by whichever engine matched,
+  // or typed manually; always overridable by the user regardless of source
+  provider: z.string().trim().max(120).nullish(),
   level: LEVEL.nullish(),
   totalUnits: z.int().min(1).max(10000).nullish(),
   completedUnits: z.int().min(0).max(10000).optional(),
+  unitLabel: UNIT_LABEL.default("lessons"),
   notes: z.string().max(1000).nullish(),
-  // fetch the lesson list from a YouTube playlist URL (no API key — scraped;
-  // pages embed only the first ~100 videos, and scrape failure falls back to
-  // the manual totalUnits path)
+  // per-type real fetch engine (no API key needed for any of them): a
+  // YouTube playlist URL scrapes its video list; a Nicos Weg course URL
+  // fetches its real lesson list via DW's own GraphQL endpoint; a book/
+  // podcast searches Google Books/iTunes by the given title; a video/
+  // article/link URL scrapes its OpenGraph title+image. Any failure falls
+  // back to the manual totalUnits path — never a hard error.
   autoFetch: z.boolean().default(true),
 });
+
+type FetchOutcome = "playlist" | "course" | "book" | "podcast" | "preview" | "manual" | "failed";
 
 learningRouter.post("/sources", async (req, res) => {
   const parsed = createSourceSchema.safeParse(req.body);
@@ -342,17 +411,28 @@ learningRouter.post("/sources", async (req, res) => {
 
   const { totalUnits, completedUnits, autoFetch, ...rest } = parsed.data;
 
-  let fetchOutcome: "playlist" | "course" | "manual" | "failed" = "manual";
+  let fetchOutcome: FetchOutcome = "manual";
   let units: { position: number; title: string; videoId?: string; url?: string }[] = [];
   let scrapedTitle: string | null = null;
+  let scrapedProvider: string | null = null;
+  let scrapedCoverUrl: string | null = null;
+  let scrapedTotalUnits: number | null = null;
 
-  const playlistId = autoFetch && rest.url ? extractPlaylistId(rest.url) : null;
-  const courseId = autoFetch && rest.url ? extractCourseId(rest.url) : null;
+  // The Add-source type picker only shows 6 buttons (Video/Audio/Book/
+  // Course/Article/Link, per the literal design mock) — YouTube isn't one
+  // of them, even though it's a first-class type end-to-end elsewhere
+  // (filter chips, cards, its own real fetch engine). Picking "Video" and
+  // pasting a YouTube URL silently upgrades the saved type to "youtube"
+  // here, rather than adding a 7th picker button just for it.
+  const playlistId = autoFetch && (rest.type === "youtube" || rest.type === "video") && rest.url ? extractPlaylistId(rest.url) : null;
+  const courseId = autoFetch && rest.type === "course" && rest.url ? extractCourseId(rest.url) : null;
+
   if (playlistId) {
     const playlist = await fetchPlaylist(playlistId);
     if (playlist) {
       units = buildPlaylistUnits(playlist.videos);
       scrapedTitle = playlist.title;
+      rest.type = "youtube";
       fetchOutcome = "playlist";
     } else {
       fetchOutcome = "failed";
@@ -362,7 +442,39 @@ learningRouter.post("/sources", async (req, res) => {
     if (course) {
       units = buildCourseUnits(course.lessons);
       scrapedTitle = course.title;
+      scrapedProvider = "DW"; // Deutsche Welle, the real org behind Nicos Weg
       fetchOutcome = "course";
+    } else {
+      fetchOutcome = "failed";
+    }
+  } else if (autoFetch && rest.type === "book" && rest.title) {
+    const book = await fetchBook(rest.title);
+    if (book) {
+      scrapedProvider = book.authors.length > 0 ? book.authors.join(", ") : null;
+      scrapedCoverUrl = book.thumbnailUrl;
+      scrapedTotalUnits = book.pageCount;
+      fetchOutcome = "book";
+    } else {
+      fetchOutcome = "failed";
+    }
+  } else if (autoFetch && rest.type === "audio" && rest.title) {
+    const podcast = await fetchPodcast(rest.title);
+    if (podcast) {
+      scrapedTitle = podcast.trackName;
+      scrapedProvider = podcast.artistName;
+      scrapedCoverUrl = podcast.artworkUrl;
+      scrapedTotalUnits = podcast.trackCount;
+      fetchOutcome = "podcast";
+    } else {
+      fetchOutcome = "failed";
+    }
+  } else if (autoFetch && (rest.type === "video" || rest.type === "article" || rest.type === "link") && rest.url) {
+    const preview = await fetchGenericPreview(rest.url);
+    if (preview) {
+      scrapedTitle = preview.title;
+      scrapedProvider = preview.siteName;
+      scrapedCoverUrl = rest.type !== "link" ? preview.imageUrl : null; // link cards render lighter, no thumbnail
+      fetchOutcome = "preview";
     } else {
       fetchOutcome = "failed";
     }
@@ -371,10 +483,10 @@ learningRouter.post("/sources", async (req, res) => {
 
   const finalTitle = rest.title || scrapedTitle || "";
   if (!finalTitle) {
-    return res.status(400).json({ error: "Title is required (or paste a playlist URL to take its title)" });
+    return res.status(400).json({ error: "Title is required (or paste/search a URL or title that matches something real)" });
   }
 
-  const total = units.length > 0 ? units.length : totalUnits ?? null;
+  const total = units.length > 0 ? units.length : (totalUnits ?? scrapedTotalUnits ?? null);
   const completed = units.length > 0 ? 0 : Math.min(completedUnits ?? 0, total ?? Infinity);
   const source = await prisma.studySource.create({
     data: {
@@ -382,6 +494,8 @@ learningRouter.post("/sources", async (req, res) => {
       ...rest,
       title: finalTitle,
       url: rest.url ?? null,
+      provider: rest.provider ?? scrapedProvider,
+      coverImageUrl: scrapedCoverUrl,
       level: rest.level ?? null,
       notes: rest.notes ?? null,
       totalUnits: total,
@@ -393,7 +507,28 @@ learningRouter.post("/sources", async (req, res) => {
   res.status(201).json({ source: withPercent(source), fetch: fetchOutcome });
 });
 
-const patchSourceSchema = createSourceSchema.omit({ autoFetch: true }).partial();
+// Deliberately NOT createSourceSchema.omit({autoFetch:true}).partial():
+// several create fields (type/title/unitLabel) carry a `.default(...)` for
+// create semantics, and Zod's `.partial()` still applies a field's default
+// when the key is simply absent from the input — so a real partial update
+// that only touches, say, coverFileId would have silently reset type back
+// to "link" and title to "" on every save. Every field here is genuinely
+// optional with no default, so an omitted key means "leave it alone."
+const patchSourceSchema = z.object({
+  type: SOURCE_TYPE.optional(),
+  title: z.string().trim().max(200).optional(),
+  url: z.url().max(500).nullish(),
+  provider: z.string().trim().max(120).nullish(),
+  level: LEVEL.nullish(),
+  totalUnits: z.int().min(1).max(10000).nullish(),
+  completedUnits: z.int().min(0).max(10000).optional(),
+  unitLabel: UNIT_LABEL.optional(),
+  notes: z.string().max(1000).nullish(),
+  // set via a two-step flow: upload the image (kind: "source_cover",
+  // studySourceId: this id) via the existing generic file-upload route,
+  // then PATCH here with the new file's id. null clears the cover.
+  coverFileId: z.string().nullish(),
+});
 
 learningRouter.patch("/sources/:id", async (req, res) => {
   const parsed = patchSourceSchema.safeParse(req.body);
@@ -407,6 +542,17 @@ learningRouter.patch("/sources/:id", async (req, res) => {
 
   const data = { ...parsed.data };
   const hasUnits = existing.units.length > 0;
+
+  if (data.coverFileId !== undefined && data.coverFileId !== null) {
+    const file = await prisma.uploadedFile.findFirst({ where: { id: data.coverFileId, userId: req.userId } });
+    if (!file) return res.status(404).json({ error: "Cover image file not found" });
+  }
+  // an old cover being replaced (or cleared) is deleted outright rather than
+  // left orphaned — it's never shown anywhere once it stops being the cover
+  const oldCoverFileId =
+    data.coverFileId !== undefined && existing.coverFileId && existing.coverFileId !== data.coverFileId
+      ? existing.coverFileId
+      : null;
 
   // blank titles are only tolerated on create, where the playlist fills them
   if (data.title !== undefined && data.title === "") {
@@ -444,6 +590,7 @@ learningRouter.patch("/sources/:id", async (req, res) => {
       });
       return [updated];
     });
+    if (oldCoverFileId) await deleteUploadedFile(req.userId, oldCoverFileId);
     return res.json({ source: withPercent(source) });
   }
 
@@ -460,6 +607,7 @@ learningRouter.patch("/sources/:id", async (req, res) => {
     },
     include: SOURCE_INCLUDE,
   });
+  if (oldCoverFileId) await deleteUploadedFile(req.userId, oldCoverFileId);
   res.json({ source: withPercent(source) });
 });
 
@@ -564,61 +712,62 @@ learningRouter.delete("/sources/:id", async (req, res) => {
 // unit completion, so the feed only reads StudySourceLog for sources that
 // have no units at all (the manual, open-ended ones); unit-backed sources
 // show their StudySourceUnit completions instead.
+//
+// Milestones only (turn 10a) — no more per-link "Saved: X" spam, since
+// links are now ordinary StudySource rows added one at a time through the
+// normal Add-source flow (the old spam came from seeding 16 SavedLink rows
+// at once, a concept that no longer exists). No filter-chip dimension
+// either — the redesigned panel is just "Recent activity" + "View all",
+// not the old all/lessons/links tab row.
 
 interface FeedEntry {
   id: string;
   at: Date;
-  kind: "lesson" | "manual" | "link";
+  kind: "lesson" | "manual" | "added" | "completed";
   sourceId: string | null;
   sourceTitle: string | null;
   title: string;
   notes: string | null;
 }
 
-// "notes" was dropped as a distinct filter value — a note is always attached
-// to a lesson completion (no freestanding note entity exists), so it was a
-// strict subset of "lessons" and never surfaced anything new. See the client
-// SourcesPage.tsx FEED_FILTERS comment for the same reasoning.
-const ACTIVITY_FILTER = z.enum(["all", "lessons", "links"]).default("all");
 const FEED_PAGE_SIZE = 20;
 
 learningRouter.get("/sources/activity", async (req, res) => {
-  const filter = ACTIVITY_FILTER.safeParse(req.query.type).data ?? "all";
   const cursorParsed = z.iso.datetime().safeParse(req.query.cursor);
   const cursor = cursorParsed.success ? new Date(cursorParsed.data) : new Date();
 
-  const wantLessons = filter === "all" || filter === "lessons";
-  const wantLinks = filter === "all" || filter === "links";
-
-  const [units, logs, links] = await Promise.all([
-    wantLessons
-      ? prisma.studySourceUnit.findMany({
-          where: { source: { userId: req.userId }, completedAt: { lt: cursor } },
-          orderBy: { completedAt: "desc" },
-          take: FEED_PAGE_SIZE,
-          include: { source: { select: { id: true, title: true } } },
-        })
-      : [],
-    wantLessons
-      ? prisma.studySourceLog.findMany({
-          where: {
-            source: { userId: req.userId, units: { none: {} } },
-            loggedAt: { lt: cursor },
-            delta: { gt: 0 },
-          },
-          orderBy: { loggedAt: "desc" },
-          take: FEED_PAGE_SIZE,
-          include: { source: { select: { id: true, title: true } } },
-        })
-      : [],
-    wantLinks
-      ? prisma.savedLink.findMany({
-          where: { userId: req.userId, createdAt: { lt: cursor } },
-          orderBy: { createdAt: "desc" },
-          take: FEED_PAGE_SIZE,
-        })
-      : [],
+  const [units, logs, added] = await Promise.all([
+    prisma.studySourceUnit.findMany({
+      where: { source: { userId: req.userId }, completedAt: { lt: cursor } },
+      orderBy: { completedAt: "desc" },
+      take: FEED_PAGE_SIZE,
+      include: { source: { select: { id: true, title: true, completedUnits: true, totalUnits: true } } },
+    }),
+    prisma.studySourceLog.findMany({
+      where: {
+        source: { userId: req.userId, units: { none: {} } },
+        loggedAt: { lt: cursor },
+        delta: { gt: 0 },
+      },
+      orderBy: { loggedAt: "desc" },
+      take: FEED_PAGE_SIZE,
+      include: { source: { select: { id: true, title: true, completedUnits: true, totalUnits: true } } },
+    }),
+    prisma.studySource.findMany({
+      where: { userId: req.userId, createdAt: { lt: cursor } },
+      orderBy: { createdAt: "desc" },
+      take: FEED_PAGE_SIZE,
+      select: { id: true, title: true, createdAt: true },
+    }),
   ]);
+
+  // A unit/log completion that leaves its source at 100% is shown as a
+  // "completed" milestone (trophy icon) instead of a plain progress tick —
+  // read from the source's own current completedUnits/totalUnits, not a
+  // reconstructed history, so it's an honest "this source is done" signal
+  // rather than a precise "this was the exact unit that crossed 100%" one.
+  const isNowComplete = (s: { completedUnits: number; totalUnits: number | null }) =>
+    s.totalUnits !== null && s.totalUnits > 0 && s.completedUnits >= s.totalUnits;
 
   const entries: FeedEntry[] = [
     ...units
@@ -626,7 +775,7 @@ learningRouter.get("/sources/activity", async (req, res) => {
       .map((u) => ({
         id: `unit:${u.id}`,
         at: u.completedAt as Date,
-        kind: "lesson" as const,
+        kind: (isNowComplete(u.source) ? "completed" : "lesson") as FeedEntry["kind"],
         sourceId: u.source.id,
         sourceTitle: u.source.title,
         title: u.title,
@@ -635,20 +784,20 @@ learningRouter.get("/sources/activity", async (req, res) => {
     ...logs.map((l) => ({
       id: `log:${l.id}`,
       at: l.loggedAt,
-      kind: "manual" as const,
+      kind: (isNowComplete(l.source) ? "completed" : "manual") as FeedEntry["kind"],
       sourceId: l.source.id,
       sourceTitle: l.source.title,
       title: `Logged ${l.delta} lesson${l.delta === 1 ? "" : "s"}`,
       notes: null,
     })),
-    ...links.map((l) => ({
-      id: `link:${l.id}`,
-      at: l.createdAt,
-      kind: "link" as const,
-      sourceId: null,
-      sourceTitle: null,
-      title: `Saved: ${l.title}`,
-      notes: l.note,
+    ...added.map((s) => ({
+      id: `added:${s.id}`,
+      at: s.createdAt,
+      kind: "added" as const,
+      sourceId: s.id,
+      sourceTitle: s.title,
+      title: `Added ${s.title}`,
+      notes: null,
     })),
   ]
     .sort((a, b) => b.at.getTime() - a.at.getTime())
@@ -656,38 +805,6 @@ learningRouter.get("/sources/activity", async (req, res) => {
 
   const nextCursor = entries.length === FEED_PAGE_SIZE ? entries[entries.length - 1]!.at.toISOString() : null;
   res.json({ entries, nextCursor });
-});
-
-// ── saved links ──
-
-learningRouter.get("/saved-links", async (req, res) => {
-  await ensureSavedLinksSeeded(req.userId);
-  const links = await prisma.savedLink.findMany({ where: { userId: req.userId }, orderBy: { createdAt: "desc" } });
-  res.json({ links });
-});
-
-const createLinkSchema = z.object({
-  title: z.string().trim().min(1).max(200),
-  url: z.url().max(500),
-  skill: CORE_SKILL.or(z.enum(["bureaucracy", "milestone"])).nullish(),
-  note: z.string().trim().max(300).nullish(),
-});
-
-learningRouter.post("/saved-links", async (req, res) => {
-  const parsed = createLinkSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
-
-  const link = await prisma.savedLink.create({
-    data: { userId: req.userId, ...parsed.data, skill: parsed.data.skill ?? null, note: parsed.data.note ?? null },
-  });
-  res.status(201).json({ link });
-});
-
-learningRouter.delete("/saved-links/:id", async (req, res) => {
-  const link = await prisma.savedLink.findFirst({ where: { id: req.params.id, userId: req.userId } });
-  if (!link) return res.status(404).json({ error: "Saved link not found" });
-  await prisma.savedLink.delete({ where: { id: link.id } });
-  res.status(204).end();
 });
 
 // ── self-tests ──
@@ -928,6 +1045,9 @@ learningRouter.get("/exam/status", async (req, res) => {
     level: activeLevel,
     ...gate,
     lastAttempt: attempts[0] ?? null,
+    // full history (already fetched above for lastAttempt/gate) — Stats'
+    // exam-attempt trend, most-recent first, same order as lastAttempt
+    attempts,
     timeLimitMinutes: EXAM_TIME_LIMIT_MINUTES,
     cooldownDays: EXAM_ATTEMPT_COOLDOWN_DAYS,
     passThreshold: EXAM_PASS_THRESHOLD,

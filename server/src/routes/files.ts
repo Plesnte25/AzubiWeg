@@ -25,7 +25,7 @@ const upload = multer({
 });
 
 const uploadSchema = z.object({
-  kind: z.enum(["document", "cv_photo", "audio_recording"]).default("document"),
+  kind: z.enum(["document", "cv_photo", "audio_recording", "source_cover"]).default("document"),
   syllabusItemId: z.string().optional(),
   studySourceId: z.string().optional(),
   roadmapTaskId: z.string().optional(),
@@ -52,6 +52,9 @@ filesRouter.post("/", uploadSingle, async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file provided (field name: file)" });
   if (kind === "cv_photo" && !IMAGE_TYPES.has(req.file.mimetype)) {
     return res.status(400).json({ error: "CV photos must be JPEG, PNG, or WebP" });
+  }
+  if (kind === "source_cover" && !IMAGE_TYPES.has(req.file.mimetype)) {
+    return res.status(400).json({ error: "Cover images must be JPEG, PNG, or WebP" });
   }
   if (kind === "audio_recording" && !AUDIO_TYPES.has(req.file.mimetype)) {
     return res.status(400).json({ error: "Audio recordings must be WebM, OGG, or MP4/M4A" });
