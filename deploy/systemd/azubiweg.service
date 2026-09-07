@@ -7,10 +7,6 @@ Type=simple
 User=azubiweg
 WorkingDirectory=/opt/azubiweg/repo/server
 EnvironmentFile=/opt/azubiweg/.env
-# Caps Node's heap so it can't pressure Postgres (also in Docker on this
-# e2-micro) into swap-thrashing. 384MB leaves headroom under the 1GB
-# physical + 2GB swap setup documented in docs/DEPLOYMENT.md.
-Environment="NODE_OPTIONS=--max-old-space-size=384"
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
 RestartSec=5

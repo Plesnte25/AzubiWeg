@@ -1,10 +1,19 @@
-# Deploying AzubiWeg to a free Google Cloud VPS
+# Deploying AzubiWeg to a free Oracle Cloud VPS
 
-This is the runbook for hosting AzubiWeg at **azubiweg.duckdns.org** on Google
-Cloud's Always Free tier, with the Obsidian vault sync bridged over OneDrive
-via `rclone bisync` instead of watching a local folder. Everything here is
-meant to be run by hand over SSH — there's no CI/auto-deploy yet, see
-[docs/ROADMAP.md](ROADMAP.md) V5.
+This is the runbook for hosting AzubiWeg at **azubiweg.duckdns.org** on Oracle
+Cloud's Always Free tier (Ampere ARM), with the Obsidian vault sync bridged
+over OneDrive via `rclone bisync` instead of watching a local folder.
+Everything here is meant to be run by hand over SSH — there's no CI/auto-deploy
+yet, see [docs/ROADMAP.md](ROADMAP.md) V5.
+
+**2026-09-07: migrated here from a GCP e2-micro** (Always Free tier, 1GB RAM).
+That box worked but was too resource-constrained for the kaikki.org/DErivBase
+enrichment imports (mid-download connection drops on the ~1GB kaikki dump,
+and an out-of-memory crash importing DErivBase) — see the two provider-specific
+workarounds called out inline below, neither of which turned out to be
+necessary on Oracle's ARM shape. The GCP instance is stopped (not deleted) as
+a fallback; if reviving it, its runbook is this file's git history before this
+commit.
 
 DNS is DuckDNS for now, not is-a.dev — the `is-a-dev/register` PR was denied
 three times, so that path is dropped. A parallel application for
@@ -16,67 +25,58 @@ Config files referenced below live in [`deploy/`](../deploy).
 
 ## 1. Create the VPS
 
-1. Sign up for [Google Cloud](https://cloud.google.com/free) (requires card
-   verification even for the Always Free tier — no charge as long as usage
-   stays within the free quota below).
-2. Create a project, enable the **Compute Engine API**, then create an
-   **Always Free** compute instance:
-   - Machine type: **e2-micro** — the only shape covered by Always Free.
-   - Region: **us-west1**, **us-central1**, or **us-east1** only — any other
-     region bills at full price.
-   - Boot disk: Debian 12/13 or Ubuntu 24.04, size ≤30GB, disk type
-     **Standard Persistent Disk** — the console defaults new VMs to
-     "Balanced" (SSD-backed), which is *not* covered by Always Free.
-   - The create-instance page's "Monthly estimate" quotes full list price
-     regardless of free-tier eligibility (~$6-8/mo for e2-micro); the Always
-     Free credit shows up as a $0-net line in **Billing → Reports**, not in
-     that estimate. Set a billing budget alert (e.g. $1 threshold) as a
-     same-day tripwire instead of trusting the estimate.
-3. Reserve the instance's external IP as **static** — GCP's default IP is
-   ephemeral and gets reassigned on stop/restart, which would silently break
-   the DNS record from step 9:
+1. Sign up for [Oracle Cloud](https://www.oracle.com/cloud/free/) (Always
+   Free tier — no charge as long as usage stays within the free ARM
+   allowance below).
+2. Create a compute instance on the **Ampere A1** shape (ARM/aarch64) — the
+   Always Free tier gives you a pool of up to 4 OCPUs and 24GB RAM to split
+   across up to 4 such instances; this deployment uses 2 OCPUs / ~12GB RAM
+   on a single instance, comfortably inside the free allowance.
+   - Image: Ubuntu 24.04 (aarch64/arm64 build).
+   - Boot volume: default is plenty (this deployment uses 45GB).
+3. Reserve/assign a public IP for the instance and note it — Oracle's
+   console shows this on the instance's detail page.
+4. Open ports **80**, **443**, and **22** for inbound TCP in the instance's
+   **VCN → Security List** (or Network Security Group if you attached one):
+   add ingress rules for each, source `0.0.0.0/0`.
+   **Gotcha, unlike GCP**: Oracle's Ubuntu images ship with a second,
+   host-level `iptables` firewall on top of the cloud-level Security List —
+   both layers need to allow a port, or traffic is dropped. The stock
+   ruleset only allows established/related traffic and new SSH (port 22)
+   connections; insert explicit accepts for 80/443 before the default
+   REJECT rule and persist them:
    ```bash
-   gcloud compute addresses create azubiweg-ip \
-     --region=<REGION> --addresses=<CURRENT_EPHEMERAL_IP>
+   sudo iptables -I INPUT 4 -p tcp --dport 80 -j ACCEPT
+   sudo iptables -I INPUT 5 -p tcp --dport 443 -j ACCEPT
+   sudo apt install -y iptables-persistent
+   sudo netfilter-persistent save
    ```
-4. Open ports **80** and **443**:
-   ```bash
-   gcloud compute instances add-tags <INSTANCE_NAME> --zone=<ZONE> --tags=azubiweg
-   gcloud compute firewall-rules create azubiweg-http \
-     --allow=tcp:80,tcp:443 --target-tags=azubiweg --source-ranges=0.0.0.0/0
-   ```
-   (Unlike Oracle, GCP's Debian/Ubuntu images don't add a second host-level
-   default-deny firewall on top — this one rule is enough.)
-5. Add swap — e2-micro's 1GB RAM is tight running Postgres (Docker) + Node +
-   rclone all at once:
-   ```bash
-   sudo fallocate -l 2G /swapfile
-   sudo chmod 600 /swapfile
-   sudo mkswap /swapfile
-   sudo swapon /swapfile
-   echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-   ```
-   Lower swappiness so the kernel favors RAM and only reaches for swap under
-   real pressure, rather than swapping preemptively:
-   ```bash
-   sudo sysctl vm.swappiness=20
-   echo 'vm.swappiness=20' | sudo tee -a /etc/sysctl.conf
-   ```
+   (Check `sudo iptables -L INPUT -n --line-numbers` first — insert your
+   accepts immediately before whatever line number the REJECT rule is on,
+   adjusting the `-I INPUT N` position accordingly if it differs.)
+5. **Swap**: not needed on this shape — with ~12GB RAM, Postgres (Docker) +
+   Node + rclone all run comfortably without it (confirmed live: 0% swap
+   usage under normal load). If you provision a smaller/lower-RAM shape,
+   revisit this — the GCP e2-micro's 1GB RAM needed 2GB of swap for the
+   same workload.
 
 ## 2. Base packages
+
+Identical regardless of provider — apt resolves the correct arm64 packages
+automatically:
 
 ```bash
 sudo apt update && sudo apt install -y git rclone
 
-# Docker + Compose plugin (official script — same on Debian and Ubuntu)
+# Docker + Compose plugin (official script — works on arm64 too)
 curl -fsSL https://get.docker.com | sudo sh
 
 # Node LTS
 curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
 sudo apt install -y nodejs
 
-# Caddy (reverse proxy + auto-TLS) — same repo works on Debian and Ubuntu
-sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+# Caddy (reverse proxy + auto-TLS)
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
 sudo apt update && sudo apt install -y caddy
@@ -94,17 +94,14 @@ sudo chmod o+x /opt/azubiweg
 That last `chmod` only adds *traverse* permission, not read/list — `useradd -m`
 defaults to `750`, which blocks every other user (including the `caddy`
 system user that needs to follow the `/etc/caddy/Caddyfile` symlink in step 8,
-and your own SSH login user running the `cd`-then-`sudo -u azubiweg` commands
-below) from even entering the directory. Everything inside stays protected by
-its own permissions (`.env` is `600`).
+and your own SSH login user running the commands below) from even entering
+the directory. Everything inside stays protected by its own permissions
+(`.env` is `600`).
 
-Also, `sudo -u azubiweg <cmd>` on this image does **not** give you a working
-CWD if you `cd` first as your own (non-azubiweg) user — that `cd` silently
-fails against the `750`-turned-`750+x` directory and leaves the shell wherever
-it started, so `sudo -u azubiweg npm ci` etc. then runs from the wrong
-directory. Always do the `cd` *inside* the sudo'd shell instead:
-`sudo -u azubiweg bash -c 'cd /opt/azubiweg/... && <cmd>'` — every command
-below that needs a working directory uses this form.
+Always do a `cd` *inside* a `sudo -u azubiweg bash -c '...'` invocation
+rather than before it — `sudo -u azubiweg <cmd>` doesn't inherit a `cd` you
+ran as your own login user, and the `750`-turned-`751` directory silently
+blocks it anyway.
 
 ## 3. Clone the repo and build
 
@@ -175,7 +172,7 @@ OAuth needs a real browser, so run this as your own SSH login user (not
 
 ```bash
 # from your laptop:
-gcloud compute ssh <instance> --zone=<zone> --tunnel-through-iap -- -L 53682:localhost:53682
+ssh -i /path/to/your-instance-key.key -L 53682:localhost:53682 ubuntu@<VPS_IP>
 # once connected:
 rclone config
 # n) New remote -> name it "onedrive" -> type "onedrive" -> leave
@@ -184,6 +181,14 @@ rclone config
 # same Microsoft account Remotely Save uses -> OneDrive Personal -> confirm
 # the drive found.
 ```
+
+**Picking the right drive**: rclone lists every drive associated with the
+account, several loosely labeled "(personal)". The real OneDrive Personal
+drive is the one with a plain hex `drive_id` (e.g. `F2C1E5670BC0B38F`);
+GUID-named drives and anything like `ODCMetadataArchive` are other
+app-associated or internal drives, not your files. If you pick wrong, the
+next step's `rclone lsf` comes back empty — just re-run `rclone config` and
+try a different one.
 
 Then copy the resulting config to `azubiweg` (the bisync service runs as
 that user, and `rclone config` above just wrote to *your* home directory):
@@ -244,7 +249,41 @@ In the app, sign in and set your vault path (Settings) to
 `/opt/azubiweg/vaults/sharjeel` — same UX as pointing it at a local folder in
 dev, it's just backed by the bisync now.
 
-## 8. Caddy (reverse proxy + free TLS)
+## 8. Populate the kaikki.org / DErivBase enrichment data
+
+**Real gap this deployment had for a long time on GCP**: `prisma migrate
+deploy` only creates schema, not the reference data behind declension/
+conjugation tables and bilingual examples. Without this, every word shows
+"No grammar table available" regardless of how well vault sync is working —
+easy to mistake for a sync bug when it's actually just missing data.
+
+```bash
+cd /opt/azubiweg/repo/server
+sudo -u azubiweg bash -c 'set -a && source /opt/azubiweg/.env && set +a && npm run import:kaikki'
+sudo -u azubiweg bash -c 'set -a && source /opt/azubiweg/.env && set +a && npm run import:derivbase'
+sudo -u azubiweg bash -c 'set -a && source /opt/azubiweg/.env && set +a && npm run backfill:kaikki'
+sudo -u azubiweg bash -c 'set -a && source /opt/azubiweg/.env && set +a && npm run backfill:example-translation'
+```
+
+`import:kaikki` streams a ~1GB dump; on this box's RAM/network it completes
+directly. **On a more resource-constrained box** (like the GCP e2-micro this
+deployment used to run on), two issues showed up that don't apply here but
+are worth knowing about:
+
+- A live `fetch()` over a flaky connection has no read-timeout, so a
+  mid-download stall drops the connection with no retry. Fix: download
+  separately with a resumable `curl -C -` first, then point the import at
+  it via `KAIKKI_LOCAL_PATH=/path/to/file.jsonl npm run import:kaikki`.
+- `import:derivbase` decompresses its zip fully into memory before parsing,
+  which OOM'd on a 1GB-RAM box. Fix: raise Node's heap ceiling for that one
+  run, e.g. `NODE_OPTIONS=--max-old-space-size=1536 npm run import:derivbase`
+  (needs swap to back the extra headroom on a box that tight on RAM).
+
+The two backfill scripts only touch words that already exist in the
+database — run (or re-run; both are idempotent) them again after any bulk
+vault import if new words got skipped the first time.
+
+## 9. Caddy (reverse proxy + free TLS)
 
 ```bash
 sudo ln -sf /opt/azubiweg/repo/deploy/Caddyfile /etc/caddy/Caddyfile
@@ -252,10 +291,19 @@ sudo systemctl reload caddy
 ```
 
 Caddy fetches a Let's Encrypt cert automatically the moment
-`azubiweg.duckdns.org` resolves to this box (step 9) and port 80/443 are
-reachable (step 1.4).
+`azubiweg.duckdns.org` resolves to this box (step 10) and ports 80/443 are
+reachable (step 1.4) — via the `tls-alpn-01` challenge type in practice, no
+extra config needed for that.
 
-## 9. DNS via DuckDNS
+**Testing before DNS points here**: `deploy/Caddyfile` keeps a permanent
+plain-HTTP block bound to this box's raw IP (`http://<VPS_IP> { import app }`)
+specifically so you can verify the whole app end-to-end — registering an
+account, linking the vault, running the enrichment backfill — before
+cutting DNS over from whatever was live before. Once verified, switch DNS
+(step 10) and Caddy will pick up the real domain's cert on the next reload
+with no further config change.
+
+## 10. DNS via DuckDNS
 
 No PR review, no waiting — DuckDNS gives you a subdomain and a "current ip"
 field per-domain that it publishes as that domain's A record (DuckDNS's UI
@@ -266,41 +314,43 @@ account, not something to hand off):
 1. Go to [duckdns.org](https://www.duckdns.org) and sign in (GitHub, Google,
    Twitter, Reddit, or Persona — pick whichever account you're comfortable
    linking).
-2. Under "add domain," enter `azubiweg` and click **add domain**. This
-   claims `azubiweg.duckdns.org` — already done as of 2026-07-24.
+2. Under "add domain," enter `azubiweg` and click **add domain** (already
+   done — this claims `azubiweg.duckdns.org` once, permanently; re-pointing
+   it to a new server later, e.g. a provider migration, only needs step 3).
 3. On the row for that domain, there's a text box next to "current ip"
    (separate from the "ipv6 address" box below it — use the IPv4 one).
-   Enter the VPS's static IP (`34.42.175.158` from step 1.3) into it and
-   click that row's **update ip** button.
-4. Confirm it resolved: `dig +short azubiweg.duckdns.org` should print
-   `34.42.175.158` (may take a minute or two, DuckDNS's TTL is short).
+   Enter the VPS's public IP into it and click that row's **update ip**
+   button.
+4. Confirm it resolved: `dig +short azubiweg.duckdns.org` should print the
+   new IP (may take a minute or two, DuckDNS's TTL is short).
 
-Because the VPS IP is reserved as static (step 1.3), this is a one-time
-setup — no dynamic-update script or cron job needed. If the instance is ever
-deleted and recreated with a new IP, repeat step 3 with the new address.
+If the instance is ever deleted and recreated with a new IP (or you migrate
+to a different VPS/provider entirely, as this deployment already has once),
+repeat step 3 with the new address — that's the only DNS-side change a
+migration needs.
 
 The Caddyfile (`deploy/Caddyfile`) already points at `azubiweg.duckdns.org`;
 nothing else to change here once DNS resolves.
 
-## 9b. DNS via eu.org (parallel, pending)
+## 10b. DNS via eu.org (parallel, pending)
 
 Apply for **azubiweg.eu.org** at [eu.org](https://eu.org/) in parallel — do
 this from your own account, same as DuckDNS. eu.org is manually reviewed and
 can take anywhere from a few weeks to several months, so treat DuckDNS
-(step 9) as the domain actually in use until this comes through. Once
+(step 10) as the domain actually in use until this comes through. Once
 approved:
 
 1. In the eu.org control panel, set the domain's A record to the VPS's
-   static IP (`34.42.175.158`).
+   public IP.
 2. Uncomment the `azubiweg.eu.org` block in `deploy/Caddyfile` and reload
    Caddy: `sudo systemctl reload caddy`. It fetches its own Let's Encrypt
    cert automatically once DNS resolves — the `azubiweg.duckdns.org` block
    keeps working unchanged alongside it.
-3. Update the live-demo link (step 10) and this doc to point at
+3. Update the live-demo link (step 11) and this doc to point at
    `azubiweg.eu.org` as the primary domain if you want to retire the DuckDNS
    one, or just leave both resolving to the same box.
 
-## 10. Link it from GitHub
+## 11. Link it from GitHub
 
 Once `https://azubiweg.duckdns.org` is actually reachable, add a live-demo
 line near the top of `README.md`, e.g.:
@@ -311,9 +361,9 @@ line near the top of `README.md`, e.g.:
 
 Optionally also set it as the repo's website field:
 `gh repo edit --homepage https://azubiweg.duckdns.org`.
-Swap both to `azubiweg.eu.org` later if/when that's approved (step 9b).
+Swap both to `azubiweg.eu.org` later if/when that's approved (step 10b).
 
-## 11. Verify end to end
+## 12. Verify end to end
 
 - `curl https://azubiweg.duckdns.org/api/health` → `{"ok":true}` over a valid
   TLS cert.
@@ -324,22 +374,30 @@ Swap both to `azubiweg.eu.org` later if/when that's approved (step 9b).
   Obsidian (OneDrive → Remotely Save pulls the rclone-bisync'd change), and
   editing a card in Obsidian should show up in the app the same way — this
   is the whole point, confirm it actually round-trips.
+- Open a word's detail view and confirm the grammar table/declension/
+  bilingual example actually render (not "No grammar table available" on
+  every word) — that's step 8's enrichment data, easy to forget on a fresh
+  deploy since the app runs fine without it, just with degraded content.
 - `cd server && npm test` still green.
 
-## 12. Ongoing deploys
+## 13. Ongoing deploys
 
 After pushing to `main`, SSH in as your own sudo-capable admin user (not
 `azubiweg`) and run:
 
 ```bash
-ssh <vps> 'sudo /opt/azubiweg/repo/deploy/deploy.sh'
+ssh -i /path/to/your-instance-key.key ubuntu@<VPS_IP> 'sudo /opt/azubiweg/repo/deploy/deploy.sh'
 ```
 
 See [`deploy/deploy.sh`](../deploy/deploy.sh) — pulls, rebuilds both
 workspaces, runs pending Prisma migrations, redeploys the client build, and
-restarts the service.
+restarts the service. If a `git pull` inside it ever fails with "divergent
+branches" (e.g. after a force-pushed history rewrite upstream), that's not
+something `deploy.sh` handles — stash any local working-tree changes
+(step 4's password patch), `git fetch && git reset --hard origin/main`,
+restore the stash, then re-run `deploy.sh`.
 
-## 13. Temporary public demo mode (PageSpeed Insights / GTmetrix)
+## 14. Temporary public demo mode (PageSpeed Insights / GTmetrix)
 
 The site is already fully public at the network level (Caddy has no basic
 auth/IP allowlist, `robots.txt` allows all crawlers) — the only gate is the
@@ -351,7 +409,7 @@ populated app.
 **Turn on**, from an SSH session as the sudo-capable admin user:
 
 ```bash
-ssh <vps>
+ssh -i /path/to/your-instance-key.key ubuntu@<VPS_IP>
 sudo -u azubiweg sed -i '/^DEMO_MODE_ENABLED=/d' /opt/azubiweg/.env
 echo 'DEMO_MODE_ENABLED=true' | sudo -u azubiweg tee -a /opt/azubiweg/.env
 sudo -u azubiweg bash -c 'cd /opt/azubiweg/repo/server && set -a && source /opt/azubiweg/.env && set +a && npm run seed:demo'
@@ -365,7 +423,7 @@ already exists. Now run PageSpeed Insights / GTmetrix against
 **Turn back off**:
 
 ```bash
-ssh <vps>
+ssh -i /path/to/your-instance-key.key ubuntu@<VPS_IP>
 sudo -u azubiweg sed -i 's/^DEMO_MODE_ENABLED=.*/DEMO_MODE_ENABLED=false/' /opt/azubiweg/.env
 sudo systemctl restart azubiweg
 ```

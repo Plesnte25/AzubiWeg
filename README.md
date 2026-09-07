@@ -163,9 +163,9 @@ a real browser (see [CLAUDE.md](CLAUDE.md#testing-conventions)).
 ## Deployment
 
 Self-hostable on a free-tier VPS — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
-for the full runbook (GCP e2-micro, Caddy + auto-TLS, DuckDNS DNS with an
-`eu.org` application pending, and bridging the Obsidian vault sync over
-OneDrive/rclone when the app isn't on the same machine as the vault).
+for the full runbook (Oracle Cloud Ampere ARM, Caddy + auto-TLS, DuckDNS DNS
+with an `eu.org` application pending, and bridging the Obsidian vault sync
+over OneDrive/rclone when the app isn't on the same machine as the vault).
 
 ## Roadmap
 
