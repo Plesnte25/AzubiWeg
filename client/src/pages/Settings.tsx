@@ -58,7 +58,7 @@ export default function Settings() {
   };
 
   const link = useMutation({
-    mutationFn: () => api.vaultLink(path),
+    mutationFn: () => api.vaultLink(path.trim()),
     onSuccess: (data) => {
       invalidateAll();
       toast.success(`Linked — imported ${data.wordCount} words`);

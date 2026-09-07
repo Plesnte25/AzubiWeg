@@ -9,7 +9,7 @@ import { vaultFiles, vaultSync } from "../services/vault/sync.js";
 export const vaultRouter = Router();
 vaultRouter.use(requireAuth);
 
-const linkSchema = z.object({ path: z.string().min(1) });
+const linkSchema = z.object({ path: z.string().trim().min(1) });
 
 vaultRouter.post("/link", async (req, res) => {
   const parsed = linkSchema.safeParse(req.body);
