@@ -4,12 +4,19 @@ import { CalendarCheck, Fire, Target, Timer, TrendUp } from "@phosphor-icons/rea
 import { api } from "../../api/client";
 import type { ProgressPeriod, SrsState } from "../../api/types";
 import { useNavStack } from "../../lib/navStack";
+import { heatmapColor } from "../../lib/heatmapColor";
 import { fullArtLabel } from "../../lib/wordDisplay";
 import type { SkillProgressDatum } from "../../lib/skills";
 import { ActivationGate } from "../learning-hub/ActivationGate";
+import { ActivityHeatmap } from "./ActivityHeatmap";
 import { Constellation } from "./Constellation";
+import { ExamTrendCard } from "./ExamTrendCard";
+import { HourOfDayChart } from "./HourOfDayChart";
 import { RetentionCurve } from "./RetentionCurve";
 import { SkillProgressGauges } from "./SkillProgressGauges";
+import { SourcesRollupCard } from "./SourcesRollupCard";
+import { VocabBreakdownCard } from "./VocabBreakdownCard";
+import { WeakAreasCard } from "./WeakAreasCard";
 
 const PERIODS: { key: ProgressPeriod; label: string }[] = [
   { key: "7d", label: "7d" },
@@ -18,6 +25,15 @@ const PERIODS: { key: ProgressPeriod; label: string }[] = [
   { key: "all", label: "all" },
 ];
 const PERIOD_DAYS: Partial<Record<ProgressPeriod, number>> = { "7d": 7, "30d": 30, "90d": 90 };
+
+/** "B1 Feb"-shaped short label for a projected finish date — the base
+ * Nocturne Stats mock (turn 2f) shows exactly this, restored here alongside
+ * (not replacing) avg-interval; real data via computeRoutePace(), not the
+ * mock's hardcoded copy. */
+function formatProjected(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: "short", year: "numeric" });
+}
 
 const STATE_ORDER: SrsState[] = ["mastered", "learning", "due", "new"];
 const STATE_LABEL: Record<SrsState, string> = { mastered: "mastered", learning: "learning", due: "due", new: "new" };
@@ -45,6 +61,13 @@ export default function Stats() {
   const { data: weakWordsData } = useQuery({ queryKey: ["reviews", "weakWords"], queryFn: () => api.reviewWeakWords(6) });
   const { data: examStatus } = useQuery({ queryKey: ["learning", "exam", "status"], queryFn: api.examStatus });
   const { data: progress } = useQuery({ queryKey: ["learning", "progress", period], queryFn: () => api.learningProgress(period) });
+  // Same query keys Dashboard.tsx/Sources.tsx already fetch under, so
+  // visiting either this session means Stats gets these for free from the
+  // shared react-query cache instead of firing a fresh request.
+  const { data: dashboardData } = useQuery({ queryKey: ["dashboard"], queryFn: api.dashboard });
+  const { data: sourcesData } = useQuery({ queryKey: ["learning", "sources"], queryFn: api.learningSources });
+  const { data: hourly } = useQuery({ queryKey: ["activity", "hourly"], queryFn: api.activityHourly });
+  const { data: pace } = useQuery({ queryKey: ["learning", "pace"], queryFn: api.learningPace });
 
   if (roadmapLoading || wordsLoading || !wordsData) {
     return <div className="-mx-4 -my-4 min-h-[calc(100dvh-40px)]" style={{ background: "#161826" }} />;
@@ -163,7 +186,7 @@ export default function Stats() {
         </div>
       )}
 
-      <div className="mt-5 grid grid-cols-3 gap-2">
+      <div className="mt-5 grid grid-cols-2 gap-2">
         <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
           <div className="text-[20px] font-medium">{accuracy === null ? "—" : `${accuracy}%`}</div>
           <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
@@ -183,6 +206,14 @@ export default function Stats() {
           <div className="text-[20px] font-medium">{reviewStats?.reviewsThisWeek ?? "—"}</div>
           <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
             reviews this week
+          </div>
+        </div>
+        <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
+          <div className="text-[20px] font-medium" style={{ color: "#b5abfc" }}>
+            {formatProjected(pace?.projectedFinishDate ?? null)}
+          </div>
+          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+            projected {pace?.examTargetDate ? "vs. exam date" : "finish"}
           </div>
         </div>
       </div>
@@ -220,6 +251,40 @@ export default function Stats() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {progress && (progress.weakAreas.length > 0 || progress.improvedMost.length > 0) && (
+        <div className="mt-[18px] rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+          <WeakAreasCard weakAreas={progress.weakAreas} improvedMost={progress.improvedMost} />
+        </div>
+      )}
+
+      {progress && examStatus && (
+        <div className="mt-[18px] rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+          <ExamTrendCard testAvg={progress.kpis.testAvg} readiness={progress.readiness} attempts={examStatus.attempts} />
+        </div>
+      )}
+
+      {dashboardData && (
+        <div className="mt-[18px] rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+          <ActivityHeatmap cells={dashboardData.heatmap} />
+        </div>
+      )}
+
+      {hourly && (
+        <div className="mt-[18px] rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+          <HourOfDayChart hours={hourly.hours} />
+        </div>
+      )}
+
+      <div className="mt-[18px] rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+        <VocabBreakdownCard words={words} />
+      </div>
+
+      {sourcesData && (
+        <div className="mt-[18px] rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+          <SourcesRollupCard sources={sourcesData.sources} />
         </div>
       )}
 
@@ -262,14 +327,12 @@ export default function Stats() {
             <div className="mt-2 grid grid-cols-7 gap-1">
               {progress.streakGrid.map((cell, i) => {
                 const isToday = i === progress.streakGrid.length - 1;
-                const intensity = cell.minutes === 0 ? 0 : cell.minutes < 15 ? 1 : cell.minutes < 30 ? 2 : cell.minutes < 60 ? 3 : 4;
-                const colors = ["#20222f", "#423a6a", "#5d5294", "#796cbf", "#9184d9"];
                 return (
                   <div
                     key={cell.date}
                     title={`${cell.date}: ${cell.minutes} min`}
                     className="size-4 rounded-sm"
-                    style={{ background: isToday ? "#b5abfc" : colors[intensity] }}
+                    style={{ background: isToday ? "#b5abfc" : heatmapColor(cell.minutes) }}
                   />
                 );
               })}
@@ -323,7 +386,7 @@ export default function Stats() {
       </div>
 
       <div className="mt-[18px] grid flex-1 gap-5" style={{ gridTemplateColumns: "1fr 1.15fr 1fr" }}>
-        <div className="flex flex-col gap-3.5">
+        <div className="flex flex-col gap-3.5 overflow-y-auto">
           <div className="rounded-xl p-4 text-center" style={{ background: "#1c1f2c" }}>
             <div className="text-[34px] leading-none font-medium" style={{ letterSpacing: "-.03em" }}>
               {words.length}
@@ -372,14 +435,104 @@ export default function Stats() {
                 avg interval
               </div>
             </div>
+            <div className="rounded-xl p-3" style={{ background: "#1c1f2c" }}>
+              <div className="text-[19px] font-medium">{reviewStats?.reviewsThisWeek ?? "—"}</div>
+              <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+                reviews this week
+              </div>
+            </div>
+            <div className="rounded-xl p-3" style={{ background: "#1c1f2c" }}>
+              <div className="text-[19px] font-medium" style={{ color: "#b5abfc" }}>
+                {formatProjected(pace?.projectedFinishDate ?? null)}
+              </div>
+              <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+                projected finish
+              </div>
+            </div>
           </div>
+
+          <VocabBreakdownCard words={words} />
+
+          {/* Desktop previously dropped this whole section (mobile-only) —
+              real parity gap, not a deliberate density difference like the
+              handoff's other desktop-only tiles, so it's included here now. */}
+          {progress && (
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
+                  <Target size={13} weight="regular" style={{ color: "#9184d9" }} aria-hidden="true" />
+                  <div className="mt-1 text-[15px] font-medium">
+                    {progress.kpis.tasksKept.value}/{progress.kpis.tasksKept.total}
+                  </div>
+                  <div className="text-[9.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+                    tasks kept
+                  </div>
+                </div>
+                <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
+                  <Timer size={13} weight="regular" style={{ color: "#9184d9" }} aria-hidden="true" />
+                  <div className="mt-1 text-[15px] font-medium">{progress.kpis.minutes.value}</div>
+                  <div className="text-[9.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+                    minutes
+                  </div>
+                </div>
+                <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
+                  <Fire size={13} weight="regular" style={{ color: "#e4c4b6" }} aria-hidden="true" />
+                  <div className="mt-1 text-[15px] font-medium">{progress.kpis.streak.current}d</div>
+                  <div className="text-[9.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+                    streak · best {progress.kpis.streak.best}d
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+                <div className="flex items-center gap-2 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>
+                  <CalendarCheck size={12} weight="regular" aria-hidden="true" />
+                  Study streak
+                </div>
+                <div className="mt-2 grid grid-cols-7 gap-1">
+                  {progress.streakGrid.map((cell, i) => {
+                    const isToday = i === progress.streakGrid.length - 1;
+                    return (
+                      <div
+                        key={cell.date}
+                        title={`${cell.date}: ${cell.minutes} min`}
+                        className="size-3.5 rounded-sm"
+                        style={{ background: isToday ? "#b5abfc" : heatmapColor(cell.minutes) }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-xl p-3.5" style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a" }}>
+                <div className="flex items-center gap-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
+                  <TrendUp size={12} weight="regular" aria-hidden="true" />
+                  Goethe {progress.readiness.level.toUpperCase()}
+                </div>
+                <p className="mt-1 text-[13px] font-medium capitalize">{progress.readiness.readinessLabel}</p>
+                <div className="mt-2 h-[5px] overflow-hidden rounded-full" style={{ background: "#292b31" }}>
+                  <div className="h-full rounded-full" style={{ width: `${progress.readiness.syllabusPercent}%`, background: "#9184d9" }} />
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
-        <div className="flex flex-col gap-3.5">
+        <div className="flex flex-col gap-3.5 overflow-y-auto">
           <div className="flex flex-1 items-center justify-center rounded-xl p-4" style={{ background: "#1c1f2c" }}>
             <Constellation words={words} highlightWordId={lastReviewed} />
           </div>
           <RetentionCurve entries={historyData?.entries ?? []} />
+          {dashboardData && (
+            <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+              <ActivityHeatmap cells={dashboardData.heatmap} />
+            </div>
+          )}
+          {hourly && (
+            <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+              <HourOfDayChart hours={hourly.hours} />
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-3.5 overflow-y-auto">
@@ -428,6 +581,24 @@ export default function Stats() {
               >
                 Drill the shaky ones
               </button>
+            </div>
+          )}
+
+          {progress && (progress.weakAreas.length > 0 || progress.improvedMost.length > 0) && (
+            <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+              <WeakAreasCard weakAreas={progress.weakAreas} improvedMost={progress.improvedMost} />
+            </div>
+          )}
+
+          {progress && examStatus && (
+            <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+              <ExamTrendCard testAvg={progress.kpis.testAvg} readiness={progress.readiness} attempts={examStatus.attempts} />
+            </div>
+          )}
+
+          {sourcesData && (
+            <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+              <SourcesRollupCard sources={sourcesData.sources} />
             </div>
           )}
         </div>
