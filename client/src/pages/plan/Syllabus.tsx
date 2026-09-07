@@ -9,7 +9,7 @@ import { useNavStack } from "../../lib/navStack";
 import { invalidateHub } from "../learning-hub/queryHelpers";
 import { SourceRow } from "./Sources";
 import { StationDetailModal } from "./StationDetailModal";
-import { SyllabusSourcesDesktop } from "./SyllabusSourcesDesktop";
+import { SyllabusDesktop } from "./SyllabusDesktop";
 import { deriveStations, stationStatus, type Station } from "./stations";
 
 export const LEVEL_LABELS: Record<CefrLevel, string> = { a1: "A1", a2: "A2", b1: "B1" };
@@ -22,8 +22,10 @@ export const LEVELS: CefrLevel[] = ["a1", "a2", "b1"];
  * own note to compare the two before assuming reuse — they don't match).
  * Tapping a reachable station opens the existing StationDetailModal for the
  * real item-management functionality (skip/add/delete/attachments) rather
- * than reimplementing all of that inline. Exported for reuse by the
- * desktop paired Syllabus+Sources screen (SyllabusSourcesDesktop.tsx). */
+ * than reimplementing all of that inline (mobile only — the desktop
+ * SyllabusDesktop.tsx uses this same node but its own inline accordion,
+ * StationAccordion.tsx, instead of this modal). Exported for reuse by
+ * SyllabusDesktop.tsx's column 1 timeline. */
 export function StationNode({
   station,
   index,
@@ -128,9 +130,9 @@ export default function Syllabus() {
   );
   const [showAddItem, setShowAddItem] = useState(false);
   // md-only: at md the page keeps just the roadmap/station-detail columns
-  // (lg's SyllabusSourcesDesktop 3rd column doesn't fit), so Sources is
-  // reached via this small tab instead of being unreachable — reuses the
-  // same SourceRow list content lg's own 3rd column already renders.
+  // (lg's 3rd column, now per-station notes, doesn't fit either), so
+  // Sources is reached via this small tab instead of being unreachable —
+  // reuses the same SourceRow list content the real Sources page renders.
   const [mdView, setMdView] = useState<"syllabus" | "sources">("syllabus");
   const { data: sourcesData } = useQuery({ queryKey: ["learning", "sources"], queryFn: api.learningSources, enabled: mdView === "sources" });
 
@@ -323,12 +325,14 @@ export default function Syllabus() {
       )}
     </div>
 
-    {/* Desktop (lg+) — the paired Syllabus+Sources 3-pane screen (German
-        Companion Desktop.dc.html id="2d"); Sources renders the identical
-        component from its own route too, see SyllabusSourcesDesktop.tsx's
-        doc comment. */}
+    {/* Desktop (lg+) — the 3-pane Route/Station-accordion/Notes screen
+        (Claude Design handoff turn 7a), replacing the old paired
+        Syllabus+Sources layout (German Companion Desktop.dc.html id="2d")
+        that used to live here — Sources has had its own independent
+        desktop layout since an earlier pass, so this page no longer
+        delegates to (or shares state with) it at all. */}
     <div className="hidden lg:flex">
-      <SyllabusSourcesDesktop />
+      <SyllabusDesktop />
     </div>
     </>
   );
