@@ -1,15 +1,15 @@
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Clock } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, Check, Pause, Play } from "@phosphor-icons/react";
 import { api } from "../../api/client";
 import type { RoadmapTask, RoadmapTaskType } from "../../api/types";
 import { Attachments } from "../../components/Attachments";
 import AudioRecorder from "../../components/AudioRecorder";
 import { NoteComposer } from "../../components/notes/NoteComposer";
 import { NoteEditor } from "../../components/notes/NoteEditor";
-import { Button } from "../../components/ui/Button";
 import { BottomSheet } from "../../components/ui/BottomSheet";
-import { DurationPicker } from "../../components/ui/DurationPicker";
+import { formatMmSs, liveTimerSeconds } from "../../lib/taskTimer";
+import { SKILL_LABELS } from "../../lib/skills";
 import type { Destination } from "./destinations";
 import { invalidateHub } from "./queryHelpers";
 
@@ -19,17 +19,142 @@ const TYPE_CTA: Partial<Record<RoadmapTaskType, { label: string; to: Destination
   milestone_test: { label: "Take test →", to: "test" },
 };
 
-const SKILL_LABEL: Record<string, string> = {
-  grammar: "Grammar",
-  vocab: "Vocab",
-  listening: "Listening",
-  speaking: "Speaking",
-  writing: "Writing",
-  reading: "Reading",
-  bureaucracy: "Context",
-  milestone: "Milestone",
-  reflection: "Rest",
-};
+// Same estimate heuristic Plan.tsx's own estimateMinutes() uses — no real
+// per-task estimate field exists, and the design mock's "10 min estimate"
+// is exactly this kind of type-based number, not a stored value.
+function estimateMinutes(task: RoadmapTask): number {
+  switch (task.type) {
+    case "vocab":
+      return 10;
+    case "milestone_test":
+      return 15;
+    case "study_source":
+      return 20;
+    default:
+      return 10;
+  }
+}
+
+const QUICK_ADD_SECONDS = [5 * 60, 10 * 60, 15 * 60];
+
+/** The running stopwatch — start/pause, a fill bar against the type-based
+ * estimate, quick-add pills, and an "Enter manually" correction. Always
+ * re-derives its displayed total from the task's own server-stored
+ * (timerSeconds, timerRunningSince) pair on every refetch/tick rather than
+ * accumulating locally, so a timer left running keeps counting correctly
+ * across a close/reopen, a tab reload, or a different device — the design
+ * spec's explicit persistence requirement. */
+function TaskTimer({ task, onUpdate, pending }: { task: RoadmapTask; onUpdate: (data: Parameters<typeof api.updateRoadmapTask>[1]) => void; pending: boolean }) {
+  // Forces a re-render once a second while running so the displayed elapsed
+  // time (recomputed fresh from the task's own server state below, not from
+  // this counter) keeps ticking — the counter's value itself is unused.
+  const [, forceTick] = useState(0);
+  const running = task.timerRunningSince !== null;
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualDraft, setManualDraft] = useState("");
+
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(() => forceTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [running]);
+
+  const elapsed = liveTimerSeconds(task);
+  const estimateSeconds = estimateMinutes(task) * 60;
+  const fillPct = Math.min(100, (elapsed / estimateSeconds) * 100);
+
+  return (
+    <div className="rounded-[14px] p-4" style={{ background: "#20222f" }}>
+      <div className="flex items-center justify-between">
+        <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+          Time logged
+        </div>
+        <div className="text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+          {Math.round(elapsed / 60)} / {estimateMinutes(task)} min estimate
+        </div>
+      </div>
+
+      <div className="mt-2.5 flex items-center gap-3">
+        <div className="font-mono text-[40px] font-medium tabular-nums" style={{ letterSpacing: "-.02em" }}>
+          {formatMmSs(elapsed)}
+        </div>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => onUpdate({ timerAction: running ? "pause" : "start" })}
+          className="ml-auto flex min-h-[38px] items-center gap-1.5 rounded-[9px] px-4 text-[13px] font-medium text-white disabled:opacity-50"
+          style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+        >
+          {running ? <Pause size={14} weight="fill" aria-hidden="true" /> : <Play size={14} weight="fill" aria-hidden="true" />}
+          {running ? "Running" : "Start"}
+        </button>
+        <button
+          type="button"
+          title="Reset logged time"
+          disabled={pending}
+          onClick={() => {
+            if (confirm("Reset this task's logged time to 0?")) onUpdate({ timerAction: "reset" });
+          }}
+          className="hidden shrink-0 rounded-[9px] p-2 lg:grid lg:place-items-center"
+          style={{ color: "rgba(233,233,237,.5)" }}
+        >
+          <ArrowCounterClockwise size={16} weight="regular" aria-hidden="true" />
+        </button>
+      </div>
+
+      <div className="mt-2.5 h-[5px] overflow-hidden rounded-[3px]" style={{ background: "rgba(233,233,237,.08)" }}>
+        <div className="h-full rounded-[3px]" style={{ width: `${fillPct}%`, background: "linear-gradient(to right,#423a6a,#9184d9)" }} />
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        {QUICK_ADD_SECONDS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            disabled={pending}
+            onClick={() => onUpdate({ setSeconds: elapsed + s })}
+            className="rounded-full px-2.5 py-1 text-[11.5px]"
+            style={{ border: "1px solid rgba(233,233,237,.16)", color: "rgba(233,233,237,.7)" }}
+          >
+            +{s / 60} min
+          </button>
+        ))}
+        {manualOpen ? (
+          <span className="flex items-center gap-1.5">
+            <input
+              autoFocus
+              type="number"
+              min={0}
+              value={manualDraft}
+              onChange={(e) => setManualDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                const n = Number(manualDraft);
+                if (!Number.isNaN(n) && n >= 0) onUpdate({ setSeconds: Math.round(n * 60) });
+                setManualOpen(false);
+              }}
+              placeholder="min"
+              className="w-16 rounded-[7px] px-2 py-1 text-[12.5px] outline-none"
+              style={{ background: "#161826", border: "1px solid rgba(233,233,237,.16)", color: "#e9e9ed" }}
+            />
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setManualDraft(String(Math.round(elapsed / 60)));
+              setManualOpen(true);
+            }}
+            className="text-[11.5px] font-medium"
+            style={{ color: "#b5abfc" }}
+          >
+            Enter manually
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /** This task's own Notes — proper `Note` rows linked via roadmapTaskId
  * (inheriting the task's skill), not the old single journalEntry field.
@@ -40,112 +165,32 @@ function TaskNotesSection({ task, onChanged }: { task: RoadmapTask; onChanged: (
 
   return (
     <div>
-      <p className="text-caption font-semibold text-ink-400">Notes{notes.length > 0 ? ` (${notes.length})` : ""}</p>
+      <div className="flex items-center justify-between">
+        <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+          Notes on this task{notes.length > 0 ? ` (${notes.length})` : ""}
+        </div>
+      </div>
       {!isLoading && notes.length > 0 && (
-        <div className="mt-1.5 space-y-2">
+        <div className="mt-2 space-y-2">
           {notes.map((note) => (
             <NoteEditor key={note.id} note={note} onChanged={onChanged} />
           ))}
         </div>
       )}
-      <div className="mt-2">
+      <div className="mt-2.5">
         <NoteComposer roadmapTaskId={task.id} skill={task.skill} onCreated={onChanged} />
       </div>
     </div>
   );
 }
 
-/** The fields shared by both chrome variants below — description, syllabus
- * breadcrumb, CTA, minutes, audio recorder, attachments, notes, done button.
- * Only the header (checkbox/title/skill-badge/close button) and outer shell
- * differ between the slide-over (lg) and the centered card (below lg). */
-function TaskDetailBody({
-  task,
-  minutesDraft,
-  setMinutesDraft,
-  update,
-  cta,
-  done,
-  onNavigate,
-  invalidate,
-  onDone,
-}: {
-  task: RoadmapTask;
-  minutesDraft: string;
-  setMinutesDraft: (v: string) => void;
-  update: ReturnType<typeof useMutation<unknown, Error, Parameters<typeof api.updateRoadmapTask>[1]>>;
-  cta: { label: string; to: Destination } | undefined;
-  done: boolean;
-  onNavigate: (d: Destination) => void;
-  invalidate: () => void;
-  onDone: () => void;
-}) {
-  // DurationPicker's onChange fires on every drag tick (each 5-min snap),
-  // not just on release — debounce the actual save so dragging across the
-  // dial doesn't fire a PATCH per tick.
-  const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const commitMinutes = (n: number) => {
-    if (commitTimer.current) clearTimeout(commitTimer.current);
-    commitTimer.current = setTimeout(() => {
-      if (n !== task.minutesSpent) update.mutate({ minutesSpent: n === 0 ? null : n });
-    }, 400);
-  };
-
-  return (
-    <div className="space-y-4">
-      {task.description && <p className="text-body text-ink-600">{task.description}</p>}
-      {task.syllabusItem && (
-        <div>
-          <p className="text-caption text-ink-400">
-            From syllabus: {task.syllabusItem.level.toUpperCase()}
-            {task.syllabusItem.theme ? ` › ${task.syllabusItem.theme}` : ""}
-          </p>
-          {task.syllabusItem.description && <p className="mt-1 text-body text-ink-600">{task.syllabusItem.description}</p>}
-        </div>
-      )}
-
-      {cta && !done && (
-        <button onClick={() => onNavigate(cta.to)} className="text-body font-semibold text-brand-500 hover:underline">
-          {cta.label}
-        </button>
-      )}
-
-      {/* the dial is the primary, always-visible control here — no toggle
-          hiding it behind a plain-text "12 min" state, per an explicit
-          user ask for a more efficient minimal dial matching the rest of
-          the app's UI (the dial itself, DurationPicker, was already real —
-          it was just hidden behind an extra click most of the time). */}
-      <div className="flex items-center gap-2.5 rounded-md bg-paper p-2.5">
-        <Clock className="size-3.5 shrink-0 text-ink-400" aria-hidden="true" />
-        <DurationPicker
-          value={minutesDraft === "" ? 0 : Number(minutesDraft)}
-          onChange={(n) => {
-            setMinutesDraft(String(n));
-            commitMinutes(n);
-          }}
-          max={180}
-        />
-      </div>
-
-      {task.files.length > 0 && <Attachments files={task.files} parent={{ roadmapTaskId: task.id }} onChanged={invalidate} renderTrigger={() => null} />}
-
-      {task.skill === "speaking" && <AudioRecorder roadmapTaskId={task.id} onUploaded={invalidate} />}
-
-      <TaskNotesSection task={task} onChanged={invalidate} />
-
-      <Button variant="outline" className="w-full" onClick={onDone}>
-        Done
-      </Button>
-    </div>
-  );
-}
-
 /**
- * Task detail on the standard `BottomSheet` primitive (slide-up sheet below
- * md, centered dialog at md+) — previously two bespoke shells (a right-
- * anchored slide-over at lg, a blurred-backdrop centered card below lg),
- * each with its own hand-rolled focus-trap. That predated BottomSheet and
- * used a colored/blurred scrim BottomSheet doesn't.
+ * Task detail on the standard `BottomSheet` primitive — a centered 560px
+ * dialog at md+ (widened via BottomSheet's className override), a slide-up
+ * sheet below md. Reskinned per the Claude Design handoff's turn 9a: a
+ * running stopwatch (TaskTimer above) replacing the old static
+ * DurationPicker dial, plus a persistent notes composer, instead of the
+ * pre-Nocturne shell this previously was.
  */
 export function TaskDetailDrawer({
   task,
@@ -157,7 +202,6 @@ export function TaskDetailDrawer({
   onNavigate: (d: Destination) => void;
 }) {
   const queryClient = useQueryClient();
-  const [minutesDraft, setMinutesDraft] = useState(task.minutesSpent?.toString() ?? "");
   // Local open state (rather than requiring every caller to keep this
   // permanently mounted, the usual BottomSheet pattern) so the close
   // animation still plays even though callers conditionally render this
@@ -180,41 +224,89 @@ export function TaskDetailDrawer({
   });
 
   const done = task.completedAt !== null;
-  // most task types get no CTA at all beyond a description/syllabus
-  // breadcrumb; a syllabus-linked "generic" task (e.g. the daily reading/
-  // listening/speaking/writing slots) still has somewhere concrete to learn
-  // more, even without a dedicated task type of its own
-  const cta = TYPE_CTA[task.type] ?? (task.type === "generic" && task.syllabusItem ? { label: "View in Syllabus →", to: "syllabus" as Destination } : undefined);
+  const typeCta = TYPE_CTA[task.type];
 
   return (
-    <BottomSheet open={open} onClose={close}>
+    <BottomSheet open={open} onClose={close} className="lg:max-w-[560px]">
       <div className="mb-4 pr-8">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <button
+            type="button"
             onClick={() => toggle.mutate(!done)}
-            className={`grid size-5 shrink-0 place-items-center rounded-sm border text-micro text-white ${done ? "border-ink-900 bg-ink-900" : "border-hairline"}`}
+            aria-label={done ? "Mark not done" : "Mark done"}
+            className="grid size-6 shrink-0 place-items-center rounded-full"
+            style={{ background: done ? "#9184d9" : "transparent", border: done ? "none" : "1px solid rgba(233,233,237,.25)" }}
           >
-            {done && <Check size={12} weight="bold" aria-hidden="true" />}
+            {done && <Check size={13} weight="bold" style={{ color: "#161826" }} aria-hidden="true" />}
           </button>
-          <h2 className={`text-body-lg font-semibold ${done ? "text-ink-400 line-through" : ""}`}>{task.title}</h2>
+          <h2 className={`text-[18px] font-medium ${done ? "line-through" : ""}`} style={{ color: done ? "rgba(233,233,237,.5)" : "#e9e9ed" }}>
+            {task.title}
+          </h2>
         </div>
-        {task.skill && (
-          <span className="mt-1.5 inline-block rounded-full bg-paper px-2.5 py-0.5 text-caption font-semibold text-ink-600">
-            {SKILL_LABEL[task.skill]}
-          </span>
-        )}
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {task.skill && (
+            <span className="rounded-full px-2.5 py-0.5 text-[11px] font-medium" style={{ background: "rgba(145,132,217,.16)", color: "#d2cefd" }}>
+              {SKILL_LABELS[task.skill]}
+            </span>
+          )}
+          {task.syllabusItem && (
+            <span className="rounded-full px-2.5 py-0.5 text-[11px]" style={{ background: "rgba(233,233,237,.08)", color: "rgba(233,233,237,.6)" }}>
+              {task.syllabusItem.level.toUpperCase()}
+              {task.syllabusItem.theme ? ` · ${task.syllabusItem.theme}` : ""}
+            </span>
+          )}
+        </div>
       </div>
-      <TaskDetailBody
-        task={task}
-        minutesDraft={minutesDraft}
-        setMinutesDraft={setMinutesDraft}
-        update={update}
-        cta={cta}
-        done={done}
-        onNavigate={onNavigate}
-        invalidate={invalidate}
-        onDone={close}
-      />
+
+      <div className="space-y-4">
+        {task.description && <p className="text-[13.5px]" style={{ color: "rgba(233,233,237,.62)" }}>{task.description}</p>}
+
+        <div className="flex flex-wrap items-center gap-4">
+          {typeCta && !done && (
+            <button type="button" onClick={() => onNavigate(typeCta.to)} className="text-[13px] font-semibold" style={{ color: "#b5abfc" }}>
+              {typeCta.label}
+            </button>
+          )}
+          {task.syllabusItem && (
+            <button
+              type="button"
+              onClick={() => onNavigate("syllabus")}
+              className="text-[13px] font-semibold"
+              style={{ color: "#b5abfc" }}
+            >
+              View in syllabus →
+            </button>
+          )}
+        </div>
+
+        <TaskTimer task={task} onUpdate={(data) => update.mutate(data)} pending={update.isPending} />
+
+        {task.files.length > 0 && <Attachments files={task.files} parent={{ roadmapTaskId: task.id }} onChanged={invalidate} renderTrigger={() => null} />}
+
+        {task.skill === "speaking" && <AudioRecorder roadmapTaskId={task.id} onUploaded={invalidate} />}
+
+        <TaskNotesSection task={task} onChanged={invalidate} />
+
+        <div className="flex gap-2.5 pt-1">
+          <button
+            type="button"
+            onClick={() => {
+              toggle.mutate(true);
+              close();
+            }}
+            className="min-h-[44px] flex-[1.5] rounded-[11px] text-[14px] font-medium text-white"
+            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Check size={14} weight="bold" aria-hidden="true" />
+              Mark complete
+            </span>
+          </button>
+          <button type="button" onClick={close} className="min-h-[44px] flex-1 rounded-[11px] border text-[14px] font-medium" style={{ borderColor: "rgba(233,233,237,.16)" }}>
+            Done
+          </button>
+        </div>
+      </div>
     </BottomSheet>
   );
 }

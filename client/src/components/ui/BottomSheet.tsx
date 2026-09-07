@@ -35,10 +35,14 @@ export function BottomSheet({
   open,
   onClose,
   children,
+  className,
 }: {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
+  /** Overrides the default `max-w-md` (e.g. a wider desktop dialog) —
+   * merged via `cn()`, so a `max-w-*` class here wins over the default. */
+  className?: string;
 }) {
   const isDesktop = useIsDesktop();
 
@@ -76,6 +80,7 @@ export function BottomSheet({
           isDesktop
             ? "inset-0 m-auto h-fit max-h-[85vh] overflow-y-auto rounded-[20px] py-6"
             : "inset-x-0 bottom-0 mx-auto rounded-t-[20px] pt-3 pb-[calc(34px+env(safe-area-inset-bottom))]",
+          className,
         )}
         style={{
           background: "linear-gradient(180deg,#232532 0%,#1c1f2c 100%)",

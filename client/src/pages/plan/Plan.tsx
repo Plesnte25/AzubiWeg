@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   ArrowCounterClockwise,
   Cards,
@@ -290,9 +291,18 @@ function KeepGoingCard({ onPull, pending }: { onPull: () => void; pending: boole
 
 export default function Plan() {
   const { push } = useNavStack();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [view, setView] = useState<ViewMode>("day");
   const [openTask, setOpenTask] = useState<RoadmapTask | null>(null);
+  // A deep link from Dashboard's "Next in your plan" card (a task type with
+  // no dedicated practice screen of its own) arrives as router state naming
+  // the task to open — same one-time-read pattern Syllabus.tsx's own
+  // openStationTheme deep link uses. Cleared once consumed so navigating
+  // away and back with the browser's own history doesn't reopen it.
+  const [pendingOpenTaskId, setPendingOpenTaskId] = useState<string | null>(
+    () => (location.state as { openTaskId?: string } | null)?.openTaskId ?? null,
+  );
   // null = viewing today (the common case, backed by roadmapToday's richer
   // payload); a real date string = an arbitrary day picked via PlanHeader's
   // date input, backed by roadmapDay(date) instead. Both are normalized to
@@ -318,6 +328,38 @@ export default function Plan() {
   });
   const today = selectedDate ? (selectedResp ? { date: selectedResp.day.date, tasks: selectedResp.day.tasks } : undefined) : todayResp;
   const todayLoading = selectedDate ? selectedRespLoading : todayRespLoading;
+
+  useEffect(() => {
+    if (!pendingOpenTaskId || !todayResp) return;
+    const inToday = todayResp.tasks.find((t) => t.id === pendingOpenTaskId);
+    if (inToday) {
+      setOpenTask(inToday);
+      setPendingOpenTaskId(null);
+      return;
+    }
+    // Not on today's list — e.g. a Syllabus "Practice" deep link for a task
+    // scheduled on an overdue backlog day or a future day. Fetch it
+    // directly rather than silently doing nothing. Clearing
+    // pendingOpenTaskId only once the request settles (not synchronously
+    // here) matters: doing it synchronously would change this effect's own
+    // dependency mid-flight, re-running its cleanup and discarding the
+    // in-flight result via the `cancelled` guard below.
+    let cancelled = false;
+    api.roadmapTask(pendingOpenTaskId)
+      .then(({ task }) => {
+        if (!cancelled) setOpenTask(task);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("Couldn't find that task.");
+      })
+      .finally(() => {
+        if (!cancelled) setPendingOpenTaskId(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingOpenTaskId, todayResp]);
+
   const { data: week } = useQuery({ queryKey: ["roadmap", "week", undefined], queryFn: () => api.roadmapWeek() });
   const { data: syllabus } = useQuery({ queryKey: ["learning", "syllabus"], queryFn: api.learningSyllabus });
   const tomorrowDate = today ? localDateStr(new Date(new Date(`${today.date.slice(0, 10)}T00:00:00`).getTime() + 86_400_000)) : null;
@@ -339,7 +381,14 @@ export default function Plan() {
   });
 
   const liveOpenTask = openTask && (today?.tasks.find((t) => t.id === openTask.id) ?? openTask);
-  const onNavigate = (d: Destination) => push(d === "sources" ? "/plan/sources" : d === "test" ? "/plan/self-tests" : "/");
+  const onNavigate = (d: Destination) => {
+    if (d === "sources") return push("/plan/sources");
+    if (d === "test") return push("/plan/self-tests");
+    if (d === "syllabus" && liveOpenTask?.syllabusItem) {
+      return push("/plan/syllabus", { state: { openStationTheme: liveOpenTask.syllabusItem.theme } });
+    }
+    return push("/");
+  };
 
   const weekDays = week?.days.map((d) => ({ date: d.date, status: d.status, done: d.tasks.filter((t) => t.completedAt !== null).length, total: d.tasks.length }));
 

@@ -8,6 +8,7 @@ import ReviewDial from "../components/ReviewDial";
 import { BottomSheet } from "../components/ui/BottomSheet";
 import { Skeleton } from "../components/ui/Skeleton";
 import { toast } from "../components/ui/Toast";
+import { heatmapColor } from "../lib/heatmapColor";
 import { levelStates } from "../lib/levels";
 import { SKILL_LABELS } from "../lib/skills";
 import { useNavStack } from "../lib/navStack";
@@ -161,7 +162,25 @@ export default function Dashboard() {
       switchTab("/plan/self-tests");
       return;
     }
-    ctaFor(nextTask, push, switchTab)();
+    // vocab/study_source/milestone_test each have their own dedicated
+    // practice screen (same as TaskDetailDrawer's own TYPE_CTA link for
+    // these types) — only a "generic" task (grammar/reading/writing/
+    // reflection, no dedicated flow of its own) opens the real Task Detail
+    // modal, giving it the timer/notes experience directly rather than
+    // just landing on the Plan tab. Pushing to /plan with a curated
+    // openTaskId (same pattern as Syllabus.tsx's openStationTheme deep
+    // link) lets Plan.tsx's own already-lazy-loaded TaskDetailDrawer open
+    // it there, instead of Dashboard importing that component itself —
+    // Dashboard is one of only two eagerly-bundled routes (see main.tsx),
+    // and a direct/lazy import of TaskDetailDrawer's Tiptap-heavy module
+    // graph from here was verified to bloat the eager bundle by ~30KB gzip
+    // regardless of how it was imported, so it must never be referenced
+    // from this file at all.
+    if (nextTask.type === "vocab" || nextTask.type === "milestone_test" || nextTask.type === "study_source") {
+      ctaFor(nextTask, push, switchTab)();
+      return;
+    }
+    push("/plan", { state: { openTaskId: nextTask.id } });
   };
 
   // lg-only: column 1's streak strip (last 7 days of a 30d window already
@@ -483,14 +502,12 @@ export default function Dashboard() {
               <div className="mt-2.5 flex gap-[6px]">
                 {last7Days.map((cell, i) => {
                   const isToday = i === last7Days.length - 1;
-                  const intensity = cell.minutes === 0 ? 0 : cell.minutes < 15 ? 1 : cell.minutes < 30 ? 2 : cell.minutes < 60 ? 3 : 4;
-                  const colors = ["#20222f", "#423a6a", "#5d5294", "#796cbf", "#9184d9"];
                   return (
                     <div
                       key={cell.date}
                       title={`${cell.date}: ${cell.minutes} min`}
                       className="h-[22px] flex-1 rounded-[5px]"
-                      style={{ background: isToday ? "#b5abfc" : colors[intensity] }}
+                      style={{ background: isToday ? "#b5abfc" : heatmapColor(cell.minutes) }}
                     />
                   );
                 })}

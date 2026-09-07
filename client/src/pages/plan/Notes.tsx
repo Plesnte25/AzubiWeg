@@ -331,7 +331,13 @@ export default function Notes() {
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
 
   const invalidate = () => invalidateHub(queryClient);
-  const onNavigate = (d: Destination) => push(d === "sources" ? "/plan/sources" : "/plan");
+  const onNavigate = (d: Destination) => {
+    if (d === "sources") return push("/plan/sources");
+    if (d === "syllabus" && openTask?.syllabusItem) {
+      return push("/plan/syllabus", { state: { openStationTheme: openTask.syllabusItem.theme } });
+    }
+    return push("/plan");
+  };
 
   const rows: FeedRow[] = useMemo(() => {
     if (!data) return [];
@@ -473,8 +479,8 @@ export default function Notes() {
 
     {/* lg+: real desktop layout — notes list | selected note's editor,
         master-detail (the same pattern Vocabulary.tsx's word list +
-        embedded WordDetailContent, and SyllabusSourcesDesktop.tsx's
-        station list + detail column, already use), matching Dashboard's
+        embedded WordDetailContent, and SyllabusDesktop.tsx's station
+        list + accordion, already use), matching Dashboard's
         grid+gap spacing instead of the old "just recenter the mobile
         column in a bordered card" lg: treatment this replaces. Selecting
         or creating a note updates selectedNoteId locally — no navigation,
