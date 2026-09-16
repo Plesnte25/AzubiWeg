@@ -46,6 +46,26 @@ export function useReviewSession({ words }: { words?: Word[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, queue, words]);
 
+  // staleTime: Infinity above is deliberate -- it keeps this session's queue
+  // frozen (no reshuffling mid-session if some other invalidation fires) --
+  // but that same freeze must not survive past this mount, or reopening
+  // Review after a partial/interrupted session replays the untouched
+  // pre-session snapshot instead of the real remaining due list (each grade
+  // is already persisted server-side immediately; only this client cache was
+  // stale). removeQueries (not invalidateQueries) on unmount: invalidating
+  // still lets the next mount's useQuery synchronously return the now-stale
+  // cached data on its first render, and the `queue === null` guard above
+  // then locks that stale snapshot in before the background refetch it
+  // triggers resolves. Removing the cache entry outright means the next
+  // mount starts with no data at all, so `queue` only ever gets seeded once
+  // a real network round trip against current srDue values completes.
+  useEffect(() => {
+    if (words !== undefined) return;
+    return () => {
+      queryClient.removeQueries({ queryKey: ["review-queue"] });
+    };
+  }, [queryClient, words]);
+
   useEffect(() => {
     const id = setInterval(() => setElapsedSeconds(Math.round((Date.now() - startedAtRef.current) / 1000)), 1000);
     return () => clearInterval(id);

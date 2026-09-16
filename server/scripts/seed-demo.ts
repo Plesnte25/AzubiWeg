@@ -18,7 +18,6 @@ import { prisma } from "../src/db.js";
 import { activateRoadmapForUser } from "../src/routes/roadmap.js";
 import { setRoadmapTaskCompletion } from "../src/services/learning/completion-sync.js";
 import { ensureSyllabusSeeded } from "../src/services/learning/syllabus-seed.js";
-import { ensureSavedLinksSeeded } from "../src/services/learning/saved-links-seed.js";
 
 const DEMO_EMAIL = process.env.DEMO_USER_EMAIL ?? "demo@azubiweg.internal";
 const DAY_MS = 86_400_000;
@@ -200,7 +199,6 @@ async function main() {
   const user = await seedUser();
 
   await ensureSyllabusSeeded(user.id);
-  await ensureSavedLinksSeeded(user.id);
   await seedRoadmap(user.id);
   await seedWords(user.id);
   await seedReviewLogs(user.id);
