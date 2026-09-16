@@ -210,7 +210,7 @@ export default function Syllabus() {
         </div>
       </div>
 
-      <div className="mt-3 hidden gap-1 rounded-full p-1 md:flex lg:hidden" style={{ background: "#20222f", width: "fit-content" }}>
+      <div className="mt-3 flex gap-1 rounded-full p-1 lg:hidden" style={{ background: "#20222f", width: "fit-content" }}>
         {(["syllabus", "sources"] as const).map((v) => (
           <button
             key={v}

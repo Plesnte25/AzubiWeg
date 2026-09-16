@@ -335,6 +335,19 @@ button:active:not(:disabled) {
   transform: scale(0.98);
 }
 
+/* Every Nocturne input/select/textarea sets outline-none (Tailwind's
+   "outline: 2px solid transparent", not a true removal) with only a static
+   border and no replacement -- no visual feedback for keyboard focus
+   anywhere in the app. One rule here instead of ~20 per-file fixes;
+   box-shadow (not outline) respects each element's own border-radius and
+   layers cleanly over both bordered and borderless input styles without a
+   DOM change. */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  box-shadow: 0 0 0 2px #9184d9;
+}
+
 /* Depth: three surface levels (see components/ui/Card.tsx). @layer components
    is required here, not a plain unlayered rule — Tailwind v4's own utilities
    (shadow-md, shadow-lg, shadow-none, ...) live in the `utilities` layer,

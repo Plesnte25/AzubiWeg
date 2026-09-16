@@ -118,21 +118,23 @@ function CoverImageSlot({ source, onChanged }: { source: StudySource; onChanged:
         e.stopPropagation();
         fileInput.current?.click();
       }}
-      className="relative block h-[84px] w-full shrink-0 overflow-hidden rounded-t-xl"
+      className="relative block h-[84px] w-full shrink-0 rounded-t-xl"
       style={{ background: "#20222f" }}
     >
-      {displayUrl ? (
-        <img src={displayUrl} alt="" className="size-full object-cover" />
-      ) : (
-        <div className="grid size-full place-items-center">
-          <Icon size={26} weight="regular" style={{ color: "rgba(233,233,237,.25)" }} aria-hidden="true" />
-        </div>
-      )}
-      {uploading && (
-        <div className="absolute inset-0 grid place-items-center text-[11px]" style={{ background: "rgba(10,11,18,.55)", color: "#e9e9ed" }}>
-          Uploading…
-        </div>
-      )}
+      <div className="absolute inset-0 overflow-hidden rounded-t-xl">
+        {displayUrl ? (
+          <img src={displayUrl} alt="" className="size-full object-cover" />
+        ) : (
+          <div className="grid size-full place-items-center">
+            <Icon size={26} weight="regular" style={{ color: "rgba(233,233,237,.25)" }} aria-hidden="true" />
+          </div>
+        )}
+        {uploading && (
+          <div className="absolute inset-0 grid place-items-center text-[11px]" style={{ background: "rgba(10,11,18,.55)", color: "#e9e9ed" }}>
+            Uploading…
+          </div>
+        )}
+      </div>
       <input
         ref={fileInput}
         type="file"

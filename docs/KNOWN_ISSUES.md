@@ -15,6 +15,79 @@ just closed out (Task Detail modal, Syllabus 3-pane rework, Sources rebuild
 
 ## Resolved during the redesign (for reference — no action needed)
 
+- **2026-09-16, elite UI/UX audit pass** — a 6-category audit (layout/
+  alignment, spacing/rhythm, typography, interactive states, borders/
+  shadows/radii, responsive/edge-cases) run via 3 parallel codebase audits,
+  each independently re-verified against the live files before being acted
+  on. Typography, border-radius nesting, and shadow-bleed handling were all
+  confirmed already clean — no changes needed there. 9 real, verified
+  issues fixed:
+  1. **Syllabus Sources toggle unreachable on phones** — the in-page
+     Syllabus/Sources segmented toggle (`Syllabus.tsx`) was
+     `hidden md:flex lg:hidden` (768-1023px only) while the state it
+     controlled was read unconditionally at all widths below `lg` — real
+     phones could never reach the "sources" branch of this in-page toggle
+     (the standalone `/plan/sources` route was still reachable elsewhere,
+     so not a total dead-end, but still dead code and a genuine violation
+     of this file's own "no intermediate md-specific nav" convention).
+     Widened to `flex lg:hidden`. Verified live: visible and functional at
+     375px.
+  2. **CaptureFab breakpoint + safe-area gaps** — hid at `md:` while its
+     anchor tab bar stayed visible through `lg:hidden` (vanished in the
+     tablet band with the tab bar still on screen), and its `bottom-[76px]`
+     offset had no `env(safe-area-inset-bottom)` term unlike every other
+     fixed bottom element in the app. Fixed both. Verified live across
+     375/900/1200px: FAB and tab bar visibility now always match.
+  3. **Vocabulary headwords could wrap to 2 lines** — the headword div
+     lacked `truncate` while the meaning/plural line directly beneath it
+     already had it; a long German compound would grow that row's height
+     and misalign its sparkline/chevron vs. neighboring rows. Added
+     `truncate` at both mobile and desktop list rows.
+  4. **Zero `focus-visible` styling anywhere in the app** — every input/
+     select/textarea used `outline-none` with a static border and no
+     keyboard-focus feedback at all, including Login. One shared
+     `input:focus-visible, select:focus-visible, textarea:focus-visible`
+     rule added to `index.css` instead of ~20 per-file fixes. Verified
+     live: a visible ring now appears tabbing into Login's email field.
+  5. **Bare `<div onClick>` rows were keyboard-unreachable** — Vocabulary's
+     list rows and Dashboard's hero/task-detail cards had no `role`/
+     `tabIndex`/keyboard handler. Added a shared `clickableRowProps()`
+     helper (`lib/a11y.ts`) applied at 4 call sites, with an
+     `e.target !== e.currentTarget` guard specifically because 2 of the
+     Dashboard rows nest a real `<button>` (the task-done checkbox) that
+     already `stopPropagation()`s on click but not on keydown — without
+     the guard, Space on that inner button would double-fire the row's own
+     handler too. Verified live: Space on the checkbox no longer also opens
+     the task detail sheet; dragging a word row onto NotesDock still works
+     unchanged (confirmed `draggable="true"` intact alongside the new
+     `role="button"`/`tabindex="0"`).
+  6. **Rail.tsx / BottomTabBar.tsx had zero hover feedback** — inconsistent
+     with the app's own established `hover:bg-white/5` idiom used elsewhere
+     (CommandPalette, cards). Several Rail buttons set `background` via
+     inline `style` even at rest, which outranks a class-based `:hover`
+     background rule by CSS precedence — used `hover:brightness-110`
+     (a `filter`, independent of `background`) for those, `hover:bg-white/5`
+     for the ones with no conflicting inline value.
+  7. **Sources cover-image button clipped its own focus ring** — had no
+     `outline-none` (relied on the native ring) but `overflow-hidden` on
+     the button itself clipped it. Moved the clip onto a new inner
+     `absolute inset-0` wrapper around just the image/placeholder content,
+     leaving the button itself un-clipped.
+  8. **Stats.tsx desktop 1px padding drift** — two adjacent stat-tile grids
+     in the same scroll column used `p-3` vs. `p-[11px]` for the same
+     visual pattern; the mobile version of both was consistently
+     `p-[11px]`. Aligned to match.
+  9. **Vocabulary divider opacity mismatch** — mobile row divider was
+     `rgba(233,233,237,.06)`, desktop's otherwise-identical divider was
+     `.05`. Aligned desktop to `.06`.
+
+  All verified live via Playwright against the demo account (not just
+  `tsc -b`, though that stayed clean throughout) — confirmed the exact
+  before/after computed styles for the trickiest ones (Login input's
+  `box-shadow` on focus, Rail search button's `filter` on hover, Sources
+  cover button's own `overflow` no longer `hidden`) rather than trusting
+  the class names alone.
+
 - **2026-09-07, Claude Design turn 9a/7a/10a + Stats expansion pass** — the
   3 items logged below (Redesign, Google Books, Stats) all closed in one
   phased pass (Task Detail modal → Syllabus → Sources → Stats), each phase

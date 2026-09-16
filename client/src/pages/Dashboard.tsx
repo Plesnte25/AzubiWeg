@@ -12,6 +12,7 @@ import { heatmapColor } from "../lib/heatmapColor";
 import { levelStates } from "../lib/levels";
 import { SKILL_LABELS } from "../lib/skills";
 import { useNavStack } from "../lib/navStack";
+import { clickableRowProps } from "../lib/a11y";
 import { AddTaskComposer, ChapterProgressCard, localDateStr } from "./plan/planShared";
 import { ExamSchedule } from "./plan/ExamSchedule";
 import { bestMatchingStation, deriveStations } from "./plan/stations";
@@ -318,8 +319,8 @@ export default function Dashboard() {
 
       {/* ── next in your plan hero card ── */}
       <div
-        onClick={() => setTaskDetailOpen(true)}
-        className="relative mt-3 cursor-pointer overflow-hidden rounded-2xl p-3.5"
+        {...clickableRowProps(() => setTaskDetailOpen(true))}
+        className="relative mt-3 cursor-pointer overflow-hidden rounded-2xl p-3.5 transition-[filter] duration-150 hover:brightness-110"
         style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a, 0 12px 28px rgba(0,0,0,.4)" }}
       >
         <div
@@ -539,8 +540,8 @@ export default function Dashboard() {
         {/* middle column */}
         <div className="flex min-h-0 flex-col gap-3.5">
           <div
-            onClick={() => setTaskDetailOpen(true)}
-            className="relative cursor-pointer overflow-hidden rounded-2xl p-[18px]"
+            {...clickableRowProps(() => setTaskDetailOpen(true))}
+            className="relative cursor-pointer overflow-hidden rounded-2xl p-[18px] transition-[filter] duration-150 hover:brightness-110"
             style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a, 0 12px 28px rgba(0,0,0,.4)" }}
           >
             <div className="animate-pulse-glow pointer-events-none absolute -top-[50px] -right-10 size-[180px] rounded-full" style={{ background: "radial-gradient(closest-side, rgba(145,132,217,.28), transparent)" }} />
@@ -620,8 +621,8 @@ export default function Dashboard() {
                   return (
                     <div
                       key={task.id}
-                      onClick={isNext ? () => setTaskDetailOpen(true) : undefined}
-                      className="flex items-center gap-[11px] rounded-[10px] p-3"
+                      {...clickableRowProps(isNext ? () => setTaskDetailOpen(true) : undefined)}
+                      className={`flex items-center gap-[11px] rounded-[10px] p-3 transition-[filter] duration-150 ${isNext ? "hover:brightness-110" : ""}`}
                       style={{
                         background: isNext ? "linear-gradient(160deg,#2b2741,#232532)" : done ? "#20222f" : "#20222f",
                         boxShadow: isNext ? "0 0 0 1px #423a6a" : "none",

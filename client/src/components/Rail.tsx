@@ -77,7 +77,7 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
         type="button"
         onClick={onOpenPalette}
         title="Search or jump — ⌘K"
-        className="mb-1 flex w-[40px] flex-col items-center gap-1 rounded-[10px] py-2"
+        className="mb-1 flex w-[40px] flex-col items-center gap-1 rounded-[10px] py-2 transition-[filter] duration-150 hover:brightness-110"
         style={{ background: "#20222f", color: "rgba(233,233,237,.55)" }}
       >
         <MagnifyingGlass size={15} weight="regular" aria-hidden="true" />
@@ -97,8 +97,8 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
               type="button"
               onClick={() => switchTab(dest.to)}
               title={dest.label}
-              className="relative flex w-[60px] flex-col items-center gap-1 rounded-[10px] py-2"
-              style={{ background: active ? "rgba(145,132,217,.16)" : "transparent", color: active ? "#d2cefd" : "rgba(233,233,237,.55)" }}
+              className="relative flex w-[60px] flex-col items-center gap-1 rounded-[10px] py-2 transition-colors duration-150 hover:bg-white/5"
+              style={{ background: active ? "rgba(145,132,217,.16)" : undefined, color: active ? "#d2cefd" : "rgba(233,233,237,.55)" }}
             >
               <span className="relative">
                 <Icon size={18} weight="regular" aria-hidden="true" />
@@ -127,7 +127,7 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
               type="button"
               onClick={() => push(item.to)}
               title={item.label}
-              className="grid size-[30px] place-items-center rounded-[9px]"
+              className="grid size-[30px] place-items-center rounded-[9px] transition-colors duration-150 hover:bg-white/5"
               style={{ color: "rgba(233,233,237,.4)" }}
             >
               <Icon size={18} weight="regular" aria-hidden="true" />
@@ -142,7 +142,7 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
             type="button"
             onClick={() => push("/settings")}
             title={examTitle}
-            className="grid size-14 place-items-center gap-px rounded-2xl text-center"
+            className="grid size-14 place-items-center gap-px rounded-2xl text-center transition-[filter] duration-150 hover:brightness-110"
             style={{ background: "rgba(145,132,217,.09)", boxShadow: "0 0 0 1px rgba(145,132,217,.3)" }}
           >
             <FlagPennant size={11} weight="regular" style={{ color: "#9184d9" }} aria-hidden="true" />
@@ -154,7 +154,12 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
             </div>
           </button>
         )}
-        <button type="button" onClick={() => setProfileOpen(true)} title={user?.name ?? "Profile"}>
+        <button
+          type="button"
+          onClick={() => setProfileOpen(true)}
+          title={user?.name ?? "Profile"}
+          className="rounded-full transition-colors duration-150 hover:bg-white/5"
+        >
           <div
             className="grid size-8 shrink-0 place-items-center rounded-full text-[12.5px] font-medium"
             style={{ letterSpacing: "-.01em", color: "#d2cefd", background: "linear-gradient(150deg,#3a3560,#272a45)", border: "1px solid rgba(181,171,252,.4)" }}

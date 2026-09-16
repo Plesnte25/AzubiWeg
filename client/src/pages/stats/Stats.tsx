@@ -420,13 +420,13 @@ export default function Stats() {
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-xl p-3" style={{ background: "#1c1f2c" }}>
+            <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
               <div className="text-[19px] font-medium">{accuracy === null ? "—" : `${accuracy}%`}</div>
               <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
                 accuracy
               </div>
             </div>
-            <div className="rounded-xl p-3" style={{ background: "#1c1f2c" }}>
+            <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
               <div className="text-[19px] font-medium" style={{ color: "#b5abfc" }}>
                 {reviewStats?.avgIntervalAfter ?? "—"}
                 {reviewStats?.avgIntervalAfter !== null && reviewStats?.avgIntervalAfter !== undefined ? "d" : ""}
@@ -435,13 +435,13 @@ export default function Stats() {
                 avg interval
               </div>
             </div>
-            <div className="rounded-xl p-3" style={{ background: "#1c1f2c" }}>
+            <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
               <div className="text-[19px] font-medium">{reviewStats?.reviewsThisWeek ?? "—"}</div>
               <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
                 reviews this week
               </div>
             </div>
-            <div className="rounded-xl p-3" style={{ background: "#1c1f2c" }}>
+            <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
               <div className="text-[19px] font-medium" style={{ color: "#b5abfc" }}>
                 {formatProjected(pace?.projectedFinishDate ?? null)}
               </div>

@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import type { Grade } from "../api/types";
 import { barColor, buildSparkline, chipBg, chipColor, chipLabel, NO_DATA_HEIGHT, SPARKLINE_SLOTS, stripLeadingPosTag } from "../lib/wordDisplay";
 import { useNavStack } from "../lib/navStack";
+import { clickableRowProps } from "../lib/a11y";
 import { AddWordsDialog } from "./vocabulary/AddWordsDialog";
 import { NotesDock } from "./words/NotesDock";
 import { WordDetailContent } from "./words/WordDetailContent";
@@ -136,8 +137,8 @@ export default function Vocabulary() {
           return (
             <div
               key={w.id}
-              onClick={() => push(`/words/${w.id}`)}
-              className="flex cursor-pointer items-center gap-3 px-[18px] py-3"
+              {...clickableRowProps(() => push(`/words/${w.id}`))}
+              className="flex cursor-pointer items-center gap-3 px-[18px] py-3 transition-[filter] duration-150 hover:brightness-110"
               style={{ borderBottom: "1px solid rgba(233,233,237,.06)" }}
             >
               <div
@@ -147,7 +148,7 @@ export default function Vocabulary() {
                 {chipLabel(w)}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-[15.5px] font-medium">{w.headword}</div>
+                <div className="truncate text-[15.5px] font-medium">{w.headword}</div>
                 <div className="truncate text-[11.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
                   {w.meaning ? stripLeadingPosTag(w.meaning) : "no meaning yet"}
                   {plural ? ` · Pl. ${plural}` : ""}
@@ -254,19 +255,19 @@ export default function Vocabulary() {
                   setDraggingHeadword(w.headword);
                 }}
                 onDragEnd={() => setDraggingHeadword(null)}
-                onClick={() => setSelectedId(w.id)}
-                className="flex cursor-grab items-center gap-[11px] px-[18px] py-[11px] active:cursor-grabbing"
+                {...clickableRowProps(() => setSelectedId(w.id))}
+                className="flex cursor-grab items-center gap-[11px] px-[18px] py-[11px] transition-[background,box-shadow,filter] duration-150 hover:brightness-110 active:cursor-grabbing"
                 style={{
                   background: active ? "linear-gradient(90deg,rgba(145,132,217,.14),transparent)" : "transparent",
                   boxShadow: active ? "inset 2px 0 0 #9184d9" : "none",
-                  borderBottom: "1px solid rgba(233,233,237,.05)",
+                  borderBottom: "1px solid rgba(233,233,237,.06)",
                 }}
               >
                 <div className="grid size-8 shrink-0 place-items-center rounded-[9px] text-[10.5px] font-medium" style={{ background: chipBg(w), color: chipColor(w) }}>
                   {chipLabel(w)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[14px] font-medium">{w.headword}</div>
+                  <div className="truncate text-[14px] font-medium">{w.headword}</div>
                   <div className="truncate text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
                     {w.meaning ? stripLeadingPosTag(w.meaning) : "no meaning yet"}
                   </div>

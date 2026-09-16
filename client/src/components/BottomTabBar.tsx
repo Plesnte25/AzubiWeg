@@ -31,7 +31,7 @@ export default function BottomTabBar() {
             aria-label={dest.label}
             aria-current={active ? "page" : undefined}
             onClick={() => switchTab(dest.to)}
-            className={cn("flex flex-1 flex-col items-center gap-1 border-0 bg-transparent", active ? "text-brand-500" : "text-ink-400")}
+            className={cn("flex flex-1 flex-col items-center gap-1 rounded-[10px] border-0 bg-transparent transition-colors hover:bg-white/5", active ? "text-brand-500" : "text-ink-400")}
           >
             <Icon size={21} weight="regular" aria-hidden="true" />
             <span className="text-[8.5px] leading-none font-medium tracking-[.06em] uppercase">{dest.label}</span>
