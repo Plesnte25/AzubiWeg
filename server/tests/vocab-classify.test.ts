@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { classifyTheme, classifyThemeHeuristic } from "../src/services/vocab/classify.js";
+import { classifyTheme, classifyThemeHeuristic, withComputedFields } from "../src/services/vocab/classify.js";
+import type { CardCuration } from "../src/services/vault/format.js";
 
 describe("classifyThemeHeuristic", () => {
   it("classifies from the meaning text", () => {
@@ -55,5 +56,38 @@ describe("classifyTheme", () => {
       example: "Ich bringe das Formular zum Amt.",
     });
     expect(result.themenfeld).toEqual(["amt_buerokratie"]);
+  });
+});
+
+describe("withComputedFields", () => {
+  function word(meaning: string | null, curation: CardCuration) {
+    return { meaning, grammar: null, srDue: null, srInterval: null, curation };
+  }
+
+  it("attaches enrichmentStatus alongside the existing computed facets", () => {
+    const result = withComputedFields(word("(Noun) dog", "generated"));
+    expect(result.enrichmentStatus).toBe("published");
+    // existing facets still present -- this change is additive, not a replacement
+    expect(result.wortart).toBeDefined();
+    expect(result.genus).toBeDefined();
+    expect(result.state).toBeDefined();
+  });
+
+  it("published_review for an ambiguous/mt-fallback meaning under review", () => {
+    expect(withComputedFields(word("(Noun) castle", "review")).enrichmentStatus).toBe("published_review");
+  });
+
+  it("unresolved for a review-flagged card with no meaning yet", () => {
+    expect(withComputedFields(word(null, "review")).enrichmentStatus).toBe("unresolved");
+  });
+
+  it("protected for manual/mt regardless of meaning", () => {
+    expect(withComputedFields(word("(Noun) dog", "manual")).enrichmentStatus).toBe("protected");
+    expect(withComputedFields(word(null, "manual")).enrichmentStatus).toBe("protected");
+    expect(withComputedFields(word("(Noun) dog", "mt")).enrichmentStatus).toBe("protected");
+  });
+
+  it("incomplete for a blank generated placeholder", () => {
+    expect(withComputedFields(word(null, "generated")).enrichmentStatus).toBe("incomplete");
   });
 });

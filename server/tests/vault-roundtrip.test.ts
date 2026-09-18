@@ -10,6 +10,7 @@ import {
   parseSrLine,
   cardFront,
   shouldProtectCard,
+  firstProtected,
   type CardCuration,
 } from "../src/services/vault/format.js";
 
@@ -222,4 +223,51 @@ describe("shouldProtectCard", () => {
       expect(shouldProtectCard(curation)).toBe(expected);
     });
   }
+});
+
+// Regression matrix for the Phase 1.1 hotfix: a typed word and its resolved
+// headword can be TWO DIFFERENT existing rows/cards (e.g. typed "bist",
+// resolved lemma "sein"). A naive findFirst()/find() over both keys has no
+// ordering guarantee -- these tests pin down that firstProtected() always
+// finds a protected candidate regardless of which key it sits at or what
+// order the candidate list happens to come in.
+describe("firstProtected (Phase 1.1 hotfix)", () => {
+  type Candidate = { sortKey: string; curation: CardCuration };
+  const getCuration = (c: Candidate) => c.curation;
+
+  it("finds a protected candidate at the typed-key position", () => {
+    const candidates: Candidate[] = [
+      { sortKey: "bist", curation: "generated" },
+      { sortKey: "sein", curation: "manual" },
+    ];
+    expect(firstProtected(candidates, getCuration)?.sortKey).toBe("sein");
+  });
+
+  it("finds a protected candidate at the resolved-lemma-key position, regardless of array order", () => {
+    // Order flipped from the case above -- must not depend on which key
+    // happens to come first in the candidate list.
+    const candidates: Candidate[] = [
+      { sortKey: "sein", curation: "generated" },
+      { sortKey: "bist", curation: "manual" },
+    ];
+    expect(firstProtected(candidates, getCuration)?.sortKey).toBe("bist");
+  });
+
+  for (const curation of ["review", "manual", "mt"] as const) {
+    it(`finds a lone ${curation} candidate when the other key is absent`, () => {
+      expect(firstProtected([{ sortKey: "sein", curation }], getCuration)?.sortKey).toBe("sein");
+    });
+  }
+
+  it("returns null when both candidates are generated (normal enrichment proceeds)", () => {
+    const candidates: Candidate[] = [
+      { sortKey: "bist", curation: "generated" },
+      { sortKey: "sein", curation: "generated" },
+    ];
+    expect(firstProtected(candidates, getCuration)).toBeNull();
+  });
+
+  it("returns null for an empty candidate list", () => {
+    expect(firstProtected([], getCuration)).toBeNull();
+  });
 });

@@ -9,6 +9,11 @@ export type Wortart = "Nomen" | "Verb" | "Adjektiv" | "Adverb" | "Funktionswort"
 export type Genus = "der" | "die" | "das" | null;
 export type SrsState = "new" | "due" | "learning" | "mastered";
 
+// Mirrors server/src/services/vault/format.ts's CardCuration and
+// server/src/services/enrichment/index.ts's DerivedEnrichmentStatus.
+export type CardCuration = "generated" | "review" | "manual" | "mt";
+export type EnrichmentStatus = "published" | "published_review" | "unresolved" | "incomplete" | "protected";
+
 export type Themenfeld =
   | "person_familie"
   | "alltag_zuhause"
@@ -73,10 +78,14 @@ export interface Word {
   declension: DeclensionTable | null;
   conjugation: ConjugationTable | null;
   exampleTranslation: string | null;
+  // vault-format field, persisted (server/src/services/vault/format.ts's CardFields)
+  curation: CardCuration;
+  reviewNote: string | null;
   // computed at read time, never persisted (server/src/services/vocab/classify.ts)
   wortart: Wortart;
   genus: Genus;
   state: SrsState;
+  enrichmentStatus: EnrichmentStatus;
 }
 
 export type RoadmapDayStripStatus = "done" | "overdue" | "today" | "upcoming";

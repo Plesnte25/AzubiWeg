@@ -1,4 +1,6 @@
 import type { CefrLevel, Themenfeld } from "@prisma/client";
+import type { CardCuration } from "../vault/format.js";
+import { deriveEnrichmentStatus, type DerivedEnrichmentStatus } from "../enrichment/index.js";
 
 export type Wortart = "Nomen" | "Verb" | "Adjektiv" | "Adverb" | "Funktionswort" | "Wendung";
 export type Genus = "der" | "die" | "das" | null;
@@ -333,13 +335,20 @@ export function classifyThemeHeuristic(
 
 /** Attaches the read-time-derived facets (never persisted) to any word-shaped row. */
 export function withComputedFields<
-  T extends { meaning: string | null; grammar: string | null; srDue: Date | null; srInterval: number | null },
->(word: T): T & { wortart: Wortart; genus: Genus; state: SrsState } {
+  T extends {
+    meaning: string | null;
+    grammar: string | null;
+    srDue: Date | null;
+    srInterval: number | null;
+    curation: CardCuration;
+  },
+>(word: T): T & { wortart: Wortart; genus: Genus; state: SrsState; enrichmentStatus: DerivedEnrichmentStatus } {
   return {
     ...word,
     wortart: deriveWortart(word.meaning, word.grammar),
     genus: deriveGenus(word.grammar),
     state: deriveSrsState(word),
+    enrichmentStatus: deriveEnrichmentStatus(word.meaning, word.curation),
   };
 }
 

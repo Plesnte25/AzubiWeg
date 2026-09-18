@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { CaretLeft, DotsThree, Flag, LinkSimple, NotePencil, SpeakerHigh, Star, Trash } from "@phosphor-icons/react";
+import { useEffect, useState, type FormEvent } from "react";
+import { CaretLeft, DotsThree, Flag, LinkSimple, NotePencil, PencilSimple, SpeakerHigh, Star, Trash, WarningCircle } from "@phosphor-icons/react";
 import { api, playWordAudio } from "../../api/client";
 import { BottomSheet } from "../../components/ui/BottomSheet";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { NoteEditor } from "../../components/notes/NoteEditor";
-import { chipColor, fullArtLabel, stripLeadingPosTag } from "../../lib/wordDisplay";
+import { chipColor, fullArtLabel, statusBadge, stripLeadingPosTag } from "../../lib/wordDisplay";
 import { generateGrammarTip } from "../../lib/grammarTips";
 import { useNavStack } from "../../lib/navStack";
 import { ConjugationCard } from "./ConjugationCard";
@@ -41,6 +41,8 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
   const [showActions, setShowActions] = useState(false);
   const [showFamily, setShowFamily] = useState(false);
   const [editingNote, setEditingNote] = useState(false);
+  const [editingMeaning, setEditingMeaning] = useState(false);
+  const [meaningDraft, setMeaningDraft] = useState("");
 
   const toggleLeech = useMutation({
     mutationFn: (leech: boolean) => api.updateWord(id, { leech }),
@@ -49,6 +51,13 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
   const toggleStarred = useMutation({
     mutationFn: (starred: boolean) => api.updateWord(id, { starred }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["words"] }),
+  });
+  const editMeaning = useMutation({
+    mutationFn: (meaning: string) => api.updateWord(id, { meaning }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["words"] });
+      setEditingMeaning(false);
+    },
   });
   const del = useMutation({
     mutationFn: () => api.deleteWord(id),
@@ -60,6 +69,15 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
   });
 
   const word = wordsData?.words.find((w) => w.id === id);
+
+  // BottomSheet stays permanently mounted (see AddWordsDialog.tsx's doc
+  // comment for why) -- reset the draft from the current word every time
+  // the sheet opens rather than relying on mount/unmount.
+  useEffect(() => {
+    if (!editingMeaning || !word) return;
+    setMeaningDraft(word.meaning ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingMeaning]);
 
   const outerClass = embedded
     ? "flex h-full flex-col gap-[13px] overflow-y-auto px-[22px] py-[22px]"
@@ -95,6 +113,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
   const note = notesData?.notes[0];
   const wordHistory = (historyData?.entries ?? []).filter((e) => e.wordId === word.id);
   const grammarTip = generateGrammarTip(word);
+  const badge = statusBadge(word);
 
   return (
     <div className={outerClass} style={outerStyle}>
@@ -170,6 +189,11 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
           <span className="text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
             {word.level ? word.level.toUpperCase() : "—"} · {word.lesson ?? "—"}
           </span>
+          {badge && (
+            <span className="rounded-full px-2 py-[3px] text-[10.5px] font-medium" style={{ background: badge.bg, color: badge.color }}>
+              {badge.label}
+            </span>
+          )}
           {!embedded && word.starred && (
             <Star size={14} weight="fill" style={{ color: "#b5abfc" }} aria-hidden="true" />
           )}
@@ -186,10 +210,33 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
             <SpeakerHigh size={15} weight="fill" aria-hidden="true" />
           </button>
         </div>
-        <div className="text-[15px]" style={{ color: "rgba(233,233,237,.6)" }}>
-          {word.meaning ? stripLeadingPosTag(word.meaning) : "no meaning yet"}
-          {word.ipa && <span className="ml-1.5 font-mono text-[12px]">{word.ipa}</span>}
+        <div className="flex items-start gap-1.5">
+          <div className="text-[15px]" style={{ color: "rgba(233,233,237,.6)" }}>
+            {word.meaning
+              ? stripLeadingPosTag(word.meaning)
+              : word.enrichmentStatus === "unresolved"
+                ? "No meaning found automatically — add one below to resolve this word."
+                : "no meaning yet"}
+            {word.ipa && <span className="ml-1.5 font-mono text-[12px]">{word.ipa}</span>}
+          </div>
+          <button
+            type="button"
+            onClick={() => setEditingMeaning(true)}
+            aria-label="Edit meaning"
+            className="mt-0.5 shrink-0"
+            style={{ color: "rgba(233,233,237,.35)" }}
+          >
+            <PencilSimple size={13} weight="regular" aria-hidden="true" />
+          </button>
         </div>
+        {word.reviewNote && (
+          <div className="mt-2 flex items-start gap-2 rounded-xl px-[13px] py-[11px]" style={{ background: "rgba(228,196,182,.1)", boxShadow: "0 0 0 1px rgba(228,196,182,.28)" }}>
+            <WarningCircle size={15} weight="regular" style={{ color: "#e4c4b6", marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
+            <div className="text-[12.5px] leading-[1.5]" style={{ color: "#e4c4b6" }}>
+              {word.reviewNote}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Fixed skeleton for every word — grammar table + tip, review
@@ -308,6 +355,50 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
 
       <BottomSheet open={editingNote} onClose={() => setEditingNote(false)}>
         {note && <NoteEditor note={note} onChanged={() => queryClient.invalidateQueries({ queryKey: ["notes", "word", id] })} />}
+      </BottomSheet>
+
+      <BottomSheet open={editingMeaning} onClose={() => setEditingMeaning(false)}>
+        <form
+          onSubmit={(e: FormEvent) => {
+            e.preventDefault();
+            editMeaning.mutate(meaningDraft.trim());
+          }}
+          className="flex flex-col gap-[14px]"
+        >
+          <div className="flex items-center justify-between">
+            <button type="button" onClick={() => setEditingMeaning(false)} className="min-h-0 px-1.5 py-1 text-[13px]" style={{ color: "rgba(233,233,237,.5)" }}>
+              Cancel
+            </button>
+            <span className="text-[16px] font-medium">Meaning</span>
+            <button
+              type="submit"
+              disabled={editMeaning.isPending || !meaningDraft.trim()}
+              className="min-h-0 px-1.5 py-1 text-[13px] font-medium disabled:opacity-40"
+              style={{ color: "#b5abfc" }}
+            >
+              {editMeaning.isPending ? "Saving…" : word.reviewNote ? "Save & mark reviewed" : "Save"}
+            </button>
+          </div>
+          {word.reviewNote && (
+            <p className="text-[12px] leading-[1.5]" style={{ color: "rgba(233,233,237,.5)" }}>
+              {word.reviewNote}
+            </p>
+          )}
+          <textarea
+            value={meaningDraft}
+            onChange={(e) => setMeaningDraft(e.target.value)}
+            placeholder="(Noun) meaning in English"
+            rows={3}
+            autoFocus
+            className="w-full resize-none bg-transparent text-[17px] leading-snug outline-none"
+            style={{ color: "#e9e9ed", borderBottom: "2px solid #9184d9", paddingBottom: 7 }}
+          />
+          {editMeaning.isError && (
+            <p className="text-[12px]" style={{ color: "#e4c4b6" }}>
+              {String(editMeaning.error)}
+            </p>
+          )}
+        </form>
       </BottomSheet>
 
       <WordFamilySheet wordId={word.id} headword={word.headword} open={showFamily} onClose={() => setShowFamily(false)} />

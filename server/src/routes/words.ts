@@ -7,7 +7,7 @@ import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { BATCH_DELAY_MS, delay, enrichResolved, resolveWordSafe } from "../services/enrichment/index.js";
 import { classifyTheme, THEMENFELD_VALUES, withComputedFields } from "../services/vocab/classify.js";
-import { formatCardLine, shouldProtectCard } from "../services/vault/format.js";
+import { firstProtected, formatCardLine } from "../services/vault/format.js";
 import { appAudioDir, cardFromBlock, makeCard, vaultFiles, vaultSync } from "../services/vault/sync.js";
 
 export const wordsRouter = Router();
@@ -119,11 +119,18 @@ wordsRouter.post("/", async (req, res) => {
       // typed word "bist"); this route has no vault-path merge-shortcut
       // equivalent that already resolves the lemma first.
       const { res, transient } = await resolveWordSafe(word);
-      const existing = await prisma.word.findFirst({
-        where: { userId: user.id, sortKey: { in: [word.toLowerCase(), res.headword.toLowerCase()] } },
+      // Fetch ALL matching rows, not just one -- findFirst() with an "in"
+      // filter and no orderBy has no guarantee which of the typed/resolved
+      // keys it returns first, so checking only that one row can silently
+      // miss a protected card sitting at the OTHER key (see firstProtected's
+      // doc comment).
+      const candidateKeys = [...new Set([word.toLowerCase(), res.headword.toLowerCase()])];
+      const candidates = await prisma.word.findMany({
+        where: { userId: user.id, sortKey: { in: candidateKeys } },
       });
-      if (existing && shouldProtectCard(existing.curation)) {
-        sortKey = existing.sortKey;
+      const protectedCandidate = firstProtected(candidates, (w) => w.curation);
+      if (protectedCandidate) {
+        sortKey = protectedCandidate.sortKey;
         skipped = true;
       } else {
         const {
@@ -146,6 +153,15 @@ wordsRouter.post("/", async (req, res) => {
         exampleTranslation = entryExampleTranslation;
         const card = makeCard(headword, fields, null);
         sortKey = card.sortKey;
+        // Preserve SR schedule on re-add, same donor-preference rule the
+        // vault path's upsertEnrichedCard() already uses (prefer a donor at
+        // the resolved-headword key, fall back to the typed-form key) --
+        // `candidates` (fetched above for the protection check) already
+        // contains whichever existing row(s) match either key, so this
+        // reuses that query instead of adding a new one.
+        const srDonor =
+          candidates.find((w) => w.sortKey === card.sortKey && w.srDue !== null) ??
+          candidates.find((w) => w.sortKey === word.toLowerCase() && w.srDue !== null);
         await prisma.word.upsert({
           where: { userId_sortKey: { userId: user.id, sortKey: card.sortKey } },
           create: {
@@ -155,7 +171,12 @@ wordsRouter.post("/", async (req, res) => {
             ...fields,
             rawBlock: card.cardLine,
           },
-          update: { ...fields, rawBlock: card.cardLine, srDue: null, srInterval: null, srEase: null },
+          update: {
+            ...fields, rawBlock: card.cardLine,
+            srDue: srDonor?.srDue ?? null,
+            srInterval: srDonor?.srInterval ?? null,
+            srEase: srDonor?.srEase ?? null,
+          },
         });
         if (word.toLowerCase() !== card.sortKey) {
           await prisma.word.deleteMany({ where: { userId: user.id, sortKey: word.toLowerCase() } });

@@ -2,15 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { CaretRight, MagnifyingGlass, Plus, SlidersHorizontal } from "@phosphor-icons/react";
 import { api } from "../api/client";
-import type { Grade } from "../api/types";
-import { barColor, buildSparkline, chipBg, chipColor, chipLabel, NO_DATA_HEIGHT, SPARKLINE_SLOTS, stripLeadingPosTag } from "../lib/wordDisplay";
+import type { Grade, Word } from "../api/types";
+import { barColor, buildSparkline, chipBg, chipColor, chipLabel, NO_DATA_HEIGHT, SPARKLINE_SLOTS, statusBadge, stripLeadingPosTag } from "../lib/wordDisplay";
 import { useNavStack } from "../lib/navStack";
 import { clickableRowProps } from "../lib/a11y";
 import { AddWordsDialog } from "./vocabulary/AddWordsDialog";
 import { NotesDock } from "./words/NotesDock";
 import { WordDetailContent } from "./words/WordDetailContent";
 
-type FilterKey = "all" | "der" | "die" | "das" | "verb";
+type FilterKey = "all" | "der" | "die" | "das" | "verb" | "review" | "incomplete";
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "all" },
   { key: "der", label: "der" },
@@ -18,6 +18,33 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "das", label: "das" },
   { key: "verb", label: "verbs" },
 ];
+// Separate dimension from the linguistic-category chips above (enrichment
+// status, not wortart/genus) -- kept as its own small row rather than
+// merged into FILTERS, so "needs review" doesn't silently exclude a
+// der/die/das/verb selection or vice versa. "protected" isn't included
+// here -- a manual/mt card isn't a problem state to filter for, it's the
+// opposite (a word a human or the Python pipeline already vouched for).
+const STATUS_FILTERS: { key: FilterKey; label: string }[] = [
+  { key: "review", label: "Needs review" },
+  { key: "incomplete", label: "Incomplete" },
+];
+
+function matchesFilter(word: Word, key: FilterKey): boolean {
+  switch (key) {
+    case "all":
+      return true;
+    case "verb":
+      return word.wortart === "Verb";
+    case "der":
+    case "die":
+    case "das":
+      return word.genus === key;
+    case "review":
+      return word.enrichmentStatus === "published_review";
+    case "incomplete":
+      return word.enrichmentStatus === "unresolved" || word.enrichmentStatus === "incomplete";
+  }
+}
 
 export default function Vocabulary() {
   const { push } = useNavStack();
@@ -47,16 +74,14 @@ export default function Vocabulary() {
   const filtered = useMemo(
     () =>
       allWords.filter((w) => {
-        const okFilter = filter === "all" || (filter === "verb" ? w.wortart === "Verb" : w.genus === filter);
         const okQuery = !q || w.headword.toLowerCase().includes(q) || (w.meaning?.toLowerCase().includes(q) ?? false);
-        return okFilter && okQuery;
+        return matchesFilter(w, filter) && okQuery;
       }),
     [allWords, filter, q],
   );
 
   const shakyCount = allWords.filter((w) => w.leech).length;
-  const countFor = (key: FilterKey) =>
-    key === "all" ? allWords.length : key === "verb" ? allWords.filter((w) => w.wortart === "Verb").length : allWords.filter((w) => w.genus === key).length;
+  const countFor = (key: FilterKey) => allWords.filter((w) => matchesFilter(w, key)).length;
   const resultLabel = q ? `${filtered.length} match${filtered.length === 1 ? "" : "es"}` : "All words";
   const effectiveSelectedId = selectedId ?? filtered[0]?.id ?? null;
 
@@ -119,6 +144,27 @@ export default function Vocabulary() {
             );
           })}
         </div>
+        <div className="mt-1.5 flex gap-1.5 overflow-hidden">
+          {STATUS_FILTERS.map((f) => {
+            const active = filter === f.key;
+            const count = countFor(f.key);
+            if (count === 0) return null;
+            return (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => setFilter(active ? "all" : f.key)}
+                className="rounded-full px-[11px] py-[5px] text-[12px] whitespace-nowrap transition-colors"
+                style={{
+                  background: active ? "rgba(228,196,182,.22)" : "rgba(228,196,182,.1)",
+                  color: "#e4c4b6",
+                }}
+              >
+                {f.label} ({count})
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="mt-[15px] min-h-0 flex-1 overflow-y-auto pb-2.5">
@@ -134,6 +180,7 @@ export default function Vocabulary() {
         {filtered.map((w) => {
           const bars = sparklines.get(w.id) ?? Array<number>(SPARKLINE_SLOTS).fill(NO_DATA_HEIGHT);
           const plural = w.declension?.nom?.pl;
+          const badge = statusBadge(w);
           return (
             <div
               key={w.id}
@@ -148,7 +195,17 @@ export default function Vocabulary() {
                 {chipLabel(w)}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[15.5px] font-medium">{w.headword}</div>
+                <div className="flex items-center gap-1.5">
+                  <div className="truncate text-[15.5px] font-medium">{w.headword}</div>
+                  {badge && (
+                    <span
+                      className="shrink-0 rounded-full px-1.5 py-[1px] text-[9.5px] font-medium whitespace-nowrap"
+                      style={{ background: badge.bg, color: badge.color }}
+                    >
+                      {badge.label}
+                    </span>
+                  )}
+                </div>
                 <div className="truncate text-[11.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
                   {w.meaning ? stripLeadingPosTag(w.meaning) : "no meaning yet"}
                   {plural ? ` · Pl. ${plural}` : ""}
@@ -239,12 +296,29 @@ export default function Vocabulary() {
                 </button>
               );
             })}
+            {STATUS_FILTERS.map((f) => {
+              const active = filter === f.key;
+              const count = countFor(f.key);
+              if (count === 0) return null;
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setFilter(active ? "all" : f.key)}
+                  className="rounded-full px-[10px] py-1 text-[10.5px] whitespace-nowrap"
+                  style={{ background: active ? "rgba(228,196,182,.22)" : "rgba(228,196,182,.1)", color: "#e4c4b6" }}
+                >
+                  {f.label} ({count})
+                </button>
+              );
+            })}
           </div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {filtered.map((w) => {
             const bars = sparklines.get(w.id) ?? Array<number>(SPARKLINE_SLOTS).fill(NO_DATA_HEIGHT);
             const active = w.id === effectiveSelectedId;
+            const badge = statusBadge(w);
             return (
               <div
                 key={w.id}
@@ -267,7 +341,17 @@ export default function Vocabulary() {
                   {chipLabel(w)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[14px] font-medium">{w.headword}</div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="truncate text-[14px] font-medium">{w.headword}</div>
+                    {badge && (
+                      <span
+                        className="shrink-0 rounded-full px-1.5 py-[1px] text-[9px] font-medium whitespace-nowrap"
+                        style={{ background: badge.bg, color: badge.color }}
+                      >
+                        {badge.label}
+                      </span>
+                    )}
+                  </div>
                   <div className="truncate text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
                     {w.meaning ? stripLeadingPosTag(w.meaning) : "no meaning yet"}
                   </div>

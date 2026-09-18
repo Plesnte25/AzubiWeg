@@ -64,6 +64,38 @@ export function fullArtLabel(word: Word): string {
   return word.wortart.toLowerCase();
 }
 
+export interface StatusBadge {
+  label: string;
+  bg: string;
+  color: string;
+}
+
+// Reuses the design system's existing amber warning tokens (index.css's
+// --color token block, documented in CLAUDE.md) rather than introducing a
+// new color -- both enrichmentStatus values this badge covers are "needs
+// your attention" states, the same semantic the amber pair already carries
+// elsewhere in the app.
+const NEEDS_ATTENTION_BG = "rgba(228,196,182,.14)";
+const NEEDS_ATTENTION_COLOR = "#e4c4b6";
+
+/** Badge for a word's `enrichmentStatus` -- only for the two states worth
+ * surfacing as a visible flag (something the learner should look at and
+ * possibly act on). `published`/`protected` render no badge: `published` is
+ * the normal, unremarkable case, and `protected` (manual/legacy `mt`)
+ * isn't itself a problem -- it's the opposite, a word a human or the
+ * Python-side pipeline already vouched for. */
+export function statusBadge(word: Word): StatusBadge | null {
+  switch (word.enrichmentStatus) {
+    case "published_review":
+      return { label: "Needs review", bg: NEEDS_ATTENTION_BG, color: NEEDS_ATTENTION_COLOR };
+    case "unresolved":
+    case "incomplete":
+      return { label: "Incomplete", bg: NEEDS_ATTENTION_BG, color: NEEDS_ATTENTION_COLOR };
+    default:
+      return null;
+  }
+}
+
 export interface SlippingWord {
   wordId: string;
   headword: string;

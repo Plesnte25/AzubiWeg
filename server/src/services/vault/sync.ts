@@ -12,6 +12,7 @@ import {
   type CardCuration,
   type CardFields,
   cardFront,
+  firstProtected,
   formatCardLine,
   formatSrLine,
   parseCardFields,
@@ -311,19 +312,30 @@ class VaultSyncService {
         // paths: it bypasses enrichResolved()/upsertEnrichedCard() entirely,
         // so a protected lemma card's `form` field would otherwise still be
         // silently mutated even with those two paths guarded.
+        //
+        // Checks BOTH the lemma key and the typed-form key, not just the
+        // lemma -- mergeFormNote() also deletes any stale card under the
+        // typed key, which could itself be a distinct, deliberately
+        // hand-created protected card.
         let skippedCard: Card | null = null;
         await this.applyToVault(userId, vaultPath, (cards) => {
-          const existingLemma = cards.find((c) => c.sortKey === headKey);
-          if (existingLemma && shouldProtectCard(existingLemma.fields.curation)) {
-            skippedCard = existingLemma;
+          const candidates = cards.filter((c) => c.sortKey === headKey || c.sortKey === word.toLowerCase());
+          const protectedCard = firstProtected(candidates, (c) => c.fields.curation);
+          if (protectedCard) {
+            skippedCard = protectedCard;
             return cards;
           }
           return mergeFormNote(cards, word, res.headword, res.formNote);
         });
         if (skippedCard) {
           const card: Card = skippedCard;
+          // headword must be the PROTECTED card's own headword, not
+          // res.headword -- the protected candidate can be the typed-form
+          // key (e.g. typed "gehst" itself protected, lemma "gehen" absent),
+          // in which case res.headword ("gehen") doesn't exist as a sortKey
+          // at all and the caller's subsequent DB lookup would throw.
           return {
-            headword: res.headword, typed: word, found: true, merged: false, skipped: true,
+            headword: card.front, typed: word, found: true, merged: false, skipped: true,
             curation: card.fields.curation, reviewNote: card.fields.reviewNote,
             rejected: null, declension: null, conjugation: null, exampleTranslation: null,
           };
@@ -365,21 +377,26 @@ class VaultSyncService {
     }
 
     // Same in-callback protection pattern as the merge-shortcut above --
-    // check both the resolved headword and the typed-form sortKey (either
-    // could carry a protected card; upsertEnrichedCard removes both).
+    // gather BOTH the resolved-headword and typed-form candidates first,
+    // then check all of them for protection (not just whichever Array.find()
+    // happens to hit first in the alphabetically-sorted card list) -- either
+    // key could carry a protected card, and upsertEnrichedCard removes both.
     let skippedCard: Card | null = null;
     await this.applyToVault(userId, vaultPath, (cards) => {
-      const existing = cards.find((c) => c.sortKey === headKey || c.sortKey === word.toLowerCase());
-      if (existing && shouldProtectCard(existing.fields.curation)) {
-        skippedCard = existing;
+      const candidates = cards.filter((c) => c.sortKey === headKey || c.sortKey === word.toLowerCase());
+      const protectedCard = firstProtected(candidates, (c) => c.fields.curation);
+      if (protectedCard) {
+        skippedCard = protectedCard;
         return cards;
       }
       return upsertEnrichedCard(cards, word, res.headword, cardFields);
     });
     if (skippedCard) {
       const card: Card = skippedCard;
+      // Same reasoning as the merge-shortcut's skip return above: must be
+      // the protected candidate's own headword, not res.headword.
       return {
-        headword: res.headword, typed: word, found: true, merged: false, skipped: true,
+        headword: card.front, typed: word, found: true, merged: false, skipped: true,
         curation: card.fields.curation, reviewNote: card.fields.reviewNote,
         rejected: null, declension: null, conjugation: null, exampleTranslation: null,
       };

@@ -33,6 +33,20 @@ export function shouldProtectCard(curation: CardCuration): boolean {
   return curation === "manual" || curation === "review" || curation === "mt";
 }
 
+/** Finds a protected card among a set of candidates -- used wherever a typed
+ * word and its resolved headword might be TWO DIFFERENT existing cards
+ * (e.g. typed "bist", resolved lemma "sein"). A single findFirst()/find()
+ * over an "in [typedKey, resolvedKey]" query has no ordering guarantee, so
+ * checking only whichever one comes back first can silently miss a
+ * protected card at the OTHER key -- always gather every candidate first,
+ * then check all of them for protection, never just one. */
+export function firstProtected<T>(
+  candidates: readonly T[],
+  getCuration: (candidate: T) => CardCuration,
+): T | null {
+  return candidates.find((c) => shouldProtectCard(getCuration(c))) ?? null;
+}
+
 export interface CardFields {
   meaning: string | null;
   ipa: string | null;
