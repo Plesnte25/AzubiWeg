@@ -40,7 +40,12 @@ reviewsRouter.get("/history", async (req, res) => {
 reviewsRouter.get("/weak-words", async (req, res) => {
   const limit = Math.min(Number(req.query.limit ?? 20), 100);
   const logs = await prisma.reviewLog.findMany({
-    where: { word: { userId: req.userId } },
+    // meaning: { not: null } -- a word whose meaning has since gone blank
+    // (curation flipped to review/unresolved, or a manual edit cleared it)
+    // isn't reachable via the real review queue any more; surfacing it here
+    // as "weak, go review it" would point at a word that can't be reviewed
+    // right now. Same exclusion /queue already applies.
+    where: { word: { userId: req.userId, meaning: { not: null } } },
     orderBy: { reviewedAt: "asc" },
     include: { word: { select: { headword: true } } },
   });

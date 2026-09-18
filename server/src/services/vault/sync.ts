@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 import { prisma } from "../../db.js";
-import { BATCH_DELAY_MS, delay, enrichResolved, resolveWordSafe } from "../enrichment/index.js";
+import { BATCH_DELAY_MS, delay, enrichResolved, resolveWordSafe, type PonsBudget } from "../enrichment/index.js";
 import {
   FLASHCARD_TAG_LINE,
   type Card,
@@ -284,6 +284,7 @@ class VaultSyncService {
     vaultPath: string,
     word: string,
     lesson: string | null = null,
+    ponsBudget?: PonsBudget,
   ): Promise<{
     headword: string;
     typed: string;
@@ -367,7 +368,7 @@ class VaultSyncService {
       conjugation,
       exampleTranslation,
       ...cardFields
-    } = await enrichResolved(res, audioDir, lesson, transient);
+    } = await enrichResolved(res, audioDir, lesson, transient, ponsBudget);
     if (rejected) {
       return {
         headword: res.headword, typed: word, found: false, merged: false, skipped: false,

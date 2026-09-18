@@ -5,7 +5,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
-import { BATCH_DELAY_MS, delay, enrichResolved, resolveWordSafe } from "../services/enrichment/index.js";
+import { BATCH_DELAY_MS, createPonsBudget, delay, enrichResolved, resolveWordSafe } from "../services/enrichment/index.js";
 import { classifyTheme, THEMENFELD_VALUES, withComputedFields } from "../services/vocab/classify.js";
 import { firstProtected, formatCardLine } from "../services/vault/format.js";
 import { appAudioDir, cardFromBlock, makeCard, vaultFiles, vaultSync } from "../services/vault/sync.js";
@@ -78,6 +78,10 @@ wordsRouter.post("/", async (req, res) => {
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
   const audioDir = user.vaultPath ? vaultFiles(user.vaultPath).audioDir : appAudioDir(user.id);
+  // One budget per request, not per word or per process -- see pons.ts's
+  // doc comment. Shared across every word in this batch, whichever branch
+  // (vault-linked or no-vault) resolves it.
+  const ponsBudget = createPonsBudget();
 
   const added: unknown[] = [];
   const rejected: { word: string; reason: "loanword" | "not-german" }[] = [];
@@ -99,7 +103,7 @@ wordsRouter.post("/", async (req, res) => {
     if (user.vaultPath) {
       // resolution + lemma merging + typed-form dedupe all live in the
       // vault sync service (same behavior as the Python script)
-      const result = await vaultSync.enrichIntoVault(user.id, user.vaultPath, word, lesson ?? null);
+      const result = await vaultSync.enrichIntoVault(user.id, user.vaultPath, word, lesson ?? null, ponsBudget);
       if (result.rejected) {
         rejected.push({ word, reason: result.rejected });
         if (i < words.length - 1) await delay(BATCH_DELAY_MS);
@@ -142,7 +146,7 @@ wordsRouter.post("/", async (req, res) => {
           conjugation: entryConjugation,
           exampleTranslation: entryExampleTranslation,
           ...fields
-        } = await enrichResolved(res, audioDir, lesson ?? null, transient);
+        } = await enrichResolved(res, audioDir, lesson ?? null, transient, ponsBudget);
         if (whyRejected) {
           rejected.push({ word, reason: whyRejected });
           if (i < words.length - 1) await delay(BATCH_DELAY_MS);

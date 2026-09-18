@@ -57,8 +57,14 @@ dashboardRouter.get("/", async (req, res) => {
     weekDays,
   ] = await Promise.all([
     prisma.word.count({ where: { userId: req.userId } }),
-    prisma.word.count({ where: { userId: req.userId, srDue: { lte: endOfToday } } }),
-    prisma.word.count({ where: { userId: req.userId, srDue: null } }),
+    // Same meaning: { not: null } exclusion reviews.ts's own /queue already
+    // applies -- a word with no meaning yet was never gradeable, so it can
+    // never actually surface in a review session even if srDue happens to
+    // be set (e.g. a since-cleared meaning on a previously-scheduled word).
+    // Without this, the badge here can promise more reviews than /queue
+    // actually returns.
+    prisma.word.count({ where: { userId: req.userId, srDue: { lte: endOfToday }, meaning: { not: null } } }),
+    prisma.word.count({ where: { userId: req.userId, srDue: null, meaning: { not: null } } }),
     prisma.reviewLog.count({
       where: { word: { userId: req.userId }, reviewedAt: { gte: startOfToday } },
     }),

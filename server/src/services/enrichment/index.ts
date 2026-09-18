@@ -9,8 +9,10 @@ import {
   resolveWord,
   translateText,
 } from "./kaikki.js";
+import { type PonsBudget, ponsDiagnosticEligible, runPonsDiagnostic } from "./pons.js";
 
 export { resolveWord, type Resolution, TransientLookupError } from "./kaikki.js";
+export { createPonsBudget, type PonsBudget } from "./pons.js";
 
 // declension/conjugation are app-only columns on Word, same status as
 // themenfeld/level/leech (never part of the vault card format — see Word's
@@ -118,6 +120,7 @@ export async function enrichResolved(
   audioDir: string,
   lesson: string | null = null,
   transient = false,
+  ponsBudget?: PonsBudget,
 ): Promise<EnrichmentResult> {
   const entry = transient ? null : await findPrimaryEntry(res.headword);
 
@@ -172,9 +175,19 @@ export async function enrichResolved(
 
   // Review-flag signals are intrinsic to the resolution itself (ambiguous
   // senses, or the only meaning came from the machine-translation fallback)
-  // -- nothing PONS-related here, deferred entirely (see the plan's Named
-  // future work).
+  // -- PONS availability/failure must never independently create, remove,
+  // or alter this (see pons.ts's doc comment).
   const needsReview = res.ambiguous || res.source === "translation";
+
+  // PONS: live, server-log-only diagnostic only -- printed here for whoever
+  // is watching the server log, but its result plays no part in anything
+  // below (curation/reviewNote/what gets published). See pons.ts's doc
+  // comment and the plan's Terms-of-Use discussion. Only reachable on this
+  // "a meaning was found" path, same as the Python version -- never called
+  // for the unresolved/rejected branches above.
+  if (ponsBudget && ponsDiagnosticEligible(needsReview, res.formNote)) {
+    await runPonsDiagnostic(res.headword, ponsBudget);
+  }
 
   return {
     meaning: res.meaning,
