@@ -5,9 +5,9 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
-import { BATCH_DELAY_MS, delay, enrichWord } from "../services/enrichment/index.js";
+import { BATCH_DELAY_MS, delay, enrichResolved, resolveWordSafe } from "../services/enrichment/index.js";
 import { classifyTheme, THEMENFELD_VALUES, withComputedFields } from "../services/vocab/classify.js";
-import { formatCardLine } from "../services/vault/format.js";
+import { formatCardLine, shouldProtectCard } from "../services/vault/format.js";
 import { appAudioDir, cardFromBlock, makeCard, vaultFiles, vaultSync } from "../services/vault/sync.js";
 
 export const wordsRouter = Router();
@@ -91,6 +91,11 @@ wordsRouter.post("/", async (req, res) => {
     let declension: unknown = null;
     let conjugation: unknown = null;
     let exampleTranslation: string | null = null;
+    // true = an existing manual/review/mt card was left untouched -- the
+    // app-only update below must be skipped entirely in that case, or it
+    // would silently null out the protected card's real declension/
+    // conjugation/exampleTranslation (nothing was computed for it).
+    let skipped = false;
     if (user.vaultPath) {
       // resolution + lemma merging + typed-form dedupe all live in the
       // vault sync service (same behavior as the Python script)
@@ -101,44 +106,70 @@ wordsRouter.post("/", async (req, res) => {
         continue;
       }
       sortKey = result.headword.toLowerCase();
+      skipped = result.skipped;
       declension = result.declension;
       conjugation = result.conjugation;
       exampleTranslation = result.exampleTranslation;
     } else {
-      const {
-        found: _found,
-        headword,
-        typed: _typed,
-        rejected: whyRejected,
-        declension: entryDeclension,
-        conjugation: entryConjugation,
-        exampleTranslation: entryExampleTranslation,
-        ...fields
-      } = await enrichWord(word, audioDir, lesson ?? null);
-      if (whyRejected) {
-        rejected.push({ word, reason: whyRejected });
-        if (i < words.length - 1) await delay(BATCH_DELAY_MS);
-        continue;
-      }
-      declension = entryDeclension;
-      conjugation = entryConjugation;
-      exampleTranslation = entryExampleTranslation;
-      const card = makeCard(headword, fields, null);
-      sortKey = card.sortKey;
-      await prisma.word.upsert({
-        where: { userId_sortKey: { userId: user.id, sortKey: card.sortKey } },
-        create: {
-          userId: user.id,
-          headword,
-          sortKey: card.sortKey,
-          ...fields,
-          rawBlock: card.cardLine,
-        },
-        update: { ...fields, rawBlock: card.cardLine, srDue: null, srInterval: null, srEase: null },
+      // Resolution split from enrichment so protection can be checked
+      // against BOTH the typed word and the resolved headword before any
+      // side effects (audio synthesis, translation fallback) run -- the
+      // real scenario this guards is the typed word resolving to a
+      // DIFFERENT, already-protected lemma (e.g. protected card "sein",
+      // typed word "bist"); this route has no vault-path merge-shortcut
+      // equivalent that already resolves the lemma first.
+      const { res, transient } = await resolveWordSafe(word);
+      const existing = await prisma.word.findFirst({
+        where: { userId: user.id, sortKey: { in: [word.toLowerCase(), res.headword.toLowerCase()] } },
       });
-      if (word.toLowerCase() !== card.sortKey) {
-        await prisma.word.deleteMany({ where: { userId: user.id, sortKey: word.toLowerCase() } });
+      if (existing && shouldProtectCard(existing.curation)) {
+        sortKey = existing.sortKey;
+        skipped = true;
+      } else {
+        const {
+          found: _found,
+          headword,
+          typed: _typed,
+          rejected: whyRejected,
+          declension: entryDeclension,
+          conjugation: entryConjugation,
+          exampleTranslation: entryExampleTranslation,
+          ...fields
+        } = await enrichResolved(res, audioDir, lesson ?? null, transient);
+        if (whyRejected) {
+          rejected.push({ word, reason: whyRejected });
+          if (i < words.length - 1) await delay(BATCH_DELAY_MS);
+          continue;
+        }
+        declension = entryDeclension;
+        conjugation = entryConjugation;
+        exampleTranslation = entryExampleTranslation;
+        const card = makeCard(headword, fields, null);
+        sortKey = card.sortKey;
+        await prisma.word.upsert({
+          where: { userId_sortKey: { userId: user.id, sortKey: card.sortKey } },
+          create: {
+            userId: user.id,
+            headword,
+            sortKey: card.sortKey,
+            ...fields,
+            rawBlock: card.cardLine,
+          },
+          update: { ...fields, rawBlock: card.cardLine, srDue: null, srInterval: null, srEase: null },
+        });
+        if (word.toLowerCase() !== card.sortKey) {
+          await prisma.word.deleteMany({ where: { userId: user.id, sortKey: word.toLowerCase() } });
+        }
       }
+    }
+
+    if (skipped) {
+      const existingWord = await prisma.word.findUniqueOrThrow({
+        where: { userId_sortKey: { userId: user.id, sortKey } },
+      });
+      added.push(withComputedFields(existingWord));
+      if (i < words.length - 1) await delay(BATCH_DELAY_MS);
+      continue;
     }
 
     // themenfeld/level/declension/conjugation/exampleTranslation are
@@ -195,6 +226,12 @@ wordsRouter.patch("/:id", async (req, res) => {
   const word = await prisma.word.findFirst({ where: { id: req.params.id, userId: req.userId } });
   if (!word) return res.status(404).json({ error: "Word not found" });
 
+  // A request touching only app-only fields (starred/leech/themenfeld/level)
+  // must never change curation -- only an actual content edit resolves a
+  // review/mt/manual card (or marks a plain generated one manual). This is
+  // the app-side equivalent of the Python vault's manual marker-flip
+  // procedure: mt/review -> manual on content edit, unchanged on app-only.
+  const isContentEdit = Object.keys(vaultPatch).length > 0;
   const fields = {
     meaning: vaultPatch.meaning !== undefined ? vaultPatch.meaning : word.meaning,
     ipa: vaultPatch.ipa !== undefined ? vaultPatch.ipa : word.ipa,
@@ -203,6 +240,8 @@ wordsRouter.patch("/:id", async (req, res) => {
     example: vaultPatch.example !== undefined ? vaultPatch.example : word.example,
     lesson: vaultPatch.lesson !== undefined ? vaultPatch.lesson : word.lesson,
     audioPath: word.audioPath,
+    curation: isContentEdit ? ("manual" as const) : word.curation,
+    reviewNote: isContentEdit ? null : word.reviewNote,
   };
   const newLine = formatCardLine({ front: word.headword, ...fields });
   const oldCard = cardFromBlock(word.rawBlock);

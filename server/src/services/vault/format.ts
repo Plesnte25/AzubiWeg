@@ -15,6 +15,24 @@ export interface SrState {
   ease: number;
 }
 
+// Curation/protection state for a card, mirroring add_word.py's
+// <!--curated:...--> marker convention exactly so cards from either writer
+// stay compatible. "generated" is never written as a marker -- absence of
+// a marker on the line IS the generated state.
+//  generated: produced by enrichment, safe to auto-replace
+//  review:    enrichment flagged real ambiguity or an unresolved gap; protected
+//  manual:    human-resolved or hand-edited via the app; protected
+//  mt:        legacy Python-era machine-translation marker; protected --
+//             real cards in this user's actual linked vault already carry this
+export type CardCuration = "generated" | "review" | "manual" | "mt";
+
+/** Single point of truth for "does re-enrichment get to replace this card's
+ * content" -- every write path must call this rather than re-deriving the
+ * check inline, or a future path will eventually forget "mt". */
+export function shouldProtectCard(curation: CardCuration): boolean {
+  return curation === "manual" || curation === "review" || curation === "mt";
+}
+
 export interface CardFields {
   meaning: string | null;
   ipa: string | null;
@@ -23,6 +41,8 @@ export interface CardFields {
   example: string | null;
   audioPath: string | null;
   lesson: string | null;
+  curation: CardCuration;
+  reviewNote: string | null;
 }
 
 export interface Card {
@@ -35,6 +55,10 @@ export interface Card {
 }
 
 const SR_LINE_RE = /^<!--SR:!(\d{4}-\d{2}-\d{2}),(\d+),(\d+)-->$/;
+
+// Only the card's own trailing position -- never recognized mid-line, which
+// risks misparsing real content as metadata.
+export const CURATION_MARKER_RE = /\s*<!--curated:(review|manual|mt)-->\s*$/;
 
 export function stripBullet(text: string): string {
   return text.startsWith("- ") ? text.slice(2) : text;
@@ -63,9 +87,20 @@ export function formatSrLine(sr: SrState): string {
 /** Extracts the structured fields the app models from a raw card line. */
 export function parseCardFields(cardLine: string): CardFields {
   const afterFront = cardLine.split("::").slice(1).join("::").trim();
-  // lesson tag sits at the very end of the line
-  const lessonMatch = afterFront.match(/#lesson\/([\w-]+)\s*$/);
-  const back = lessonMatch ? afterFront.slice(0, lessonMatch.index).trim() : afterFront;
+
+  // The curation marker must be stripped BEFORE the lesson-tag match: the
+  // lesson regex is itself $-anchored, so a trailing marker placed after
+  // the lesson tag (the format_row()-matching position, see formatCardLine)
+  // would otherwise stop it from matching at all.
+  const curationMatch = afterFront.match(CURATION_MARKER_RE);
+  const curation: CardCuration = curationMatch ? (curationMatch[1] as CardCuration) : "generated";
+  const withoutCuration = curationMatch
+    ? afterFront.slice(0, curationMatch.index).trim()
+    : afterFront;
+
+  // lesson tag sits at the very end of what's left
+  const lessonMatch = withoutCuration.match(/#lesson\/([\w-]+)\s*$/);
+  const back = lessonMatch ? withoutCuration.slice(0, lessonMatch.index).trim() : withoutCuration;
 
   const field = (name: string): string | null => {
     const m = back.match(new RegExp(`\\*\\*${name}:\\*\\* (.*?)(?:<br>|$)`));
@@ -83,10 +118,18 @@ export function parseCardFields(cardLine: string): CardFields {
     example: exampleRaw ? exampleRaw.replace(/^\*|\*$/g, "") : null,
     audioPath: audioMatch ? audioMatch[1]! : null,
     lesson: lessonMatch ? lessonMatch[1]! : null,
+    curation,
+    reviewNote: field("Review"),
   };
 }
 
-/** Collapses embedded newlines — same rationale as the Python _one_line(). */
+/** Collapses embedded newlines — same rationale as the Python _one_line().
+ * NOTE: this only normalizes whitespace, it is not a sanitizer -- it does
+ * not strip "<!--...-->", "<br>", or "#lesson/...". Fine today because
+ * reviewNote is only ever server-generated (never accepted as PATCH input,
+ * see routes/words.ts), never derived from arbitrary user text -- if that
+ * ever changes, add real sanitization at the point reviewNote is accepted,
+ * don't rely on this. */
 function oneLine(text: string): string {
   return text.split(/\s+/).filter(Boolean).join(" ");
 }
@@ -99,8 +142,13 @@ export function formatCardLine(fields: CardFields & { front: string }): string {
   if (fields.ipa) backParts.push(`**IPA:** /${oneLine(fields.ipa)}/`);
   if (fields.grammar) backParts.push(`**Grammar:** ${oneLine(fields.grammar)}`);
   if (fields.form) backParts.push(`**Form:** ${oneLine(fields.form)}`);
+  if (fields.reviewNote) backParts.push(`**Review:** ${oneLine(fields.reviewNote)}`);
   if (fields.example) backParts.push(`**Example:** *${oneLine(fields.example)}*`);
   if (fields.audioPath) backParts.push(`![[${fields.audioPath}]]`);
   const tag = fields.lesson ? ` #lesson/${fields.lesson}` : "";
-  return `- **${front}** :: ${backParts.join("<br>")}${tag}\n`;
+  // Curation marker is always the very last thing on the line -- parseCardFields()
+  // relies on that trailing position (see CURATION_MARKER_RE) to strip it before
+  // the lesson-tag match. "generated" is never written -- absence IS that state.
+  const marker = fields.curation && fields.curation !== "generated" ? ` <!--curated:${fields.curation}-->` : "";
+  return `- **${front}** :: ${backParts.join("<br>")}${tag}${marker}\n`;
 }

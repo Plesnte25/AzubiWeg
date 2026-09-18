@@ -31,6 +31,14 @@ export interface Resolution {
   formNote: string | null;
   meaning: string | null;
   source: "kaikki" | "translation";
+  // True when >=2 distinct senses actually survive combineMeaning()'s own
+  // noise guards and get published -- not the raw candidate count before
+  // truncation, which reflects what a reader actually sees.
+  ambiguous: boolean;
+  // True whenever ANY KaikkiEntry was found for this headword, even with no
+  // usable meaning -- lets enrichResolved() tell "confirmed not German"
+  // apart from "real German word, no gloss yet" (see resolveViaKaikki).
+  hasGermanEntry: boolean;
 }
 
 /** Same candidate-title logic as the old wiktionary.ts (unchanged, pure). */
@@ -78,9 +86,9 @@ async function findEntriesByHeadword(headwordLower: string): Promise<KaikkiEntry
  * stomach of a ruminant" -- a real hit found live during the 2026-08-30
  * kaikki.org cutover, same class of noise the old wikitext pipeline's
  * `pieces[1]![1].length > 40` check existed to drop). */
-export function combineMeaning(entries: KaikkiEntry[]): string | null {
+export function combineMeaning(entries: KaikkiEntry[]): { meaning: string | null; ambiguous: boolean } {
   const withMeaning = entries.filter((e) => e.meaning);
-  if (!withMeaning.length) return null;
+  if (!withMeaning.length) return { meaning: null, ambiguous: false };
   const posLabel: Record<string, string> = { noun: "Noun", verb: "Verb", adj: "Adjective", adv: "Adverb" };
   let picked = withMeaning.slice(0, 2);
   if (picked.length === 2 && picked[1]!.meaning!.length > 40) picked = picked.slice(0, 1);
@@ -89,8 +97,17 @@ export function combineMeaning(entries: KaikkiEntry[]): string | null {
     return label ? `(${label}) ${e.meaning}` : e.meaning!;
   });
   let joined = pieces.join("; ");
-  if (pieces.length === 2 && joined.length > 140) joined = pieces[0]!;
-  return joined;
+  let ambiguous = pieces.length === 2;
+  if (pieces.length === 2 && joined.length > 140) {
+    joined = pieces[0]!;
+    ambiguous = false;
+  }
+  // Reflects what's actually published (post-truncation), not the raw
+  // candidate count -- a 2nd sense dropped for being long/noisy (the
+  // >40-char guard above) or the combined string being too long (this
+  // 140-char guard) leaves only one sense shown, which isn't genuine
+  // ambiguity for a reader to resolve.
+  return { meaning: joined, ambiguous };
 }
 
 /**
@@ -112,11 +129,19 @@ export function combineMeaning(entries: KaikkiEntry[]): string | null {
  */
 async function resolveViaKaikki(word: string): Promise<Resolution> {
   const typed = word;
+  // Accumulated across both loops so a real KaikkiEntry that exists but has
+  // no usable meaning (entries.length > 0, combineMeaning still returns
+  // null) isn't forgotten by the time a candidate exhausts both loops and
+  // falls through to the bare fallback at the bottom -- without this, a
+  // real German word with no gloss would look identical to a genuinely
+  // nonexistent one there, sending it to "rejected" instead of "unresolved".
+  let hasGermanEntry = false;
   for (const candidate of candidateTitles(word)) {
     const entries = await findEntriesByHeadword(candidate.toLowerCase());
-    const meaning = combineMeaning(entries);
+    if (entries.length > 0) hasGermanEntry = true;
+    const { meaning, ambiguous } = combineMeaning(entries);
     if (meaning) {
-      return { headword: entries[0]!.headword, typed, formNote: null, meaning, source: "kaikki" };
+      return { headword: entries[0]!.headword, typed, formNote: null, meaning, ambiguous, hasGermanEntry: true, source: "kaikki" };
     }
   }
   for (const candidate of candidateTitles(word)) {
@@ -126,17 +151,21 @@ async function resolveViaKaikki(word: string): Promise<Resolution> {
     });
     if (form) {
       const entries = await findEntriesByHeadword(form.entry.headwordLower);
+      if (entries.length > 0) hasGermanEntry = true;
       const desc = form.tags ? `${form.tags} of ${form.entry.headword}` : `form of ${form.entry.headword}`;
+      const { meaning, ambiguous } = combineMeaning(entries.length ? entries : [form.entry]);
       return {
         headword: form.entry.headword,
         typed,
         formNote: `${typed} = ${desc}`,
-        meaning: combineMeaning(entries.length ? entries : [form.entry]),
+        meaning,
+        ambiguous,
+        hasGermanEntry: true,
         source: "kaikki",
       };
     }
   }
-  return { headword: word, typed, formNote: null, meaning: null, source: "kaikki" };
+  return { headword: word, typed, formNote: null, meaning: null, ambiguous: false, hasGermanEntry, source: "kaikki" };
 }
 
 /** Retries on a transient network failure -- only translateLiteral below

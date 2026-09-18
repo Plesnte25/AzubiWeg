@@ -9,12 +9,14 @@ import { BATCH_DELAY_MS, delay, enrichResolved, resolveWordSafe } from "../enric
 import {
   FLASHCARD_TAG_LINE,
   type Card,
+  type CardCuration,
   type CardFields,
   cardFront,
   formatCardLine,
   formatSrLine,
   parseCardFields,
   parseSrLine,
+  shouldProtectCard,
   type SrState,
 } from "./format.js";
 import { INBOX_PLACEHOLDER, buildInboxPlaceholder, parseInboxFile, parseMasterFile } from "./parser.js";
@@ -95,6 +97,13 @@ export function upsertEnrichedCard(
  * The typed word resolved to a lemma that already has a card: record the
  * inflected form on that card (idempotent) instead of re-enriching, and
  * drop any stale card for the typed form.
+ *
+ * Kept as a pure card-array transformer -- its one call site
+ * (enrichIntoVault's merge-shortcut) is responsible for checking
+ * shouldProtectCard() on the existing lemma card BEFORE calling this, not
+ * this function itself. If a second caller is ever added, it must perform
+ * the same check first, or a protected card's `form` field can be silently
+ * mutated.
  */
 export function mergeFormNote(
   cards: Card[],
@@ -114,6 +123,19 @@ export function mergeFormNote(
       updated.sr = c.sr;
       return updated;
     });
+}
+
+/**
+ * Widens the phone-visible inbox "N need review" bucket beyond the
+ * original network-transient-failure-only case: any card published as
+ * published_review/unresolved (curation "review") also belongs there.
+ * manual/mt cards are excluded even with found=false -- a human or the
+ * legacy Python marker already owns that state, it doesn't need surfacing
+ * again (mirrors add_word.py's widened review reporting).
+ */
+function needsReview(result: { found: boolean; curation?: CardCuration | null }): boolean {
+  if (result.curation && shouldProtectCard(result.curation) && result.curation !== "review") return false;
+  return !result.found || result.curation === "review";
 }
 
 /**
@@ -266,6 +288,9 @@ class VaultSyncService {
     typed: string;
     found: boolean;
     merged: boolean;
+    skipped: boolean; // true = an existing manual/review/mt card was left untouched
+    curation: CardCuration | null;
+    reviewNote: string | null;
     rejected: "loanword" | "not-german" | null;
     declension: unknown | null;
     conjugation: unknown | null;
@@ -279,18 +304,34 @@ class VaultSyncService {
       const content = existsSync(master) ? await readFile(master, "utf-8") : FLASHCARD_TAG_LINE;
       const lemmaExists = parseMasterFile(content).cards.some((c) => c.sortKey === headKey);
       if (lemmaExists) {
-        await this.applyToVault(userId, vaultPath, (cards) =>
-          mergeFormNote(cards, word, res.headword, res.formNote),
-        );
+        // Protection check happens INSIDE the mutate callback, against the
+        // same fresh read applyToVault() itself uses to write -- not a
+        // separate pre-check, which would leave a gap between reading and
+        // writing. This is the most important of the three protected write
+        // paths: it bypasses enrichResolved()/upsertEnrichedCard() entirely,
+        // so a protected lemma card's `form` field would otherwise still be
+        // silently mutated even with those two paths guarded.
+        let skippedCard: Card | null = null;
+        await this.applyToVault(userId, vaultPath, (cards) => {
+          const existingLemma = cards.find((c) => c.sortKey === headKey);
+          if (existingLemma && shouldProtectCard(existingLemma.fields.curation)) {
+            skippedCard = existingLemma;
+            return cards;
+          }
+          return mergeFormNote(cards, word, res.headword, res.formNote);
+        });
+        if (skippedCard) {
+          const card: Card = skippedCard;
+          return {
+            headword: res.headword, typed: word, found: true, merged: false, skipped: true,
+            curation: card.fields.curation, reviewNote: card.fields.reviewNote,
+            rejected: null, declension: null, conjugation: null, exampleTranslation: null,
+          };
+        }
         return {
-          headword: res.headword,
-          typed: word,
-          found: true,
-          merged: true,
-          rejected: null,
-          declension: null,
-          conjugation: null,
-          exampleTranslation: null,
+          headword: res.headword, typed: word, found: true, merged: true, skipped: false,
+          curation: null, reviewNote: null,
+          rejected: null, declension: null, conjugation: null, exampleTranslation: null,
         };
       }
     }
@@ -317,20 +358,37 @@ class VaultSyncService {
     } = await enrichResolved(res, audioDir, lesson, transient);
     if (rejected) {
       return {
-        headword: res.headword,
-        typed: word,
-        found: false,
-        merged: false,
-        rejected,
-        declension: null,
-        conjugation: null,
-        exampleTranslation: null,
+        headword: res.headword, typed: word, found: false, merged: false, skipped: false,
+        curation: null, reviewNote: null,
+        rejected, declension: null, conjugation: null, exampleTranslation: null,
       };
     }
-    await this.applyToVault(userId, vaultPath, (cards) =>
-      upsertEnrichedCard(cards, word, res.headword, cardFields),
-    );
-    return { headword: res.headword, typed: word, found, merged: false, rejected: null, declension, conjugation, exampleTranslation };
+
+    // Same in-callback protection pattern as the merge-shortcut above --
+    // check both the resolved headword and the typed-form sortKey (either
+    // could carry a protected card; upsertEnrichedCard removes both).
+    let skippedCard: Card | null = null;
+    await this.applyToVault(userId, vaultPath, (cards) => {
+      const existing = cards.find((c) => c.sortKey === headKey || c.sortKey === word.toLowerCase());
+      if (existing && shouldProtectCard(existing.fields.curation)) {
+        skippedCard = existing;
+        return cards;
+      }
+      return upsertEnrichedCard(cards, word, res.headword, cardFields);
+    });
+    if (skippedCard) {
+      const card: Card = skippedCard;
+      return {
+        headword: res.headword, typed: word, found: true, merged: false, skipped: true,
+        curation: card.fields.curation, reviewNote: card.fields.reviewNote,
+        rejected: null, declension: null, conjugation: null, exampleTranslation: null,
+      };
+    }
+    return {
+      headword: res.headword, typed: word, found, merged: false, skipped: false,
+      curation: cardFields.curation, reviewNote: cardFields.reviewNote,
+      rejected: null, declension, conjugation, exampleTranslation,
+    };
   }
 
   /** Port of cmd_enrich_inbox: enrich every raw word, then reset the file. */
@@ -365,7 +423,7 @@ class VaultSyncService {
               ? result.headword
               : `${result.headword} (${word})`,
           );
-          if (!result.found) review.push(result.headword);
+          if (needsReview(result)) review.push(result.headword);
           await delay(BATCH_DELAY_MS);
         }
         if (words.length || !existsSync(inbox)) {

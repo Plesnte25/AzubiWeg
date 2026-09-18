@@ -63,13 +63,19 @@ reviewsRouter.get("/stats", async (req, res) => {
 
 reviewsRouter.get("/queue", async (req, res) => {
   const newLimit = Math.min(Number(req.query.newLimit ?? 10), 50);
+  // meaning: { not: null } -- a word without a usable meaning yet
+  // (transient-failure placeholder, or the new "unresolved" outcome) isn't
+  // learnable; same condition self-test quiz generation already applies
+  // (routes/learning.ts). Independent of curation: a published_review word
+  // with a real meaning stays eligible, a blank protected/incomplete one
+  // doesn't.
   const [due, fresh] = await Promise.all([
     prisma.word.findMany({
-      where: { userId: req.userId, srDue: { lte: endOfToday() } },
+      where: { userId: req.userId, srDue: { lte: endOfToday() }, meaning: { not: null } },
       orderBy: { srDue: "asc" },
     }),
     prisma.word.findMany({
-      where: { userId: req.userId, srDue: null },
+      where: { userId: req.userId, srDue: null, meaning: { not: null } },
       orderBy: { createdAt: "asc" },
       take: newLimit,
     }),

@@ -97,6 +97,18 @@ enum Themenfeld {
   gesellschaft
 }
 
+// Curation/protection state for a card, mirroring add_word.py's
+// <!--curated:...--> vault-marker convention exactly so cards from either
+// writer stay compatible. "generated" is never written as a marker in the
+// vault -- absence of a marker on the card line IS the generated state.
+enum WordCuration {
+  generated // default -- produced by enrichment, safe to auto-replace
+  review // enrichment flagged real ambiguity or an unresolved gap; protected
+  manual // human-resolved or hand-edited via the app; protected
+  mt // legacy Python-era machine-translation marker; protected --
+  // real cards in this user's actual linked vault already carry this
+}
+
 model Word {
   id                 String      @id @default(cuid())
   userId             String
@@ -125,6 +137,8 @@ model Word {
   // markdown format), null when the source entry has no translation.
   exampleTranslation String?
   lesson             String?
+  curation           WordCuration @default(generated)
+  reviewNote         String?
   srDue              DateTime?   @db.Date
   srInterval         Int?
   srEase             Int?

@@ -9,6 +9,8 @@ import {
   parseCardFields,
   parseSrLine,
   cardFront,
+  shouldProtectCard,
+  type CardCuration,
 } from "../src/services/vault/format.js";
 
 const fixture = readFileSync(path.join(import.meta.dirname, "fixtures", "master.md"), "utf-8");
@@ -44,6 +46,8 @@ describe("master.md round-trip", () => {
       example: "Der Zug ist pünktlich.",
       audioPath: "audio/De-Zug.mp3",
       lesson: null,
+      curation: "generated",
+      reviewNote: null,
     });
     parsed.cards.push({
       front: "Zug",
@@ -75,6 +79,8 @@ describe("field extraction", () => {
       example: "Der Apfel ist eine Obstart.",
       audioPath: "audio/De-Apfel.mp3",
       lesson: null,
+      curation: "generated",
+      reviewNote: null,
     });
   });
 
@@ -102,10 +108,69 @@ describe("format helpers", () => {
       example: "Der Hund bellt.",
       audioPath: "audio/De-Hund.mp3",
       lesson: null,
+      curation: "generated",
+      reviewNote: null,
     });
     expect(line).toBe(
       "- **Hund** :: **Meaning:** (Noun) dog, hound<br>**IPA:** /hʊnt/<br>**Grammar:** der; Plural: die Hunde<br>**Example:** *Der Hund bellt.*<br>![[audio/De-Hund.mp3]]\n",
     );
+  });
+
+  it("never emits a <!--curated:generated--> marker", () => {
+    const line = formatCardLine({
+      front: "Hund", meaning: "dog", ipa: null, grammar: null, form: null,
+      example: null, audioPath: null, lesson: null, curation: "generated", reviewNote: null,
+    });
+    expect(line).not.toContain("curated:generated");
+    expect(line).not.toContain("<!--curated:");
+  });
+
+  // Full matrix from the plan: no lesson/no marker, lesson only, each of the
+  // three marker kinds alone, and each marker kind combined with a lesson --
+  // covers the exact bug that was fixed (the curation marker must be
+  // stripped BEFORE the $-anchored lesson-tag regex runs, or a trailing
+  // marker after the lesson tag stops it from matching at all).
+  const baseFields = {
+    meaning: "dog", ipa: "hʊnt", grammar: "der", form: null,
+    example: "Ein Hund.", audioPath: "audio/Hund.mp3",
+  };
+  const matrix: { lesson: string | null; curation: "generated" | "review" | "manual" | "mt" }[] = [
+    { lesson: null, curation: "generated" },
+    { lesson: "hallo", curation: "generated" },
+    { lesson: null, curation: "review" },
+    { lesson: "hallo", curation: "review" },
+    { lesson: null, curation: "manual" },
+    { lesson: "hallo", curation: "manual" },
+    { lesson: null, curation: "mt" },
+    { lesson: "hallo", curation: "mt" },
+  ];
+  for (const { lesson, curation } of matrix) {
+    it(`round-trips lesson=${lesson ?? "none"} curation=${curation}`, () => {
+      const reviewNote = curation === "review" ? "Multiple plausible meanings; verify the intended sense." : null;
+      const line = formatCardLine({ front: "Hund", ...baseFields, lesson, curation, reviewNote });
+      const parsed = parseCardFields(line);
+      expect(parsed.lesson).toBe(lesson);
+      expect(parsed.curation).toBe(curation);
+      expect(parsed.reviewNote).toBe(reviewNote);
+      expect(parsed.meaning).toBe(baseFields.meaning);
+    });
+  }
+
+  it("parses an existing Python-generated <!--curated:mt--> card as curation mt, not generated", () => {
+    const line =
+      "- **am Main** :: **Meaning:** on the Main river<br>![[audio/am_Main-tts.mp3]] <!--curated:mt-->\n";
+    const parsed = parseCardFields(line);
+    expect(parsed.curation).toBe("mt");
+    expect(parsed.meaning).toBe("on the Main river");
+  });
+
+  it("reviewNote only normalizes whitespace -- it is not a sanitizer (see format.ts's oneLine comment)", () => {
+    const line = formatCardLine({
+      front: "Hund", ...baseFields, lesson: null, curation: "review",
+      reviewNote: "line one\nline   two",
+    });
+    const parsed = parseCardFields(line);
+    expect(parsed.reviewNote).toBe("line one line two");
   });
 
   it("SR line round-trips", () => {
@@ -143,4 +208,18 @@ describe("inbox parsing", () => {
       "GO\n<!-- last processed 2026-08-08 19:12 -- 1 added: die Eltern\\\n-- 1 need review: die Eltern\\ -->\n";
     expect(parseInboxFile(content)).toEqual([]);
   });
+});
+
+describe("shouldProtectCard", () => {
+  const cases: [CardCuration, boolean][] = [
+    ["generated", false],
+    ["review", true],
+    ["manual", true],
+    ["mt", true],
+  ];
+  for (const [curation, expected] of cases) {
+    it(`${curation} -> ${expected}`, () => {
+      expect(shouldProtectCard(curation)).toBe(expected);
+    });
+  }
 });

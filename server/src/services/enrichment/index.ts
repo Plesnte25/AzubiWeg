@@ -1,4 +1,4 @@
-import type { CardFields } from "../vault/format.js";
+import type { CardCuration, CardFields } from "../vault/format.js";
 import { downloadCommonsAudio, synthesizeTts } from "./audio.js";
 import {
   type Resolution,
@@ -36,6 +36,28 @@ export interface EnrichmentResult extends CardFields {
   rejected: "loanword" | "not-german" | null;
 }
 
+// Status derived from a Word row read back later -- distinct from
+// EnrichmentResult.found/rejected, which describe one live enrichment
+// call's own immediate outcome. "transient_failure" deliberately isn't one
+// of these values: once a row has been sitting for weeks, "still mid-
+// failure" and "failed once, months ago" aren't meaningfully different
+// without a timestamp this phase doesn't add -- a generated card with no
+// meaning reads back as "incomplete" here regardless of why it's empty.
+export type DerivedEnrichmentStatus =
+  | "published" | "published_review" | "unresolved" | "incomplete" | "protected";
+
+export function deriveEnrichmentStatus(
+  meaning: string | null,
+  curation: CardCuration,
+): DerivedEnrichmentStatus {
+  if (curation === "manual" || curation === "mt") return "protected"; // regardless of meaning --
+                                                                        // including a deliberately-
+                                                                        // blanked manual card, never
+                                                                        // reported as "unresolved"
+  if (curation === "review") return meaning ? "published_review" : "unresolved";
+  return meaning ? "published" : "incomplete";
+}
+
 /**
  * Resolves a word, catching a network-level failure instead of letting it
  * propagate as an exception -- callers need to tell "transient, still add
@@ -50,7 +72,10 @@ export async function resolveWordSafe(
   } catch (e) {
     if (e instanceof TransientLookupError) {
       return {
-        res: { headword: word, typed: word, formNote: null, meaning: null, source: "kaikki" },
+        res: {
+          headword: word, typed: word, formNote: null, meaning: null,
+          ambiguous: false, hasGermanEntry: false, source: "kaikki",
+        },
         transient: true,
       };
     }
@@ -108,11 +133,24 @@ export async function enrichResolved(
     lesson,
     headword: res.headword,
     typed: res.typed,
+    curation: "generated" as const,
+    reviewNote: null,
   };
   if (!transient && res.meaning && isEnglishCognate(res.headword, res.meaning, entry?.etymology ?? null)) {
     return { ...empty, meaning: res.meaning, found: true, rejected: "loanword" };
   }
   if (!transient && !res.meaning) {
+    if (res.hasGermanEntry) {
+      // A real KaikkiEntry exists for this headword -- just no usable
+      // English gloss yet. Publish a placeholder + review card instead of
+      // discarding a genuine German word (mirrors add_word.py's
+      // "unresolved" outcome).
+      return {
+        ...empty, meaning: null, found: false, rejected: null,
+        curation: "review",
+        reviewNote: "No confirmed meaning found; a German entry exists -- please fill in manually.",
+      };
+    }
     return { ...empty, meaning: null, found: false, rejected: "not-german" };
   }
 
@@ -132,6 +170,12 @@ export async function enrichResolved(
   let exampleTranslation = cleanExampleTranslation(entry?.exampleTranslation ?? null);
   if (example && !exampleTranslation) exampleTranslation = await translateText(example);
 
+  // Review-flag signals are intrinsic to the resolution itself (ambiguous
+  // senses, or the only meaning came from the machine-translation fallback)
+  // -- nothing PONS-related here, deferred entirely (see the plan's Named
+  // future work).
+  const needsReview = res.ambiguous || res.source === "translation";
+
   return {
     meaning: res.meaning,
     ipa: entry?.ipa ?? null,
@@ -147,6 +191,8 @@ export async function enrichResolved(
     headword: res.headword,
     typed: res.typed,
     rejected: null,
+    curation: needsReview ? "review" : "generated",
+    reviewNote: needsReview ? "Multiple plausible meanings; verify the intended sense." : null,
   };
 }
 

@@ -143,31 +143,50 @@ describe("extractConjugation", () => {
 
 describe("combineMeaning", () => {
   it("joins up to 2 entries' meanings with a (Pos) label", () => {
-    expect(
-      combineMeaning([entry({ pos: "noun", meaning: "existence, being" }), entry({ pos: "verb", meaning: "to be" })]),
-    ).toBe("(Noun) existence, being; (Verb) to be");
+    const result = combineMeaning([
+      entry({ pos: "noun", meaning: "existence, being" }),
+      entry({ pos: "verb", meaning: "to be" }),
+    ]);
+    expect(result.meaning).toBe("(Noun) existence, being; (Verb) to be");
+    expect(result.ambiguous).toBe(true);
   });
 
   it("drops an obscure long second sense (real hit: 'Buch' also has an unrelated anatomical noun entry)", () => {
     // real kaikki.org data, 2026-08-30 cutover
-    expect(
-      combineMeaning([
-        entry({ pos: "noun", meaning: "book (collection of sheets of paper bound together...)" }),
-        entry({ pos: "noun", meaning: "omasum, the third compartment of the stomach of a ruminant" }),
-      ]),
-    ).toBe(
-      "(Noun) book (collection of sheets of paper bound together...)",
-    );
+    const result = combineMeaning([
+      entry({ pos: "noun", meaning: "book (collection of sheets of paper bound together...)" }),
+      entry({ pos: "noun", meaning: "omasum, the third compartment of the stomach of a ruminant" }),
+    ]);
+    expect(result.meaning).toBe("(Noun) book (collection of sheets of paper bound together...)");
+    // Only one sense actually got published -- the second was dropped for
+    // being noise, so this isn't genuine ambiguity for a reader to resolve.
+    expect(result.ambiguous).toBe(false);
   });
 
   it("keeps a short, genuinely useful second sense", () => {
-    expect(combineMeaning([entry({ meaning: "house" }), entry({ pos: "verb", meaning: "to house" })])).toBe(
-      "(Noun) house; (Verb) to house",
-    );
+    const result = combineMeaning([entry({ meaning: "house" }), entry({ pos: "verb", meaning: "to house" })]);
+    expect(result.meaning).toBe("(Noun) house; (Verb) to house");
+    expect(result.ambiguous).toBe(true);
   });
 
   it("returns null when no entry has a meaning", () => {
-    expect(combineMeaning([entry({ meaning: null })])).toBeNull();
+    const result = combineMeaning([entry({ meaning: null })]);
+    expect(result.meaning).toBeNull();
+    expect(result.ambiguous).toBe(false);
+  });
+
+  it("is not ambiguous when the combined string is truncated to just the first sense (140-char guard, distinct from the per-entry 40-char guard)", () => {
+    // First entry alone is long but under no per-entry limit (only the
+    // SECOND entry has the >40-char drop check) -- short enough second
+    // entry that the 40-char guard doesn't fire, but the combined joined
+    // string still exceeds 140 chars.
+    const longFirst = "a".repeat(130);
+    const result = combineMeaning([
+      entry({ pos: "noun", meaning: longFirst }),
+      entry({ pos: "verb", meaning: "to be" }),
+    ]);
+    expect(result.meaning).toBe(`(Noun) ${longFirst}`);
+    expect(result.ambiguous).toBe(false);
   });
 });
 
