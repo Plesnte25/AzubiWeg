@@ -74,6 +74,15 @@ const SR_LINE_RE = /^<!--SR:!(\d{4}-\d{2}-\d{2}),(\d+),(\d+)-->$/;
 // risks misparsing real content as metadata.
 export const CURATION_MARKER_RE = /\s*<!--curated:(review|manual|mt)-->\s*$/;
 
+/** Strips ANY number of leading/trailing slashes -- both formatCardLine (write)
+ * and parseCardFields (read) use this so a value that's already delimiter-
+ * wrapped (Kaikki's own dump includes slashes for many entries) never gets
+ * double-wrapped, and an already-double-wrapped value read back from an old
+ * vault file fully heals in one round-trip instead of thinning by one layer. */
+export function stripIpaSlashes(ipa: string): string {
+  return ipa.replace(/^\/+|\/+$/g, "");
+}
+
 export function stripBullet(text: string): string {
   return text.startsWith("- ") ? text.slice(2) : text;
 }
@@ -126,7 +135,7 @@ export function parseCardFields(cardLine: string): CardFields {
 
   return {
     meaning: field("Meaning"),
-    ipa: ipaRaw ? ipaRaw.replace(/^\/|\/$/g, "") : null,
+    ipa: ipaRaw ? stripIpaSlashes(ipaRaw.trim()) : null,
     grammar: field("Grammar"),
     form: field("Form"),
     example: exampleRaw ? exampleRaw.replace(/^\*|\*$/g, "") : null,
@@ -153,7 +162,7 @@ export function formatCardLine(fields: CardFields & { front: string }): string {
   const front = oneLine(fields.front);
   const meaning = fields.meaning ? oneLine(fields.meaning) : "_(not found -- fill manually)_";
   const backParts = [`**Meaning:** ${meaning}`];
-  if (fields.ipa) backParts.push(`**IPA:** /${oneLine(fields.ipa)}/`);
+  if (fields.ipa) backParts.push(`**IPA:** /${stripIpaSlashes(oneLine(fields.ipa))}/`);
   if (fields.grammar) backParts.push(`**Grammar:** ${oneLine(fields.grammar)}`);
   if (fields.form) backParts.push(`**Form:** ${oneLine(fields.form)}`);
   if (fields.reviewNote) backParts.push(`**Review:** ${oneLine(fields.reviewNote)}`);

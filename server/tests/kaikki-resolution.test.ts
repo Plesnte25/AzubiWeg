@@ -1,6 +1,7 @@
 import type { KaikkiEntry } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import {
+  SUPPORTED_POS,
   candidateTitles,
   combineMeaning,
   extractConjugation,
@@ -10,7 +11,10 @@ import {
   firstMeaning,
   isSpellingCognate,
   looksLikeEnglishLoanword,
+  pickBetterExample,
   prioritizeEntry,
+  resolutionTitles,
+  selectExactCaseEntries,
   type KaikkiFormRaw,
   type KaikkiSenseRaw,
 } from "../src/services/enrichment/kaikki.js";
@@ -37,11 +41,33 @@ function entry(overrides: Partial<KaikkiEntry>): KaikkiEntry {
   };
 }
 
+describe("SUPPORTED_POS", () => {
+  it("includes interjection and name -- excluding them was the root cause of the 2026-09-18 'danke'/proper-noun incident", () => {
+    expect(SUPPORTED_POS.has("interjection")).toBe(true);
+    expect(SUPPORTED_POS.has("name")).toBe(true);
+  });
+
+  it("still includes the original 4 core word classes", () => {
+    for (const pos of ["noun", "verb", "adj", "adv"]) expect(SUPPORTED_POS.has(pos)).toBe(true);
+  });
+});
+
 describe("candidateTitles", () => {
   it("tries case variants and punctuation-stripped forms", () => {
     expect(candidateTitles("Bist")).toEqual(["Bist", "bist"]);
     expect(candidateTitles("Hallo!")).toEqual(["Hallo!", "hallo!", "Hallo", "hallo"]);
     expect(candidateTitles("Auf Wiedersehen")).toContain("auf Wiedersehen");
+  });
+
+  describe("resolutionTitles", () => {
+    it("prefers lowercase lexical entries for capitalized input, then falls back to the original case", () => {
+      expect(resolutionTitles("Prima")).toEqual(["prima", "Prima"]);
+      expect(resolutionTitles("Belgien")).toEqual(["belgien", "Belgien"]);
+    });
+
+    it("does not change already-lowercase input ordering", () => {
+      expect(resolutionTitles("prima")).toEqual(["prima", "Prima"]);
+    });
   });
 });
 
@@ -176,6 +202,29 @@ describe("combineMeaning", () => {
     expect(result.ambiguous).toBe(false);
   });
 
+  it("labels the new interjection/name POS classes (added after the 2026-09-18 incident)", () => {
+    expect(combineMeaning([entry({ pos: "interjection", meaning: "thanks, thank you" })]).meaning).toBe(
+      "(Interjection) thanks, thank you",
+    );
+    expect(combineMeaning([entry({ pos: "name", meaning: "Belgium" })]).meaning).toBe("(Proper noun) Belgium");
+  });
+
+  it("reproduces the real 'danke' shape end-to-end: a bare-fragment verb gloss is filtered out of contention entirely, leaving only the real interjection sense -- unambiguous, no spurious appended clause", () => {
+    // Before the fix (SUPPORTED_POS excluded "interjection", and
+    // FORM_OF_GLOSS_RE only matched a trailing "of X" clause): the verb
+    // entry's bare-fragment gloss was the SOLE surviving candidate,
+    // published silently as "(Verb) first-person singular present" with no
+    // review flag. With both fixes, firstMeaning() nulls the verb's gloss
+    // (see the firstMeaning bare-fragment tests below) before this entry
+    // ever reaches combineMeaning, and the real interjection entry (now
+    // importable) is the only one left.
+    const interjection = entry({ pos: "interjection", meaning: "thanks, thank you" });
+    const result = combineMeaning([interjection]);
+    expect(result.meaning).toBe("(Interjection) thanks, thank you");
+    expect(result.ambiguous).toBe(false);
+    expect(result.meaning).not.toContain("first-person");
+  });
+
   it("is not ambiguous when the combined string is truncated to just the first sense (140-char guard, distinct from the per-entry 40-char guard)", () => {
     // First entry alone is long but under no per-entry limit (only the
     // SECOND entry has the >40-char drop check) -- short enough second
@@ -234,6 +283,45 @@ describe("prioritizeEntry", () => {
   });
 });
 
+describe("selectExactCaseEntries", () => {
+  it("restricts to exact-case matches, dropping cross-case homographs entirely", () => {
+    const adj = entry({ id: "bar-adj", headword: "bar", pos: "adj", meaning: "bare, in cash" });
+    const noun = entry({ id: "bar-noun", headword: "Bar", pos: "noun", meaning: "bar, nightclub" });
+    expect(selectExactCaseEntries([noun, adj], "bar")).toEqual([adj]);
+    expect(selectExactCaseEntries([noun, adj], "Bar")).toEqual([noun]);
+  });
+
+  it("is a no-op when no entry's headword matches the candidate exactly", () => {
+    const list = [entry({ headword: "Bar", pos: "noun" })];
+    expect(selectExactCaseEntries(list, "somethingelse")).toEqual(list);
+  });
+
+  it("is a no-op when the exact match is already the only entry", () => {
+    const list = [entry({ headword: "bar" })];
+    expect(selectExactCaseEntries(list, "bar")).toEqual(list);
+  });
+
+  it("keeps multiple entries when they're ALL exact-case matches (genuine same-casing ambiguity is preserved)", () => {
+    const a = entry({ id: "a", headword: "bar", pos: "adj" });
+    const b = entry({ id: "b", headword: "bar", pos: "adv" });
+    expect(selectExactCaseEntries([a, b], "bar")).toEqual([a, b]);
+  });
+
+  it("real regression: the final combined meaning for 'bar' contains no 'Bar'/nightclub text, and isSpellingCognate on it is false -- reordering alone (the original fix attempt) wasn't enough, since combineMeaning still combines up to 2 entries", () => {
+    const noun = entry({ id: "bar-noun", headword: "Bar", pos: "noun", meaning: "bar, nightclub" });
+    const adj = entry({ id: "bar-adj", headword: "bar", pos: "adj", meaning: "bare, in cash" });
+    // Merely reordering (moving adj first) still leaves noun combinable:
+    const reorderedOnly = combineMeaning([adj, noun]);
+    expect(reorderedOnly.meaning).toContain("nightclub");
+    // Filtering to exact-case entries removes the cross-case homograph
+    // from consideration entirely, not just from the front of the list:
+    const filtered = combineMeaning(selectExactCaseEntries([noun, adj], "bar"));
+    expect(filtered.meaning).toBe("(Adjective) bare, in cash");
+    expect(filtered.meaning).not.toContain("nightclub");
+    expect(isSpellingCognate("bar", filtered.meaning)).toBe(false);
+  });
+});
+
 describe("firstMeaning / firstExample", () => {
   const HAUS_SENSES: KaikkiSenseRaw[] = [
     {
@@ -272,6 +360,28 @@ describe("firstMeaning / firstExample", () => {
     expect(firstMeaning([{ glosses: ["nominative/accusative/genitive plural of Buch"] }])).toBeNull();
   });
 
+  it("drops a BARE grammatical fragment with no trailing 'of X' clause (the real 'danke' incident, 2026-09-18)", () => {
+    // Real production hit: this was "danke"'s only locally-imported entry's
+    // gloss (before "interjection" was added to SUPPORTED_POS) -- since the
+    // old FORM_OF_GLOSS_RE only matched a trailing "of X", this bare
+    // fragment slipped through as if it were a real meaning, and because it
+    // was the sole surviving candidate, combineMeaning() published it
+    // silently, unambiguous, no review flag: "(Verb) first-person singular
+    // present" instead of "thanks, thank you".
+    expect(firstMeaning([{ glosses: ["first-person singular present"] }])).toBeNull();
+    // Also real: "Polen" hit the same shape with a case-list fragment.
+    expect(firstMeaning([{ glosses: ["genitive/dative/accusative singular"] }])).toBeNull();
+  });
+
+  it("does NOT drop a real single-term short definition ('form'/'plural' as a legitimate gloss, not a cross-reference)", () => {
+    expect(firstMeaning([{ glosses: ["form"] }])).toBe("form");
+    expect(firstMeaning([{ glosses: ["plural"] }])).toBe("plural");
+  });
+
+  it("does not drop real content that merely contains one grammatical term amid other words", () => {
+    expect(firstMeaning([{ glosses: ["past due"] }])).toBe("past due");
+  });
+
   it("skips a cross-reference sense in favor of a real sense elsewhere in the same record", () => {
     expect(
       firstMeaning([{ glosses: ["gerund of gehen: going"] }, { glosses: ["house, building"] }]),
@@ -307,6 +417,108 @@ describe("firstMeaning / firstExample", () => {
 
   it("returns nulls when no sense has an example", () => {
     expect(firstExample([{ glosses: ["x"] }])).toEqual({ text: null, translation: null });
+  });
+
+  it("prefers a plain, non-quotation example over a quotation-tagged one, even when it appears in a LATER sense (real incident: short pedagogical examples replaced by long archaic quotations)", () => {
+    const senses: KaikkiSenseRaw[] = [
+      {
+        glosses: ["answer"],
+        examples: [
+          {
+            text: "Und die Antwort des Herrn ergehet über sie also, aus einer langen archaischen Quelle des neunzehnten Jahrhunderts.",
+            type: "quotation",
+            ref: "1850, Some Old Text",
+          },
+        ],
+      },
+      { glosses: ["reply"], examples: [{ text: "Ich erwarte eine Antwort auf meine Frage!" }] },
+    ];
+    expect(firstExample(senses).text).toBe("Ich erwarte eine Antwort auf meine Frage!");
+  });
+
+  it("prefers a plain example over one shaped like a bibliographic citation, even without explicit type/ref tags", () => {
+    const senses: KaikkiSenseRaw[] = [
+      { glosses: ["a"], examples: [{ text: "2006, Kai Steiner, Schmetterlinge im Bauch, p.103" }] },
+      { glosses: ["b"], examples: [{ text: "Ein Buch liegt auf dem Tisch." }] },
+    ];
+    expect(firstExample(senses).text).toBe("Ein Buch liegt auf dem Tisch.");
+  });
+
+  it("prefers a real short sentence over a bare single-token fragment", () => {
+    const senses: KaikkiSenseRaw[] = [
+      { glosses: ["a"], examples: [{ text: "verdeutlichen" }] },
+      { glosses: ["b"], examples: [{ text: "Zeig mir ein Beispiel." }] },
+    ];
+    expect(firstExample(senses).text).toBe("Zeig mir ein Beispiel.");
+  });
+
+  it("falls back to the shortest quotation when every candidate is quotation-tagged (no coverage regression)", () => {
+    const senses: KaikkiSenseRaw[] = [
+      { glosses: ["a"], examples: [{ text: "A very long archaic quotation indeed.", type: "quotation" }] },
+      { glosses: ["b"], examples: [{ text: "Short quote.", type: "quotation" }] },
+    ];
+    expect(firstExample(senses).text).toBe("Short quote.");
+  });
+
+  it("picks the shortest candidate within the best tier when multiple are equally good", () => {
+    const senses: KaikkiSenseRaw[] = [
+      { glosses: ["a"], examples: [{ text: "Das ist ein längerer aber immer noch normaler Beispielsatz." }] },
+      { glosses: ["b"], examples: [{ text: "Kurzer Satz." }] },
+    ];
+    expect(firstExample(senses).text).toBe("Kurzer Satz.");
+  });
+
+  it("normalizes embedded whitespace before measuring length", () => {
+    const senses: KaikkiSenseRaw[] = [{ glosses: ["a"], examples: [{ text: "Ein   Satz\nmit  komischen Leerzeichen." }] }];
+    expect(firstExample(senses).text).toBe("Ein Satz mit komischen Leerzeichen.");
+  });
+});
+
+describe("pickBetterExample", () => {
+  it("never replaces a non-empty existing example with null", () => {
+    const existing = { example: "Der Hund bellt.", exampleTranslation: "The dog barks." };
+    expect(pickBetterExample(existing, { example: null, exampleTranslation: null })).toEqual(existing);
+  });
+
+  it("rejects a candidate over 160 characters outright, even with no existing example at all", () => {
+    const long = "a".repeat(161);
+    const existing = { example: null, exampleTranslation: null };
+    expect(pickBetterExample(existing, { example: long, exampleTranslation: "x" })).toEqual(existing);
+  });
+
+  it("accepts any candidate under the length cap when there's no existing example", () => {
+    const candidate = { example: "Kurzer Satz.", exampleTranslation: "Short sentence." };
+    expect(pickBetterExample({ example: null, exampleTranslation: null }, candidate)).toEqual(candidate);
+  });
+
+  it("a short existing example beats a much longer candidate (materially-longer guard)", () => {
+    const existing = { example: "Kurzer Satz.", exampleTranslation: "Short sentence." };
+    const candidate = { example: "a".repeat(50), exampleTranslation: "y" }; // >1.5x existing's length, under the 160 cap
+    expect(pickBetterExample(existing, candidate)).toEqual(existing);
+  });
+
+  it("a poor (long, citation-like) existing example correctly loses to a good, clearly shorter candidate -- the materially-longer guard only blocks REPLACING with something longer, it doesn't protect a bad existing value from improvement", () => {
+    const existing = {
+      example: "2006, Kai Steiner, Schmetterlinge im Bauch (Junge Liebe, Band 8), Himmelstürmer Verlag, p.103",
+      exampleTranslation: null,
+    };
+    const candidate = { example: "Ich erwarte eine Antwort auf meine Frage!", exampleTranslation: "I expect an answer to my question!" };
+    expect(pickBetterExample(existing, candidate)).toEqual(candidate);
+  });
+
+  it("an existing example WITH its own translation beats a candidate carrying a DIFFERENT translation -- the pair is never split", () => {
+    const existing = { example: "Kurzer Satz.", exampleTranslation: "Short sentence." };
+    const candidate = { example: "a".repeat(50), exampleTranslation: "A completely different translation." };
+    const result = pickBetterExample(existing, candidate);
+    expect(result.example).toBe(existing.example);
+    expect(result.exampleTranslation).toBe(existing.exampleTranslation);
+    expect(result.exampleTranslation).not.toBe(candidate.exampleTranslation);
+  });
+
+  it("accepts a genuinely shorter improvement over the existing value", () => {
+    const existing = { example: "Ein etwas längerer Beispielsatz als nötig.", exampleTranslation: "old" };
+    const candidate = { example: "Kurz.", exampleTranslation: "Short." };
+    expect(pickBetterExample(existing, candidate)).toEqual(candidate);
   });
 });
 

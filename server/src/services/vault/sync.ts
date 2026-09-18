@@ -359,6 +359,19 @@ class VaultSyncService {
     // into Card.fields here. They ride back out via this method's own
     // return value instead, for the caller (routes/words.ts) to apply
     // through the same separate app-only update themenfeld/level already use.
+    // The vault card (Card.fields, parsed from master.md) has no
+    // exampleTranslation field at all -- that column is app-only and never
+    // written to the vault file (see Word's schema comment). So the ONLY
+    // source for "this word's existing example + its translation, as a
+    // pair" is the Word DB row itself, keyed the same way Card.sortKey is
+    // (lowercased headword) -- never derive existingExample from the parsed
+    // vault card alone, or a retained example would end up with no
+    // translation, or (worse) get re-paired with a mismatched one.
+    const existingWord = await prisma.word.findFirst({ where: { userId, sortKey: headKey } });
+    const existingExample = existingWord
+      ? { example: existingWord.example, exampleTranslation: existingWord.exampleTranslation }
+      : null;
+
     const {
       found,
       headword: _headword,
@@ -368,7 +381,7 @@ class VaultSyncService {
       conjugation,
       exampleTranslation,
       ...cardFields
-    } = await enrichResolved(res, audioDir, lesson, transient, ponsBudget);
+    } = await enrichResolved(res, audioDir, lesson, transient, ponsBudget, existingExample);
     if (rejected) {
       return {
         headword: res.headword, typed: word, found: false, merged: false, skipped: false,

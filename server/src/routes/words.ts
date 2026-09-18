@@ -137,6 +137,17 @@ wordsRouter.post("/", async (req, res) => {
         sortKey = protectedCandidate.sortKey;
         skipped = true;
       } else {
+        // `candidates` already covers both the typed and resolved sortKeys
+        // (fetched above for the protection check) -- reuse it as the
+        // source for the existing example+translation pair, rather than a
+        // second query. Prefer the resolved headword's own row.
+        const existingWord =
+          candidates.find((w) => w.sortKey === res.headword.toLowerCase()) ??
+          candidates.find((w) => w.sortKey === word.toLowerCase()) ??
+          null;
+        const existingExample = existingWord
+          ? { example: existingWord.example, exampleTranslation: existingWord.exampleTranslation }
+          : null;
         const {
           found: _found,
           headword,
@@ -146,7 +157,7 @@ wordsRouter.post("/", async (req, res) => {
           conjugation: entryConjugation,
           exampleTranslation: entryExampleTranslation,
           ...fields
-        } = await enrichResolved(res, audioDir, lesson ?? null, transient, ponsBudget);
+        } = await enrichResolved(res, audioDir, lesson ?? null, transient, ponsBudget, existingExample);
         if (whyRejected) {
           rejected.push({ word, reason: whyRejected });
           if (i < words.length - 1) await delay(BATCH_DELAY_MS);

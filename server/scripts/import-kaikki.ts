@@ -23,21 +23,17 @@ import { Readable } from "node:stream";
 import { prisma } from "../src/db.js";
 import {
   type KaikkiRecordRaw,
+  SUPPORTED_POS,
   extractConjugation,
   extractDeclension,
   extractGender,
   firstExample,
   firstMeaning,
 } from "../src/services/enrichment/kaikki.js";
+import { stripIpaSlashes } from "../src/services/vault/format.js";
 
 const KAIKKI_URL = "https://kaikki.org/dictionary/German/kaikki.org-dictionary-German.jsonl";
 const BATCH_SIZE = 2000;
-// The pos values this app actually uses (Wortart: Nomen/Verb/Adjektiv/Adverb) —
-// kaikki.org also has particle/conj/prep/pron/etc. entries, which this app's
-// Funktionswort/Wendung buckets already handle via free-text grammar, not a
-// structured forms table, so they're skipped here to keep the import fast
-// and the table focused.
-const SUPPORTED_POS = new Set(["noun", "verb", "adj", "adv"]);
 
 async function fetchWithRetry(url: string, attempts = 4): Promise<Response> {
   let delay = 2000;
@@ -149,7 +145,7 @@ async function main() {
       meaning,
       example,
       exampleTranslation,
-      ipa: sound.ipa ?? null,
+      ipa: sound.ipa ? stripIpaSlashes(sound.ipa) : null,
       audioFilename: audioEntry?.audio ?? null,
       declension: rec.pos === "noun" ? extractDeclension(forms) : null,
       conjugation: rec.pos === "verb" ? extractConjugation(forms) : null,

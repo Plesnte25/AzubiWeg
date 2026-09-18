@@ -1,0 +1,17 @@
+{
+  // server/tsconfig.json's own include is ["src"] only -- nothing under
+  // server/scripts/ gets typechecked by `npm run build`/`npm test`. This
+  // config scopes coverage to just backfill-ipa-slashes.ts (not every
+  // script in the directory -- e.g. import-kaikki.ts has a pre-existing,
+  // unrelated `declension: unknown` type error that predates this pass and
+  // was never caught because nothing has ever typechecked server/scripts/;
+  // fixing that is out of scope here) so this doesn't surface unrelated
+  // issues as a side effect of adding this config.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "noEmit": true,
+    "outDir": "../dist-scripts"
+  },
+  "include": ["backfill-ipa-slashes.ts", "../src/**/*.ts"]
+}

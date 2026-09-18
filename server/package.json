@@ -14,6 +14,8 @@
     "import:derivbase": "tsx scripts/import-derivbase.ts",
     "backfill:kaikki": "tsx scripts/backfill-kaikki.ts",
     "backfill:example-translation": "tsx scripts/backfill-example-translation.ts",
+    "backfill:ipa": "tsx scripts/backfill-ipa-slashes.ts",
+    "typecheck:scripts": "tsc --noEmit -p scripts/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest"
   },

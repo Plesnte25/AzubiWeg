@@ -23,6 +23,18 @@ import type { KaikkiEntry } from "@prisma/client";
 const USER_AGENT = "AzubiWeg/1.0 (personal study tool)";
 const REQUEST_TIMEOUT_MS = 10_000;
 
+// The pos values this app imports from kaikki.org's dump. Exported from here
+// (not scripts/import-kaikki.ts, which executes a top-level main() on module
+// load -- importing anything from it, e.g. from a test file, risks
+// triggering real DB/network work) so it's directly testable and shared by
+// both the importer and this module's own resolution logic. "interjection"
+// and "name" were added after a real incident: excluding them meant a word
+// like "danke" never got its real Interjection sense imported at all (only
+// a bad verb form-of entry existed locally), and every country/city name
+// (pos "name") fell through to a machine-translation-only fallback, losing
+// its "(Proper noun)" label and gaining a spurious review flag.
+export const SUPPORTED_POS = new Set(["noun", "verb", "adj", "adv", "interjection", "name"]);
+
 export class TransientLookupError extends Error {}
 
 export interface Resolution {
@@ -72,6 +84,19 @@ export function candidateTitles(word: string): string[] {
   return [...new Set(candidates)];
 }
 
+/** Sentence-initial capitalization is common in user input and does not by
+ * itself mean the user wants a proper noun or a German noun. Prefer the
+ * lowercase lexical entry first for capitalized input, while retaining the
+ * original-case candidates as a fallback for words that only exist capitalized
+ * (for example country names). */
+export function resolutionTitles(word: string): string[] {
+  const candidates = candidateTitles(word);
+  if (!word || word === word.toLowerCase()) return candidates;
+  const lowercaseCandidates = candidates.filter((candidate) => candidate === candidate.toLowerCase());
+  const otherCandidates = candidates.filter((candidate) => candidate !== candidate.toLowerCase());
+  return [...lowercaseCandidates, ...otherCandidates];
+}
+
 // Preference order when a headword has entries under more than one part of
 // speech (kaikki.org gives one entry per pos, unlike Wiktionary's combined
 // page) -- mirrors the old meaningFromEntries()'s effective ordering (a
@@ -82,7 +107,12 @@ export function candidateTitles(word: string): string[] {
 // over the verb entry that actually has the conjugation table, exactly the
 // bug found live against "gehen" (its noun entry is "gerund of gehen:
 // 'going'" with no forms at all) during the 2026-08-30 kaikki.org cutover.
-const POS_PRIORITY = ["noun", "verb", "adj", "adv"];
+// "name"/"interjection" deliberately sit at the end, not in SUPPORTED_POS's
+// implicit fallback bucket (indexOf === -1 -> treated as lowest priority
+// anyway) -- an explicit, documented tiebreak rather than an accidental one:
+// a common noun/verb/adj/adv sense should keep winning over a same-cased
+// name/interjection homograph by default.
+const POS_PRIORITY = ["noun", "verb", "adj", "adv", "name", "interjection"];
 
 async function findEntriesByHeadword(headwordLower: string): Promise<KaikkiEntry[]> {
   const rows = await prisma.kaikkiEntry.findMany({ where: { headwordLower } });
@@ -114,6 +144,26 @@ export function prioritizeEntry<T extends { id: string }>(entries: T[], preferre
   return [entries[idx]!, ...entries.slice(0, idx), ...entries.slice(idx + 1)];
 }
 
+/** Restricts `entries` to only those whose headword matches `candidate`
+ * EXACTLY (case-sensitive) when any such entry exists -- unlike
+ * prioritizeEntry above (a reorder, for when a specific entry id is already
+ * known to be right), this is a filter: cross-case homographs are dropped
+ * from consideration entirely, not just deprioritized. Reordering alone
+ * isn't enough here because combineMeaning() below still combines up to 2
+ * entries -- for "bar", merely moving the adjective "bar" ahead of the noun
+ * "Bar" still leaves "Bar" (nightclub loanword sense) available as a second
+ * combined sense, which would still read as ambiguous and still contain the
+ * literal token "bar" that trips isSpellingCognate() into rejecting the
+ * whole word -- a real regression found live during the 2026-09-18
+ * re-enrichment audit incident. A word genuinely ambiguous WITHIN the same
+ * exact casing (two senses both spelled "bar") is unaffected -- only
+ * cross-case contamination is eliminated. A no-op when no entry's headword
+ * matches `candidate` exactly. */
+export function selectExactCaseEntries<T extends { headword: string }>(entries: T[], candidate: string): T[] {
+  const exact = entries.filter((e) => e.headword === candidate);
+  return exact.length ? exact : entries;
+}
+
 /** Combines up to 2 entries' meanings, same "(Pos) gloss; (Pos) gloss" shape
  * as the old meaningFromEntries() output -- including its same length-based
  * guard against an obscure long second sense (e.g. "Buch" has a second,
@@ -124,7 +174,14 @@ export function prioritizeEntry<T extends { id: string }>(entries: T[], preferre
 export function combineMeaning(entries: KaikkiEntry[]): { meaning: string | null; ambiguous: boolean } {
   const withMeaning = entries.filter((e) => e.meaning);
   if (!withMeaning.length) return { meaning: null, ambiguous: false };
-  const posLabel: Record<string, string> = { noun: "Noun", verb: "Verb", adj: "Adjective", adv: "Adverb" };
+  const posLabel: Record<string, string> = {
+    noun: "Noun",
+    verb: "Verb",
+    adj: "Adjective",
+    adv: "Adverb",
+    interjection: "Interjection",
+    name: "Proper noun",
+  };
   let picked = withMeaning.slice(0, 2);
   if (picked.length === 2 && picked[1]!.meaning!.length > 40) picked = picked.slice(0, 1);
   const pieces = picked.map((e) => {
@@ -171,9 +228,14 @@ async function resolveViaKaikki(word: string): Promise<Resolution> {
   // real German word with no gloss would look identical to a genuinely
   // nonexistent one there, sending it to "rejected" instead of "unresolved".
   let hasGermanEntry = false;
-  for (const candidate of candidateTitles(word)) {
-    const entries = await findEntriesByHeadword(candidate.toLowerCase());
-    if (entries.length > 0) hasGermanEntry = true;
+  for (const candidate of resolutionTitles(word)) {
+    const rawEntries = await findEntriesByHeadword(candidate.toLowerCase());
+    if (rawEntries.length > 0) hasGermanEntry = true;
+    // Restrict to exact-case matches before combining -- see
+    // selectExactCaseEntries's doc comment for why reordering alone (as an
+    // earlier fix attempt did) isn't enough to stop a cross-case homograph
+    // (e.g. "Bar") from leaking into the published meaning for "bar".
+    const entries = selectExactCaseEntries(rawEntries, candidate);
     const { meaning, ambiguous } = combineMeaning(entries);
     if (meaning) {
       return {
@@ -182,7 +244,7 @@ async function resolveViaKaikki(word: string): Promise<Resolution> {
       };
     }
   }
-  for (const candidate of candidateTitles(word)) {
+  for (const candidate of resolutionTitles(word)) {
     const form = await prisma.kaikkiForm.findFirst({
       where: { formLower: candidate.toLowerCase() },
       include: { entry: true },
@@ -301,7 +363,7 @@ export async function resolveWord(word: string): Promise<Resolution> {
  * inflected form) was already the right answer. Kept as the fallback for
  * when entryId is null or its entry has since been deleted. */
 export async function findPrimaryEntry(headword: string): Promise<KaikkiEntry | null> {
-  const entries = await findEntriesByHeadword(headword.toLowerCase());
+  const entries = selectExactCaseEntries(await findEntriesByHeadword(headword.toLowerCase()), headword);
   return entries[0] ?? null;
 }
 
@@ -364,7 +426,7 @@ export interface KaikkiFormRaw {
 }
 export interface KaikkiSenseRaw {
   glosses?: string[];
-  examples?: { text?: string; translation?: string }[];
+  examples?: { text?: string; translation?: string; type?: string; ref?: string }[];
   tags?: string[];
 }
 export interface KaikkiSoundRaw {
@@ -476,6 +538,22 @@ const GRAMMATICAL_TERM_RE =
   "gerund|imperative|present|past|preterite|participle|infinitive|subjunctive|inflection|form|plural|singular|genitive|dative|accusative|nominative|comparative|superlative|diminutive|augmentative|agent noun|female equivalent|verbal noun|first-person|second-person|third-person";
 const FORM_OF_GLOSS_RE = new RegExp(`^(?:(?:${GRAMMATICAL_TERM_RE})[\\s/]+)+of\\s+`, "i");
 
+// A gloss that's WHOLLY grammatical labels with no trailing "of X" clause
+// ("first-person singular present") is just as much a non-gloss as the
+// "...of X" form above -- Kaikki doesn't always attach the cross-reference
+// target to the gloss text itself. Real incident: "danke"'s only locally
+// imported entry (before "interjection" was added to SUPPORTED_POS) had
+// exactly this shape, and because it was the sole surviving candidate,
+// combineMeaning() published it as an unambiguous "(Verb) first-person
+// singular present" -- silently wrong, no review flag. Requires >=2
+// consecutive terms (anchored start-to-end) so a real single-word
+// definition that happens to share a term's spelling ("form", "plural" as
+// legitimate short definitions) is never swallowed.
+const BARE_GRAMMATICAL_FRAGMENT_RE = new RegExp(
+  `^(?:(?:${GRAMMATICAL_TERM_RE})[\\s/,]+){1,}(?:${GRAMMATICAL_TERM_RE})$`,
+  "i",
+);
+
 // A sense tagged "auxiliary" describes a word's grammatical function
 // (e.g. "sein" forming the perfect tense of other verbs), not its own core
 // meaning -- deprioritized in favor of any other sense, same "prefer
@@ -492,7 +570,10 @@ function realGlossOf(sense: KaikkiSenseRaw): string | null {
   const glosses = sense.glosses;
   if (!glosses?.length) return null;
   const last = glosses[glosses.length - 1]!;
-  return last && !FORM_OF_GLOSS_RE.test(last) ? last : null;
+  if (!last) return null;
+  if (FORM_OF_GLOSS_RE.test(last)) return null;
+  if (BARE_GRAMMATICAL_FRAGMENT_RE.test(last.trim())) return null;
+  return last;
 }
 
 /** The single best real gloss across a record's senses — auxiliary/
@@ -520,11 +601,67 @@ export function cleanExampleTranslation(text: string | null): string | null {
   return text && text.trim() !== UNTRANSLATED_PLACEHOLDER ? text : null;
 }
 
-/** First sense with a usable example sentence, if any. */
+function collapseWhitespace(text: string): string {
+  return text.split(/\s+/).filter(Boolean).join(" ");
+}
+
+const MIN_EXAMPLE_LEN = 8;
+// A leading "1925, Some Author, Title, p.123" -- style bibliographic opener,
+// independent of Kaikki's own type/ref tags (which are sometimes missing/
+// inconsistent) -- catches the same class of long literary/archaic
+// quotation the type/ref check targets, as a defense-in-depth signal.
+const CITATION_SHAPED_RE = /^\d{4},/;
+
+/** Best available example across ALL senses, ranked into quality tiers --
+ * not just the first hit, and not just "shortest non-quotation" (which can
+ * still pick a fragment or a bibliographic citation). Tier 0: a real,
+ * plain usage example (not quotation-tagged, not citation-shaped, long
+ * enough to be a real sentence, contains a space so it isn't a bare
+ * single-token fragment). Tier 1: real text that fails the "sentence-like"
+ * checks. Tier 2 (fallback only): quotation-tagged or citation-shaped --
+ * literary/archaic quotations, used only when nothing better exists. Picks
+ * the shortest candidate within the best available tier. Real incident:
+ * short hand-picked pedagogical examples were replaced by long archaic
+ * quotations (Hegel excerpts, 19th-century religious text, a 1925 calendar
+ * citation) purely because they happened to appear in an earlier sense. */
 export function firstExample(senses: KaikkiSenseRaw[]): { text: string | null; translation: string | null } {
-  for (const s of senses) {
-    const ex = s.examples?.find((e) => e.text);
-    if (ex) return { text: ex.text ?? null, translation: cleanExampleTranslation(ex.translation ?? null) };
-  }
-  return { text: null, translation: null };
+  const candidates = senses
+    .flatMap((s) => s.examples ?? [])
+    .filter((e): e is typeof e & { text: string } => !!e.text)
+    .map((e) => ({ ...e, text: collapseWhitespace(e.text) }));
+  if (!candidates.length) return { text: null, translation: null };
+
+  const tierOf = (e: (typeof candidates)[number]): number => {
+    const isQuotation = e.type === "quotation" || !!e.ref || CITATION_SHAPED_RE.test(e.text);
+    if (isQuotation) return 2;
+    const isSentenceLike = e.text.length >= MIN_EXAMPLE_LEN && e.text.includes(" ");
+    return isSentenceLike ? 0 : 1;
+  };
+
+  const bestTier = Math.min(...candidates.map(tierOf));
+  const pool = candidates.filter((e) => tierOf(e) === bestTier);
+  const best = [...pool].sort((a, b) => a.text.length - b.text.length)[0]!;
+  return { text: best.text, translation: cleanExampleTranslation(best.translation ?? null) };
+}
+
+const MAX_PEDAGOGICAL_EXAMPLE_LEN = 160;
+const MATERIALLY_LONGER_FACTOR = 1.5;
+
+/** Keeps the existing example/translation pair unless the candidate is a
+ * real improvement -- never blanks a real example with null, never accepts
+ * an overlong candidate (even when there was nothing before), never accepts
+ * a candidate materially longer than what's already there. Always returns
+ * example+translation TOGETHER from one side or the other -- never mixes an
+ * example from one source with a translation from the other, which is
+ * exactly the bug this guards against: a candidate's translation getting
+ * silently paired with a retained old example for a different sentence. */
+export function pickBetterExample(
+  existing: { example: string | null; exampleTranslation: string | null },
+  candidate: { example: string | null; exampleTranslation: string | null },
+): { example: string | null; exampleTranslation: string | null } {
+  if (!candidate.example) return existing;
+  if (candidate.example.length > MAX_PEDAGOGICAL_EXAMPLE_LEN) return existing;
+  if (!existing.example) return candidate;
+  if (candidate.example.length > existing.example.length * MATERIALLY_LONGER_FACTOR) return existing;
+  return candidate;
 }

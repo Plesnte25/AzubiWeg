@@ -11,6 +11,7 @@ import {
   cardFront,
   shouldProtectCard,
   firstProtected,
+  stripIpaSlashes,
   type CardCuration,
 } from "../src/services/vault/format.js";
 
@@ -99,6 +100,24 @@ describe("field extraction", () => {
   });
 });
 
+describe("stripIpaSlashes", () => {
+  it("strips a single outer-wrapped pair", () => {
+    expect(stripIpaSlashes("/hʊnt/")).toBe("hʊnt");
+  });
+
+  it("strips a double-wrapped value in one pass (the real 2026-09-18 incident's corruption pattern)", () => {
+    expect(stripIpaSlashes("//ˈantvɔʁt//")).toBe("ˈantvɔʁt");
+  });
+
+  it("is a no-op on an already-bare value", () => {
+    expect(stripIpaSlashes("hʊnt")).toBe("hʊnt");
+  });
+
+  it("leaves an internal slash untouched when there's no outer wrap", () => {
+    expect(stripIpaSlashes("ˈanta/ˈantɐ")).toBe("ˈanta/ˈantɐ");
+  });
+});
+
 describe("format helpers", () => {
   it("formatCardLine matches the Python format_row output shape", () => {
     const line = formatCardLine({
@@ -115,6 +134,29 @@ describe("format helpers", () => {
     expect(line).toBe(
       "- **Hund** :: **Meaning:** (Noun) dog, hound<br>**IPA:** /hʊnt/<br>**Grammar:** der; Plural: die Hunde<br>**Example:** *Der Hund bellt.*<br>![[audio/De-Hund.mp3]]\n",
     );
+  });
+
+  it("does not double-wrap an already-slash-delimited IPA value (Kaikki's raw dump often already has slashes)", () => {
+    const line = formatCardLine({
+      front: "Hund", meaning: "dog", ipa: "/hʊnt/", grammar: null, form: null,
+      example: null, audioPath: null, lesson: null, curation: "generated", reviewNote: null,
+    });
+    expect(line).toContain("**IPA:** /hʊnt/");
+    expect(line).not.toContain("//hʊnt//");
+  });
+
+  it("parseCardFields fully un-wraps a double-wrapped IPA field in one pass, not just one layer", () => {
+    const line = "- **Antwort** :: **Meaning:** answer<br>**IPA:** //ˈantvɔʁt//<br>\n";
+    expect(parseCardFields(line).ipa).toBe("ˈantvɔʁt");
+  });
+
+  it("formatCardLine(parseCardFields(x)) is idempotent -- no slash growth on repeated round-trips", () => {
+    const once = formatCardLine({
+      front: "Hund", meaning: "dog", ipa: "hʊnt", grammar: null, form: null,
+      example: null, audioPath: null, lesson: null, curation: "generated", reviewNote: null,
+    });
+    const twice = formatCardLine({ front: "Hund", ...parseCardFields(once) });
+    expect(twice).toBe(once);
   });
 
   it("never emits a <!--curated:generated--> marker", () => {

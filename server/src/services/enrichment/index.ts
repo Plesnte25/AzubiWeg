@@ -7,6 +7,7 @@ import {
   findEntryById,
   findPrimaryEntry,
   isEnglishCognate,
+  pickBetterExample,
   resolveWord,
   translateText,
 } from "./kaikki.js";
@@ -122,6 +123,14 @@ export async function enrichResolved(
   lesson: string | null = null,
   transient = false,
   ponsBudget?: PonsBudget,
+  // The prior card/row's example+translation, when re-enriching a word that
+  // already has one -- lets a good existing example survive a re-enrichment
+  // pass instead of being unconditionally overwritten (see
+  // pickBetterExample()'s doc comment). null for a brand-new word. Must
+  // always be sourced as a PAIR (never just the example text) -- see
+  // sync.ts's enrichIntoVault() for why the vault-linked path in particular
+  // has to fetch this from the Word DB row, not the parsed vault card.
+  existingExample: { example: string | null; exampleTranslation: string | null } | null = null,
 ): Promise<EnrichmentResult> {
   // Prefer the exact entry the resolution already identified (res.entryId)
   // over re-deriving "the primary entry" from res.headword -- see
@@ -177,12 +186,23 @@ export async function enrichResolved(
     audioPath = await synthesizeTts(res.headword, audioDir);
   }
 
-  const example = entry?.example ?? null;
+  // pickBetterExample() decides whether the freshly-resolved entry's example
+  // is actually an improvement over an already-existing one -- returns the
+  // pair TOGETHER from one side or the other, never mixed (a candidate's
+  // translation must never end up paired with a retained old example, or
+  // vice versa -- the exact bug this closes).
+  const candidateExample = {
+    example: entry?.example ?? null,
+    exampleTranslation: cleanExampleTranslation(entry?.exampleTranslation ?? null),
+  };
+  let { example, exampleTranslation } = pickBetterExample(
+    existingExample ?? { example: null, exampleTranslation: null },
+    candidateExample,
+  );
   // Prefer the sourced KaikkiEntry translation; when a real German example
   // exists but no sourced translation does, fall back to a live machine
   // translation rather than leave it blank — same free endpoint
   // translateLiteral already uses for the meaning fallback above.
-  let exampleTranslation = cleanExampleTranslation(entry?.exampleTranslation ?? null);
   if (example && !exampleTranslation) exampleTranslation = await translateText(example);
 
   // Review-flag signals are intrinsic to the resolution itself (ambiguous

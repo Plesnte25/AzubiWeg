@@ -5,3 +5,5 @@ server/.pgdata/
 server/generated/
 *.log
 server/data/
+server/scripts/backups/
+server/scripts/logs/
