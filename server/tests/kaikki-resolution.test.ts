@@ -10,6 +10,7 @@ import {
   firstMeaning,
   isSpellingCognate,
   looksLikeEnglishLoanword,
+  prioritizeEntry,
   type KaikkiFormRaw,
   type KaikkiSenseRaw,
 } from "../src/services/enrichment/kaikki.js";
@@ -187,6 +188,49 @@ describe("combineMeaning", () => {
     ]);
     expect(result.meaning).toBe(`(Noun) ${longFirst}`);
     expect(result.ambiguous).toBe(false);
+  });
+});
+
+describe("prioritizeEntry", () => {
+  it("moves the preferred entry to the front, preserving the rest's relative order", () => {
+    const noun = entry({ id: "sein-noun", pos: "noun", meaning: "existence, being" });
+    const verb = entry({ id: "sein-verb", pos: "verb", meaning: "to be" });
+    const adj = entry({ id: "sein-adj", pos: "adj", meaning: "his" });
+    // Real-world motivating case: "bist" is a form of the verb "sein", but a
+    // bare headword lookup's POS_PRIORITY would sort the unrelated noun
+    // "Sein" (existence/being) first -- prioritizeEntry corrects that once
+    // resolveViaKaikki already knows which entry the form belongs to.
+    expect(prioritizeEntry([noun, verb, adj], "sein-verb")).toEqual([verb, noun, adj]);
+  });
+
+  it("is a no-op when the preferred entry is already first", () => {
+    const first = entry({ id: "a" });
+    const second = entry({ id: "b" });
+    expect(prioritizeEntry([first, second], "a")).toEqual([first, second]);
+  });
+
+  it("is a no-op when the preferred id isn't present", () => {
+    const list = [entry({ id: "a" }), entry({ id: "b" })];
+    expect(prioritizeEntry(list, "nonexistent")).toEqual(list);
+  });
+
+  it("handles a single-element list", () => {
+    const only = entry({ id: "a" });
+    expect(prioritizeEntry([only], "a")).toEqual([only]);
+  });
+
+  it("composes with combineMeaning to put the form-owning entry's sense first (the real 'bist'/'sein' case)", () => {
+    const noun = entry({ id: "sein-noun", pos: "noun", meaning: "existence, being, essence" });
+    const verb = entry({ id: "sein-verb", pos: "verb", meaning: "to be" });
+    // Before the fix: resolveViaKaikki's form-lookup branch fed
+    // combineMeaning() the POS_PRIORITY-sorted group as-is (noun first),
+    // publishing "(Noun) existence...; (Verb) to be" for a word the user
+    // reached by typing a VERB form ("bist"). prioritizeEntry() closes that.
+    const unprioritized = combineMeaning([noun, verb]);
+    expect(unprioritized.meaning).toBe("(Noun) existence, being, essence; (Verb) to be");
+
+    const prioritized = combineMeaning(prioritizeEntry([noun, verb], "sein-verb"));
+    expect(prioritized.meaning).toBe("(Verb) to be; (Noun) existence, being, essence");
   });
 });
 

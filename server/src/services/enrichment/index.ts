@@ -4,6 +4,7 @@ import {
   type Resolution,
   TransientLookupError,
   cleanExampleTranslation,
+  findEntryById,
   findPrimaryEntry,
   isEnglishCognate,
   resolveWord,
@@ -76,7 +77,7 @@ export async function resolveWordSafe(
       return {
         res: {
           headword: word, typed: word, formNote: null, meaning: null,
-          ambiguous: false, hasGermanEntry: false, source: "kaikki",
+          ambiguous: false, hasGermanEntry: false, source: "kaikki", entryId: null,
         },
         transient: true,
       };
@@ -122,7 +123,18 @@ export async function enrichResolved(
   transient = false,
   ponsBudget?: PonsBudget,
 ): Promise<EnrichmentResult> {
-  const entry = transient ? null : await findPrimaryEntry(res.headword);
+  // Prefer the exact entry the resolution already identified (res.entryId)
+  // over re-deriving "the primary entry" from res.headword -- see
+  // Resolution.entryId's doc comment for the real, measured divergence this
+  // closes (an inflected-form lookup and a bare headword lookup can
+  // disagree on which homograph is "primary"). findPrimaryEntry() stays as
+  // the fallback for the entryId-null case (nothing resolved) and the
+  // defensive case where that specific entry has since been deleted.
+  let entry = null;
+  if (!transient) {
+    entry = res.entryId ? await findEntryById(res.entryId) : null;
+    if (!entry) entry = await findPrimaryEntry(res.headword);
+  }
 
   const empty = {
     ipa: null,

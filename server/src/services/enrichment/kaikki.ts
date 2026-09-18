@@ -39,6 +39,22 @@ export interface Resolution {
   // usable meaning -- lets enrichResolved() tell "confirmed not German"
   // apart from "real German word, no gloss yet" (see resolveViaKaikki).
   hasGermanEntry: boolean;
+  // The specific KaikkiEntry.id combineMeaning() actually drew the primary
+  // sense from, when one exists -- lets enrichResolved() fetch grammar/IPA/
+  // audio/declension/conjugation from exactly that entry instead of
+  // re-deriving "the primary entry" from `headword` via a second,
+  // independently-sorted findEntriesByHeadword() query. That re-derivation
+  // is where a real, measured divergence lived: reachable via an inflected
+  // form, a fresh headword-keyed query can pick a different homograph than
+  // the one the form actually belongs to (e.g. "bist" resolves via the verb
+  // "sein" KaikkiForm entry, but a bare "sein" lookup's generic
+  // noun>verb>adj>adv POS_PRIORITY tiebreak picks the unrelated noun "Sein"
+  // == "being/existence" instead) -- see the plan's Phase 4 measurement
+  // (1,413 of 87,021 inflected-form-reachable lemma groups affected, 234
+  // losing their grammar table entirely). Null only when no entry exists at
+  // all (the not-found fallback) or the resolution never got this far
+  // (a transient failure's synthetic Resolution).
+  entryId: string | null;
 }
 
 /** Same candidate-title logic as the old wiktionary.ts (unchanged, pure). */
@@ -77,6 +93,25 @@ async function findEntriesByHeadword(headwordLower: string): Promise<KaikkiEntry
     const bi = POS_PRIORITY.indexOf(b.pos);
     return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
   });
+}
+
+/** Full KaikkiEntry by id -- the direct counterpart to findPrimaryEntry()
+ * below, used when a Resolution already carries a specific entryId rather
+ * than needing one re-derived from a headword string. */
+export async function findEntryById(id: string): Promise<KaikkiEntry | null> {
+  return prisma.kaikkiEntry.findUnique({ where: { id } });
+}
+
+/** Moves `preferredId` (if present) to the front of `entries`, preserving
+ * relative order of the rest -- for when a specific entry is already known
+ * to be the right one (e.g. the entry an inflected form actually belongs
+ * to) rather than trusting the generic POS_PRIORITY tiebreak in
+ * findEntriesByHeadword() above. A no-op if `preferredId` isn't in the
+ * list, or is already first. */
+export function prioritizeEntry<T extends { id: string }>(entries: T[], preferredId: string): T[] {
+  const idx = entries.findIndex((e) => e.id === preferredId);
+  if (idx <= 0) return entries;
+  return [entries[idx]!, ...entries.slice(0, idx), ...entries.slice(idx + 1)];
 }
 
 /** Combines up to 2 entries' meanings, same "(Pos) gloss; (Pos) gloss" shape
@@ -141,7 +176,10 @@ async function resolveViaKaikki(word: string): Promise<Resolution> {
     if (entries.length > 0) hasGermanEntry = true;
     const { meaning, ambiguous } = combineMeaning(entries);
     if (meaning) {
-      return { headword: entries[0]!.headword, typed, formNote: null, meaning, ambiguous, hasGermanEntry: true, source: "kaikki" };
+      return {
+        headword: entries[0]!.headword, typed, formNote: null, meaning, ambiguous,
+        hasGermanEntry: true, source: "kaikki", entryId: entries[0]!.id,
+      };
     }
   }
   for (const candidate of candidateTitles(word)) {
@@ -153,7 +191,16 @@ async function resolveViaKaikki(word: string): Promise<Resolution> {
       const entries = await findEntriesByHeadword(form.entry.headwordLower);
       if (entries.length > 0) hasGermanEntry = true;
       const desc = form.tags ? `${form.tags} of ${form.entry.headword}` : `form of ${form.entry.headword}`;
-      const { meaning, ambiguous } = combineMeaning(entries.length ? entries : [form.entry]);
+      // Reorder around the entry the typed form actually belongs to, rather
+      // than trusting the generic POS_PRIORITY tiebreak on the whole
+      // headwordLower group -- otherwise an unrelated homograph (a noun
+      // sharing the verb's lemma spelling, very common in German) can win
+      // both the published meaning AND (via the old findPrimaryEntry()
+      // re-derivation this Resolution.entryId now replaces) the grammar/
+      // conjugation table, even though the user typed a form of the OTHER
+      // entry.
+      const prioritized = entries.length ? prioritizeEntry(entries, form.entry.id) : [form.entry];
+      const { meaning, ambiguous } = combineMeaning(prioritized);
       return {
         headword: form.entry.headword,
         typed,
@@ -162,10 +209,14 @@ async function resolveViaKaikki(word: string): Promise<Resolution> {
         ambiguous,
         hasGermanEntry: true,
         source: "kaikki",
+        entryId: form.entry.id,
       };
     }
   }
-  return { headword: word, typed, formNote: null, meaning: null, ambiguous: false, hasGermanEntry, source: "kaikki" };
+  return {
+    headword: word, typed, formNote: null, meaning: null, ambiguous: false,
+    hasGermanEntry, source: "kaikki", entryId: null,
+  };
 }
 
 /** Retries on a transient network failure -- only translateLiteral below
@@ -243,7 +294,12 @@ export async function resolveWord(word: string): Promise<Resolution> {
 /** The full KaikkiEntry a resolved headword came from, for the enrichment
  * fields (ipa/example/declension/conjugation/audio/etymology) that
  * resolveWord()'s Resolution shape doesn't carry. Picks the same
- * pos-priority entry combineMeaning() would have used. */
+ * pos-priority entry combineMeaning() would have used for a bare headword
+ * lookup with no more specific answer available -- prefer Resolution.entryId
+ * + findEntryById() over this whenever a Resolution is on hand, since this
+ * function has no way to know a specific entry (e.g. one reached via an
+ * inflected form) was already the right answer. Kept as the fallback for
+ * when entryId is null or its entry has since been deleted. */
 export async function findPrimaryEntry(headword: string): Promise<KaikkiEntry | null> {
   const entries = await findEntriesByHeadword(headword.toLowerCase());
   return entries[0] ?? null;
