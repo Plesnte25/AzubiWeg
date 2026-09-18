@@ -168,6 +168,16 @@ describe("runPonsDiagnostic", () => {
     expect(allLogged).not.toContain("test-key");
   });
 
+  it("sanitizes the word itself before logging it -- resolveViaKaikki's not-found fallback carries the raw typed string through as headword, so this can't be assumed clean", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { hits: [{ type: "entry", roms: [{ arabs: [{ translations: [{ target: "castle" }] }] }] }] }));
+    const budget: PonsBudget = { remaining: 25, disabled: false };
+    await runPonsDiagnostic("Schloss\nFAKE LOG LINE: admin logged in", budget);
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    const logged = logSpy.mock.calls[0]![0] as string;
+    expect(logged).not.toContain("\n");
+    expect(logged).toBe("[PONS diagnostic for SchlossFAKE LOG LINE: admin logged in: castle]");
+  });
+
   it("204 -- no log, not disabled, budget still decremented", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(204, null));
     const budget: PonsBudget = { remaining: 25, disabled: false };

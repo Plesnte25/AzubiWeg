@@ -169,7 +169,15 @@ export async function runPonsDiagnostic(word: string, budget: PonsBudget): Promi
 
   const candidates = extractPonsCandidates(hits);
   if (candidates.length) {
-    console.log(`[PONS diagnostic for ${word}: ${candidates.join(" / ")}]`);
+    // `word` is usually a trusted Kaikki-DB headword, but when nothing was
+    // found in the local dump at all, resolveViaKaikki's fallback carries
+    // the raw typed string through as `headword` -- and that's exactly the
+    // case that sets source: "translation", which makes this diagnostic
+    // eligible. addSchema only bounds length, not character content, so a
+    // direct API call (not just the UI's textarea) could smuggle a
+    // newline/control character into the server log here. Sanitize it the
+    // same as any other untrusted text before logging.
+    console.log(`[PONS diagnostic for ${ponsSanitize(word, 60)}: ${candidates.join(" / ")}]`);
   }
 }
 

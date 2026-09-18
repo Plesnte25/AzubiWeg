@@ -157,33 +157,82 @@ wordsRouter.post("/", async (req, res) => {
         exampleTranslation = entryExampleTranslation;
         const card = makeCard(headword, fields, null);
         sortKey = card.sortKey;
-        // Preserve SR schedule on re-add, same donor-preference rule the
-        // vault path's upsertEnrichedCard() already uses (prefer a donor at
-        // the resolved-headword key, fall back to the typed-form key) --
-        // `candidates` (fetched above for the protection check) already
-        // contains whichever existing row(s) match either key, so this
-        // reuses that query instead of adding a new one.
-        const srDonor =
-          candidates.find((w) => w.sortKey === card.sortKey && w.srDue !== null) ??
-          candidates.find((w) => w.sortKey === word.toLowerCase() && w.srDue !== null);
-        await prisma.word.upsert({
-          where: { userId_sortKey: { userId: user.id, sortKey: card.sortKey } },
-          create: {
-            userId: user.id,
-            headword,
-            sortKey: card.sortKey,
-            ...fields,
-            rawBlock: card.cardLine,
-          },
-          update: {
-            ...fields, rawBlock: card.cardLine,
-            srDue: srDonor?.srDue ?? null,
-            srInterval: srDonor?.srInterval ?? null,
-            srEase: srDonor?.srEase ?? null,
-          },
-        });
-        if (word.toLowerCase() !== card.sortKey) {
-          await prisma.word.deleteMany({ where: { userId: user.id, sortKey: word.toLowerCase() } });
+
+        // TOCTOU close: the `candidates`/protection check above ran BEFORE
+        // enrichResolved()'s real I/O (audio download, translation
+        // fallback), which can take a while -- a concurrent request (another
+        // tab's PATCH marking this exact word manual/review, or a duplicate
+        // add) could have written a protecting curation to this same
+        // sortKey in that window. Re-verify immediately before writing,
+        // inside a SERIALIZABLE transaction covering both the re-check and
+        // the write -- Postgres's serializable snapshot isolation detects
+        // this exact read-then-write-elsewhere pattern (not just same-row
+        // conflicts) and aborts one side with a serialization failure
+        // (P2034) rather than silently letting both proceed. One retry
+        // absorbs a genuinely transient conflict; if it fails twice, decide
+        // from final state (now protected -> skip; anything else -> a real
+        // failure, surface it rather than silently drop it).
+        let settled = false;
+        for (let attempt = 0; attempt < 2 && !settled; attempt++) {
+          try {
+            await prisma.$transaction(
+              async (tx) => {
+                const freshCandidates = await tx.word.findMany({
+                  where: { userId: user.id, sortKey: { in: candidateKeys } },
+                });
+                const stillProtected = firstProtected(freshCandidates, (w) => w.curation);
+                if (stillProtected) {
+                  sortKey = stillProtected.sortKey;
+                  skipped = true;
+                  return;
+                }
+                // Preserve SR schedule on re-add, same donor-preference rule
+                // the vault path's upsertEnrichedCard() already uses (prefer
+                // a donor at the resolved-headword key, fall back to the
+                // typed-form key) -- re-fetched fresh above, inside the
+                // transaction, rather than reusing the pre-enrichment
+                // `candidates` array, which could itself be stale by now.
+                const srDonor =
+                  freshCandidates.find((w) => w.sortKey === card.sortKey && w.srDue !== null) ??
+                  freshCandidates.find((w) => w.sortKey === word.toLowerCase() && w.srDue !== null);
+                await tx.word.upsert({
+                  where: { userId_sortKey: { userId: user.id, sortKey: card.sortKey } },
+                  create: {
+                    userId: user.id,
+                    headword,
+                    sortKey: card.sortKey,
+                    ...fields,
+                    rawBlock: card.cardLine,
+                  },
+                  update: {
+                    ...fields, rawBlock: card.cardLine,
+                    srDue: srDonor?.srDue ?? null,
+                    srInterval: srDonor?.srInterval ?? null,
+                    srEase: srDonor?.srEase ?? null,
+                  },
+                });
+                if (word.toLowerCase() !== card.sortKey) {
+                  await tx.word.deleteMany({ where: { userId: user.id, sortKey: word.toLowerCase() } });
+                }
+              },
+              { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+            );
+            settled = true;
+          } catch (e) {
+            const isSerializationConflict = e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034";
+            if (!isSerializationConflict || attempt === 1) {
+              if (!isSerializationConflict) throw e;
+              // Failed twice -- decide from final state instead of retrying forever.
+              const finalCandidates = await prisma.word.findMany({
+                where: { userId: user.id, sortKey: { in: candidateKeys } },
+              });
+              const nowProtected = firstProtected(finalCandidates, (w) => w.curation);
+              if (!nowProtected) throw e;
+              sortKey = nowProtected.sortKey;
+              skipped = true;
+              settled = true;
+            }
+          }
         }
       }
     }
