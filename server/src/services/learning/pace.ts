@@ -68,3 +68,77 @@ export function computeRoutePace(params: {
     weeksBehindPace,
   };
 }
+
+export interface GoalFeasibility {
+  /** items/week required to finish exactly on examTargetDate — null with no
+   * target date, or 0 if the target date has already passed (nothing left
+   * to plan for, not "infeasible fast"). */
+  requiredItemsPerWeek: number | null;
+  /** derived from studyCapacityMinutes/day and a flat per-item time
+   * estimate — a ceiling on how many items/week the user's own stated
+   * capacity can realistically sustain, not a promise they'll hit it. */
+  sustainableItemsPerWeek: number;
+  /** weekly minutes implied by requiredItemsPerWeek, for a "that's Xmin/day"
+   * framing the UI can show next to the user's existing capacity setting. */
+  requiredMinutesPerWeek: number | null;
+  /** "on_track": required pace is at/under sustainable capacity.
+   * "tight": required pace exceeds capacity by up to 50%.
+   * "unrealistic": required pace exceeds capacity by more than 50%, or the
+   * exam date has already passed with items still remaining.
+   * null: no exam target date set, so there's nothing to assess yet. */
+  verdict: "on_track" | "tight" | "unrealistic" | null;
+}
+
+// Matches the flat per-item time estimates already used for daily queue
+// planning in roadmap.ts (study_source=20min, milestone_test=15min,
+// everything else=10min) — a syllabus item review/exercise pass is closest
+// to that "everything else" bucket, so 10 is the honest single number here
+// rather than inventing a separate, unvalidated estimate.
+const MINUTES_PER_ITEM = 10;
+
+/**
+ * Turns the exam target date + the user's own stated daily study capacity
+ * into a plain feasibility read: "at your current pace and stated capacity,
+ * is this deadline realistic?" Deliberately conservative — `sustainable`
+ * reflects the capacity the user themselves picked, not an idealized max,
+ * and the verdict never promises pass/fail on the exam itself (that's
+ * goetheReadiness's job; this is purely about the calendar).
+ */
+export function computeGoalFeasibility(params: {
+  remainingItems: number;
+  examTargetDate: Date | null;
+  studyCapacityMinutes: number;
+  today: Date;
+}): GoalFeasibility {
+  const sustainableItemsPerWeek = Math.round(((params.studyCapacityMinutes * 7) / MINUTES_PER_ITEM) * 10) / 10;
+
+  if (!params.examTargetDate || params.remainingItems === 0) {
+    return {
+      requiredItemsPerWeek: null,
+      sustainableItemsPerWeek,
+      requiredMinutesPerWeek: null,
+      verdict: null,
+    };
+  }
+
+  const msLeft = params.examTargetDate.getTime() - params.today.getTime();
+  if (msLeft <= 0) {
+    return {
+      requiredItemsPerWeek: params.remainingItems,
+      sustainableItemsPerWeek,
+      requiredMinutesPerWeek: params.remainingItems * MINUTES_PER_ITEM,
+      verdict: "unrealistic",
+    };
+  }
+
+  const weeksLeft = msLeft / WEEK_MS;
+  const requiredItemsPerWeek = Math.round((params.remainingItems / weeksLeft) * 10) / 10;
+  const requiredMinutesPerWeek = Math.round(requiredItemsPerWeek * MINUTES_PER_ITEM);
+
+  let verdict: GoalFeasibility["verdict"];
+  if (requiredItemsPerWeek <= sustainableItemsPerWeek) verdict = "on_track";
+  else if (requiredItemsPerWeek <= sustainableItemsPerWeek * 1.5) verdict = "tight";
+  else verdict = "unrealistic";
+
+  return { requiredItemsPerWeek, sustainableItemsPerWeek, requiredMinutesPerWeek, verdict };
+}

@@ -92,6 +92,12 @@ export function ExamSchedule({
   const remainingItems = syllabus ? syllabus.items.filter((i) => i.level === activeLevel && i.completedAt === null).length : 0;
   const weeksLeft = pickedDays > 0 ? pickedDays / 7 : 0;
   const neededPerWeek = weeksLeft > 0 ? Math.round((remainingItems / weeksLeft) * 10) / 10 : 0;
+  // capacity-aware feasibility read for the picked date — server's
+  // goalFeasibility.sustainableItemsPerWeek reflects the user's own stated
+  // study-capacity setting, so this warns honestly rather than only
+  // comparing against past velocity (comfortable/note above)
+  const sustainablePerWeek = syllabus?.routePace.goalFeasibility.sustainableItemsPerWeek ?? null;
+  const feasible = sustainablePerWeek === null || neededPerWeek <= sustainablePerWeek;
 
   return (
     <BottomSheet open={open} onClose={onClose}>
@@ -151,6 +157,13 @@ export function ExamSchedule({
           <div className="mt-2 flex items-center gap-2 text-[12.5px]" style={{ color: "rgba(233,233,237,.65)" }}>
             {neededPerWeek > 0 ? `~${neededPerWeek} syllabus items a week to stay on pace` : "Pace recalculates once you have items left to plan"}
           </div>
+          {neededPerWeek > 0 && sustainablePerWeek !== null && (
+            <div className="mt-1.5 flex items-start gap-[7px] text-[11.5px] leading-[1.45]" style={{ color: feasible ? "rgba(233,233,237,.5)" : "#e4c4b6" }}>
+              {feasible
+                ? `Within your study-capacity setting (~${sustainablePerWeek}/week sustainable).`
+                : `That's above your study-capacity setting (~${sustainablePerWeek}/week sustainable) — consider a later date or raising capacity in Settings.`}
+            </div>
+          )}
         </div>
       )}
 

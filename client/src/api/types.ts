@@ -339,11 +339,19 @@ export interface SyllabusWorkspace {
   };
 }
 
+export interface GoalFeasibility {
+  requiredItemsPerWeek: number | null;
+  sustainableItemsPerWeek: number;
+  requiredMinutesPerWeek: number | null;
+  verdict: "on_track" | "tight" | "unrealistic" | null;
+}
+
 export interface RoutePace {
   itemsPerWeek: number;
   projectedFinishDate: string | null;
   examTargetDate: string | null;
   weeksBehindPace: number | null;
+  goalFeasibility: GoalFeasibility;
 }
 
 export interface SyllabusResponse {
@@ -763,6 +771,20 @@ export interface ProgressKpi {
   deltaPoints?: number | null;
 }
 
+export interface MasteryTrendPoint {
+  weekStart: string;
+  attempts: number;
+  passed: number;
+  passRate: number;
+}
+
+export interface MasteryDistribution {
+  not_started: number;
+  learning: number;
+  passed: number;
+  mastered: number;
+}
+
 export interface ProgressResponse {
   period: ProgressPeriod;
   rangeStart: string;
@@ -785,6 +807,8 @@ export interface ProgressResponse {
   improvedMost: { topic: string; percent: number; deltaPoints: number }[];
   streakGrid: { date: string; minutes: number }[];
   readiness: GoetheReadiness;
+  masteryDistribution: MasteryDistribution;
+  masteryTrend: MasteryTrendPoint[];
   timeCoverage: { tasksCompleted: number; tasksWithLoggedTime: number };
 }
 

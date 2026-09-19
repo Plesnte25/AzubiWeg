@@ -6,7 +6,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { localDateKey } from "../services/learning/activity.js";
 import { setSyllabusItemCompletion } from "../services/learning/completion-sync.js";
 import { buildSession } from "../services/learning/engine.js";
-import { computeRoutePace } from "../services/learning/pace.js";
+import { computeGoalFeasibility, computeRoutePace } from "../services/learning/pace.js";
 import { levelProgress, levelStates, levelStatesWithExamGate, sourcePercent } from "../services/learning/progress.js";
 import { QUESTION_BANK } from "../services/learning/question-bank.js";
 import {
@@ -70,7 +70,7 @@ async function examGateForUser(userId: string) {
 async function routePaceForUser(userId: string) {
   const [items, user, examGate] = await Promise.all([
     prisma.syllabusItem.findMany({ where: { userId }, select: { level: true, completedAt: true, skippedAt: true } }),
-    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { examTargetDate: true } }),
+    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { examTargetDate: true, studyCapacityMinutes: true } }),
     examGateForUser(userId),
   ]);
   const levels = levelProgress(items.map((i, idx) => ({ id: String(idx), level: i.level, title: "", sortOrder: idx, completedAt: i.completedAt })));
@@ -78,12 +78,21 @@ async function routePaceForUser(userId: string) {
   const activeIdx = lockStates.indexOf("active");
   const activeLevel = activeIdx === -1 ? levels[levels.length - 1]?.level : levels[activeIdx]?.level;
   const activeItems = items.filter((i) => i.level === activeLevel);
-  return computeRoutePace({
-    remainingItems: activeItems.filter((i) => i.completedAt === null && i.skippedAt === null).length,
+  const remainingItems = activeItems.filter((i) => i.completedAt === null && i.skippedAt === null).length;
+  const today = new Date();
+  const pace = computeRoutePace({
+    remainingItems,
     recentCompletions: activeItems.filter((i) => i.completedAt !== null).map((i) => i.completedAt as Date),
     examTargetDate: user.examTargetDate,
-    today: new Date(),
+    today,
   });
+  const goalFeasibility = computeGoalFeasibility({
+    remainingItems,
+    examTargetDate: user.examTargetDate,
+    studyCapacityMinutes: user.studyCapacityMinutes,
+    today,
+  });
+  return { ...pace, goalFeasibility };
 }
 
 learningRouter.get("/pace", async (req, res) => {
