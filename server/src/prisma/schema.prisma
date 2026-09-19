@@ -35,12 +35,15 @@ model User {
   // user-set Goethe exam date; drives the Learning Hub's pace/readiness math
   // (weeks-behind-pace, route-pace projections) — null = no target set yet
   examTargetDate      DateTime?             @db.Date
+  studyCapacityMinutes Int                  @default(45)
   lastLoginAt         DateTime?
   activityPings       ActivityPing[]
   dailyActiveMinutes  DailyActiveMinutes[]
   hourlyActiveMinutes HourlyActiveMinutes[]
   notes               Note[]
   examAttempts        ExamAttempt[]
+  exerciseAttempts    ExerciseAttempt[]
+  dailyJournals       DailyJournal[]
 }
 
 // short-lived — folded into DailyActiveMinutes within a day, never outlives
@@ -383,6 +386,22 @@ model SyllabusItem {
   theme          String?
   title          String
   description    String?
+  learningOutcome String?
+  resourceTitle   String?
+  resourceBody    String?
+  resourceUrl     String?
+  resourceAudioUrl String?
+  resourceTranscript String?
+  listeningPrompt String?
+  guidedPractice  String?
+  exerciseType    SyllabusExerciseType?
+  exercisePrompt  String?
+  exerciseAnswer  String?
+  exerciseOptions Json?
+  masteryState    SyllabusMasteryState @default(not_started)
+  reviewDueAt     DateTime?
+  successfulAttempts Int                @default(0)
+  lastAttemptAt   DateTime?
   // pedagogical order within the level; "next up" = first incomplete
   sortOrder      Int              @default(0)
   // doubles as the activity date for the learning streak; null = not done
@@ -403,9 +422,17 @@ model SyllabusItem {
   files          UploadedFile[]
   roadmapTasks   RoadmapTask[]
   notes          Note[]
+  exerciseAttempts ExerciseAttempt[]
   createdAt      DateTime         @default(now())
 
   @@index([userId, level, sortOrder])
+}
+
+enum SyllabusMasteryState {
+  not_started
+  learning
+  passed
+  mastered
 }
 
 enum CefrLevel {
@@ -662,6 +689,59 @@ model RoadmapTask {
   @@index([dayId])
   @@index([skill])
   @@index([syllabusItemId])
+}
+
+enum SyllabusExerciseType {
+  free_text
+  self_check
+  multiple_choice
+  correction
+  listening_audio
+  speaking_audio
+}
+
+enum SyllabusMistakeCategory {
+  gender_article
+  case
+  word_order
+  conjugation
+  vocabulary
+  spelling
+  pronunciation
+  listening_detail
+  collocation
+  other
+}
+
+model ExerciseAttempt {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  syllabusItemId String
+  syllabusItem   SyllabusItem @relation(fields: [syllabusItemId], references: [id], onDelete: Cascade)
+  answer         String
+  passed         Boolean
+  feedback       String?
+  mistakeCategory SyllabusMistakeCategory?
+  rubricAssessment Json?
+  createdAt      DateTime         @default(now())
+
+  @@index([userId, syllabusItemId, createdAt])
+}
+
+model DailyJournal {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  learned   String?
+  difficult String?
+  nextStep  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
 }
 
 // user's own freeform notes (typed text and/or photos of handwritten notes) —

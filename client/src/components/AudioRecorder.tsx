@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { uploadFile } from "../api/client";
 
 /** Picks a mime type MediaRecorder actually supports on this browser. */
@@ -12,23 +12,35 @@ function pickMimeType(): string | null {
 
 /**
  * Records a short speaking-practice clip via getUserMedia + MediaRecorder,
- * then uploads it as a roadmapTaskId-attached UploadedFile. No playback of
- * the in-progress recording here — the uploaded clip shows up as a normal
- * attachment (via Attachments/FileChip) once the upload completes.
+ * uploads it immediately, and keeps the just-recorded blob around long enough
+ * for the learner to review it before submitting the exercise.
  */
 export default function AudioRecorder({
   roadmapTaskId,
+  syllabusItemId,
   onUploaded,
 }: {
-  roadmapTaskId: string;
+  roadmapTaskId?: string;
+  syllabusItemId?: string;
   onUploaded: () => void;
 }) {
   const [recording, setRecording] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
+    };
+  }, []);
 
   async function start() {
     setError(null);
@@ -52,10 +64,20 @@ export default function AudioRecorder({
         try {
           const ext = mimeType === "audio/mp4" ? "m4a" : mimeType.split("/")[1];
           const file = new File([blob], `speaking-practice.${ext}`, { type: mimeType });
-          await uploadFile(file, { kind: "audio_recording", roadmapTaskId });
+          const nextPreviewUrl = URL.createObjectURL(blob);
+          if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+          previewUrlRef.current = nextPreviewUrl;
+          setPreviewUrl(nextPreviewUrl);
+
+          await uploadFile(file, { kind: "audio_recording", roadmapTaskId, syllabusItemId });
           onUploaded();
         } catch (e) {
           setError(e instanceof Error ? e.message : "Upload failed");
+          if (previewUrlRef.current) {
+            URL.revokeObjectURL(previewUrlRef.current);
+            previewUrlRef.current = null;
+            setPreviewUrl(null);
+          }
         } finally {
           setUploading(false);
         }
@@ -74,24 +96,27 @@ export default function AudioRecorder({
   }
 
   return (
-    <div className="flex items-center gap-2">
-      {!recording ? (
-        <button
-          className="rounded border border-hairline px-2 py-0.5 text-caption text-ink-600 hover:bg-paper disabled:opacity-60"
-          onClick={start}
-          disabled={uploading}
-        >
-          {uploading ? "Uploading…" : "🎙 Record speaking practice"}
-        </button>
-      ) : (
-        <button
-          className="rounded border border-danger-600 bg-danger-50 px-2 py-0.5 text-caption text-danger-600"
-          onClick={stop}
-        >
-          ● Stop recording
-        </button>
-      )}
-      {error && <span className="text-caption text-danger-600">{error}</span>}
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        {!recording ? (
+          <button
+            className="rounded border border-hairline px-2 py-0.5 text-caption text-ink-600 hover:bg-paper disabled:opacity-60"
+            onClick={start}
+            disabled={uploading}
+          >
+            {uploading ? "Uploading…" : "🎙 Record speaking practice"}
+          </button>
+        ) : (
+          <button
+            className="rounded border border-danger-600 bg-danger-50 px-2 py-0.5 text-caption text-danger-600"
+            onClick={stop}
+          >
+            ● Stop recording
+          </button>
+        )}
+        {error && <span className="text-caption text-danger-600">{error}</span>}
+      </div>
+      {previewUrl && <audio controls preload="metadata" src={previewUrl} className="h-10 w-full max-w-sm" aria-label="Review your speaking recording" />}
     </div>
   );
 }

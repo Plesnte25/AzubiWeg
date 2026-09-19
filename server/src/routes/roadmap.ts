@@ -13,6 +13,8 @@ import { addDaysUTC, computeBacklog, dayStatus, diffReseed } from "../services/l
 import { DEFAULT_ROADMAP_DAYS, ROADMAP_VERSION, type DefaultRoadmapDay } from "../services/learning/roadmap-defaults.js";
 import { buildUserRoadmapPlan, type SyllabusRowForGeneration } from "../services/learning/roadmap-generator.js";
 import { ensureSyllabusSeeded } from "../services/learning/syllabus-seed.js";
+import { planDailyQueues, STUDY_CAPACITIES } from "../services/learning/daily-plan.js";
+import { blockedTopicIds } from "../services/learning/prerequisites.js";
 
 export const roadmapRouter = Router();
 roadmapRouter.use(requireAuth);
@@ -22,13 +24,42 @@ const todayLocal = () => toDate(localDateKey(new Date()));
 
 const SKILL_ENUM = z.enum(["grammar", "vocab", "listening", "speaking", "writing", "reading", "bureaucracy", "milestone", "reflection"]);
 
+const journalSchema = z.object({
+  learned: z.string().trim().max(3000).nullish(),
+  difficult: z.string().trim().max(3000).nullish(),
+  nextStep: z.string().trim().max(3000).nullish(),
+});
+
+roadmapRouter.get("/journal/day/:date", async (req, res) => {
+  const parsed = z.iso.date().safeParse(req.params.date);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid date" });
+  const journal = await prisma.dailyJournal.findUnique({
+    where: { userId_date: { userId: req.userId, date: toDate(parsed.data) } },
+  });
+  res.json({ journal });
+});
+
+roadmapRouter.put("/journal/day/:date", async (req, res) => {
+  const date = z.iso.date().safeParse(req.params.date);
+  if (!date.success) return res.status(400).json({ error: "Invalid date" });
+  const parsed = journalSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+
+  const journal = await prisma.dailyJournal.upsert({
+    where: { userId_date: { userId: req.userId, date: toDate(date.data) } },
+    create: { userId: req.userId, date: toDate(date.data), ...parsed.data },
+    update: { ...parsed.data },
+  });
+  res.json({ journal });
+});
+
 const TASK_INCLUDE = {
   tasks: {
     orderBy: { sortOrder: "asc" as const },
     include: {
       files: true,
       // just enough to show "From syllabus: A1 > Theme" on a linked task
-      syllabusItem: { select: { level: true, theme: true, description: true } },
+      syllabusItem: { select: { id: true, level: true, theme: true, description: true, sortOrder: true, masteryState: true } },
     },
   },
 };
@@ -106,7 +137,16 @@ async function ensureCurrentVersion(userId: string, roadmapVersion: number, road
 
 roadmapRouter.get("/status", async (req, res) => {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
-  res.json({ activated: user.roadmapStartedAt !== null, startedAt: user.roadmapStartedAt });
+  res.json({ activated: user.roadmapStartedAt !== null, startedAt: user.roadmapStartedAt, studyCapacityMinutes: user.studyCapacityMinutes });
+});
+
+const capacitySchema = z.object({ minutes: z.number().int().refine((value) => (STUDY_CAPACITIES as readonly number[]).includes(value), "Unsupported study capacity") });
+
+roadmapRouter.patch("/capacity", async (req, res) => {
+  const parsed = capacitySchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+  const user = await prisma.user.update({ where: { id: req.userId }, data: { studyCapacityMinutes: parsed.data.minutes } });
+  res.json({ studyCapacityMinutes: user.studyCapacityMinutes });
 });
 
 const examTargetSchema = z.object({ examTargetDate: z.iso.date().nullable() });
@@ -213,6 +253,11 @@ roadmapRouter.get("/today", async (req, res) => {
   ]);
 
   const allTasks = days.flatMap((d) => d.tasks);
+  const syllabusTopics = await prisma.syllabusItem.findMany({
+    where: { userId: user.id },
+    select: { id: true, level: true, sortOrder: true, masteryState: true },
+  });
+  const blockedIds = blockedTopicIds(syllabusTopics);
   const tasksDone = allTasks.filter((t) => t.completedAt !== null).length;
   const currentDayOffset = Math.round((today.getTime() - user.roadmapStartedAt.getTime()) / 86_400_000);
 
@@ -224,11 +269,51 @@ roadmapRouter.get("/today", async (req, res) => {
   // Phase 11 (Plan rebuild) resolves this by no longer filtering them out —
   // they show in the task list like any other task, tagged the same
   // "Context" skill label SourcesPage's RESOURCE_SKILL_LABEL already uses.
+  const capacity = user.studyCapacityMinutes as 5 | 20 | 45 | 90 | 180 | 330;
+  const planned = planDailyQueues(
+    (todayRow?.tasks ?? []).map((task) => ({
+      id: task.id,
+      estimateMinutes: task.type === "study_source" ? 20 : task.type === "milestone_test" ? 15 : 10,
+      completedAt: task.completedAt,
+      blocked: task.syllabusItemId !== null && blockedIds.has(task.syllabusItemId),
+    })),
+    capacity,
+  );
+  const plannedBlockedTaskIds = (todayRow?.tasks ?? [])
+    .filter((task) => task.completedAt === null && task.syllabusItemId !== null && blockedIds.has(task.syllabusItemId))
+    .map((task) => task.id);
+  const dueWords = await prisma.word.findMany({
+    where: { userId: user.id, srDue: { lte: new Date() }, meaning: { not: null } },
+    orderBy: { srDue: "asc" },
+    take: Math.max(1, Math.floor(planned.revisionMinutes / 2)),
+    select: { id: true, headword: true, meaning: true, example: true },
+  });
+  const topicReviews = await prisma.syllabusItem.findMany({
+    where: { userId: user.id, reviewDueAt: { lte: new Date() }, masteryState: { not: "not_started" } },
+    orderBy: { reviewDueAt: "asc" },
+    take: 10,
+    select: { id: true, title: true, level: true, theme: true, reviewDueAt: true },
+  });
+  const availableTopicReviews = topicReviews.filter((topic) => !blockedIds.has(topic.id)).slice(0, 5);
+
   res.json({
     date: todayRow?.date ?? today,
     theme: todayRow?.theme ?? null,
     tasks: todayRow?.tasks ?? [],
     backlog: computeBacklog(days, today).filter((g) => g.tasks.length > 0),
+    capacity: {
+      minutes: capacity,
+      revisionMinutes: planned.revisionMinutes,
+      coreMinutes: planned.coreMinutes,
+      hasMore: planned.hasMore,
+    },
+    queues: {
+      revision: dueWords,
+      topicReviews: availableTopicReviews,
+      coreTaskIds: planned.core.map((task) => task.id),
+      accelerationTaskIds: planned.acceleration.map((task) => task.id),
+      blockedTaskIds: plannedBlockedTaskIds,
+    },
     overview: {
       totalDays: DEFAULT_ROADMAP_DAYS.length,
       currentDayOffset,
@@ -438,8 +523,15 @@ roadmapRouter.patch("/tasks/:id", async (req, res) => {
 
   const existing = await prisma.roadmapTask.findFirst({
     where: { id: req.params.id, day: { userId: req.userId } },
+    include: { syllabusItem: { select: { id: true, exerciseType: true } } },
   });
   if (!existing) return res.status(404).json({ error: "Task not found" });
+  if (parsed.data.completed === true && existing.syllabusItem?.exerciseType) {
+    const passedAttempt = await prisma.exerciseAttempt.findFirst({
+      where: { userId: req.userId, syllabusItemId: existing.syllabusItem.id, passed: true },
+    });
+    if (!passedAttempt) return res.status(409).json({ error: "Complete and pass the exercise before marking this topic complete" });
+  }
 
   let targetDay = null;
   if (parsed.data.dayOffset !== undefined) {

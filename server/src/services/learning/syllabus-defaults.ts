@@ -10,6 +10,18 @@ export interface DefaultSyllabusItem {
   /** the subtopic itself — one concrete, checkable thing to master */
   title: string;
   description?: string;
+  learningOutcome?: string;
+  resourceTitle?: string;
+  resourceBody?: string;
+  resourceUrl?: string;
+  resourceAudioUrl?: string;
+  resourceTranscript?: string;
+  listeningPrompt?: string;
+  guidedPractice?: string;
+  exerciseType?: "free_text" | "self_check" | "multiple_choice" | "correction" | "listening_audio" | "speaking_audio";
+  exercisePrompt?: string;
+  exerciseAnswer?: string;
+  exerciseOptions?: { options: string[]; correctIndex: number };
 }
 
 /**
@@ -37,8 +49,227 @@ export interface DefaultSyllabusItem {
  * reinforce the same curriculum rather than diverging from it. Existing
  * titles are untouched, so this reseed only adds new incomplete items — no
  * completion state is at risk. Paired ROADMAP_VERSION bump ships alongside.
+ *
+ * v6: added a learn -> practice -> exercise workflow to every seeded topic.
+ * v7: added an optional in-app audio source for listening lessons.
+ * v8: added transcript and comprehension guidance for listening lessons.
+ * v9: added authored A1-B1 listening anchors with app-native transcripts and
+ * scored comprehension checks.
  */
-export const SYLLABUS_VERSION = 5;
+export const SYLLABUS_VERSION = 9;
+
+type AuthoredActivity = Pick<
+  DefaultSyllabusItem,
+  | "learningOutcome"
+  | "resourceTitle"
+  | "resourceBody"
+  | "resourceTranscript"
+  | "listeningPrompt"
+  | "guidedPractice"
+  | "exerciseType"
+  | "exercisePrompt"
+  | "exerciseAnswer"
+  | "exerciseOptions"
+>;
+
+const AUTHORED_EXERCISES: Record<string, AuthoredActivity> = {
+  "sein & haben": {
+    exerciseType: "multiple_choice",
+    exercisePrompt: "Welche Form ist richtig? Ich ___ heute zu Hause.",
+    exerciseOptions: { options: ["bin", "bist", "sind"], correctIndex: 0 },
+  },
+  "Accusative articles: den / einen": {
+    exerciseType: "correction",
+    exercisePrompt: "Korrigiere den Satz: Ich sehe der Mann.",
+    exerciseAnswer: "Ich sehe den Mann.",
+  },
+  "Short messages & postcards": {
+    exerciseType: "free_text",
+    exercisePrompt: "Schreibe eine kurze Nachricht (mindestens 20 Zeichen): Du kommst heute 30 Minuten später.",
+  },
+  "Introduce yourself fluently": {
+    exerciseType: "speaking_audio",
+    exercisePrompt: "Sprich 60 Sekunden über deinen Namen, Wohnort, Beruf und deine Sprachen.",
+  },
+  "Short everyday dialogues": {
+    exerciseType: "listening_audio",
+    exercisePrompt: "Höre den Dialog zweimal. Nimm danach eine kurze mündliche Zusammenfassung auf und nenne Treffpunkt und Uhrzeit.",
+    listeningPrompt: "Wer trifft wen, wo und wann?",
+    resourceTranscript: "A: Hallo, Anna. Hast du heute Nachmittag Zeit?\nB: Ja, ab vier Uhr. Warum?\nA: Ich möchte im Café am Bahnhof lernen. Kommst du mit?\nB: Gern. Treffen wir uns um halb fünf vor dem Eingang?\nA: Ja, bis später!",
+  },
+};
+
+const AUTHORED_LISTENING_LESSONS: Record<string, AuthoredActivity> = {
+  "Announcements & signs": {
+    learningOutcome: "I can identify the platform, delay, and next action in a short station announcement.",
+    resourceTitle: "Station announcement: delayed regional train",
+    resourceBody: "Listen once for the main change. Listen again for the platform and the departure time. Do not reveal the transcript until after your second listen.",
+    resourceTranscript: "Achtung am Bahnhof. Der Regionalzug nach Köln über Bonn fährt heute nicht um 14 Uhr 18, sondern etwa zehn Minuten später von Gleis 7. Fahrgäste nach Bonn steigen bitte dort ein.",
+    listeningPrompt: "Which train is delayed, by how long, and from which platform does it leave?",
+    guidedPractice: "Say the key facts aloud: destination, delay, platform, and action for passengers.",
+    exerciseType: "multiple_choice",
+    exercisePrompt: "Von welchem Gleis fährt der Zug nach Köln heute ab?",
+    exerciseOptions: { options: ["Gleis 5", "Gleis 7", "Gleis 10"], correctIndex: 1 },
+  },
+  "Listen to a short dialogue about family": {
+    learningOutcome: "I can identify family relationships and a simple plan from a short dialogue.",
+    resourceTitle: "Talking about family",
+    resourceBody: "Listen twice. First identify who is mentioned; then listen for the weekend plan.",
+    resourceTranscript: "A: Wie geht es deiner Schwester?\nB: Gut, danke. Sie arbeitet jetzt in Köln.\nA: Ach schön. Besucht sie euch am Wochenende?\nB: Ja, am Sonntag. Dann essen wir zusammen bei meinen Eltern.",
+    listeningPrompt: "Who works in Köln, and what will the family do on Sunday?",
+    guidedPractice: "Retell the family plan in one sentence without looking at the transcript.",
+    exerciseType: "multiple_choice",
+    exercisePrompt: "Was macht die Familie am Sonntag?",
+    exerciseOptions: { options: ["Sie essen zusammen", "Sie fahren nach Berlin", "Sie arbeiten im Büro"], correctIndex: 0 },
+  },
+  "Listen to a weather forecast": {
+    learningOutcome: "I can understand the weather, temperature, and advice in a short forecast.",
+    resourceTitle: "Weather for tomorrow",
+    resourceBody: "Listen for the change during the day: weather, temperature, and what people should take with them.",
+    resourceTranscript: "Morgen beginnt der Tag in Hamburg mit Regen und zwölf Grad. Am Nachmittag wird es trockener, aber windig. Die Höchsttemperatur liegt bei sechzehn Grad. Nehmen Sie am besten eine Jacke mit.",
+    listeningPrompt: "What is the weather like in the morning and what should people bring?",
+    guidedPractice: "Describe tomorrow's weather in two short German sentences.",
+    exerciseType: "multiple_choice",
+    exercisePrompt: "Was wird für morgen empfohlen?",
+    exerciseOptions: { options: ["Eine Jacke", "Eine Sonnenbrille", "Einen Regenschirm für den ganzen Tag"], correctIndex: 0 },
+  },
+  "Listen to directions being given": {
+    learningOutcome: "I can follow simple spoken directions through a neighbourhood.",
+    resourceTitle: "Finding the Bürgeramt",
+    resourceBody: "Build a mental route while listening. Focus on the turn after the supermarket and the final landmark.",
+    resourceTranscript: "Gehen Sie hier geradeaus bis zum Supermarkt. Dort biegen Sie rechts in die Gartenstraße ab. Nach ungefähr zweihundert Metern sehen Sie das Bürgeramt auf der linken Seite, direkt neben der Apotheke.",
+    listeningPrompt: "Where do you turn, and what is next to the Bürgeramt?",
+    guidedPractice: "Give the same route aloud using geradeaus, rechts, links, and neben.",
+    exerciseType: "multiple_choice",
+    exercisePrompt: "Wo ist das Bürgeramt?",
+    exerciseOptions: { options: ["Neben der Apotheke", "Im Supermarkt", "Gegenüber dem Bahnhof"], correctIndex: 0 },
+  },
+  "Listen to a phone conversation": {
+    learningOutcome: "I can identify the purpose and outcome of a short phone call.",
+    resourceTitle: "Calling a language school",
+    resourceBody: "Listen first for the caller's need, then for the course start and the next step.",
+    resourceTranscript: "Guten Tag, Sprachschule West. Was kann ich für Sie tun?\nGuten Tag. Ich möchte mich für einen Abendkurs anmelden. Beginnt noch ein Kurs im Mai?\nJa, der nächste A2-Kurs beginnt am sechsten Mai. Ich schicke Ihnen gern das Anmeldeformular per E-Mail.\nDanke, das wäre sehr nett.",
+    listeningPrompt: "What course does the caller need, when does it begin, and what will the school send?",
+    guidedPractice: "State the caller's request and the school's answer in your own words.",
+    exerciseType: "multiple_choice",
+    exercisePrompt: "Wann beginnt der nächste A2-Kurs?",
+    exerciseOptions: { options: ["Am 6. Mai", "Am 16. Mai", "Im Juni"], correctIndex: 0 },
+  },
+  "Listen to a doctor's appointment": {
+    learningOutcome: "I can understand symptoms, medical advice, and a follow-up action.",
+    resourceTitle: "Advice after a doctor's visit",
+    resourceBody: "Listen for the symptom, the doctor's recommendation, and when the patient should make contact again.",
+    resourceTranscript: "Seit drei Tagen habe ich starke Halsschmerzen und Fieber.\nDann ruhen Sie sich bitte aus, trinken Sie viel Tee und bleiben Sie bis Freitag zu Hause. Wenn das Fieber nicht sinkt, rufen Sie uns am Freitagmorgen wieder an.\nIn Ordnung, danke.",
+    listeningPrompt: "What should the patient do now, and when should they call again if the fever continues?",
+    guidedPractice: "Give the three pieces of advice in your own words.",
+    exerciseType: "multiple_choice",
+    exercisePrompt: "Wann soll die Person wieder anrufen, wenn das Fieber bleibt?",
+    exerciseOptions: { options: ["Am Freitagmorgen", "Heute Abend", "Nächsten Monat"], correctIndex: 0 },
+  },
+  "Listen to an apartment viewing conversation": {
+    learningOutcome: "I can identify key details of a rental viewing: size, cost, and availability.",
+    resourceTitle: "Viewing a two-room apartment",
+    resourceBody: "Listen for the facts a renter needs before deciding whether to view the apartment.",
+    resourceTranscript: "Die Wohnung hat zwei Zimmer und ist ungefähr sechzig Quadratmeter groß. Die Kaltmiete beträgt achthundert Euro, dazu kommen Nebenkosten. Frei ist sie ab dem ersten Juli. Können Sie am Donnerstag zur Besichtigung kommen?",
+    listeningPrompt: "How large is the apartment, what is the base rent, and when is it available?",
+    guidedPractice: "Summarize the apartment offer in three facts.",
+    exerciseType: "multiple_choice",
+    exercisePrompt: "Ab wann ist die Wohnung frei?",
+    exerciseOptions: { options: ["Ab dem 1. Juli", "Ab dem 1. Juni", "Ab Donnerstag"], correctIndex: 0 },
+  },
+  "Listen to a conversation about work": {
+    learningOutcome: "I can understand a workplace task, a problem, and the agreed next step.",
+    resourceTitle: "A delayed customer order",
+    resourceBody: "Follow who is responsible for the task and what has to happen before the end of the day.",
+    resourceTranscript: "Kannst du bitte noch einmal beim Kunden anrufen? Die Lieferung kommt wegen eines technischen Problems erst morgen.\nJa, ich erkläre die Situation und frage, ob der neue Termin passt.\nGut. Schreib mir danach kurz, ob der Kunde einverstanden ist.",
+    listeningPrompt: "Why is the delivery delayed, and what must happen after the call?",
+    guidedPractice: "Explain the problem and next steps as if you were reporting to a colleague.",
+    exerciseType: "multiple_choice",
+    exercisePrompt: "Warum kommt die Lieferung erst morgen?",
+    exerciseOptions: { options: ["Wegen eines technischen Problems", "Wegen des Wetters", "Weil der Kunde abgesagt hat"], correctIndex: 0 },
+  },
+  "Listen to a workplace conflict conversation": {
+    learningOutcome: "I can identify the cause of a workplace misunderstanding and the agreed resolution.",
+    resourceTitle: "Clarifying a shift handover",
+    resourceBody: "Listen for the different perspectives before deciding what the team will change.",
+    resourceTranscript: "Ich dachte, du übernimmst die Spätschicht am Freitag.\nNein, ich hatte gesagt, dass ich nur bis vier Uhr arbeiten kann. Vielleicht haben wir aneinander vorbeigeredet.\nStimmt. Wir tragen Änderungen ab jetzt sofort in den gemeinsamen Plan ein und bestätigen sie kurz per Nachricht.",
+    listeningPrompt: "What caused the conflict, and what new rule will the team use?",
+    guidedPractice: "Summarize the problem neutrally, then name the solution.",
+    exerciseType: "multiple_choice",
+    exercisePrompt: "Wie will das Team Änderungen künftig festhalten?",
+    exerciseOptions: { options: ["Im gemeinsamen Plan und per kurzer Bestätigung", "Nur mündlich", "Gar nicht mehr"], correctIndex: 0 },
+  },
+  "Listen to a discussion of rights and duties": {
+    learningOutcome: "I can understand an Azubi's right and responsibility in a workplace discussion.",
+    resourceTitle: "Training time and the Berichtsheft",
+    resourceBody: "Listen for the obligation and the support the trainer offers.",
+    resourceTranscript: "Muss ich das Berichtsheft wirklich jede Woche schreiben?\nJa. Es gehört zu deiner Ausbildung und dokumentiert, was du gelernt hast. Wenn du Fragen hast, können wir uns jeden Freitag zehn Minuten dafür nehmen.\nDas hilft mir, danke.",
+    listeningPrompt: "What is the Azubi expected to do, and what support is offered?",
+    guidedPractice: "Explain the duty and the support in two connected sentences.",
+    exerciseType: "multiple_choice",
+    exercisePrompt: "Welche Unterstützung bietet der Ausbilder an?",
+    exerciseOptions: { options: ["Zehn Minuten Hilfe jeden Freitag", "Ein zusätzliches Gehalt", "Einen freien Montag"], correctIndex: 0 },
+  },
+  "Listen to a bureaucratic phone call": {
+    learningOutcome: "I can identify required documents, a deadline, and the next step in an official call.",
+    resourceTitle: "Question about a residence application",
+    resourceBody: "Listen for what must be submitted and how the caller receives an appointment.",
+    resourceTranscript: "Für Ihren Antrag benötigen wir noch eine Kopie Ihres Passes und die Meldebescheinigung. Bitte laden Sie beide Dokumente bis zum fünfzehnten Oktober im Portal hoch. Danach bekommen Sie automatisch einen Terminvorschlag per E-Mail.",
+    listeningPrompt: "Which documents are missing, what is the deadline, and what happens afterwards?",
+    guidedPractice: "List the documents and the deadline as a clear checklist.",
+    exerciseType: "multiple_choice",
+    exercisePrompt: "Bis wann müssen die Dokumente hochgeladen werden?",
+    exerciseOptions: { options: ["Bis zum 15. Oktober", "Bis zum 15. September", "Bis zum Ende des Jahres"], correctIndex: 0 },
+  },
+  "Listen to a podcast about digital life": {
+    learningOutcome: "I can distinguish a speaker's main claim from the practical advice in a short podcast excerpt.",
+    resourceTitle: "A short podcast on password security",
+    resourceBody: "Listen for the risk being described and the two actions recommended to reduce it.",
+    resourceTranscript: "Viele Menschen benutzen dasselbe Passwort für mehrere Konten. Das ist bequem, aber riskant: Wird ein Passwort gestohlen, können andere Konten ebenfalls gefährdet sein. Nutzen Sie deshalb für jedes wichtige Konto ein eigenes Passwort und aktivieren Sie, wenn möglich, die Zwei-Faktor-Anmeldung.",
+    listeningPrompt: "What risk is explained, and which two protective actions are recommended?",
+    guidedPractice: "State the claim, then give the two recommendations with deshalb.",
+    exerciseType: "multiple_choice",
+    exercisePrompt: "Welche Maßnahme wird zusätzlich zu eigenen Passwörtern empfohlen?",
+    exerciseOptions: { options: ["Die Zwei-Faktor-Anmeldung aktivieren", "Passwörter mit Freunden teilen", "Dasselbe Passwort überall nutzen"], correctIndex: 0 },
+  },
+};
+
+function activityFor(item: DefaultSyllabusItem) {
+  const authored = AUTHORED_LISTENING_LESSONS[item.title] ?? AUTHORED_EXERCISES[item.title] ?? {};
+  const outcome = authored.learningOutcome ?? item.learningOutcome ?? `I can use ${item.title.toLowerCase()} in a practical German situation.`;
+  const resourceTitle = authored.resourceTitle ?? item.resourceTitle ?? `Core lesson: ${item.title}`;
+  const resourceBody =
+    authored.resourceBody ??
+    item.resourceBody ??
+    `${item.description ?? `Study the key forms and meaning of ${item.title}.`}\n\nRead the examples, say them aloud, and write one variation of your own.`;
+  const guidedPractice =
+    authored.guidedPractice ??
+    item.guidedPractice ??
+    `Make three short examples about your own life using ${item.title.toLowerCase()}. Check word order, spelling, and meaning.`;
+  const exercisePrompt =
+    authored.exercisePrompt ??
+    item.exercisePrompt ??
+    `Write one correct German sentence that demonstrates ${item.title.toLowerCase()}.`;
+
+  return {
+    learningOutcome: outcome,
+    resourceTitle,
+    resourceBody,
+    resourceUrl: item.resourceUrl ?? null,
+    resourceAudioUrl: item.resourceAudioUrl ?? null,
+    resourceTranscript: authored.resourceTranscript ?? item.resourceTranscript ?? null,
+    listeningPrompt: authored.listeningPrompt ?? item.listeningPrompt ?? null,
+    guidedPractice,
+    exerciseType: authored.exerciseType ?? item.exerciseType ?? "free_text",
+    exercisePrompt,
+    exerciseAnswer: authored.exerciseAnswer ?? item.exerciseAnswer ?? null,
+    exerciseOptions: authored.exerciseOptions ?? item.exerciseOptions ?? undefined,
+  };
+}
+
+export function syllabusItemSeed(item: DefaultSyllabusItem) {
+  return { ...item, ...activityFor(item) };
+}
 
 /**
  * The 2027 syllabus: full CEFR A1–B1 topic/subtopic map aligned with the

@@ -1,0 +1,2 @@
+ALTER TABLE "User"
+ADD COLUMN "studyCapacityMinutes" INTEGER NOT NULL DEFAULT 45;

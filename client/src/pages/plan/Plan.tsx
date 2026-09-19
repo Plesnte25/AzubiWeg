@@ -136,6 +136,153 @@ function TaskRow({ task, onToggle, onOpen }: { task: RoadmapTask; onToggle: (c: 
   );
 }
 
+function CapacityPicker({ value, onChange, pending }: { value: number; onChange: (value: 5 | 20 | 45 | 90 | 180 | 330) => void; pending: boolean }) {
+  const options = [5, 20, 45, 90, 180, 330] as const;
+  return (
+    <div className="flex items-center gap-2 overflow-x-auto">
+      <span className="shrink-0 text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>Study capacity</span>
+      {options.map((minutes) => (
+        <button
+          key={minutes}
+          type="button"
+          disabled={pending}
+          onClick={() => onChange(minutes)}
+          className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium disabled:opacity-50"
+          style={{ background: value === minutes ? "#9184d9" : "#20222f", color: value === minutes ? "#161826" : "rgba(233,233,237,.65)" }}
+        >
+          {minutes >= 60 ? `${minutes / 60}h` : `${minutes}m`}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function RevisionQueue({ words, onOpen }: { words: { id: string; headword: string; meaning: string | null }[]; onOpen: () => void }) {
+  return (
+    <div className="rounded-xl p-3" style={{ background: "rgba(145,132,217,.12)", boxShadow: "0 0 0 1px rgba(145,132,217,.24)" }}>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-[13px] font-semibold">Morning revision</div>
+          <div className="mt-0.5 text-[11px]" style={{ color: "rgba(233,233,237,.55)" }}>Start here · {words.length} due word{words.length === 1 ? "" : "s"}</div>
+        </div>
+        <button type="button" onClick={onOpen} className="rounded-full px-3 py-1.5 text-[11px] font-semibold" style={{ background: "#9184d9", color: "#161826" }}>
+          Review
+        </button>
+      </div>
+      {words.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {words.slice(0, 4).map((word) => (
+            <span key={word.id} className="rounded-full px-2 py-1 text-[11px]" style={{ background: "rgba(22,24,38,.45)", color: "rgba(233,233,237,.75)" }}>
+              {word.headword}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TopicReviewQueue({ topics, onOpen }: { topics: { id: string; title: string; level: string }[]; onOpen: (id: string) => void }) {
+  if (topics.length === 0) return null;
+  return (
+    <div className="rounded-xl p-3" style={{ background: "rgba(209,155,134,.12)", boxShadow: "0 0 0 1px rgba(209,155,134,.24)" }}>
+      <div className="text-[13px] font-semibold">Topic reviews due</div>
+      <div className="mt-0.5 text-[11px]" style={{ color: "rgba(233,233,237,.55)" }}>Revisit these topics before new learning.</div>
+      <div className="mt-2 space-y-1">
+        {topics.map((topic) => (
+          <button key={topic.id} type="button" onClick={() => onOpen(topic.id)} className="block w-full truncate rounded-lg px-2 py-1.5 text-left text-[12px] hover:bg-white/5">
+            <span style={{ color: "#e4c4b6" }}>{topic.level.toUpperCase()}</span> · {topic.title}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MistakeSummary({ mistakes }: { mistakes: { category: string; count: number; topics: string[] }[] }) {
+  if (mistakes.length === 0) return null;
+  const labels: Record<string, string> = {
+    gender_article: "Gender / articles",
+    case: "Cases",
+    word_order: "Word order",
+    conjugation: "Conjugation",
+    vocabulary: "Vocabulary",
+    spelling: "Spelling",
+    pronunciation: "Pronunciation",
+    listening_detail: "Listening detail",
+    collocation: "Collocation",
+    other: "Other",
+  };
+  return (
+    <div className="rounded-xl p-3" style={{ background: "rgba(209,155,134,.08)", boxShadow: "0 0 0 1px rgba(209,155,134,.18)" }}>
+      <div className="text-[13px] font-semibold">Focus areas</div>
+      <div className="mt-0.5 text-[11px]" style={{ color: "rgba(233,233,237,.55)" }}>Your recent exercise errors will shape future review.</div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {mistakes.slice(0, 4).map((mistake) => (
+          <span key={mistake.category} className="rounded-full px-2 py-1 text-[11px]" style={{ background: "rgba(22,24,38,.45)", color: "#e4c4b6" }}>
+            {labels[mistake.category] ?? mistake.category} · {mistake.count}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DailyJournalCard({ date }: { date: string }) {
+  const queryClient = useQueryClient();
+  const { data } = useQuery({ queryKey: ["roadmap", "journal", date], queryFn: () => api.dailyJournal(date) });
+  const [draft, setDraft] = useState({ learned: "", difficult: "", nextStep: "" });
+  useEffect(() => {
+    if (!data?.journal) return;
+    setDraft({
+      learned: data.journal.learned ?? "",
+      difficult: data.journal.difficult ?? "",
+      nextStep: data.journal.nextStep ?? "",
+    });
+  }, [data?.journal]);
+  const save = useMutation({
+    mutationFn: () => api.saveDailyJournal(date, {
+      learned: draft.learned || null,
+      difficult: draft.difficult || null,
+      nextStep: draft.nextStep || null,
+    }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["roadmap", "journal", date] }),
+  });
+
+  return (
+    <section className="rounded-xl p-3" style={{ background: "#20222f" }}>
+      <div className="text-[13px] font-semibold">Daily journal</div>
+      <div className="mt-0.5 text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>Capture what to remember before you leave today.</div>
+      <div className="mt-3 grid gap-2">
+        {([
+          ["learned", "What did you learn?"],
+          ["difficult", "What was difficult?"],
+          ["nextStep", "What will you practise next?"],
+        ] as const).map(([key, placeholder]) => (
+          <textarea
+            key={key}
+            value={draft[key]}
+            onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}
+            rows={2}
+            placeholder={placeholder}
+            className="w-full resize-y rounded-lg border border-white/10 bg-[#161826] p-2 text-[12px] text-[#e9e9ed] outline-none placeholder:text-white/35 focus:border-[#9184d9]"
+          />
+        ))}
+      </div>
+      <button
+        type="button"
+        disabled={save.isPending}
+        onClick={() => save.mutate()}
+        className="mt-2 rounded-lg px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
+        style={{ background: "#9184d9", color: "#161826" }}
+      >
+        {save.isPending ? "Saving…" : "Save journal"}
+      </button>
+      {save.isSuccess && <span className="ml-2 text-[11px]" style={{ color: "rgba(233,233,237,.55)" }}>Saved</span>}
+    </section>
+  );
+}
+
 // Sources dropped (redundant — it's the same combined page as Syllabus).
 // Tests stays, since it was added deliberately as the only discoverable
 // entry point into self-tests outside a finished review session. Notes is
@@ -362,6 +509,7 @@ export default function Plan() {
 
   const { data: week } = useQuery({ queryKey: ["roadmap", "week", undefined], queryFn: () => api.roadmapWeek() });
   const { data: syllabus } = useQuery({ queryKey: ["learning", "syllabus"], queryFn: api.learningSyllabus });
+  const { data: mistakeData } = useQuery({ queryKey: ["learning", "syllabus", "mistakes"], queryFn: api.syllabusMistakes });
   const tomorrowDate = today ? localDateStr(new Date(new Date(`${today.date.slice(0, 10)}T00:00:00`).getTime() + 86_400_000)) : null;
   const { data: tomorrow } = useQuery({
     queryKey: ["roadmap", "day", tomorrowDate],
@@ -378,6 +526,11 @@ export default function Plan() {
     mutationFn: (count: number) => api.pullTasksForward(count),
     onSuccess: () => invalidateHub(queryClient),
     onError: () => toast.error("Couldn't pull in more tasks — try again."),
+  });
+  const capacity = useMutation({
+    mutationFn: (minutes: 5 | 20 | 45 | 90 | 180 | 330) => api.updateStudyCapacity(minutes),
+    onSuccess: () => invalidateHub(queryClient),
+    onError: () => toast.error("Couldn't save your study capacity."),
   });
 
   const liveOpenTask = openTask && (today?.tasks.find((t) => t.id === openTask.id) ?? openTask);
@@ -432,6 +585,24 @@ export default function Plan() {
               </div>
             )}
 
+            <CapacityPicker
+              value={todayResp?.capacity.minutes ?? roadmapStatus?.studyCapacityMinutes ?? 45}
+              onChange={(minutes) => capacity.mutate(minutes)}
+              pending={capacity.isPending}
+            />
+            {todayResp?.queues && <RevisionQueue words={todayResp.queues.revision} onOpen={() => push("/review")} />}
+            {todayResp?.queues && <TopicReviewQueue topics={todayResp.queues.topicReviews} onOpen={(id) => push("/plan/syllabus", { state: { openItemId: id } })} />}
+            {mistakeData && <MistakeSummary mistakes={mistakeData.mistakes} />}
+            {(todayResp?.queues.blockedTaskIds?.length ?? 0) > 0 && (
+              <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,.04)", boxShadow: "0 0 0 1px rgba(255,255,255,.08)" }}>
+                <div className="text-[13px] font-semibold">Prerequisites first</div>
+                <div className="mt-0.5 text-[11px]" style={{ color: "rgba(233,233,237,.55)" }}>
+                  {todayResp?.queues.blockedTaskIds?.length} later task{todayResp?.queues.blockedTaskIds?.length === 1 ? "" : "s"} will unlock as earlier syllabus topics are passed.
+                </div>
+              </div>
+            )}
+            <DailyJournalCard date={today.date.slice(0, 10)} />
+
             <div className="mt-4 flex items-center gap-2.5">
               <div className="h-[5px] flex-1 overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
                 <div className="h-full rounded-[3px] transition-[width] duration-300" style={{ width: `${progressPct}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }} />
@@ -447,9 +618,20 @@ export default function Plan() {
                   {selectedDate ? "Nothing scheduled." : "Nothing scheduled today."}
                 </p>
               ) : (
-                today.tasks.map((t) => (
-                  <TaskRow key={t.id} task={t} onToggle={(c) => toggle.mutate({ id: t.id, completed: c })} onOpen={() => setOpenTask(t)} />
-                ))
+                <>
+                  {todayResp?.queues && todayResp.queues.coreTaskIds.length > 0 && (
+                    <div className="mb-1 text-micro font-semibold uppercase tracking-[.12em]" style={{ color: "rgba(233,233,237,.45)" }}>Core learning</div>
+                  )}
+                  {today.tasks.filter((task) => !todayResp?.queues || todayResp.queues.coreTaskIds.includes(task.id)).map((t) => (
+                    <TaskRow key={t.id} task={t} onToggle={(c) => toggle.mutate({ id: t.id, completed: c })} onOpen={() => setOpenTask(t)} />
+                  ))}
+                  {todayResp?.capacity.hasMore && (
+                    <div className="mt-2 mb-1 text-micro font-semibold uppercase tracking-[.12em]" style={{ color: "rgba(233,233,237,.45)" }}>Optional acceleration</div>
+                  )}
+                  {todayResp?.queues.accelerationTaskIds.map((id) => today.tasks.find((task) => task.id === id)).filter((task): task is RoadmapTask => !!task).map((t) => (
+                    <TaskRow key={t.id} task={t} onToggle={(c) => toggle.mutate({ id: t.id, completed: c })} onOpen={() => setOpenTask(t)} />
+                  ))}
+                </>
               )}
 
               {!selectedDate && (
@@ -497,6 +679,16 @@ export default function Plan() {
                 full pane width; tasks and chapter-progress/tomorrow sit in
                 their own row below, not beside it. */}
             {weekDays && <WeekStrip days={weekDays} selectedDate={selectedDate} onSelect={setSelectedDate} />}
+
+            <CapacityPicker
+              value={todayResp?.capacity.minutes ?? roadmapStatus?.studyCapacityMinutes ?? 45}
+              onChange={(minutes) => capacity.mutate(minutes)}
+              pending={capacity.isPending}
+            />
+            {todayResp?.queues && <RevisionQueue words={todayResp.queues.revision} onOpen={() => push("/review")} />}
+            {todayResp?.queues && <TopicReviewQueue topics={todayResp.queues.topicReviews} onOpen={(id) => push("/plan/syllabus", { state: { openItemId: id } })} />}
+            {mistakeData && <MistakeSummary mistakes={mistakeData.mistakes} />}
+            <DailyJournalCard date={today.date.slice(0, 10)} />
 
             <div className="flex items-center gap-2.5">
               <div className="h-[5px] flex-1 overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>

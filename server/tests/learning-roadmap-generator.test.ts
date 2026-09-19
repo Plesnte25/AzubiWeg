@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { distributeEvenly, deriveSyllabusTasks, buildUserRoadmapPlan } from "../src/services/learning/roadmap-generator.js";
 import type { SyllabusRowForGeneration } from "../src/services/learning/roadmap-generator.js";
-import { DEFAULT_SYLLABUS_ITEMS } from "../src/services/learning/syllabus-defaults.js";
+import { DEFAULT_SYLLABUS_ITEMS, syllabusItemSeed } from "../src/services/learning/syllabus-defaults.js";
 
 describe("distributeEvenly", () => {
   it("splits evenly when items divide cleanly", () => {
@@ -112,6 +112,33 @@ describe("buildUserRoadmapPlan", () => {
     const thursday = plan.find((d) => d.dayOffset === 3)!;
     expect(thursday.tasks.every((t) => t.syllabusItemId === undefined)).toBe(true);
     expect(thursday.tasks.length).toBeGreaterThan(0);
+  });
+
+  describe("syllabusItemSeed", () => {
+    it("gives every authored topic a learn-practice-exercise workflow", () => {
+      for (const item of DEFAULT_SYLLABUS_ITEMS) {
+        const seeded = syllabusItemSeed(item);
+        expect(seeded.learningOutcome).toBeTruthy();
+        expect(seeded.resourceBody).toBeTruthy();
+        expect(seeded.guidedPractice).toBeTruthy();
+        expect(["free_text", "multiple_choice", "correction", "listening_audio", "speaking_audio"]).toContain(seeded.exerciseType);
+        expect(seeded.exercisePrompt).toBeTruthy();
+      }
+    });
+
+    it("provides structured metadata for authored representative topics", () => {
+      const multipleChoice = syllabusItemSeed(DEFAULT_SYLLABUS_ITEMS.find((item) => item.title === "sein & haben")!);
+      expect(multipleChoice.exerciseType).toBe("multiple_choice");
+      expect(multipleChoice.exerciseOptions).toEqual({
+        options: ["bin", "bist", "sind"],
+        correctIndex: 0,
+      });
+      expect(syllabusItemSeed(DEFAULT_SYLLABUS_ITEMS.find((item) => item.title === "Introduce yourself fluently")!).exerciseType).toBe("speaking_audio");
+      const listening = syllabusItemSeed(DEFAULT_SYLLABUS_ITEMS.find((item) => item.title === "Short everyday dialogues")!);
+      expect(listening.exerciseType).toBe("listening_audio");
+      expect(listening.listeningPrompt).toBe("Wer trifft wen, wo und wann?");
+      expect(listening.resourceTranscript).toContain("Treffen wir uns um halb fünf");
+    });
   });
 
   it("against the REAL syllabus content, every one of the 182 days ends up with at least one task", () => {

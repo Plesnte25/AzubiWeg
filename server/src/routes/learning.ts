@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
@@ -21,6 +21,9 @@ import {
 } from "../services/learning/exam.js";
 import { weakAreasFromBreakdowns } from "../services/learning/review.js";
 import { ensureSyllabusSeeded } from "../services/learning/syllabus-seed.js";
+import { failedReview, isReviewDue, nextMastery } from "../services/learning/mastery.js";
+import { summarizeMistakes } from "../services/learning/mistakes.js";
+import { listeningAudioFor } from "../services/learning/listening-audio.js";
 import { extractCourseId, fetchCourse } from "../services/learning/nicosweg.js";
 import { fetchBook } from "../services/learning/googleBooks.js";
 import { fetchPodcast } from "../services/learning/itunesPodcasts.js";
@@ -108,6 +111,7 @@ learningRouter.get("/syllabus", async (req, res) => {
   ]);
   const withRoadmapDay = items.map(({ roadmapTasks, ...item }) => ({
     ...item,
+    reviewDue: isReviewDue(item.masteryState, item.reviewDueAt),
     roadmapDayOffset: roadmapTasks[0]?.day.dayOffset ?? null,
     roadmapTaskId: roadmapTasks[0]?.id ?? null,
   }));
@@ -124,6 +128,149 @@ learningRouter.get("/syllabus", async (req, res) => {
   const routePace = await routePaceForUser(req.userId);
 
   res.json({ levels, items: withRoadmapDay, routePace, lockStates, examGate });
+});
+
+const exerciseSubmissionSchema = z.object({
+  answer: z.string().trim().min(1).max(5000),
+  rubricAssessment: z.object({
+    taskFulfilled: z.boolean(),
+    grammarChecked: z.boolean(),
+    understandable: z.boolean(),
+  }).nullish(),
+  mistakeCategory: z.enum([
+    "gender_article", "case", "word_order", "conjugation", "vocabulary",
+    "spelling", "pronunciation", "listening_detail", "collocation", "other",
+  ]).nullish(),
+});
+
+learningRouter.get("/syllabus/:id/workspace", async (req, res) => {
+  const item = await prisma.syllabusItem.findFirst({
+    where: { id: req.params.id, userId: req.userId },
+    include: {
+      files: true,
+      exerciseAttempts: { orderBy: { createdAt: "desc" }, take: 5 },
+      notes: { include: { files: true }, orderBy: { createdAt: "desc" }, take: 10 },
+    },
+  });
+  if (!item) return res.status(404).json({ error: "Syllabus item not found" });
+  res.json({ item: { ...item, reviewDue: isReviewDue(item.masteryState, item.reviewDueAt) } });
+});
+
+learningRouter.get("/syllabus/:id/audio", async (req, res) => {
+  const item = await prisma.syllabusItem.findFirst({
+    where: { id: req.params.id, userId: req.userId },
+    select: { skill: true, resourceTranscript: true },
+  });
+  if (!item) return res.status(404).json({ error: "Syllabus item not found" });
+  if (item.skill !== "listening" || !item.resourceTranscript) {
+    return res.status(404).json({ error: "No generated audio is available for this lesson" });
+  }
+
+  const audioPath = await listeningAudioFor(item.resourceTranscript);
+  if (!audioPath) return res.status(503).json({ error: "The lesson recording could not be generated. Please try again shortly." });
+  res.type("audio/mpeg").setHeader("Cache-Control", "private, max-age=31536000, immutable").sendFile(audioPath);
+});
+
+learningRouter.post("/syllabus/:id/exercise", async (req, res) => {
+  const parsed = exerciseSubmissionSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+
+  const item = await prisma.syllabusItem.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  if (!item) return res.status(404).json({ error: "Syllabus item not found" });
+  if (!item.exerciseType || !item.exercisePrompt) return res.status(400).json({ error: "This topic has no exercise yet" });
+
+  const answer = parsed.data.answer;
+  const normalized = answer.toLocaleLowerCase("de-DE").replace(/\s+/g, " ").trim();
+  const expected = item.exerciseAnswer?.toLocaleLowerCase("de-DE").replace(/\s+/g, " ").trim();
+  const options = item.exerciseOptions as { options?: unknown[]; correctIndex?: unknown } | null;
+  const audioEvidence = item.exerciseType === "listening_audio" || item.exerciseType === "speaking_audio"
+    ? await prisma.uploadedFile.findFirst({
+      where: { userId: req.userId, syllabusItemId: item.id, kind: "audio_recording" },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    })
+    : null;
+  const rubric = parsed.data.rubricAssessment;
+  const writingScore = rubric
+    ? [rubric.taskFulfilled, rubric.grammarChecked, rubric.understandable].filter(Boolean).length
+    : 0;
+  const passed = item.exerciseType === "listening_audio" || item.exerciseType === "speaking_audio"
+    ? audioEvidence !== null
+    : item.skill === "writing"
+      ? normalized.length >= 20 && writingScore >= 2
+    : item.exerciseType === "multiple_choice" && options
+      ? Number(answer) === options.correctIndex
+      : expected
+        ? normalized === expected
+        : normalized.length >= 12;
+  const feedback = passed && item.exerciseType === "speaking_audio"
+    ? writingScore === 3
+      ? "Passed. You completed the speaking checklist. Keep the recording and repeat the task once more without reading."
+      : "Recording saved and passed. Next time, complete all three speaking checks for a stronger self-review."
+    : passed
+      ? "Passed. Compare your answer with the lesson and keep the correction in your notes."
+    : expected
+      ? "Not quite. Review the resource, then try the exact target form again."
+      : "Add a complete sentence with the target concept, then try again.";
+
+  const attempt = await prisma.$transaction(async (tx) => {
+    const lastSuccessfulAttempt = await tx.exerciseAttempt.findFirst({
+      where: { syllabusItemId: item.id, passed: true },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    });
+    const recentFailures = await tx.exerciseAttempt.count({
+      where: {
+        syllabusItemId: item.id,
+        passed: false,
+        createdAt: {
+          gt: lastSuccessfulAttempt?.createdAt ?? new Date(Date.now() - 30 * 86_400_000),
+        },
+      },
+    });
+    const created = await tx.exerciseAttempt.create({
+      data: {
+        userId: req.userId,
+        syllabusItemId: item.id,
+        answer,
+        passed,
+        feedback,
+        mistakeCategory: passed ? null : parsed.data.mistakeCategory ?? null,
+        rubricAssessment: rubric ?? Prisma.JsonNull,
+      },
+    });
+    if (passed) {
+      const mastery = nextMastery(item.successfulAttempts, recentFailures);
+      await tx.syllabusItem.update({
+        where: { id: item.id },
+        data: {
+          masteryState: mastery.masteryState,
+          reviewDueAt: mastery.reviewDueAt,
+          successfulAttempts: { increment: 1 },
+          lastAttemptAt: new Date(),
+        },
+      });
+      await setSyllabusItemCompletion(tx, req.userId, item.id, true);
+    } else {
+      await tx.syllabusItem.update({
+        where: { id: item.id },
+        data: { masteryState: "learning", reviewDueAt: failedReview(), lastAttemptAt: new Date() },
+      });
+    }
+    return created;
+  });
+
+  res.json({ passed, feedback, attempt });
+});
+
+learningRouter.get("/syllabus/mistakes", async (req, res) => {
+  const attempts = await prisma.exerciseAttempt.findMany({
+    where: { userId: req.userId, passed: false, mistakeCategory: { not: null } },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    select: { mistakeCategory: true, syllabusItemId: true, syllabusItem: { select: { title: true, level: true } } },
+  });
+  res.json({ mistakes: summarizeMistakes(attempts) });
 });
 
 // A "station" is every SyllabusItem sharing (level, theme) — derived, not a
@@ -191,6 +338,12 @@ learningRouter.patch("/syllabus/:id", async (req, res) => {
     where: { id: req.params.id, userId: req.userId },
   });
   if (!existing) return res.status(404).json({ error: "Syllabus item not found" });
+  if (parsed.data.completed === true && existing.exerciseType) {
+    const passedAttempt = await prisma.exerciseAttempt.findFirst({
+      where: { userId: req.userId, syllabusItemId: existing.id, passed: true },
+    });
+    if (!passedAttempt) return res.status(409).json({ error: "Complete and pass the exercise before marking this topic complete" });
+  }
 
   const item = await prisma.$transaction(async (tx) => {
     if (parsed.data.completed !== undefined) {

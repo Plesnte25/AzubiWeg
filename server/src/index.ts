@@ -1,5 +1,6 @@
 import express from "express";
 import { config } from "./config.js";
+import { prisma } from "./db.js";
 import { activityRouter } from "./routes/activity.js";
 import { authRouter } from "./routes/auth.js";
 import { applicationsRouter } from "./routes/applications.js";
@@ -17,8 +18,24 @@ import { vaultSync } from "./services/vault/sync.js";
 
 const app = express();
 app.use(express.json());
+const startedAt = Date.now();
 
-app.get("/api/health", (_req, res) => res.json({ ok: true }));
+app.get("/api/health", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({
+      ok: true,
+      database: "connected",
+      uptimeSeconds: Math.round((Date.now() - startedAt) / 1000),
+    });
+  } catch (error) {
+    res.status(503).json({
+      ok: false,
+      database: "disconnected",
+      error: error instanceof Error ? error.message : "database check failed",
+    });
+  }
+});
 app.use("/api/auth", authRouter);
 app.use("/api/words", wordsRouter);
 app.use("/api/reviews", reviewsRouter);

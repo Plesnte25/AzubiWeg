@@ -159,29 +159,33 @@ export async function downloadCommonsAudio(
  * good audio. Note this only validates structure (size/duration) -- it
  * cannot confirm the audio is actually the correct word's pronunciation.
  */
-export async function synthesizeTts(word: string, audioDir: string): Promise<string | null> {
-  await mkdir(audioDir, { recursive: true });
-  const stem = sanitizeStem(word);
-  const destPath = path.join(audioDir, `${stem}-tts.mp3`);
-
-  if (await isValidTtsFile(destPath)) return `audio/${stem}-tts.mp3`;
+export async function synthesizeTtsToPath(text: string, destPath: string): Promise<boolean> {
+  await mkdir(path.dirname(destPath), { recursive: true });
+  if (await isValidTtsFile(destPath)) return true;
 
   const tempPath = `${destPath}.tmp-${randomUUID()}`;
   const tts = new MsEdgeTTS();
   try {
     await tts.setMetadata("de-DE-KatjaNeural", OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
-    const { audioStream } = tts.toStream(word);
+    const { audioStream } = tts.toStream(text);
     await pipeline(audioStream, createWriteStream(tempPath));
   } catch {
     await unlink(tempPath).catch(() => {});
-    return null;
+    return false;
   } finally {
     tts.close();
   }
   if (!(await isValidTtsFile(tempPath))) {
     await unlink(tempPath).catch(() => {});
-    return null;
+    return false;
   }
   await rename(tempPath, destPath);
+  return true;
+}
+
+export async function synthesizeTts(word: string, audioDir: string): Promise<string | null> {
+  const stem = sanitizeStem(word);
+  const destPath = path.join(audioDir, `${stem}-tts.mp3`);
+  if (!(await synthesizeTtsToPath(word, destPath))) return null;
   return `audio/${stem}-tts.mp3`;
 }

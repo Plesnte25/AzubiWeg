@@ -268,6 +268,23 @@ export interface SyllabusItem {
   theme: string | null;
   title: string;
   description: string | null;
+  learningOutcome: string | null;
+  resourceTitle: string | null;
+  resourceBody: string | null;
+  resourceUrl: string | null;
+  resourceAudioUrl: string | null;
+  resourceTranscript: string | null;
+  listeningPrompt: string | null;
+  guidedPractice: string | null;
+  exerciseType: "free_text" | "self_check" | "multiple_choice" | "correction" | "listening_audio" | "speaking_audio" | null;
+  exercisePrompt: string | null;
+  exerciseAnswer: string | null;
+  exerciseOptions: { options: string[]; correctIndex: number } | null;
+  masteryState: "not_started" | "learning" | "passed" | "mastered";
+  reviewDueAt: string | null;
+  successfulAttempts: number;
+  lastAttemptAt: string | null;
+  reviewDue: boolean;
   sortOrder: number;
   completedAt: string | null;
   // Grammar Notebook — user's own notes, grammar-category items only
@@ -285,6 +302,41 @@ export interface SyllabusItem {
   // station accordion's "Practice" action jump straight to that task's
   // real Task Detail modal instead of just the day it's scheduled on
   roadmapTaskId: string | null;
+}
+
+export interface ExerciseAttempt {
+  id: string;
+  answer: string;
+  passed: boolean;
+  feedback: string | null;
+  mistakeCategory: SyllabusMistakeCategory | null;
+  rubricAssessment: { taskFulfilled: boolean; grammarChecked: boolean; understandable: boolean } | null;
+  createdAt: string;
+}
+
+export type SyllabusMistakeCategory =
+  | "gender_article"
+  | "case"
+  | "word_order"
+  | "conjugation"
+  | "vocabulary"
+  | "spelling"
+  | "pronunciation"
+  | "listening_detail"
+  | "collocation"
+  | "other";
+
+export interface SyllabusMistakeSummary {
+  category: SyllabusMistakeCategory;
+  count: number;
+  topics: string[];
+}
+
+export interface SyllabusWorkspace {
+  item: SyllabusItem & {
+    exerciseAttempts: ExerciseAttempt[];
+    notes: Note[];
+  };
 }
 
 export interface RoutePace {
@@ -509,6 +561,17 @@ export interface NotesFeedResponse {
 export interface RoadmapStatus {
   activated: boolean;
   startedAt: string | null;
+  studyCapacityMinutes: 5 | 20 | 45 | 90 | 180 | 330;
+}
+
+export interface DailyJournal {
+  id: string;
+  date: string;
+  learned: string | null;
+  difficult: string | null;
+  nextStep: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RoadmapOverview {
@@ -533,6 +596,19 @@ export interface RoadmapTodayResponse {
   tasks: RoadmapTask[];
   backlog: RoadmapBacklogGroup[];
   overview: RoadmapOverview;
+  capacity: {
+    minutes: 5 | 20 | 45 | 90 | 180 | 330;
+    revisionMinutes: number;
+    coreMinutes: number;
+    hasMore: boolean;
+  };
+  queues: {
+    revision: { id: string; headword: string; meaning: string | null; example: string | null }[];
+    topicReviews: { id: string; title: string; level: CefrLevel; theme: string | null; reviewDueAt: string | null }[];
+    coreTaskIds: string[];
+    accelerationTaskIds: string[];
+    blockedTaskIds: string[];
+  };
 }
 
 export interface RoadmapBacklogResponse {

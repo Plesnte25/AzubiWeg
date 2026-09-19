@@ -34,6 +34,7 @@ import type {
   RoadmapMonthlyReview,
   RoadmapSkill,
   RoadmapStatus,
+  DailyJournal,
   RoadmapTask,
   RoadmapTodayResponse,
   RoadmapWeeklyReview,
@@ -47,6 +48,9 @@ import type {
   SyllabusCategory,
   SyllabusItem,
   SyllabusResponse,
+  SyllabusWorkspace,
+  SyllabusMistakeCategory,
+  SyllabusMistakeSummary,
   TopicBreakdown,
   UploadedFileMeta,
   User,
@@ -116,6 +120,20 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (await res.json()) as T;
 }
 
+async function requestBlob(path: string): Promise<Blob> {
+  const token = getToken();
+  const res = await fetch(path, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (res.status === 401 && getToken()) {
+    clearSession();
+    window.location.href = "/login";
+  }
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new ApiError(res.status, body.error ?? `Request failed (${res.status})`);
+  }
+  return res.blob();
+}
+
 export const api = {
   register: (data: { email: string; password: string; name: string }) =>
     request<{ token: string; user: User }>("/api/auth/register", {
@@ -131,6 +149,7 @@ export const api = {
   // RequireAuth in main.tsx, which is the only caller.
   demoLogin: () =>
     request<{ token: string; user: User; isDemo: true }>("/api/auth/demo-login", { method: "POST" }),
+  syllabusAudio: (id: string) => requestBlob(`/api/learning/syllabus/${id}/audio`),
 
   // Faceting/search/grouping all happen client-side now (the shelves UI
   // needs the whole set in memory for cross-filtered facet counts anyway)
@@ -223,6 +242,18 @@ export const api = {
     request<void>(`/api/applications/${id}/events/${eventId}`, { method: "DELETE" }),
 
   learningSyllabus: () => request<SyllabusResponse>("/api/learning/syllabus"),
+  syllabusWorkspace: (id: string) => request<SyllabusWorkspace>(`/api/learning/syllabus/${id}/workspace`),
+  submitSyllabusExercise: (
+    id: string,
+    answer: string,
+    mistakeCategory?: SyllabusMistakeCategory | null,
+    rubricAssessment?: { taskFulfilled: boolean; grammarChecked: boolean; understandable: boolean } | null,
+  ) =>
+    request<{ passed: boolean; feedback: string; attempt: import("./types").ExerciseAttempt }>(`/api/learning/syllabus/${id}/exercise`, {
+      method: "POST",
+      body: JSON.stringify({ answer, mistakeCategory, rubricAssessment }),
+    }),
+  syllabusMistakes: () => request<{ mistakes: SyllabusMistakeSummary[] }>("/api/learning/syllabus/mistakes"),
   learningPace: () => request<RoutePace>("/api/learning/pace"),
   toggleSyllabusItem: (id: string, completed: boolean) =>
     request<{ item: SyllabusItem }>(`/api/learning/syllabus/${id}`, {
@@ -353,6 +384,17 @@ export const api = {
   }) => request<NotebookLinkResult>("/api/learning/quiz/notebook", { method: "POST", body: JSON.stringify(data) }),
 
   roadmapStatus: () => request<RoadmapStatus>("/api/learning/roadmap/status"),
+  updateStudyCapacity: (minutes: 5 | 20 | 45 | 90 | 180 | 330) =>
+    request<{ studyCapacityMinutes: number }>("/api/learning/roadmap/capacity", {
+      method: "PATCH",
+      body: JSON.stringify({ minutes }),
+    }),
+  dailyJournal: (date: string) => request<{ journal: DailyJournal | null }>(`/api/learning/roadmap/journal/day/${date}`),
+  saveDailyJournal: (date: string, data: Pick<DailyJournal, "learned" | "difficult" | "nextStep">) =>
+    request<{ journal: DailyJournal }>(`/api/learning/roadmap/journal/day/${date}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
   activateRoadmap: (startDate?: string) =>
     request<{ startedAt: string }>("/api/learning/roadmap/activate", {
       method: "POST",

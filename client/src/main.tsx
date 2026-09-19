@@ -1,5 +1,5 @@
 import { lazy, StrictMode, Suspense, useEffect, useState } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createBrowserRouter, Navigate, Outlet, RouterProvider } from "react-router-dom";
 import "./index.css";
@@ -111,7 +111,13 @@ const router = createBrowserRouter([
   },
 ]);
 
-createRoot(document.getElementById("root")!).render(
+const rootElement = document.getElementById("root") as (HTMLElement & { __azubiwegRoot?: Root }) | null;
+if (!rootElement) throw new Error("Root element not found");
+
+const root = rootElement.__azubiwegRoot ?? createRoot(rootElement);
+rootElement.__azubiwegRoot = root;
+
+root.render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />

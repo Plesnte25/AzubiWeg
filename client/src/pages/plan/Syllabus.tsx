@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { CaretLeft, Check, Flag, Lock } from "@phosphor-icons/react";
 import { api } from "../../api/client";
@@ -128,6 +128,12 @@ export default function Syllabus() {
   const [openStationTheme, setOpenStationTheme] = useState<string | null | undefined>(
     () => (location.state as { openStationTheme?: string } | null)?.openStationTheme ?? undefined,
   );
+  useEffect(() => {
+    const openItemId = (location.state as { openItemId?: string } | null)?.openItemId;
+    if (!openItemId || !data) return;
+    const item = data.items.find((candidate) => candidate.id === openItemId);
+    if (item) setOpenStationTheme(item.theme);
+  }, [data, location.state]);
   const [showAddItem, setShowAddItem] = useState(false);
   // md-only: at md the page keeps just the roadmap/station-detail columns
   // (lg's 3rd column, now per-station notes, doesn't fit either), so

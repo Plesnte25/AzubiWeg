@@ -1,5 +1,5 @@
 import { prisma } from "../../db.js";
-import { DEFAULT_SYLLABUS_ITEMS, SYLLABUS_VERSION } from "./syllabus-defaults.js";
+import { DEFAULT_SYLLABUS_ITEMS, SYLLABUS_VERSION, syllabusItemSeed } from "./syllabus-defaults.js";
 
 const key = (level: string, title: string) => `${level}|${title.trim().toLowerCase()}`;
 
@@ -18,7 +18,7 @@ export async function ensureSyllabusSeeded(userId: string): Promise<void> {
     // seed once per user; the stamp guards re-seeding
     await prisma.$transaction([
       prisma.syllabusItem.createMany({
-        data: DEFAULT_SYLLABUS_ITEMS.map((item, i) => ({ userId, ...item, sortOrder: i })),
+        data: DEFAULT_SYLLABUS_ITEMS.map((item, i) => ({ userId, ...syllabusItemSeed(item), sortOrder: i })),
       }),
       prisma.user.update({
         where: { id: userId },
@@ -26,6 +26,29 @@ export async function ensureSyllabusSeeded(userId: string): Promise<void> {
       }),
     ]);
     return;
+  }
+
+  // Apply newly authored exercise metadata without reseeding or disturbing
+  // learner mastery, attempts, notebook fields, or attached evidence.
+  for (const item of DEFAULT_SYLLABUS_ITEMS) {
+    const seed = syllabusItemSeed(item);
+    await prisma.syllabusItem.updateMany({
+      where: { userId, level: item.level, title: item.title },
+      data: {
+        exerciseType: seed.exerciseType,
+        exercisePrompt: seed.exercisePrompt,
+        exerciseAnswer: seed.exerciseAnswer,
+        exerciseOptions: seed.exerciseOptions,
+        learningOutcome: seed.learningOutcome,
+        resourceTitle: seed.resourceTitle,
+        resourceBody: seed.resourceBody,
+        resourceUrl: seed.resourceUrl,
+        resourceAudioUrl: seed.resourceAudioUrl,
+        resourceTranscript: seed.resourceTranscript,
+        listeningPrompt: seed.listeningPrompt,
+        guidedPractice: seed.guidedPractice,
+      },
+    });
   }
 
   if (user.syllabusVersion >= SYLLABUS_VERSION) return;
@@ -76,7 +99,7 @@ export async function ensureSyllabusSeeded(userId: string): Promise<void> {
         const notes = notesByKey.get(key(item.level, item.title));
         return {
           userId,
-          ...item,
+          ...syllabusItemSeed(item),
           sortOrder: i,
           completedAt: completedAt.get(key(item.level, item.title)) ?? null,
           examples: notes?.examples ?? null,
