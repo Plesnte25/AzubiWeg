@@ -130,19 +130,100 @@ Validation performed after every change:
   have. The app is fully prepared and tested for that manual redeploy step
   (`deploy/deploy.sh` against the target VPS).
 
-## 6. What remains (tracked as follow-up, not blocking)
+## 6. Post-launch expansion work ("next layer", 2026-09-19 continued)
 
-These are product-expansion items, not defects:
+After the deployment pass above, the user asked to keep building the "next
+layer" of production/expansion work — explicitly **without pushing or
+deploying anything**, since they wanted to review the code themselves first.
+This work was committed in small, phased, reviewable chunks (per explicit
+user instruction: "commit these changes into sizeable chunks... after each
+phase of work, commit it"), and every commit remained local only. Five
+further phases were completed:
+
+1. **Capacity-aware exam pace feasibility** (`5dad84d`) — added
+   `computeGoalFeasibility()` in `server/src/services/learning/pace.ts`,
+   comparing the required items/week to hit a learner's `examTargetDate`
+   against a sustainable items/week derived from their study-capacity
+   minutes. Returns a verdict (`on_track` / `tight` / `unrealistic`) plus the
+   two pace numbers. Wired into `learning.ts`'s pace endpoint and surfaced in
+   `client/src/pages/plan/ExamSchedule.tsx`'s exam-date bottom sheet.
+2. **Mastery trend and distribution analytics** (`64edf3f`) — added
+   `masteryDistribution()` (counts of syllabus items by mastery state) and
+   `masteryTrend()` (ISO-week-bucketed pass rate over time) to
+   `server/src/services/learning/review.ts`, exposed via the roadmap/progress
+   endpoint in `roadmap.ts`, with matching client-side types.
+3. **Recording duration metadata for speaking feedback** (`0efaa1f`) — added
+   a `durationSeconds` field to the `UploadedFile` Prisma model (new
+   migration `20260919150713_add_audio_recording_duration`), a standalone
+   ffprobe-based duration prober
+   (`server/src/services/files/audio-meta.ts`, returns `null` on any
+   failure rather than throwing), wired into the upload route
+   (`files.ts`) for `audio_recording` uploads, and surfaced in speaking
+   exercise feedback text in `learning.ts` (e.g. "Recording length: ~Xs.").
+   Covered by `server/tests/audio-meta.test.ts`.
+4. **Mastery distribution/trend shown in Stats** (`15044cf`) — new
+   `client/src/pages/stats/MasteryInsightsCard.tsx` renders the mastery-state
+   distribution bar/counts plus a 12-week pass-rate mini bar chart, wired
+   into both mobile and desktop layouts of `client/src/pages/stats/Stats.tsx`.
+   Correctly hides the trend-bar section when a learner has no exercise
+   attempts yet (verified against the demo account, which has 0 attempts).
+5. **Exam-date feasibility verdict shown in Stats** (`15614f4`) — new
+   `client/src/pages/stats/GoalFeasibilityCard.tsx` renders the
+   `goalFeasibility` verdict with a color-coded label and a plain-language
+   required-vs-sustainable pace sentence, wired into both layout branches of
+   `Stats.tsx`. Renders `null` (intentionally silent) when no exam target
+   date is set.
+
+Validation after each phase: `server/npm test` (405/405 passing throughout),
+`server/npx tsc --noEmit` (clean), `client/npm run build` (clean).
+
+## 7. Cross-browser / mobile QA pass (2026-09-19, no code changes)
+
+As the final phase of this session, the two new Stats cards (and the
+existing exam-feasibility note in the `ExamSchedule` bottom sheet) were
+validated at standard responsive breakpoints using the Playwright browser
+tools against a live shared browser session on the demo account:
+
+- **320px, 375px** — no horizontal overflow (`scrollWidth === clientWidth`);
+  both new cards render cleanly; `GoalFeasibilityCard`'s longer sentence
+  wraps correctly instead of clipping.
+- **768px** — no overflow.
+- **1440px (desktop)** — both cards render correctly in the right-hand
+  column of the desktop Stats layout, no clipping.
+- Spot-checked `/plan/syllabus` at 375px — loads and renders correctly.
+- Confirmed the weekly pass-trend bar chart in `MasteryInsightsCard` uses a
+  safe `flex` + `min-w-0 flex-1` per-bar pattern that won't overflow even
+  with all 12 weekly bars present.
+- Confirmed the project's existing global `overflow-x: hidden` safety net
+  (`client/src/index.css`) and `viewport-fit=cover` meta tag
+  (`client/index.html`) were already in place and sufficient — no changes
+  needed.
+
+**Result: no issues found.** No code changes were required for this phase,
+so no commit was made for it — it stands as a clean validation pass on top
+of phases in Section 6.
+
+## 8. What remains (tracked as follow-up, not blocking)
+
+These are product-expansion items, not defects, and were intentionally left
+for a future session:
 - Real curated (professionally recorded) listening audio beyond generated/
   cached TTS and browser fallback.
 - Broader CEFR content depth beyond the current A1–B1 focus (toward A1–C2).
 - Deeper speaking analytics/playback UX beyond current evidence-based
-  self-review.
-- Mastery-trend and level-readiness analytics beyond current progress views.
-- Stronger deadline/feasibility planning tied to exam target dates.
-- The actual production launch to a public host (runbook ready, not run).
+  self-review (Section 6 added recording-length feedback, not playback UX
+  improvements).
+- Further mastery/readiness analytics — trend views and distribution are now
+  live (Section 6, item 4), but "readiness for next level" pacing insight
+  and deeper recommendation logic remain open.
+- Further goal/plan realism improvements — capacity-aware feasibility
+  verdicts are now live (Section 6, items 1 and 5), but richer weekly-time
+  guidance tied to learner goals remains open.
+- The actual production launch to a public host (runbook ready, not run;
+  all commits from this session remain **local only**, per explicit user
+  instruction to review before any push/deploy).
 
-## 7. Files touched this session
+## 9. Files touched this session
 
 Representative list (see `git diff --stat` for the exact set at commit time):
 - `server/src/prisma/schema.prisma` + 10 new migrations under
@@ -160,3 +241,16 @@ Representative list (see `git diff --stat` for the exact set at commit time):
 - `client/src/components/AudioRecorder.tsx`
 - `client/src/pages/plan/Plan.tsx`, `Syllabus.tsx`,
   `StationDetailModal.tsx`
+
+Additional files touched in the post-launch expansion phases (Section 6):
+- `server/src/services/learning/pace.ts`, `review.ts`
+- `server/src/prisma/schema.prisma` +
+  `migrations/20260919150713_add_audio_recording_duration/`
+- `server/src/services/files/audio-meta.ts` (new)
+- `server/src/routes/files.ts`, `learning.ts`, `roadmap.ts`
+- `server/tests/audio-meta.test.ts` (new)
+- `client/src/pages/plan/ExamSchedule.tsx`
+- `client/src/pages/stats/MasteryInsightsCard.tsx` (new)
+- `client/src/pages/stats/GoalFeasibilityCard.tsx` (new)
+- `client/src/pages/stats/Stats.tsx`
+- `client/src/api/types.ts`
