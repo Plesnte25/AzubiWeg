@@ -271,7 +271,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
             </div>
           </>
         ) : (
-          <div className="pl-3 text-[13px] leading-[1.5]" style={{ color: "rgba(233,233,237,.4)", borderLeft: "2px solid transparent" }}>
+          <div className="pl-3 text-[13px] leading-[1.5]" style={{ color: "rgba(233,233,237,.62)", borderLeft: "2px solid transparent" }}>
             No example sentence available for this word yet.
           </div>
         )}

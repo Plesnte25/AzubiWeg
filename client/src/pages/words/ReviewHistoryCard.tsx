@@ -56,7 +56,7 @@ export function ReviewHistoryCard({ word, entries }: { word: Word; entries: Revi
           <ClockCounterClockwise size={13} weight="regular" aria-hidden="true" />
           Review history
         </div>
-        <span className="text-[10px]" style={{ color: "rgba(233,233,237,.4)" }}>
+        <span className="text-[10px]" style={{ color: "rgba(233,233,237,.62)" }}>
           {chronological.length === 0
             ? "No reviews yet"
             : `${chronological.length} review${chronological.length === 1 ? "" : "s"} · ${percentCorrect}% correct`}
@@ -69,7 +69,7 @@ export function ReviewHistoryCard({ word, entries }: { word: Word; entries: Revi
           return (
             <div key={i} className="flex flex-1 flex-col items-center gap-1">
               <i className="block w-full rounded-[2px]" style={{ height: h, background: barColor(h) }} />
-              <span className="text-[8.5px]" style={{ color: "rgba(233,233,237,.35)" }}>
+              <span className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
                 {entry ? shortDate(entry.reviewedAt) : ""}
               </span>
             </div>
@@ -95,7 +95,7 @@ export function ReviewHistoryCard({ word, entries }: { word: Word; entries: Revi
                   <span style={{ color: GRADE_COLOR[e.grade] }}>
                     {longDate(e.reviewedAt)} · {GRADE_LABEL[e.grade]}
                   </span>
-                  <span style={{ color: "rgba(233,233,237,.4)" }}>
+                  <span style={{ color: "rgba(233,233,237,.62)" }}>
                     {before !== null ? `interval ${before} d → ${e.intervalAfter} d` : `interval → ${e.intervalAfter} d`}
                   </span>
                 </div>

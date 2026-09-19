@@ -21,7 +21,7 @@ export default function CvShelf() {
   return (
     <div>
       <p className="mb-1.5 flex items-baseline gap-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
-        My CVs <span style={{ color: "rgba(233,233,237,.3)" }}>{cvs.length}</span>
+        My CVs <span style={{ color: "rgba(233,233,237,.62)" }}>{cvs.length}</span>
       </p>
       <div className="flex touch-pan-x gap-2 overflow-x-auto [scrollbar-width:none]">
         {cvs.map((cv) => (

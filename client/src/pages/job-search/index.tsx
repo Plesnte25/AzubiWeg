@@ -61,7 +61,7 @@ function PortalsMobile() {
             >
               <span className="size-1.5 shrink-0 rounded-full" style={{ background: stale ? "#e4c4b6" : "#9184d9" }} aria-hidden="true" />
               {p.label}
-              {stale && <span style={{ color: "rgba(233,233,237,.35)" }}>· {days}d</span>}
+              {stale && <span style={{ color: "rgba(233,233,237,.62)" }}>· {days}d</span>}
             </a>
             <button type="button" onClick={() => remove.mutate(p.id)} style={{ color: "rgba(233,233,237,.3)" }} title="Remove portal">
               <X size={10} weight="regular" aria-hidden="true" />

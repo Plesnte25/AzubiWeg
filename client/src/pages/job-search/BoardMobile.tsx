@@ -13,7 +13,7 @@ export const STATUS_PILL: Record<ApplicationStatus, { bg: string; color: string 
   applied: { bg: "rgba(233,233,237,.1)", color: "rgba(233,233,237,.65)" },
   interview: { bg: "rgba(228,196,182,.16)", color: "#e4c4b6" },
   offer: { bg: "rgba(145,132,217,.18)", color: "#b5abfc" },
-  rejected: { bg: "rgba(233,233,237,.07)", color: "rgba(233,233,237,.4)" },
+  rejected: { bg: "rgba(233,233,237,.07)", color: "rgba(233,233,237,.62)" },
 };
 
 /** Exported for reuse by the desktop board (BoardDesktop.tsx). */
@@ -76,7 +76,7 @@ export default function BoardMobile({ onOpen }: { onOpen: (id: string) => void }
               <div key={s} style={{ flex: counts[s] || 0.0001, background: STAGE_COLOR[s] }} />
             ))}
           </div>
-          <div className="mt-1.5 flex justify-between text-[9.5px]" style={{ color: "rgba(233,233,237,.4)" }}>
+          <div className="mt-1.5 flex justify-between text-[9.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
             {FUNNEL_STAGES.map((s) => (
               <span key={s}>
                 {COLUMNS.find((c) => c.key === s)?.label.toLowerCase()} {counts[s]}
@@ -140,7 +140,7 @@ export default function BoardMobile({ onOpen }: { onOpen: (id: string) => void }
                     <span className="rounded-full px-2 py-[3px] text-[9.5px] font-medium" style={{ background: pill.bg, color: pill.color }}>
                       {COLUMNS.find((c) => c.key === app.status)?.label}
                     </span>
-                    <span className="text-[9.5px]" style={{ color: "rgba(233,233,237,.35)" }}>
+                    <span className="text-[9.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
                       {relativeDay(app.appliedAt ?? app.createdAt)}
                     </span>
                   </div>

@@ -48,7 +48,7 @@ export function WordFamilySheet({ wordId, headword, open, onClose }: { wordId: s
           if (rows.length === 0) return null;
           return (
             <div key={key}>
-              <div className="mb-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>
+              <div className="mb-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
                 {label}
               </div>
               <div className="flex flex-col gap-1">
@@ -66,11 +66,11 @@ export function WordFamilySheet({ wordId, headword, open, onClose }: { wordId: s
                   >
                     <div>
                       <span className="text-[13.5px]">{m.headword}</span>
-                      <span className="ml-1.5 text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>
+                      <span className="ml-1.5 text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
                         {m.pos}
                       </span>
                     </div>
-                    <span className="text-[10.5px]" style={{ color: m.ownedWordId ? "#b5abfc" : "rgba(233,233,237,.35)" }}>
+                    <span className="text-[10.5px]" style={{ color: m.ownedWordId ? "#b5abfc" : "rgba(233,233,237,.62)" }}>
                       {m.ownedWordId ? "in your words" : "not added yet"}
                     </span>
                   </div>

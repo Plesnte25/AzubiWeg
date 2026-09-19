@@ -128,10 +128,10 @@ export function BoardDesktop({ onOpen }: { onOpen: (id: string) => void }) {
                 <span className="justify-self-start rounded-full px-2 py-[3px] text-[9.5px] font-medium" style={{ background: pill.bg, color: pill.color }}>
                   {COLUMNS.find((c) => c.key === app.status)?.label}
                 </span>
-                <span className="text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>
+                <span className="text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
                   {relativeDay(app.appliedAt ?? app.createdAt)}
                 </span>
-                <span className="truncate text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>
+                <span className="truncate text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
                   {app.jobProfile ?? ""}
                 </span>
               </button>

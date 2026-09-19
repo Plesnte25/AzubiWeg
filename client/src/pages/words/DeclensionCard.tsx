@@ -22,14 +22,14 @@ export function DeclensionCard({ declension, form }: { declension: DeclensionTab
           Declension
         </div>
         {plural && (
-          <span className="text-[10px]" style={{ color: "rgba(233,233,237,.4)" }}>
+          <span className="text-[10px]" style={{ color: "rgba(233,233,237,.62)" }}>
             plural: die {plural}
           </span>
         )}
       </div>
       <table className="mt-2 w-full text-[13px]">
         <thead>
-          <tr style={{ color: "rgba(233,233,237,.4)" }}>
+          <tr style={{ color: "rgba(233,233,237,.62)" }}>
             <th className="pb-1.5 text-left text-[10px] font-normal">Case</th>
             <th className="pb-1.5 text-left text-[10px] font-normal">Singular</th>
             <th className="pb-1.5 text-left text-[10px] font-normal">Plural</th>

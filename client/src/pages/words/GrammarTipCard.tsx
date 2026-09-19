@@ -9,7 +9,7 @@ export function GrammarTipCard({ tip }: { tip: string | null }) {
       <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
         Grammar tip
       </div>
-      <div className="mt-2 text-[13px] leading-[1.5]" style={{ color: tip ? "rgba(233,233,237,.75)" : "rgba(233,233,237,.4)" }}>
+      <div className="mt-2 text-[13px] leading-[1.5]" style={{ color: tip ? "rgba(233,233,237,.75)" : "rgba(233,233,237,.62)" }}>
         {tip ?? "No grammar tip for this word yet."}
       </div>
     </div>

@@ -82,7 +82,7 @@ export function NotesDock({ draggingHeadword }: { draggingHeadword: string | nul
 
       <div className="mt-3.5 flex min-h-0 flex-1 flex-col gap-2">
         {notes.length === 0 ? (
-          <p className="py-6 text-center text-[12.5px]" style={{ color: "rgba(233,233,237,.4)" }}>
+          <p className="py-6 text-center text-[12.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
             No notes yet.
           </p>
         ) : (

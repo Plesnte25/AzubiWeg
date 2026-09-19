@@ -10,7 +10,7 @@ export function EmptyStateCard({ label, message }: { label: string; message: str
       <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
         {label}
       </div>
-      <div className="mt-2 text-[13px] leading-[1.5]" style={{ color: "rgba(233,233,237,.4)" }}>
+      <div className="mt-2 text-[13px] leading-[1.5]" style={{ color: "rgba(233,233,237,.62)" }}>
         {message}
       </div>
     </div>

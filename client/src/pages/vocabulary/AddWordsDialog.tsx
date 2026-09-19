@@ -142,7 +142,7 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
               <div className="text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
                 Article
               </div>
-              <div className="text-[10px]" style={{ color: "rgba(233,233,237,.35)" }}>
+              <div className="text-[10px]" style={{ color: "rgba(233,233,237,.62)" }}>
                 guessed from the ending
               </div>
             </div>
@@ -270,7 +270,7 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
           </p>
         )}
 
-        <div className="flex items-center gap-2 pb-1 text-[11px]" style={{ color: "rgba(233,233,237,.35)" }}>
+        <div className="flex items-center gap-2 pb-1 text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
           <CalendarCheck size={13} weight="regular" aria-hidden="true" />
           Lands in today&rsquo;s &ldquo;new&rdquo; stack · first review tomorrow
         </div>
