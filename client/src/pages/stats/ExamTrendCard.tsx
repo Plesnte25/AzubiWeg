@@ -55,7 +55,7 @@ export function ExamTrendCard({
 
       {scoredAttempts.length > 0 && (
         <div className="mt-3">
-          <div className="mb-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>
+          <div className="mb-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
             Exam attempts
           </div>
           <div className="flex flex-col gap-1">

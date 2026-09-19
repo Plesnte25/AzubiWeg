@@ -87,7 +87,7 @@ export function Constellation({ words, highlightWordId }: { words: Word[]; highl
           {highlightWordId ? "last reviewed" : ""}
         </span>
       )}
-      <div className="absolute -bottom-1 text-center text-[11px] leading-[1.5]" style={{ color: "rgba(233,233,237,.4)" }}>
+      <div className="absolute -bottom-1 text-center text-[11px] leading-[1.5]" style={{ color: "rgba(233,233,237,.62)" }}>
         Every dot a word
       </div>
     </div>

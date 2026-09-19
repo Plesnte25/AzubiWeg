@@ -257,7 +257,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                       >
                         <Icon size={17} weight="regular" aria-hidden="true" />
                         <span className="text-[11.5px] font-medium">{label}</span>
-                        <span className="text-[9px]" style={{ color: emphasized ? "rgba(210,206,253,.6)" : "rgba(233,233,237,.4)" }}>
+                        <span className="text-[9px]" style={{ color: emphasized ? "rgba(210,206,253,.6)" : "rgba(233,233,237,.62)" }}>
                           {preview ? formatInterval(preview[g].interval) : "…"}
                         </span>
                       </button>
@@ -266,7 +266,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                 </div>
               </div>
               <div className="grid h-[38px] place-items-center">
-                <div className="text-[12px] transition-opacity duration-300" style={{ opacity: revealed ? 0 : 1, color: "rgba(233,233,237,.4)" }}>
+                <div className="text-[12px] transition-opacity duration-300" style={{ opacity: revealed ? 0 : 1, color: "rgba(233,233,237,.62)" }}>
                   See the answer first, then grade it
                 </div>
               </div>
@@ -447,7 +447,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                       >
                         <Icon size={17} weight="regular" aria-hidden="true" />
                         <span className="text-[11.5px] font-medium">{label}</span>
-                        <span className="text-[9px]" style={{ color: emphasized ? "rgba(210,206,253,.6)" : "rgba(233,233,237,.4)" }}>
+                        <span className="text-[9px]" style={{ color: emphasized ? "rgba(210,206,253,.6)" : "rgba(233,233,237,.62)" }}>
                           {preview ? formatInterval(preview[g].interval) : "…"}
                         </span>
                       </button>
@@ -457,7 +457,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
               </div>
               {!revealed && (
                 <div className="mt-2 grid h-[24px] place-items-center">
-                  <div className="text-[12px]" style={{ color: "rgba(233,233,237,.4)" }}>
+                  <div className="text-[12px]" style={{ color: "rgba(233,233,237,.62)" }}>
                     See the answer first, then grade it
                   </div>
                 </div>

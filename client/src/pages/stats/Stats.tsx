@@ -244,7 +244,7 @@ export default function Stats() {
                   <div className="h-[5px] w-[66px] overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
                     <div className="h-full" style={{ width: `${Math.round((count / maxWeakCount) * 100)}%`, background: "#b5abfc" }} />
                   </div>
-                  <span className="w-6 shrink-0 text-right text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>
+                  <span className="w-6 shrink-0 text-right text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
                     {count}×
                   </span>
                 </div>
@@ -320,7 +320,7 @@ export default function Stats() {
           </div>
 
           <div className="mt-3 rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-            <div className="flex items-center gap-2 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>
+            <div className="flex items-center gap-2 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
               <CalendarCheck size={12} weight="regular" aria-hidden="true" />
               Study streak
             </div>
@@ -485,7 +485,7 @@ export default function Stats() {
               </div>
 
               <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-                <div className="flex items-center gap-2 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>
+                <div className="flex items-center gap-2 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
                   <CalendarCheck size={12} weight="regular" aria-hidden="true" />
                   Study streak
                 </div>
@@ -566,7 +566,7 @@ export default function Stats() {
                       <div className="h-[5px] w-[66px] overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
                         <div className="h-full" style={{ width: `${Math.round((count / maxWeakCount) * 100)}%`, background: "#b5abfc" }} />
                       </div>
-                      <span className="w-6 shrink-0 text-right text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>
+                      <span className="w-6 shrink-0 text-right text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
                         {count}×
                       </span>
                     </div>

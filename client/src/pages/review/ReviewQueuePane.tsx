@@ -43,7 +43,7 @@ export function ReviewQueuePane({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-[6px] overflow-y-auto px-3.5 pb-3.5">
-        <div className="px-1.5 pt-2 pb-1 text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.35)" }}>
+        <div className="px-1.5 pt-2 pb-1 text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
           This stack
         </div>
         {queue.map((w, i) => {
@@ -76,7 +76,7 @@ export function ReviewQueuePane({
 
       {total > 0 && (
         <div className="mx-3.5 mb-3.5 rounded-xl p-[13px]" style={{ background: "#1c1f2c" }}>
-          <div className="text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>
+          <div className="text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
             Graded so far
           </div>
           <div className="mt-[9px] flex h-[7px] gap-[3px] overflow-hidden rounded-[4px]" style={{ background: "#292b31" }}>

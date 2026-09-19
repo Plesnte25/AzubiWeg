@@ -51,7 +51,7 @@ export function SourcesRollupCard({ sources }: { sources: StudySource[] }) {
             <div className="h-[5px] flex-1 overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
               <div className="h-full rounded-[3px]" style={{ width: `${r.avgPct}%`, background: "linear-gradient(90deg,#5d5294,#9184d9)" }} />
             </div>
-            <span className="w-8 shrink-0 text-right text-[10.5px]" style={{ color: "rgba(233,233,237,.4)" }}>
+            <span className="w-8 shrink-0 text-right text-[10.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
               {r.avgPct}%
             </span>
           </div>

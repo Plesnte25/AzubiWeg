@@ -20,7 +20,7 @@ export function ActivityHeatmap({ cells }: { cells: { date: string; reviews: num
         <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
           105-day activity
         </div>
-        <div className="flex items-center gap-1.5 text-[9.5px]" style={{ color: "rgba(233,233,237,.4)" }}>
+        <div className="flex items-center gap-1.5 text-[9.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
           <span className="inline-block size-[6px] rounded-full" style={{ background: "#b5abfc" }} />
           reviewed that day
         </div>

@@ -82,12 +82,12 @@ export function RetentionCurve({ entries }: { entries: ReviewHistoryEntry[] }) {
         <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
           Retention
         </div>
-        <span className="text-[10px]" style={{ color: "rgba(233,233,237,.4)" }}>
+        <span className="text-[10px]" style={{ color: "rgba(233,233,237,.62)" }}>
           you vs. forgetting
         </span>
       </div>
       {realPoints.length < 2 ? (
-        <p className="mt-3 text-[12px]" style={{ color: "rgba(233,233,237,.4)" }}>
+        <p className="mt-3 text-[12px]" style={{ color: "rgba(233,233,237,.62)" }}>
           Not enough review history yet to plot this.
         </p>
       ) : (
@@ -109,7 +109,7 @@ export function RetentionCurve({ entries }: { entries: ReviewHistoryEntry[] }) {
             </>
           )}
           {BUCKETS.map((b, i) => (
-            <text key={b.label} x={(i / (BUCKETS.length - 1)) * W} y={H + 16} fill="rgba(233,233,237,.35)" fontSize="9" textAnchor={i === 0 ? "start" : i === BUCKETS.length - 1 ? "end" : "middle"}>
+            <text key={b.label} x={(i / (BUCKETS.length - 1)) * W} y={H + 16} fill="rgba(233,233,237,.62)" fontSize="9" textAnchor={i === 0 ? "start" : i === BUCKETS.length - 1 ? "end" : "middle"}>
               {b.label}
             </text>
           ))}

@@ -55,14 +55,14 @@ export function VocabBreakdownCard({ words }: { words: Word[] }) {
 
       {topThemenfeld.length > 0 && (
         <div className="mt-3">
-          <div className="mb-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>
+          <div className="mb-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
             Top topics
           </div>
           <div className="flex flex-col gap-1">
             {topThemenfeld.map(([theme, count]) => (
               <div key={theme} className="flex items-center justify-between text-[12px]">
                 <span style={{ color: "rgba(233,233,237,.65)" }}>{THEMENFELD_LABELS[theme]}</span>
-                <span style={{ color: "rgba(233,233,237,.4)" }}>{count}</span>
+                <span style={{ color: "rgba(233,233,237,.62)" }}>{count}</span>
               </div>
             ))}
           </div>
@@ -70,7 +70,7 @@ export function VocabBreakdownCard({ words }: { words: Word[] }) {
       )}
 
       <div className="mt-3">
-        <div className="mb-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>
+        <div className="mb-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
           By level
         </div>
         <div className="flex gap-1.5">
@@ -93,7 +93,7 @@ export function VocabBreakdownCard({ words }: { words: Word[] }) {
         </div>
       </div>
 
-      <p className="mt-3 text-[10.5px] leading-[1.5]" style={{ color: "rgba(233,233,237,.35)" }}>
+      <p className="mt-3 text-[10.5px] leading-[1.5]" style={{ color: "rgba(233,233,237,.62)" }}>
         {coveragePct}% of your words have real grammar-table or translation data from this app's dictionary enrichment.
       </p>
     </div>

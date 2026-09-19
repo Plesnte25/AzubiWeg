@@ -20,7 +20,7 @@ export function HourOfDayChart({ hours }: { hours: { hour: number; minutes: numb
           />
         ))}
       </div>
-      <div className="mt-1 flex justify-between text-[9px]" style={{ color: "rgba(233,233,237,.35)" }}>
+      <div className="mt-1 flex justify-between text-[9px]" style={{ color: "rgba(233,233,237,.62)" }}>
         <span>12am</span>
         <span>6am</span>
         <span>12pm</span>
