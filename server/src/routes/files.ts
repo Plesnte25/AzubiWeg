@@ -14,6 +14,7 @@ import {
   storedNameFor,
   uploadsDir,
 } from "../services/files/storage.js";
+import { probeAudioDurationSeconds } from "../services/files/audio-meta.js";
 
 export const filesRouter = Router();
 filesRouter.use(requireAuth);
@@ -93,7 +94,10 @@ filesRouter.post("/", uploadSingle, async (req, res) => {
 
   const dir = uploadsDir(req.userId);
   await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, storedName), req.file.buffer);
+  const storedPath = path.join(dir, storedName);
+  await writeFile(storedPath, req.file.buffer);
+  const durationSeconds =
+    kind === "audio_recording" ? await probeAudioDurationSeconds(storedPath) : null;
 
   const file = await prisma.uploadedFile.create({
     data: {
@@ -107,6 +111,7 @@ filesRouter.post("/", uploadSingle, async (req, res) => {
       storedName,
       mimeType: req.file.mimetype,
       size: req.file.size,
+      durationSeconds,
     },
   });
   res.status(201).json({ file });

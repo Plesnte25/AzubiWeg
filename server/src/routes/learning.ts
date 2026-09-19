@@ -196,7 +196,7 @@ learningRouter.post("/syllabus/:id/exercise", async (req, res) => {
     ? await prisma.uploadedFile.findFirst({
       where: { userId: req.userId, syllabusItemId: item.id, kind: "audio_recording" },
       orderBy: { createdAt: "desc" },
-      select: { id: true },
+      select: { id: true, durationSeconds: true },
     })
     : null;
   const rubric = parsed.data.rubricAssessment;
@@ -212,10 +212,13 @@ learningRouter.post("/syllabus/:id/exercise", async (req, res) => {
       : expected
         ? normalized === expected
         : normalized.length >= 12;
+  const recordingDurationNote = audioEvidence?.durationSeconds
+    ? ` Recording length: ~${audioEvidence.durationSeconds}s.`
+    : "";
   const feedback = passed && item.exerciseType === "speaking_audio"
     ? writingScore === 3
-      ? "Passed. You completed the speaking checklist. Keep the recording and repeat the task once more without reading."
-      : "Recording saved and passed. Next time, complete all three speaking checks for a stronger self-review."
+      ? `Passed. You completed the speaking checklist.${recordingDurationNote} Keep the recording and repeat the task once more without reading.`
+      : `Recording saved and passed.${recordingDurationNote} Next time, complete all three speaking checks for a stronger self-review.`
     : passed
       ? "Passed. Compare your answer with the lesson and keep the correction in your notes."
     : expected

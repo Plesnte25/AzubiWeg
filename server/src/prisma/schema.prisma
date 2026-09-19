@@ -283,6 +283,9 @@ model UploadedFile {
   storedName     String
   mimeType       String
   size           Int
+  // duration in seconds for audio_recording uploads when probeable; null for
+  // non-audio files or when duration couldn't be measured
+  durationSeconds Float?
   createdAt      DateTime      @default(now())
 }
 
