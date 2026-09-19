@@ -256,7 +256,7 @@ function ActivationPrompt({ onActivate, pending }: { onActivate: () => void; pen
         disabled={pending}
         onClick={onActivate}
         className="mt-3.5 min-h-[42px] rounded-[10px] px-5 text-[14px] font-medium text-white disabled:opacity-50"
-        style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+        style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
       >
         {pending ? "Starting…" : "Start my plan"} →
       </button>
@@ -281,7 +281,7 @@ function KeepGoingCard({ onPull, pending }: { onPull: () => void; pending: boole
         disabled={pending}
         onClick={onPull}
         className="mt-2.5 min-h-[36px] rounded-[9px] px-4 text-[12.5px] font-medium text-white disabled:opacity-50"
-        style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+        style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
       >
         {pending ? "Pulling in more…" : "Pull in more tasks"}
       </button>

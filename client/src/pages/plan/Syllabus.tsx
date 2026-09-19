@@ -365,7 +365,7 @@ export function AddItemSheet({ level, theme, onClose, onAdded }: { level: CefrLe
         disabled={!title.trim() || save.isPending}
         onClick={() => save.mutate()}
         className="mt-3 min-h-[44px] w-full rounded-[10px] text-[14px] font-medium text-white disabled:opacity-50"
-        style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+        style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
       >
         Add item
       </button>

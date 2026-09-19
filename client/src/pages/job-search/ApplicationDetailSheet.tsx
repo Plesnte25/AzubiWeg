@@ -16,7 +16,7 @@ export default function ApplicationDetailSheet({ id, onClose }: { id: string; on
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-paper lg:hidden">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-hairline bg-card px-4 py-3">
-        <button type="button" onClick={onClose} className="flex items-center gap-1 text-body text-ink-400 hover:text-ink-900">
+        <button type="button" onClick={onClose} className="flex items-center gap-1 text-body text-ink-600 hover:text-ink-900">
           <CaretLeft size={16} weight="regular" aria-hidden="true" /> Back
         </button>
         <p className="min-w-0 flex-1 truncate text-center text-body font-semibold">

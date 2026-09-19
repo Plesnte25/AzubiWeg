@@ -163,7 +163,7 @@ export function ExamSchedule({
           disabled={!picked || pickedDays < 1 || save.isPending}
           onClick={() => save.mutate()}
           className="min-h-[46px] flex-[1.5] rounded-[11px] text-[15px] font-medium text-white disabled:opacity-40"
-          style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+          style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
         >
           {isFresh ? "Confirm date" : "Update date"}
         </button>

@@ -118,7 +118,7 @@ export default function JobSearch() {
             type="button"
             onClick={() => setAddingApplication(true)}
             className="flex shrink-0 items-center gap-[6px] rounded-[10px] px-3 py-2.5 text-[12.5px] font-medium text-white"
-            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+            style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
           >
             <Plus size={15} weight="regular" aria-hidden="true" />
             Log one
@@ -172,7 +172,7 @@ export default function JobSearch() {
             type="button"
             onClick={() => setAddingApplication(true)}
             className="flex shrink-0 items-center gap-[6px] rounded-[10px] px-3 py-2.5 text-[12.5px] font-medium text-white"
-            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+            style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
           >
             <Plus size={15} weight="regular" aria-hidden="true" />
             Log one

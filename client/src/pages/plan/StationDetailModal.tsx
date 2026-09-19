@@ -96,7 +96,7 @@ function ItemNotesSection({ item, onChanged }: { item: SyllabusItem; onChanged: 
         />
       ) : (
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setComposing(true)} className="text-caption text-ink-400 hover:text-ink-600">
+          <button type="button" onClick={() => setComposing(true)} className="text-caption text-ink-600 hover:text-ink-900">
             + notes
           </button>
           <Attachments
@@ -180,9 +180,9 @@ export function StationDetailModal({
           <p className="text-body font-bold">
             Station {resolvedIdx + 1} · {station.theme}
           </p>
-          <p className="text-caption text-ink-400">
+          <p className="text-caption text-ink-600">
             {station.items.length} items · {closedCount}/{station.items.length} closed
-            {isPreview && <span className="ml-2 rounded-full bg-ink-50 px-2 py-0.5 text-micro font-semibold text-ink-400">preview</span>}
+            {isPreview && <span className="ml-2 rounded-full bg-ink-50 px-2 py-0.5 text-micro font-semibold text-ink-600">preview</span>}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
@@ -210,16 +210,16 @@ export function StationDetailModal({
                   disabled={isPreview}
                   onClick={() => onToggleItem(item.id, item.completedAt === null)}
                   className={`grid size-[17px] shrink-0 place-items-center rounded-full border text-micro text-white disabled:cursor-not-allowed ${
-                    item.completedAt !== null ? "border-ok-600 bg-ok-600" : isCurrent ? "border-2 border-brand-500" : "border-2 border-hairline"
+                    item.completedAt !== null ? "border-brand-solid bg-brand-solid" : isCurrent ? "border-2 border-brand-500" : "border-2 border-hairline"
                   }`}
                 >
                   {item.completedAt !== null && "✓"}
                 </button>
                 <div className="min-w-0 flex-1">
                   <span className={`block text-body ${item.completedAt !== null ? "text-ink-400 line-through" : ""}`}>{item.title}</span>
-                  {item.description && <span className="mt-0.5 block truncate text-caption text-ink-400">{item.description}</span>}
+                  {item.description && <span className="mt-0.5 block truncate text-caption text-ink-600">{item.description}</span>}
                 </div>
-                {isCurrent && <span className="shrink-0 rounded-full bg-brand-500 px-2 py-0.5 text-micro font-semibold text-white">on today</span>}
+                {isCurrent && <span className="shrink-0 rounded-full bg-brand-solid px-2 py-0.5 text-micro font-semibold text-white">on today</span>}
                 {item.skippedAt && <span className="shrink-0 text-micro text-ink-400">skipped</span>}
                 {!isPreview && (
                   <button

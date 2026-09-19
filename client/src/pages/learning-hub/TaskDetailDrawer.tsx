@@ -83,7 +83,7 @@ function TaskTimer({ task, onUpdate, pending }: { task: RoadmapTask; onUpdate: (
           disabled={pending}
           onClick={() => onUpdate({ timerAction: running ? "pause" : "start" })}
           className="ml-auto flex min-h-[38px] items-center gap-1.5 rounded-[9px] px-4 text-[13px] font-medium text-white disabled:opacity-50"
-          style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+          style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
         >
           {running ? <Pause size={14} weight="fill" aria-hidden="true" /> : <Play size={14} weight="fill" aria-hidden="true" />}
           {running ? "Running" : "Start"}
@@ -295,7 +295,7 @@ export function TaskDetailDrawer({
               close();
             }}
             className="min-h-[44px] flex-[1.5] rounded-[11px] text-[14px] font-medium text-white"
-            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+            style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
           >
             <span className="inline-flex items-center gap-1.5">
               <Check size={14} weight="bold" aria-hidden="true" />

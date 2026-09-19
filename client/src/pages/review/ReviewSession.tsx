@@ -186,7 +186,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                       }}
                       aria-label="Play pronunciation"
                       className="grid size-8 shrink-0 place-items-center rounded-full text-white"
-                      style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+                      style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
                     >
                       <SpeakerHigh size={15} weight="fill" aria-hidden="true" />
                     </button>
@@ -390,7 +390,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                       }}
                       aria-label="Play pronunciation"
                       className="grid size-8 shrink-0 place-items-center rounded-full text-white"
-                      style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+                      style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
                     >
                       <SpeakerHigh size={15} weight="fill" aria-hidden="true" />
                     </button>

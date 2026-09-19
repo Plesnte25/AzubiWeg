@@ -211,7 +211,7 @@ export default function ExamRunner() {
           disabled={!answered || submit.isPending}
           onClick={next}
           className="min-h-[48px] w-full rounded-[11px] text-[15px] font-medium text-white disabled:opacity-40"
-          style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+          style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
         >
           {index < session.questions.length - 1 ? "Next" : submit.isPending ? "Submitting…" : "Finish"}
         </button>

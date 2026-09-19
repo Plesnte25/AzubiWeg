@@ -176,7 +176,7 @@ export default function Settings() {
               type="submit"
               disabled={!path.trim() || link.isPending}
               className="min-h-[38px] rounded-[10px] text-[13px] font-medium text-white disabled:opacity-45"
-              style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+              style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
             >
               {link.isPending ? "Importing…" : "Link vault"}
             </button>

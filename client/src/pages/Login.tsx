@@ -151,7 +151,7 @@ export default function Login({ mode }: { mode: "login" | "register" }) {
             type="submit"
             disabled={!canSubmit || busy}
             className="flex min-h-[48px] items-center justify-center gap-2 rounded-[12px] text-[15px] font-medium text-white transition-opacity disabled:opacity-45"
-            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+            style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
           >
             {busy ? "…" : mode === "login" ? "Sign in" : "Create account"}
             <ArrowRight size={16} weight="regular" aria-hidden="true" />

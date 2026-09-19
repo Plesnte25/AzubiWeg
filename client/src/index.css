@@ -38,7 +38,7 @@
      / 40-56 dial numbers-hero stats). Old app-wide step names kept so every
      existing text-* utility call site re-sizes automatically; a step's exact
      value within its band gets finalized per-screen as each page is rebuilt. */
-  --text-micro: 0.625rem;       /* 10 — kickers, meta, chips */
+  --text-micro: 0.6875rem;      /* 11 — kickers, meta, chips; raised from 10 to clear the 4.5:1-adjacent readable-size floor */
   --text-caption: 0.75rem;      /* 12 — field labels, timestamps */
   --text-body: 0.875rem;        /* 14 — default (== old text-sm) */
   --text-body-lg: 0.9375rem;    /* 15 — lead paragraphs, card body */
@@ -88,6 +88,15 @@
   --color-brand-700: #b5abfc;
   --color-brand-800: #d2cefd;
   --color-brand-900: #d2cefd;
+
+  /* Solid fill meant to carry FIXED WHITE TEXT (primary buttons, checkmark
+     fills, "on today"-style badges) — deliberately separate from
+     brand-400/500/600, which are also used as light-purple TEXT/ICON color
+     on the dark page background (tab-bar active state, CircleIconButton,
+     Rail icons) and must stay #9184d9 for that use. Reuses the existing
+     brand-200/300 hex (#5d5294, white-on-it ≈6.8:1) rather than a new color. */
+  --color-brand-solid: #5d5294;
+  --color-brand-solid-light: #6e62a8;
 
   /* text/background — literal Nocturne values */
   --color-ink-900: #e9e9ed;                    /* text primary */
@@ -344,7 +353,10 @@ button:active:not(:disabled) {
    DOM change. */
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible {
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
   box-shadow: 0 0 0 2px #9184d9;
 }
 

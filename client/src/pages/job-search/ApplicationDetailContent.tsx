@@ -67,7 +67,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
 
   return (
     <>
-      {app.location && <p className="-mt-3 mb-4 text-body text-ink-400">{app.location}</p>}
+      {app.location && <p className="-mt-3 mb-4 text-body text-ink-600">{app.location}</p>}
 
       {app.status === "rejected" ? (
         <span className="inline-flex items-center rounded-full bg-brand-50 px-3 py-1 text-body font-semibold text-brand-700">
@@ -132,7 +132,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
           </DetailField>
         </div>
         <div className="mt-3 border-t border-hairline-soft pt-3">
-          <p className="mb-1 text-micro text-ink-300">Description</p>
+          <p className="mb-1 text-micro text-ink-600">Description</p>
           <DebouncedInput
             textarea
             value={app.description ?? ""}
@@ -215,7 +215,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
                   </span>
                 )}
                 {ev.note && <span className="text-ink-600"> — {ev.note}</span>}
-                <span className="ml-1 text-caption text-ink-300">{new Date(ev.occurredAt).toLocaleDateString()}</span>
+                <span className="ml-1 text-caption text-ink-600">{new Date(ev.occurredAt).toLocaleDateString()}</span>
               </div>
             </li>
           ))}
@@ -242,7 +242,7 @@ export function ApplicationDetailContent({ id, onClose }: { id: string; onClose:
 function DetailField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-0.5 block text-micro text-ink-300">{label}</span>
+      <span className="mb-0.5 block text-micro text-ink-600">{label}</span>
       {children}
     </label>
   );

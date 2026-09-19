@@ -30,7 +30,7 @@ const WordDetail = lazy(() => import("./pages/words/WordDetail"));
 const ReviewSession = lazy(() => import("./pages/review/ReviewSession"));
 
 function Lazy({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<p className="text-ink-400">Loading…</p>}>{children}</Suspense>;
+  return <Suspense fallback={<p className="text-ink-600">Loading…</p>}>{children}</Suspense>;
 }
 
 const queryClient = new QueryClient({
@@ -66,7 +66,7 @@ function RequireAuth() {
     };
   }, []);
 
-  if (status === "checking") return <p className="text-ink-400">Loading…</p>;
+  if (status === "checking") return <p className="text-ink-600">Loading…</p>;
   return status === "authed" ? <Outlet /> : <Navigate to="/login" replace />;
 }
 

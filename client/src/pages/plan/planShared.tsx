@@ -88,7 +88,7 @@ export function AddTaskComposer({ date, onDone }: { date: string; onDone: () => 
           disabled={!title.trim() || add.isPending}
           onClick={() => add.mutate()}
           className="min-h-[42px] flex-1 rounded-[10px] text-[13.5px] font-medium text-white disabled:opacity-50"
-          style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+          style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
         >
           Add task
         </button>
@@ -121,7 +121,7 @@ export function ChapterProgressCard({ station, onOpen }: { station: { theme: str
           style={{ width: `${station.items.length === 0 ? 0 : Math.round((done / station.items.length) * 100)}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }}
         />
       </div>
-      <button type="button" onClick={onOpen} className="mt-3 min-h-[38px] w-full rounded-[10px] text-[13px] font-medium text-white" style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}>
+      <button type="button" onClick={onOpen} className="mt-3 min-h-[38px] w-full rounded-[10px] text-[13px] font-medium text-white" style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}>
         Continue chapter
       </button>
     </div>

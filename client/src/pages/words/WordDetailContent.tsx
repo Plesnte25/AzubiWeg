@@ -150,7 +150,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
               type="button"
               onClick={() => push("/review", { state: { words: [word] } })}
               className="flex items-center gap-1.5 rounded-[9px] px-2.5 py-1.5 text-[12.5px] font-medium text-white"
-              style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+              style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
             >
               Drill now
             </button>
@@ -205,7 +205,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
             onClick={() => void playWordAudio(word.id).catch(() => {})}
             aria-label="Play pronunciation"
             className="grid size-[37px] shrink-0 place-items-center rounded-full text-white"
-            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+            style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
           >
             <SpeakerHigh size={15} weight="fill" aria-hidden="true" />
           </button>
@@ -309,7 +309,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
             type="button"
             onClick={() => setShowFamily(true)}
             className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[10px] text-[14px] font-medium text-white"
-            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+            style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
           >
             <LinkSimple size={15} weight="regular" aria-hidden="true" />
             Word family

@@ -7,7 +7,7 @@ type Size = "sm" | "md" | "lg" | "icon";
 type Shape = "rect" | "circle";
 
 const variantClasses: Record<Variant, string> = {
-  primary: "bg-brand-600 text-white hover:bg-brand-700 hover:shadow-brand",
+  primary: "bg-brand-solid text-white hover:brightness-110 hover:shadow-brand",
   secondary: "bg-ink-50 text-ink-900 hover:bg-hairline",
   outline: "border border-hairline bg-card text-ink-900 hover:border-brand-400",
   ghost: "text-ink-600 hover:bg-paper hover:text-ink-900",

@@ -105,7 +105,7 @@ export default function Vocabulary() {
             type="button"
             onClick={() => setShowAdd(true)}
             className="flex min-h-[38px] items-center gap-1.5 rounded-[10px] px-3.5 text-[13.5px] font-medium text-white"
-            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+            style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
           >
             <Plus size={16} weight="bold" aria-hidden="true" />
             Word
@@ -231,7 +231,7 @@ export default function Vocabulary() {
               type="button"
               onClick={() => setShowAdd(true)}
               className="mt-[13px] min-h-10 rounded-[10px] px-4 text-[13.5px] font-medium text-white"
-              style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+              style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
             >
               Add it as a new word
             </button>
@@ -264,7 +264,7 @@ export default function Vocabulary() {
               type="button"
               onClick={() => setShowAdd(true)}
               className="flex min-h-[34px] items-center gap-1.5 rounded-[9px] px-3 text-[12.5px] font-medium text-white"
-              style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+              style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
             >
               <Plus size={14} weight="bold" aria-hidden="true" />
               Word

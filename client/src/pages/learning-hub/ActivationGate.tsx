@@ -43,7 +43,7 @@ export function ActivationGate() {
           value={date}
           onChange={(e) => setDate(e.target.value)}
         />
-        <p className="mt-1 text-caption text-ink-400">Optional — leave blank to start today</p>
+        <p className="mt-1 text-caption text-ink-600">Optional — leave blank to start today</p>
       </div>
       <Button className="mt-4" loading={pending} onClick={activate}>
         Activate

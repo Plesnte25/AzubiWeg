@@ -48,7 +48,7 @@ function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) 
 }
 
 function CardDescription({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn("text-caption text-ink-400", className)} {...props} />;
+  return <p className={cn("text-caption text-ink-600", className)} {...props} />;
 }
 
 export const Card = Object.assign(CardRoot, {

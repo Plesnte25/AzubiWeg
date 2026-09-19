@@ -352,7 +352,7 @@ export default function Dashboard() {
               startNextTask();
             }}
             className="min-h-[42px] rounded-[10px] px-4 text-[14px] font-medium text-white"
-            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+            style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
           >
             {!roadmapStarted ? "Get started" : nextTask ? "Start" : "Practise anyway"} →
           </button>
@@ -439,7 +439,7 @@ export default function Dashboard() {
             type="button"
             onClick={() => push("/review")}
             className="flex min-h-[38px] items-center gap-[7px] rounded-[10px] px-[15px] text-[13.5px] font-medium text-white"
-            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+            style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
           >
             Start reviewing →
           </button>
@@ -571,7 +571,7 @@ export default function Dashboard() {
                   startNextTask();
                 }}
                 className="min-h-[42px] rounded-[10px] px-[17px] text-[14px] font-medium text-white"
-                style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+                style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
               >
                 {!roadmapStarted ? "Get started" : nextTask ? "Start" : "Practise anyway"} →
               </button>
@@ -668,7 +668,7 @@ export default function Dashboard() {
                     disabled={pullForward.isPending}
                     onClick={() => pullForward.mutate(3)}
                     className="mt-2.5 min-h-[36px] rounded-[9px] px-4 text-[12.5px] font-medium text-white disabled:opacity-50"
-                    style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+                    style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
                   >
                     {pullForward.isPending ? "Pulling in more…" : "Pull in more tasks"}
                   </button>
@@ -793,7 +793,7 @@ export default function Dashboard() {
             type="button"
             onClick={startNextTask}
             className="min-h-[46px] flex-[1.5] rounded-[11px] text-[15px] font-medium text-white"
-            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+            style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
           >
             Start →
           </button>

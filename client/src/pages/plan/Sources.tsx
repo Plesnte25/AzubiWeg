@@ -387,7 +387,7 @@ function AddSourceSheet({ onClose }: { onClose: () => void }) {
           disabled={!title.trim() && !url.trim()}
           onClick={() => add.mutate()}
           className="mt-1 min-h-[40px] rounded-[10px] text-[13.5px] font-medium text-white disabled:opacity-50"
-          style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+          style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
         >
           Add source
         </button>
@@ -580,7 +580,7 @@ export default function Sources() {
             type="button"
             onClick={() => setShowAdd((v) => !v)}
             className="flex items-center gap-[5px] rounded-[10px] px-3 py-2 text-[12.5px] font-medium text-white"
-            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+            style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
           >
             <Plus size={14} weight="regular" aria-hidden="true" />
             Add source

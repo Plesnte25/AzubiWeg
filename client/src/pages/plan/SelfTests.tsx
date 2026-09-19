@@ -172,7 +172,7 @@ export default function SelfTests() {
         type="button"
         onClick={() => push("/plan/self-tests/run", { state: { size: length } })}
         className="mt-3 min-h-[48px] rounded-[11px] text-[15px] font-medium text-white"
-        style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+        style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
       >
         Start test
       </button>

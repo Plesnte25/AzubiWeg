@@ -407,7 +407,7 @@ export default function Notes() {
           type="button"
           onClick={() => push("/plan/notes/edit/new")}
           className="flex shrink-0 items-center gap-[6px] rounded-[10px] px-3 py-2.5 text-[13.5px] font-medium text-white"
-          style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+          style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
         >
           <Plus size={16} weight="regular" aria-hidden="true" />
           New
@@ -505,7 +505,7 @@ export default function Notes() {
               setExpanded(null);
             }}
             className="flex shrink-0 items-center gap-[6px] rounded-[10px] px-3 py-2.5 text-[13.5px] font-medium text-white"
-            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+            style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
           >
             <Plus size={16} weight="regular" aria-hidden="true" />
             New

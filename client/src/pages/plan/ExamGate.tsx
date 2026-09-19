@@ -151,7 +151,7 @@ export default function ExamGate() {
             disabled={!data.allowed || totalQuestions === 0}
             onClick={() => push("/exam-take")}
             className="min-h-[48px] flex-[1.4] rounded-[11px] text-[15px] font-medium text-white disabled:opacity-40"
-            style={{ background: "linear-gradient(160deg,#9184d9,#5d5294)" }}
+            style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
           >
             Start exam
           </button>

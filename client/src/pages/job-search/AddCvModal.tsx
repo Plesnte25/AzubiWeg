@@ -40,7 +40,7 @@ export default function AddCvModal({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal title="Add a CV" onClose={onClose} size="md" sheetOnSm>
-      <p className="-mt-3 mb-4 text-body text-ink-400">
+      <p className="-mt-3 mb-4 text-body text-ink-600">
         Upload a file you already have — nothing is built or edited here
       </p>
       <form
@@ -62,7 +62,7 @@ export default function AddCvModal({ onClose }: { onClose: () => void }) {
               )}
             >
               <p className="text-body font-semibold">{c.label}</p>
-              <p className="mt-0.5 text-caption text-ink-400">{c.description}</p>
+              <p className="mt-0.5 text-caption text-ink-600">{c.description}</p>
             </button>
           ))}
         </div>
@@ -100,7 +100,7 @@ export default function AddCvModal({ onClose }: { onClose: () => void }) {
           {file ? (
             <span className="font-medium text-ink-900">{file.name}</span>
           ) : (
-            <span className="text-ink-400">Drop a PDF or Word file, or browse.</span>
+            <span className="text-ink-600">Drop a PDF or Word file, or browse.</span>
           )}
           <input
             type="file"
