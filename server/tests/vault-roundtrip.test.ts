@@ -11,6 +11,7 @@ import {
   cardFront,
   shouldProtectCard,
   firstProtected,
+  stripEditorialMetadata,
   stripExampleMetadata,
   stripIpaSlashes,
   type CardCuration,
@@ -105,11 +106,38 @@ describe("field extraction", () => {
       "- **Katze** :: **Meaning:** cat<br>**Example:** *Die Katze schläft.* _(hand-written -- source note)_<br>\n";
     expect(parseCardFields(line).example).toBe("Die Katze schläft.");
   });
+
+  it("removes editorial metadata from generated vault card fields", () => {
+    const line = formatCardLine({
+      front: "Katze",
+      meaning: "(Noun) cat _(source: Wiktionary)_",
+      ipa: null,
+      grammar: null,
+      form: null,
+      example: "Die Katze schläft. _(hand-written -- literary quotation)_",
+      audioPath: null,
+      lesson: null,
+      curation: "generated",
+      reviewNote: null,
+    });
+    expect(line).not.toContain("source:");
+    expect(line).not.toContain("hand-written");
+    expect(line).toContain("**Meaning:** (Noun) cat");
+    expect(line).toContain("**Example:** *Die Katze schläft.*");
+  });
 });
 
 describe("stripIpaSlashes", () => {
   it("strips a single outer-wrapped pair", () => {
     expect(stripIpaSlashes("/hʊnt/")).toBe("hʊnt");
+  });
+
+  describe("stripEditorialMetadata", () => {
+    it("preserves parenthetical content that is part of a sentence", () => {
+      expect(stripEditorialMetadata("Er kommt (wie immer) pünktlich.")).toBe(
+        "Er kommt (wie immer) pünktlich.",
+      );
+    });
   });
 
   describe("stripExampleMetadata", () => {

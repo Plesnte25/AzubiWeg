@@ -83,11 +83,14 @@ export function stripIpaSlashes(ipa: string): string {
   return ipa.replace(/^\/+|\/+$/g, "");
 }
 
-/** Removes editorial/source notes appended to an example for vault
- * maintenance. These notes are useful to the curator but are not learner
- * content and must not be exposed through the app's Word fields. */
+/** Removes trailing editorial/source notes from learner-facing card fields. */
+export function stripEditorialMetadata(value: string): string {
+  return value.replace(/\s+_\([^)]*\)_\s*$/g, "").trim();
+}
+
+/** @deprecated Use stripEditorialMetadata for all learner-facing fields. */
 export function stripExampleMetadata(example: string): string {
-  return example.replace(/\s+_\([^)]*\)_\s*$/g, "").trim();
+  return stripEditorialMetadata(example);
 }
 
 export function stripBullet(text: string): string {
@@ -141,12 +144,12 @@ export function parseCardFields(cardLine: string): CardFields {
   const audioMatch = back.match(/!\[\[([^\]]+)\]\]/);
 
   return {
-    meaning: field("Meaning"),
+    meaning: field("Meaning") ? stripEditorialMetadata(field("Meaning")!) : null,
     ipa: ipaRaw ? stripIpaSlashes(ipaRaw.trim()) : null,
-    grammar: field("Grammar"),
-    form: field("Form"),
+    grammar: field("Grammar") ? stripEditorialMetadata(field("Grammar")!) : null,
+    form: field("Form") ? stripEditorialMetadata(field("Form")!) : null,
     example: exampleRaw
-      ? stripExampleMetadata(exampleRaw).replace(/^\*([\s\S]*)\*$/, "$1").trim()
+      ? stripEditorialMetadata(exampleRaw).replace(/^\*([\s\S]*)\*$/, "$1").trim()
       : null,
     audioPath: audioMatch ? audioMatch[1]! : null,
     lesson: lessonMatch ? lessonMatch[1]! : null,
@@ -169,13 +172,18 @@ function oneLine(text: string): string {
 /** Port of format_row(): renders a card line from structured fields. */
 export function formatCardLine(fields: CardFields & { front: string }): string {
   const front = oneLine(fields.front);
-  const meaning = fields.meaning ? oneLine(fields.meaning) : "_(not found -- fill manually)_";
+  const meaning = fields.meaning
+    ? oneLine(stripEditorialMetadata(fields.meaning))
+    : "_(not found -- fill manually)_";
   const backParts = [`**Meaning:** ${meaning}`];
   if (fields.ipa) backParts.push(`**IPA:** /${stripIpaSlashes(oneLine(fields.ipa))}/`);
-  if (fields.grammar) backParts.push(`**Grammar:** ${oneLine(fields.grammar)}`);
-  if (fields.form) backParts.push(`**Form:** ${oneLine(fields.form)}`);
+  if (fields.grammar) backParts.push(`**Grammar:** ${oneLine(stripEditorialMetadata(fields.grammar))}`);
+  if (fields.form) backParts.push(`**Form:** ${oneLine(stripEditorialMetadata(fields.form))}`);
   if (fields.reviewNote) backParts.push(`**Review:** ${oneLine(fields.reviewNote)}`);
-  if (fields.example) backParts.push(`**Example:** *${oneLine(fields.example)}*`);
+  if (fields.example) {
+    const example = oneLine(stripEditorialMetadata(fields.example));
+    if (example) backParts.push(`**Example:** *${example}*`);
+  }
   if (fields.audioPath) backParts.push(`![[${fields.audioPath}]]`);
   const tag = fields.lesson ? ` #lesson/${fields.lesson}` : "";
   // Curation marker is always the very last thing on the line -- parseCardFields()
