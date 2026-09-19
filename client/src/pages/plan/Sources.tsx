@@ -211,7 +211,7 @@ export function SourceRow({ source }: { source: StudySource }) {
     <div className="overflow-hidden rounded-xl" style={{ background: "#1c1f2c" }}>
       <CoverImageSlot source={source} onChanged={() => invalidateHub(queryClient)} />
       <div className="p-3">
-        <div className="flex items-center gap-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: hasProgress ? "#b5abfc" : "rgba(233,233,237,.62)" }}>
+        <div className="flex items-center gap-1.5 text-micro tracking-[.1em] uppercase" style={{ color: hasProgress ? "#b5abfc" : "rgba(233,233,237,.62)" }}>
           <Icon size={11} weight="regular" aria-hidden="true" />
           {meta.label}
         </div>
@@ -235,7 +235,7 @@ export function SourceRow({ source }: { source: StudySource }) {
           </span>
         </div>
 
-        <div className="mt-1.5 flex items-center justify-between text-[10.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
+        <div className="mt-1.5 flex items-center justify-between text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
           <span>Updated {relativeDate(source.updatedAt)}</span>
         </div>
 
@@ -254,7 +254,7 @@ export function SourceRow({ source }: { source: StudySource }) {
                   className="flex items-center gap-2.5 rounded-lg px-1 py-1.5 text-left"
                 >
                   <span
-                    className="grid size-[16px] shrink-0 place-items-center rounded-full text-[9px] text-white"
+                    className="grid size-[16px] shrink-0 place-items-center rounded-full text-micro text-white"
                     style={{ background: done ? "#9184d9" : "transparent", border: done ? "none" : "1px solid rgba(233,233,237,.3)" }}
                   >
                     {done ? "✓" : ""}
@@ -282,7 +282,7 @@ function TypePickerButton({ type, active, onClick }: { type: StudySourceType; ac
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-1 flex-col items-center gap-1 rounded-[10px] py-2.5 text-[10.5px]"
+      className="flex flex-1 flex-col items-center gap-1 rounded-[10px] py-2.5 text-micro"
       style={{ background: active ? "rgba(145,132,217,.18)" : "#20222f", color: active ? "#d2cefd" : "rgba(233,233,237,.6)" }}
     >
       <Icon size={17} weight="regular" aria-hidden="true" />
@@ -424,7 +424,7 @@ function ActivityFeed() {
 
   return (
     <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-      <span className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+      <span className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
         Recent activity
       </span>
       {entries.length === 0 ? (
@@ -443,7 +443,7 @@ function ActivityFeed() {
                     {e.sourceTitle && e.kind !== "added" && <span className="font-medium">{e.sourceTitle} — </span>}
                     {e.title}
                   </span>
-                  <div className="text-[10.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
+                  <div className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
                     {new Date(e.at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                   </div>
                 </div>

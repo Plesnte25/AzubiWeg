@@ -52,11 +52,11 @@ export function ReviewHistoryCard({ word, entries }: { word: Word; entries: Revi
   return (
     <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c", boxShadow: "0 0 0 1px rgba(233,233,237,.06)" }}>
       <div className="flex items-baseline justify-between">
-        <div className="flex items-center gap-1.5 text-[10px] tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
+        <div className="flex items-center gap-1.5 text-micro tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
           <ClockCounterClockwise size={13} weight="regular" aria-hidden="true" />
           Review history
         </div>
-        <span className="text-[10px]" style={{ color: "rgba(233,233,237,.62)" }}>
+        <span className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
           {chronological.length === 0
             ? "No reviews yet"
             : `${chronological.length} review${chronological.length === 1 ? "" : "s"} · ${percentCorrect}% correct`}

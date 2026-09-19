@@ -46,7 +46,7 @@ export function StationNotesPanel({
   return (
     <div className="flex min-h-0 flex-col">
       <div className="flex items-center justify-between">
-        <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
           Notes · this station
         </div>
         <button type="button" onClick={focusComposer} className="flex items-center gap-1 text-[11.5px] font-medium" style={{ color: "#b5abfc" }}>
@@ -91,12 +91,12 @@ export function StationNotesPanel({
             return (
               <div key={note.id} className="rounded-xl p-2.5" style={{ background: "#1c1f2c" }}>
                 {linkedItem ? (
-                  <div className="mb-1 flex items-center gap-1 text-[10.5px] font-medium" style={{ color: "#d2cefd" }}>
+                  <div className="mb-1 flex items-center gap-1 text-micro font-medium" style={{ color: "#d2cefd" }}>
                     <LinkSimple size={10} weight="regular" aria-hidden="true" />
                     {linkedItem.title}
                   </div>
                 ) : (
-                  <div className="mb-1 text-[10.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
+                  <div className="mb-1 text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
                     not linked to a task
                   </div>
                 )}
@@ -110,7 +110,7 @@ export function StationNotesPanel({
       <div id="station-notes-composer" className="mt-2.5 rounded-[11px] p-2.5" style={{ border: "1px solid rgba(233,233,237,.14)" }}>
         {composerItem ? (
           <>
-            <div className="mb-1.5 flex items-center gap-1 text-[10.5px] font-medium" style={{ color: "#b5abfc" }}>
+            <div className="mb-1.5 flex items-center gap-1 text-micro font-medium" style={{ color: "#b5abfc" }}>
               <LinkSimple size={10} weight="regular" aria-hidden="true" />
               Note for: {composerItem.title}
             </div>

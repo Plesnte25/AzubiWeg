@@ -257,7 +257,7 @@ export function NoteEditorContent({
         </span>
       </div>
 
-      <div className="mt-3.5 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+      <div className="mt-3.5 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
         {formatStamp(note)}
       </div>
 

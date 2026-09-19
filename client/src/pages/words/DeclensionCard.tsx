@@ -18,11 +18,11 @@ export function DeclensionCard({ declension, form }: { declension: DeclensionTab
   return (
     <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c", boxShadow: "0 0 0 1px rgba(233,233,237,.06)" }}>
       <div className="flex justify-between">
-        <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
+        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
           Declension
         </div>
         {plural && (
-          <span className="text-[10px]" style={{ color: "rgba(233,233,237,.62)" }}>
+          <span className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
             plural: die {plural}
           </span>
         )}
@@ -30,9 +30,9 @@ export function DeclensionCard({ declension, form }: { declension: DeclensionTab
       <table className="mt-2 w-full text-[13px]">
         <thead>
           <tr style={{ color: "rgba(233,233,237,.62)" }}>
-            <th className="pb-1.5 text-left text-[10px] font-normal">Case</th>
-            <th className="pb-1.5 text-left text-[10px] font-normal">Singular</th>
-            <th className="pb-1.5 text-left text-[10px] font-normal">Plural</th>
+            <th className="pb-1.5 text-left text-micro font-normal">Case</th>
+            <th className="pb-1.5 text-left text-micro font-normal">Singular</th>
+            <th className="pb-1.5 text-left text-micro font-normal">Plural</th>
           </tr>
         </thead>
         <tbody>

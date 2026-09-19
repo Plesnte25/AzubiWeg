@@ -7,7 +7,7 @@ export function HourOfDayChart({ hours }: { hours: { hour: number; minutes: numb
   const max = Math.max(1, ...hours.map((h) => h.minutes));
   return (
     <div>
-      <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+      <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
         What time of day you study
       </div>
       <div className="mt-3 flex h-[54px] items-end gap-[2px]">
@@ -20,7 +20,7 @@ export function HourOfDayChart({ hours }: { hours: { hour: number; minutes: numb
           />
         ))}
       </div>
-      <div className="mt-1 flex justify-between text-[9px]" style={{ color: "rgba(233,233,237,.62)" }}>
+      <div className="mt-1 flex justify-between text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
         <span>12am</span>
         <span>6am</span>
         <span>12pm</span>

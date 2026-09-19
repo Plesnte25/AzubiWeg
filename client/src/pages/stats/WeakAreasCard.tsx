@@ -21,7 +21,7 @@ export function WeakAreasCard({
     <div className="flex flex-col gap-3">
       {weakAreas.length > 0 && (
         <div>
-          <div className="mb-1.5 flex items-center gap-1.5 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+          <div className="mb-1.5 flex items-center gap-1.5 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
             <Warning size={11} weight="regular" style={{ color: "#e4c4b6" }} aria-hidden="true" />
             Weak topic areas
           </div>
@@ -41,7 +41,7 @@ export function WeakAreasCard({
       )}
       {improvedMost.length > 0 && (
         <div>
-          <div className="mb-1.5 flex items-center gap-1.5 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+          <div className="mb-1.5 flex items-center gap-1.5 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
             <TrendUp size={11} weight="regular" style={{ color: "#b5abfc" }} aria-hidden="true" />
             Most improved
           </div>

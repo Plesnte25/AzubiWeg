@@ -65,7 +65,7 @@ export function StationNode({
       </div>
 
       <div
-        className="text-[10px] tracking-[.12em] uppercase"
+        className="text-micro tracking-[.12em] uppercase"
         style={{ color: status === "done" ? "rgba(233,233,237,.4)" : status === "current" ? "#b5abfc" : "rgba(233,233,237,.3)" }}
       >
         {status === "done" ? "complete" : status === "current" ? "you are here" : "locked"}
@@ -89,12 +89,12 @@ export function StationNode({
           </div>
           <div className="mt-2 flex flex-wrap gap-[5px]">
             {station.items.slice(0, 3).map((i) => (
-              <span key={i.id} className="rounded-full px-2 py-1 text-[10px]" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
+              <span key={i.id} className="rounded-full px-2 py-1 text-micro" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
                 {i.title}
               </span>
             ))}
             {station.items.length > 3 && (
-              <span className="rounded-full px-2 py-1 text-[10px]" style={{ border: "1px solid rgba(233,233,237,.14)", color: "rgba(233,233,237,.5)" }}>
+              <span className="rounded-full px-2 py-1 text-micro" style={{ border: "1px solid rgba(233,233,237,.14)", color: "rgba(233,233,237,.5)" }}>
                 +{station.items.length - 3}
               </span>
             )}
@@ -306,7 +306,7 @@ export default function Syllabus() {
               className="w-full rounded-xl p-3 py-3.5 text-left"
               style={{ border: "1px solid rgba(145,132,217,.4)", background: "rgba(145,132,217,.08)" }}
             >
-              <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "#b5abfc" }}>
+              <div className="text-micro tracking-[.12em] uppercase" style={{ color: "#b5abfc" }}>
                 Self-test · gate to {LEVELS[levelIdx + 1] ? LEVEL_LABELS[LEVELS[levelIdx + 1]!] : "next level"}
               </div>
               <div className="mt-0.5 text-[15px] font-medium">{LEVEL_LABELS[level]} final exam</div>

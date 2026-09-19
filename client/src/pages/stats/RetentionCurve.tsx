@@ -79,10 +79,10 @@ export function RetentionCurve({ entries }: { entries: ReviewHistoryEntry[] }) {
   return (
     <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
       <div className="flex items-baseline justify-between">
-        <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
+        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
           Retention
         </div>
-        <span className="text-[10px]" style={{ color: "rgba(233,233,237,.62)" }}>
+        <span className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
           you vs. forgetting
         </span>
       </div>

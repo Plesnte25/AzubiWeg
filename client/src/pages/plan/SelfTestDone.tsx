@@ -69,7 +69,7 @@ export function SelfTestDone({
             <div className="text-[42px] leading-none font-medium" style={{ letterSpacing: "-.04em" }}>
               {percent}%
             </div>
-            <div className="mt-1.5 text-[10px] tracking-[.12em] uppercase" style={{ color: "#b5abfc" }}>
+            <div className="mt-1.5 text-micro tracking-[.12em] uppercase" style={{ color: "#b5abfc" }}>
               scored
             </div>
           </div>
@@ -87,7 +87,7 @@ export function SelfTestDone({
 
       {byTopic.size > 0 && (
         <div className="mt-6 text-left">
-          <div className="mb-2.5 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+          <div className="mb-2.5 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
             By topic
           </div>
           <div className="flex flex-col gap-2.5">
@@ -118,7 +118,7 @@ export function SelfTestDone({
           className="mt-5 rounded-xl p-3 text-left"
           style={{ background: "#1c1f2c", boxShadow: "0 0 0 1px rgba(233,233,237,.08)" }}
         >
-          <div className="flex items-center gap-2 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="flex items-center gap-2 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
             <XCircle size={13} weight="regular" aria-hidden="true" />
             {wrongCount} wrong
           </div>

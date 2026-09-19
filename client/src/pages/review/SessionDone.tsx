@@ -76,7 +76,7 @@ export function SessionDone({
       <div className="mt-[22px] grid grid-cols-3 gap-2 text-left">
         <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c", boxShadow: "0 0 0 1px rgba(233,233,237,.06)" }}>
           <div className="text-[20px] font-medium">{total}</div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             cards
           </div>
         </div>
@@ -84,13 +84,13 @@ export function SessionDone({
           <div className="text-[20px] font-medium" style={{ color: "#b5abfc" }}>
             {dashboard?.streak ?? "—"}
           </div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             day streak
           </div>
         </div>
         <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c", boxShadow: "0 0 0 1px rgba(233,233,237,.06)" }}>
           <div className="text-[20px] font-medium">{formatDuration(elapsedSeconds)}</div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             duration
           </div>
         </div>
@@ -98,7 +98,7 @@ export function SessionDone({
 
       {total > 0 && (
         <div className="mt-6 text-left">
-          <div className="mb-2 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+          <div className="mb-2 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
             How it went
           </div>
           <div className="flex h-[9px] gap-[3px] overflow-hidden rounded-[5px]" style={{ background: "#292b31" }}>
@@ -106,7 +106,7 @@ export function SessionDone({
             <div style={{ flex: done.good, background: "#796cbf" }} />
             <div style={{ flex: done.hard, background: "#5d5294" }} />
           </div>
-          <div className="mt-1.5 flex justify-between text-[10px]" style={{ color: "rgba(233,233,237,.45)" }}>
+          <div className="mt-1.5 flex justify-between text-micro" style={{ color: "rgba(233,233,237,.45)" }}>
             <span>easy {done.easy}</span>
             <span>good {done.good}</span>
             <span>hard {done.hard}</span>
@@ -116,12 +116,12 @@ export function SessionDone({
 
       {slipping && slippingWord && (
         <div className="mt-[22px] text-left">
-          <div className="mb-2 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+          <div className="mb-2 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
             The one that keeps slipping
           </div>
           <div className="flex items-center gap-2.5 rounded-xl px-[13px] py-3" style={{ background: "#20222f" }}>
             <div
-              className="grid size-8 shrink-0 place-items-center rounded-[9px] text-[10.5px] font-medium"
+              className="grid size-8 shrink-0 place-items-center rounded-[9px] text-micro font-medium"
               style={{ background: "rgba(233,233,237,.08)", color: chipColor(slippingWord) }}
             >
               {slippingWord.genus ?? slippingWord.wortart[0]}

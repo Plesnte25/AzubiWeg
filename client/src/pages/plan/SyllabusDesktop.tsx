@@ -142,7 +142,7 @@ export function SyllabusDesktop() {
               )}
 
               <div className="mt-4 h-px" style={{ background: "rgba(233,233,237,.08)" }} />
-              <div className="mt-3 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+              <div className="mt-3 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
                 Full path · {stations.length} station{stations.length === 1 ? "" : "s"}
               </div>
             </div>

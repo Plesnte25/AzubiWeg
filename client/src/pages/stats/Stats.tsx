@@ -126,7 +126,7 @@ export default function Stats() {
           <button type="button" onClick={goBack} className="flex items-center gap-[3px] text-[13px]" style={{ color: "rgba(233,233,237,.55)" }}>
             {backLabel}
           </button>
-          <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
             Where you stand
           </div>
           <div className="mt-0.5 text-[26px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
@@ -167,7 +167,7 @@ export default function Stats() {
             <div key={s} style={{ flex: stateCounts[s] || 0.0001, background: STATE_COLOR[s] }} />
           ))}
         </div>
-        <div className="mt-1.5 flex justify-between text-[10px]" style={{ color: "rgba(233,233,237,.45)" }}>
+        <div className="mt-1.5 flex justify-between text-micro" style={{ color: "rgba(233,233,237,.45)" }}>
           {STATE_ORDER.map((s) => (
             <span key={s}>
               {STATE_LABEL[s]} {stateCounts[s]}
@@ -189,7 +189,7 @@ export default function Stats() {
       <div className="mt-5 grid grid-cols-2 gap-2">
         <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
           <div className="text-[20px] font-medium">{accuracy === null ? "—" : `${accuracy}%`}</div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             accuracy
           </div>
         </div>
@@ -198,13 +198,13 @@ export default function Stats() {
             {reviewStats?.avgIntervalAfter ?? "—"}
             {reviewStats?.avgIntervalAfter !== null && reviewStats?.avgIntervalAfter !== undefined ? "d" : ""}
           </div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             avg interval
           </div>
         </div>
         <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
           <div className="text-[20px] font-medium">{reviewStats?.reviewsThisWeek ?? "—"}</div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             reviews this week
           </div>
         </div>
@@ -212,7 +212,7 @@ export default function Stats() {
           <div className="text-[20px] font-medium" style={{ color: "#b5abfc" }}>
             {formatProjected(pace?.projectedFinishDate ?? null)}
           </div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             projected {pace?.examTargetDate ? "vs. exam date" : "finish"}
           </div>
         </div>
@@ -224,7 +224,7 @@ export default function Stats() {
 
       {weakWords.length > 0 && (
         <div className="mt-[18px]">
-          <div className="mb-2 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+          <div className="mb-2 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
             The shaky ones
           </div>
           <div className="flex flex-col gap-1.5">
@@ -234,7 +234,7 @@ export default function Stats() {
               return (
                 <div key={w.wordId} className="flex items-center gap-2.5 text-[13.5px]">
                   <span
-                    className="w-14 shrink-0 truncate text-[10px]"
+                    className="w-14 shrink-0 truncate text-micro"
                     title={word ? fullArtLabel(word) : undefined}
                     style={{ color: word?.genus ? "#d2cefd" : "rgba(233,233,237,.5)" }}
                   >
@@ -290,7 +290,7 @@ export default function Stats() {
 
       {progress && (
         <div className="mt-6">
-          <div className="mb-2 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+          <div className="mb-2 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
             Activity
           </div>
           <div className="grid grid-cols-3 gap-2">
@@ -299,28 +299,28 @@ export default function Stats() {
               <div className="mt-1 text-[16px] font-medium">
                 {progress.kpis.tasksKept.value}/{progress.kpis.tasksKept.total}
               </div>
-              <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+              <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
                 tasks kept
               </div>
             </div>
             <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
               <Timer size={14} weight="regular" style={{ color: "#9184d9" }} aria-hidden="true" />
               <div className="mt-1 text-[16px] font-medium">{progress.kpis.minutes.value}</div>
-              <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+              <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
                 minutes
               </div>
             </div>
             <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
               <Fire size={14} weight="regular" style={{ color: "#e4c4b6" }} aria-hidden="true" />
               <div className="mt-1 text-[16px] font-medium">{progress.kpis.streak.current}d</div>
-              <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+              <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
                 streak · best {progress.kpis.streak.best}d
               </div>
             </div>
           </div>
 
           <div className="mt-3 rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-            <div className="flex items-center gap-2 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+            <div className="flex items-center gap-2 text-micro tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
               <CalendarCheck size={12} weight="regular" aria-hidden="true" />
               Study streak
             </div>
@@ -340,7 +340,7 @@ export default function Stats() {
           </div>
 
           <div className="mt-3 rounded-xl p-3.5" style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a" }}>
-            <div className="flex items-center gap-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
+            <div className="flex items-center gap-1.5 text-micro tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
               <TrendUp size={12} weight="regular" aria-hidden="true" />
               Goethe {progress.readiness.level.toUpperCase()}
             </div>
@@ -363,7 +363,7 @@ export default function Stats() {
     <div className="hidden lg:flex lg:h-full lg:flex-col">
       <div className="flex items-baseline justify-between">
         <div>
-          <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
+          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
             Where you stand
           </div>
           <div className="mt-0.5 text-[27px] leading-tight font-medium" style={{ letterSpacing: "-.02em" }}>
@@ -402,7 +402,7 @@ export default function Stats() {
           </div>
 
           <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-            <div className="text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+            <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
               Strength
             </div>
             <div className="mt-2 flex h-2.5 gap-0.5 overflow-hidden rounded-[5px]">
@@ -410,7 +410,7 @@ export default function Stats() {
                 <div key={s} style={{ flex: stateCounts[s] || 0.0001, background: STATE_COLOR[s] }} />
               ))}
             </div>
-            <div className="mt-1.5 flex justify-between text-[9.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+            <div className="mt-1.5 flex justify-between text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
               {STATE_ORDER.map((s) => (
                 <span key={s}>
                   {STATE_LABEL[s]} {stateCounts[s]}
@@ -422,7 +422,7 @@ export default function Stats() {
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
               <div className="text-[19px] font-medium">{accuracy === null ? "—" : `${accuracy}%`}</div>
-              <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+              <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
                 accuracy
               </div>
             </div>
@@ -431,13 +431,13 @@ export default function Stats() {
                 {reviewStats?.avgIntervalAfter ?? "—"}
                 {reviewStats?.avgIntervalAfter !== null && reviewStats?.avgIntervalAfter !== undefined ? "d" : ""}
               </div>
-              <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+              <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
                 avg interval
               </div>
             </div>
             <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
               <div className="text-[19px] font-medium">{reviewStats?.reviewsThisWeek ?? "—"}</div>
-              <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+              <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
                 reviews this week
               </div>
             </div>
@@ -445,7 +445,7 @@ export default function Stats() {
               <div className="text-[19px] font-medium" style={{ color: "#b5abfc" }}>
                 {formatProjected(pace?.projectedFinishDate ?? null)}
               </div>
-              <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+              <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
                 projected finish
               </div>
             </div>
@@ -464,28 +464,28 @@ export default function Stats() {
                   <div className="mt-1 text-[15px] font-medium">
                     {progress.kpis.tasksKept.value}/{progress.kpis.tasksKept.total}
                   </div>
-                  <div className="text-[9.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+                  <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
                     tasks kept
                   </div>
                 </div>
                 <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
                   <Timer size={13} weight="regular" style={{ color: "#9184d9" }} aria-hidden="true" />
                   <div className="mt-1 text-[15px] font-medium">{progress.kpis.minutes.value}</div>
-                  <div className="text-[9.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+                  <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
                     minutes
                   </div>
                 </div>
                 <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
                   <Fire size={13} weight="regular" style={{ color: "#e4c4b6" }} aria-hidden="true" />
                   <div className="mt-1 text-[15px] font-medium">{progress.kpis.streak.current}d</div>
-                  <div className="text-[9.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+                  <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
                     streak · best {progress.kpis.streak.best}d
                   </div>
                 </div>
               </div>
 
               <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-                <div className="flex items-center gap-2 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+                <div className="flex items-center gap-2 text-micro tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
                   <CalendarCheck size={12} weight="regular" aria-hidden="true" />
                   Study streak
                 </div>
@@ -505,7 +505,7 @@ export default function Stats() {
               </div>
 
               <div className="rounded-xl p-3.5" style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a" }}>
-                <div className="flex items-center gap-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
+                <div className="flex items-center gap-1.5 text-micro tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
                   <TrendUp size={12} weight="regular" aria-hidden="true" />
                   Goethe {progress.readiness.level.toUpperCase()}
                 </div>
@@ -546,7 +546,7 @@ export default function Stats() {
 
           {weakWords.length > 0 && (
             <div>
-              <div className="mb-2 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+              <div className="mb-2 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
                 The shaky ones
               </div>
               <div className="flex flex-col gap-1.5">
@@ -556,7 +556,7 @@ export default function Stats() {
                   return (
                     <div key={w.wordId} className="flex items-center gap-2.5 text-[13.5px]">
                       <span
-                        className="w-14 shrink-0 truncate text-[10px]"
+                        className="w-14 shrink-0 truncate text-micro"
                         title={word ? fullArtLabel(word) : undefined}
                         style={{ color: word?.genus ? "#d2cefd" : "rgba(233,233,237,.5)" }}
                       >

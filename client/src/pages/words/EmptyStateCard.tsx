@@ -7,7 +7,7 @@
 export function EmptyStateCard({ label, message }: { label: string; message: string }) {
   return (
     <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c", boxShadow: "0 0 0 1px rgba(233,233,237,.06)" }}>
-      <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
+      <div className="text-micro tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
         {label}
       </div>
       <div className="mt-2 text-[13px] leading-[1.5]" style={{ color: "rgba(233,233,237,.62)" }}>

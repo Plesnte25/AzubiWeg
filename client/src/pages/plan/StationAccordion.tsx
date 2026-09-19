@@ -55,7 +55,7 @@ export function StationAccordion({
     <div className="flex min-h-0 flex-col">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
             Station {resolvedIdx + 1}
           </div>
           <div className="mt-0.5 text-[19px] font-medium">{station.theme}</div>
@@ -138,7 +138,7 @@ export function StationAccordion({
                   {item.title}
                 </span>
                 {isCurrent && (
-                  <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: "#9184d9", color: "#161826" }}>
+                  <span className="shrink-0 rounded-full px-2 py-0.5 text-micro font-medium" style={{ background: "#9184d9", color: "#161826" }}>
                     on today
                   </span>
                 )}

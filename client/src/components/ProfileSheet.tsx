@@ -69,7 +69,7 @@ export function ProfileSheet({
       <div className="mt-4 flex gap-2">
         <div className="flex-1 rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
           <div className="text-[18px] font-medium">{wordsData?.words.length ?? "—"}</div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             words
           </div>
         </div>
@@ -77,13 +77,13 @@ export function ProfileSheet({
           <div className="text-[18px] font-medium" style={{ color: "#b5abfc" }}>
             {streak}
           </div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             day streak
           </div>
         </div>
         <div className="flex-1 rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
           <div className="text-[18px] font-medium">{notesData?.notes.length ?? "—"}</div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             notes
           </div>
         </div>

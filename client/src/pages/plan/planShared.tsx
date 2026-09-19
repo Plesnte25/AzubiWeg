@@ -106,7 +106,7 @@ export function ChapterProgressCard({ station, onOpen }: { station: { theme: str
   const done = station.items.filter((i) => i.completedAt !== null).length;
   return (
     <div className="rounded-xl p-[15px]" style={{ background: "#1c1f2c" }}>
-      <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+      <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
         Chapter progress
       </div>
       <div className="mt-1 flex items-baseline justify-between">

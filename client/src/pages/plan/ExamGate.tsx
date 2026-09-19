@@ -61,7 +61,7 @@ export default function ExamGate() {
       </div>
 
       <div className="mt-[18px] text-center">
-        <div className="text-[10px] tracking-[.14em] uppercase" style={{ color: "#b5abfc" }}>
+        <div className="text-micro tracking-[.14em] uppercase" style={{ color: "#b5abfc" }}>
           Gate to {NEXT_LEVEL[data.level] ?? "next level"} · {alreadyPassed ? "passed" : onCooldown ? "cooling down" : "open"}
         </div>
         <div className="mt-1.5 text-[26px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
@@ -80,28 +80,28 @@ export default function ExamGate() {
         <div className="items-start rounded-xl p-3" style={{ background: "#1c1f2c" }}>
           <ListChecks size={16} weight="regular" style={{ color: "#9184d9" }} aria-hidden="true" />
           <div className="mt-1.5 text-[17px] font-medium">{totalQuestions}</div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             questions
           </div>
         </div>
         <div className="items-start rounded-xl p-3" style={{ background: "#1c1f2c" }}>
           <Timer size={16} weight="regular" style={{ color: "#9184d9" }} aria-hidden="true" />
           <div className="mt-1.5 text-[17px] font-medium">{data.timeLimitMinutes} min</div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             in one sitting
           </div>
         </div>
         <div className="items-start rounded-xl p-3" style={{ background: "#1c1f2c" }}>
           <Target size={16} weight="regular" style={{ color: "#9184d9" }} aria-hidden="true" />
           <div className="mt-1.5 text-[17px] font-medium">{Math.round(data.passThreshold * 100)}%</div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             to pass
           </div>
         </div>
       </div>
 
       <div className="mt-[22px]">
-        <div className="mb-2.5 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+        <div className="mb-2.5 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
           Four sections
         </div>
         <div className="flex flex-col gap-2">

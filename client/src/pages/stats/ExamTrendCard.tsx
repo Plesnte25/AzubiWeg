@@ -32,7 +32,7 @@ export function ExamTrendCard({
       <div className="flex items-center gap-3">
         <div className="flex-1 rounded-xl p-3" style={{ background: "#1c1f2c" }}>
           <div className="text-[19px] font-medium">{testAvg.value === null ? "—" : `${testAvg.value}%`}</div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             self-test avg
             {testAvg.deltaPoints !== null && (
               <span style={{ color: testAvg.deltaPoints >= 0 ? "#b5abfc" : "#e4c4b6" }}> {testAvg.deltaPoints >= 0 ? "+" : ""}{testAvg.deltaPoints}pt</span>
@@ -41,7 +41,7 @@ export function ExamTrendCard({
         </div>
         <div className="flex-1 rounded-xl p-3" style={{ background: "#1c1f2c" }}>
           <div className="text-[19px] font-medium">{readiness.avgRecentTestScore === null ? "—" : `${Math.round(readiness.avgRecentTestScore)}%`}</div>
-          <div className="flex items-center gap-1 text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="flex items-center gap-1 text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             recent avg
             {trend && (
               <span className="flex items-center gap-0.5" style={{ color: trend.color }}>
@@ -55,7 +55,7 @@ export function ExamTrendCard({
 
       {scoredAttempts.length > 0 && (
         <div className="mt-3">
-          <div className="mb-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="mb-1.5 text-micro tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
             Exam attempts
           </div>
           <div className="flex flex-col gap-1">

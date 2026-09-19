@@ -110,7 +110,7 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
                   />
                 )}
               </span>
-              <span className="text-[8.5px] tracking-[.02em] uppercase">{dest.label}</span>
+              <span className="text-micro tracking-[.02em] uppercase">{dest.label}</span>
             </button>
           );
         })}

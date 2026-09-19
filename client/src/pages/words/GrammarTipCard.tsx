@@ -6,7 +6,7 @@
 export function GrammarTipCard({ tip }: { tip: string | null }) {
   return (
     <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c", boxShadow: "0 0 0 1px rgba(233,233,237,.06)" }}>
-      <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
+      <div className="text-micro tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
         Grammar tip
       </div>
       <div className="mt-2 text-[13px] leading-[1.5]" style={{ color: tip ? "rgba(233,233,237,.75)" : "rgba(233,233,237,.62)" }}>

@@ -169,10 +169,10 @@ export default function Vocabulary() {
 
       <div className="mt-[15px] min-h-0 flex-1 overflow-y-auto pb-2.5">
         <div className="flex items-center justify-between px-[18px] pb-2">
-          <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
             {resultLabel}
           </div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
             history
           </div>
         </div>
@@ -199,7 +199,7 @@ export default function Vocabulary() {
                   <div className="truncate text-[15.5px] font-medium">{w.headword}</div>
                   {badge && (
                     <span
-                      className="shrink-0 rounded-full px-1.5 py-[1px] text-[9.5px] font-medium whitespace-nowrap"
+                      className="shrink-0 rounded-full px-1.5 py-[1px] text-micro font-medium whitespace-nowrap"
                       style={{ background: badge.bg, color: badge.color }}
                     >
                       {badge.label}
@@ -289,7 +289,7 @@ export default function Vocabulary() {
                   key={f.key}
                   type="button"
                   onClick={() => setFilter(f.key)}
-                  className="rounded-full px-[10px] py-1 text-[10.5px] whitespace-nowrap"
+                  className="rounded-full px-[10px] py-1 text-micro whitespace-nowrap"
                   style={{ background: active ? "rgba(145,132,217,.22)" : "#20222f", color: active ? "#d2cefd" : "rgba(233,233,237,.6)" }}
                 >
                   {f.label} ({countFor(f.key)})
@@ -305,7 +305,7 @@ export default function Vocabulary() {
                   key={f.key}
                   type="button"
                   onClick={() => setFilter(active ? "all" : f.key)}
-                  className="rounded-full px-[10px] py-1 text-[10.5px] whitespace-nowrap"
+                  className="rounded-full px-[10px] py-1 text-micro whitespace-nowrap"
                   style={{ background: active ? "rgba(228,196,182,.22)" : "rgba(228,196,182,.1)", color: "#e4c4b6" }}
                 >
                   {f.label} ({count})
@@ -337,7 +337,7 @@ export default function Vocabulary() {
                   borderBottom: "1px solid rgba(233,233,237,.06)",
                 }}
               >
-                <div className="grid size-8 shrink-0 place-items-center rounded-[9px] text-[10.5px] font-medium" style={{ background: chipBg(w), color: chipColor(w) }}>
+                <div className="grid size-8 shrink-0 place-items-center rounded-[9px] text-micro font-medium" style={{ background: chipBg(w), color: chipColor(w) }}>
                   {chipLabel(w)}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -345,7 +345,7 @@ export default function Vocabulary() {
                     <div className="truncate text-[14px] font-medium">{w.headword}</div>
                     {badge && (
                       <span
-                        className="shrink-0 rounded-full px-1.5 py-[1px] text-[9px] font-medium whitespace-nowrap"
+                        className="shrink-0 rounded-full px-1.5 py-[1px] text-micro font-medium whitespace-nowrap"
                         style={{ background: badge.bg, color: badge.color }}
                       >
                         {badge.label}

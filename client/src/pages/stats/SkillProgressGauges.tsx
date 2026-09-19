@@ -36,10 +36,10 @@ export function SkillProgressGauges({
   return (
     <div>
       <div className="mb-3 flex items-baseline justify-between">
-        <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
           Mastery by skill
         </div>
-        <span className="text-[10px]" style={{ color: "rgba(233,233,237,.62)" }}>
+        <span className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
           {benchmarkLevel} benchmark = {benchmarkPercent}%
         </span>
       </div>

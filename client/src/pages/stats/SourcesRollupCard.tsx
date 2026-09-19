@@ -37,7 +37,7 @@ export function SourcesRollupCard({ sources }: { sources: StudySource[] }) {
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
           Sources progress
         </div>
         <span className="text-[13px] font-medium">{overallPct}%</span>
@@ -51,7 +51,7 @@ export function SourcesRollupCard({ sources }: { sources: StudySource[] }) {
             <div className="h-[5px] flex-1 overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
               <div className="h-full rounded-[3px]" style={{ width: `${r.avgPct}%`, background: "linear-gradient(90deg,#5d5294,#9184d9)" }} />
             </div>
-            <span className="w-8 shrink-0 text-right text-[10.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
+            <span className="w-8 shrink-0 text-right text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
               {r.avgPct}%
             </span>
           </div>

@@ -59,7 +59,7 @@ export default function SelfTests() {
       <div className="mt-4 flex gap-[9px]">
         <div className="flex-1 rounded-xl p-3" style={{ background: "#1c1f2c" }}>
           <div className="text-[21px] font-medium">{quizResults.avg === null ? "—" : `${quizResults.avg}%`}</div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             avg · {quizResults.testsTaken} test{quizResults.testsTaken === 1 ? "" : "s"} taken
           </div>
         </div>
@@ -67,7 +67,7 @@ export default function SelfTests() {
           <div className="truncate text-[21px] font-medium" style={{ color: "#b5abfc" }}>
             {weakest[0]?.topic ?? "—"}
           </div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             weakest area
           </div>
         </div>
@@ -89,7 +89,7 @@ export default function SelfTests() {
       <div className="mt-5 flex flex-1 flex-col gap-[9px]">
         {weakest.length > 0 && (
           <>
-            <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+            <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
               Weakest areas
             </div>
             {weakest.map((w) => (
@@ -104,7 +104,7 @@ export default function SelfTests() {
                   </div>
                 </div>
                 <span
-                  className="shrink-0 rounded-full px-2 py-[3px] text-[9.5px]"
+                  className="shrink-0 rounded-full px-2 py-[3px] text-micro"
                   style={{ background: "rgba(209,155,134,.16)", color: "#e4c4b6" }}
                 >
                   {w.percent}%
@@ -139,7 +139,7 @@ export default function SelfTests() {
             style={{ border: "1px solid rgba(145,132,217,.35)", background: "rgba(145,132,217,.07)" }}
           >
             <div>
-              <div className="text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+              <div className="text-micro tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
                 Gate to {NEXT_LEVEL[examStatus.level] ?? "next level"}
               </div>
               <div className="mt-0.5 text-[13.5px] font-medium">

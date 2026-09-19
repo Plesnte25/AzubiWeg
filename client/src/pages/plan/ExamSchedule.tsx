@@ -145,7 +145,7 @@ export function ExamSchedule({
 
       {picked && pickedDays >= 1 && (
         <div className="mt-4 rounded-xl p-3" style={{ background: "#20222f" }}>
-          <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
             What this sets
           </div>
           <div className="mt-2 flex items-center gap-2 text-[12.5px]" style={{ color: "rgba(233,233,237,.65)" }}>

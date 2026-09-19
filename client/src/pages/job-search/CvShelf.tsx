@@ -20,7 +20,7 @@ export default function CvShelf() {
 
   return (
     <div>
-      <p className="mb-1.5 flex items-baseline gap-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+      <p className="mb-1.5 flex items-baseline gap-1.5 text-micro tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
         My CVs <span style={{ color: "rgba(233,233,237,.62)" }}>{cvs.length}</span>
       </p>
       <div className="flex touch-pan-x gap-2 overflow-x-auto [scrollbar-width:none]">
@@ -39,7 +39,7 @@ export default function CvShelf() {
             <span className="block max-w-28 truncate text-[11.5px] font-medium" style={{ color: cv.usedIn === 0 ? "#e9e9ed" : "#d2cefd" }}>
               {cv.title}
             </span>
-            <span className="block text-[10px]" style={{ color: "rgba(233,233,237,.45)" }}>
+            <span className="block text-micro" style={{ color: "rgba(233,233,237,.45)" }}>
               {CATEGORY_LABELS[cv.category]}
             </span>
           </button>

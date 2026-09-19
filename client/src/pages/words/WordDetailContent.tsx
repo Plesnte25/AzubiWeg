@@ -190,7 +190,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
             {word.level ? word.level.toUpperCase() : "—"} · {word.lesson ?? "—"}
           </span>
           {badge && (
-            <span className="rounded-full px-2 py-[3px] text-[10.5px] font-medium" style={{ background: badge.bg, color: badge.color }}>
+            <span className="rounded-full px-2 py-[3px] text-micro font-medium" style={{ background: badge.bg, color: badge.color }}>
               {badge.label}
             </span>
           )}
@@ -258,7 +258,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
       <ReviewHistoryCard word={word} entries={wordHistory} />
 
       <div>
-        <div className="mb-2 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+        <div className="mb-2 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
           In a sentence
         </div>
         {word.example ? (
@@ -285,7 +285,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
         >
           <NotePencil size={16} weight="regular" style={{ color: "#b5abfc", marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
           <div>
-            <div className="text-[10px] tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
+            <div className="text-micro tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
               Your note
             </div>
             <div className="mt-[3px] text-[13px] leading-[1.5]" style={{ color: "rgba(233,233,237,.8)" }}>

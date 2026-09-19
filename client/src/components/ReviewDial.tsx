@@ -82,10 +82,10 @@ export default function ReviewDial({
         >
           {dueCount}
         </div>
-        <div className="mt-0.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
+        <div className="mt-0.5 text-micro tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
           due now
         </div>
-        <div className="mt-0.5 text-[10.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
+        <div className="mt-0.5 text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
           tap to review
         </div>
       </div>

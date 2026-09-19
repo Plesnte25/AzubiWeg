@@ -135,7 +135,7 @@ export default function ExamRunner() {
       {secondsLeft !== null && (
         <div className="mt-2.5 flex justify-center">
           <span
-            className="flex items-center gap-1 rounded-full px-2 py-1 text-[9.5px]"
+            className="flex items-center gap-1 rounded-full px-2 py-1 text-micro"
             style={{ background: secondsLeft < 120 ? "rgba(209,155,134,.16)" : "rgba(145,132,217,.14)", color: secondsLeft < 120 ? "#e4c4b6" : "#b5abfc" }}
           >
             <Timer size={10} weight="regular" aria-hidden="true" />
@@ -146,7 +146,7 @@ export default function ExamRunner() {
 
       <div className="flex flex-1 flex-col justify-center gap-5 py-6">
         <div>
-          <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
             {q.section.replace("_", " ")}
           </div>
           <div className="mt-2 text-[20px] leading-snug font-medium">{q.prompt}</div>

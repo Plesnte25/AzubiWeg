@@ -142,7 +142,7 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
               <div className="text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
                 Article
               </div>
-              <div className="text-[10px]" style={{ color: "rgba(233,233,237,.62)" }}>
+              <div className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
                 guessed from the ending
               </div>
             </div>
@@ -201,7 +201,7 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
                   key={o.value}
                   type="button"
                   onClick={() => setLevel(o.value)}
-                  className="rounded-full px-2 py-1 text-[10.5px] font-medium"
+                  className="rounded-full px-2 py-1 text-micro font-medium"
                   style={{
                     background: level === o.value ? "rgba(145,132,217,.22)" : "#20222f",
                     color: level === o.value ? "#d2cefd" : "rgba(233,233,237,.6)",
@@ -225,7 +225,7 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
                   key={m}
                   type="button"
                   onClick={() => setThemeMode(m)}
-                  className="rounded-full px-2 py-1 text-[10.5px] font-medium"
+                  className="rounded-full px-2 py-1 text-micro font-medium"
                   style={{
                     background: themeMode === m ? "rgba(145,132,217,.22)" : "#20222f",
                     color: themeMode === m ? "#d2cefd" : "rgba(233,233,237,.6)",
@@ -245,7 +245,7 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
                     key={t}
                     type="button"
                     onClick={() => toggleTheme(t)}
-                    className="rounded-full px-2 py-1 text-[10.5px]"
+                    className="rounded-full px-2 py-1 text-micro"
                     style={{
                       border: `1px solid ${on ? "#9184d9" : "rgba(233,233,237,.14)"}`,
                       color: on ? "#d2cefd" : "rgba(233,233,237,.6)",

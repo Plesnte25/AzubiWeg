@@ -13,7 +13,7 @@ import { AddWordsDialog } from "../pages/vocabulary/AddWordsDialog";
 function ShortcutBadge({ letter }: { letter: string }) {
   return (
     <span
-      className="ml-auto flex shrink-0 items-center gap-[3px] rounded px-[5px] py-[2px] font-mono text-[9.5px] font-semibold"
+      className="ml-auto flex shrink-0 items-center gap-[3px] rounded px-[5px] py-[2px] font-mono text-micro font-semibold"
       style={{ background: "rgba(233,233,237,.08)", color: "rgba(233,233,237,.62)" }}
     >
       G {letter.toUpperCase()}
@@ -23,7 +23,7 @@ function ShortcutBadge({ letter }: { letter: string }) {
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <div className="px-3 pt-2.5 pb-1 text-[10px] font-semibold tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+    <div className="px-3 pt-2.5 pb-1 text-micro font-semibold tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
       {children}
     </div>
   );
@@ -165,7 +165,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               className="flex-1 border-0 bg-transparent text-[14.5px] outline-none"
               style={{ color: "#e9e9ed" }}
             />
-            <span className="rounded px-[5px] py-[2px] font-mono text-[10px] font-semibold" style={{ background: "rgba(233,233,237,.08)", color: "rgba(233,233,237,.62)" }}>
+            <span className="rounded px-[5px] py-[2px] font-mono text-micro font-semibold" style={{ background: "rgba(233,233,237,.08)", color: "rgba(233,233,237,.62)" }}>
               esc
             </span>
           </div>
@@ -188,7 +188,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                         style={{ color: "#e9e9ed" }}
                       >
                         <span
-                          className="grid size-7 shrink-0 place-items-center rounded-[8px] text-[10px] font-medium"
+                          className="grid size-7 shrink-0 place-items-center rounded-[8px] text-micro font-medium"
                           style={{ background: "rgba(233,233,237,.08)", color: chipColor(w) }}
                         >
                           {chipLabel(w)}

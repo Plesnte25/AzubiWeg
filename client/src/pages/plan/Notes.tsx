@@ -218,7 +218,7 @@ function NotebookUnitDetailPane({
       <div className="flex items-start justify-between gap-3 border-b px-[18px] py-3.5" style={{ borderColor: "rgba(233,233,237,.08)" }}>
         <div className="min-w-0">
           <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+            className="rounded-full px-2 py-0.5 text-micro font-semibold"
             style={{ background: SOURCE_BADGE[row.source].bg, color: SOURCE_BADGE[row.source].color }}
           >
             {SOURCE_LABEL[row.source]}
@@ -290,18 +290,18 @@ function NoteRow({
         <NotePencil size={16} weight="regular" style={{ color: "#796cbf", marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: SOURCE_BADGE[row.source].bg, color: SOURCE_BADGE[row.source].color }}>
+            <span className="rounded-full px-2 py-0.5 text-micro font-semibold" style={{ background: SOURCE_BADGE[row.source].bg, color: SOURCE_BADGE[row.source].color }}>
               {SOURCE_LABEL[row.source]}
             </span>
             {skill && (
-              <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "#20222f", color: "rgba(233,233,237,.6)" }}>
+              <span className="rounded-full px-2 py-0.5 text-micro font-semibold" style={{ background: "#20222f", color: "rgba(233,233,237,.6)" }}>
                 {SKILL_LABELS[skill]}
               </span>
             )}
           </div>
           <p className="mt-1 text-[14.5px] font-medium">{rowTitle(row)}</p>
           {preview && <p className="mt-0.5 text-[11.5px] leading-[1.45]" style={{ color: "rgba(233,233,237,.5)" }}>{preview}</p>}
-          <p className="mt-[5px] text-[10px]" style={{ color: "rgba(233,233,237,.32)" }}>{rowMeta(row)}</p>
+          <p className="mt-[5px] text-micro" style={{ color: "rgba(233,233,237,.32)" }}>{rowMeta(row)}</p>
         </div>
       </button>
       {!desktop && isOpen && row.source === "notebook" && <NotebookEditor item={row.item} onChanged={onChanged} />}
@@ -454,7 +454,7 @@ export default function Notes() {
           {grouped.map((group) => (
             <div key={group.source} className="flex flex-col gap-[9px]">
               {bucket === "all" && (
-                <div className="mt-2 text-[10px] tracking-[.12em] uppercase first:mt-0" style={{ color: "rgba(233,233,237,.62)" }}>
+                <div className="mt-2 text-micro tracking-[.12em] uppercase first:mt-0" style={{ color: "rgba(233,233,237,.62)" }}>
                   {SOURCE_LABEL[group.source as FeedRow["source"]]} · {group.rows.length}
                 </div>
               )}
@@ -552,7 +552,7 @@ export default function Notes() {
             {grouped.map((group) => (
               <div key={group.source} className="flex flex-col gap-[9px]">
                 {bucket === "all" && (
-                  <div className="mt-2 text-[10px] tracking-[.12em] uppercase first:mt-0" style={{ color: "rgba(233,233,237,.62)" }}>
+                  <div className="mt-2 text-micro tracking-[.12em] uppercase first:mt-0" style={{ color: "rgba(233,233,237,.62)" }}>
                     {SOURCE_LABEL[group.source as FeedRow["source"]]} · {group.rows.length}
                   </div>
                 )}

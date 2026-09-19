@@ -88,7 +88,7 @@ function WeekStrip({
               boxShadow: isSelected ? "0 0 0 1px #423a6a" : isOverdue ? "0 0 0 1px rgba(209,155,134,.35)" : "none",
             }}
           >
-            <span className="text-[9px] opacity-75" style={{ color: isOverdue ? "#e4c4b6" : undefined }}>
+            <span className="text-micro opacity-75" style={{ color: isOverdue ? "#e4c4b6" : undefined }}>
               {fmtWeekday(d.date)}
             </span>
             <span className="text-[11px] font-medium" style={{ color: isOverdue ? "#e4c4b6" : undefined }}>
@@ -169,7 +169,7 @@ function PlanHeader({
   const titleDate = selectedDate ? new Date(`${selectedDate}T00:00:00`) : null;
   return (
     <div>
-      <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+      <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
         Roadmap
       </div>
       <div className="mt-px text-[26px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
@@ -211,10 +211,10 @@ function TomorrowCard({ tomorrow }: { tomorrow: { day: { tasks: { id: string; ti
   return (
     <div className="rounded-xl p-[13px]" style={{ border: "1px dashed rgba(233,233,237,.14)" }}>
       <div className="flex items-center justify-between">
-        <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
           Tomorrow
         </div>
-        <span className="text-[10px]" style={{ color: "rgba(233,233,237,.62)" }}>
+        <span className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
           scheduled for you
         </span>
       </div>
@@ -699,7 +699,7 @@ function WeekOverview({ onOpenTask }: { onOpenTask: (t: RoadmapTask) => void }) 
             className="grid size-[34px] shrink-0 place-items-center rounded-[10px] text-center leading-none"
             style={{ background: isToday ? "linear-gradient(150deg,#a99dfa,#9184d9)" : "#292b31", color: isToday ? "#161826" : "rgba(233,233,237,.75)" }}
           >
-            <span className="block text-[8.5px] font-medium tracking-[.06em] uppercase opacity-80">{dayAbbrev}</span>
+            <span className="block text-micro font-medium tracking-[.06em] uppercase opacity-80">{dayAbbrev}</span>
             <span className="block text-[13px] font-semibold">{dayNum}</span>
           </div>
         );
@@ -742,7 +742,7 @@ function WeekOverview({ onOpenTask }: { onOpenTask: (t: RoadmapTask) => void }) 
                     {dateObj.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
                   </span>
                   {isToday && (
-                    <span className="rounded-full px-1.5 py-px text-[9.5px] font-semibold" style={{ background: "rgba(145,132,217,.22)", color: "#d2cefd" }}>
+                    <span className="rounded-full px-1.5 py-px text-micro font-semibold" style={{ background: "rgba(145,132,217,.22)", color: "#d2cefd" }}>
                       Today
                     </span>
                   )}

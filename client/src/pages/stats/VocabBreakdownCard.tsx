@@ -38,7 +38,7 @@ export function VocabBreakdownCard({ words }: { words: Word[] }) {
             <Warning size={13} weight="regular" style={{ color: "#e4c4b6" }} aria-hidden="true" />
             {leechCount}
           </div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             flagged tricky
           </div>
         </div>
@@ -47,7 +47,7 @@ export function VocabBreakdownCard({ words }: { words: Word[] }) {
             <Star size={13} weight="regular" style={{ color: "#b5abfc" }} aria-hidden="true" />
             {starredCount}
           </div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
             starred
           </div>
         </div>
@@ -55,7 +55,7 @@ export function VocabBreakdownCard({ words }: { words: Word[] }) {
 
       {topThemenfeld.length > 0 && (
         <div className="mt-3">
-          <div className="mb-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="mb-1.5 text-micro tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
             Top topics
           </div>
           <div className="flex flex-col gap-1">
@@ -70,14 +70,14 @@ export function VocabBreakdownCard({ words }: { words: Word[] }) {
       )}
 
       <div className="mt-3">
-        <div className="mb-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+        <div className="mb-1.5 text-micro tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
           By level
         </div>
         <div className="flex gap-1.5">
           {levelCounts.map((l) => (
             <div key={l.level} className="flex-1 rounded-lg py-1.5 text-center" style={{ background: "#20222f" }}>
               <div className="text-[13px] font-medium">{l.count}</div>
-              <div className="text-[9px]" style={{ color: "rgba(233,233,237,.45)" }}>
+              <div className="text-micro" style={{ color: "rgba(233,233,237,.45)" }}>
                 {LEVEL_LABELS[l.level]}
               </div>
             </div>
@@ -85,7 +85,7 @@ export function VocabBreakdownCard({ words }: { words: Word[] }) {
           {unclassified > 0 && (
             <div className="flex-1 rounded-lg py-1.5 text-center" style={{ background: "#20222f" }}>
               <div className="text-[13px] font-medium">{unclassified}</div>
-              <div className="text-[9px]" style={{ color: "rgba(233,233,237,.45)" }}>
+              <div className="text-micro" style={{ color: "rgba(233,233,237,.45)" }}>
                 other
               </div>
             </div>
@@ -93,7 +93,7 @@ export function VocabBreakdownCard({ words }: { words: Word[] }) {
         </div>
       </div>
 
-      <p className="mt-3 text-[10.5px] leading-[1.5]" style={{ color: "rgba(233,233,237,.62)" }}>
+      <p className="mt-3 text-micro leading-[1.5]" style={{ color: "rgba(233,233,237,.62)" }}>
         {coveragePct}% of your words have real grammar-table or translation data from this app's dictionary enrichment.
       </p>
     </div>

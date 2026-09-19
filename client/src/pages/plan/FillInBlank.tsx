@@ -74,10 +74,10 @@ export function FillInBlankView({
       </div>
 
       <div className="mt-5 flex items-center gap-[7px]">
-        <span className="rounded-full px-2 py-[3px] text-[9.5px] font-medium" style={{ background: "#20222f", color: "rgba(233,233,237,.6)" }}>
+        <span className="rounded-full px-2 py-[3px] text-micro font-medium" style={{ background: "#20222f", color: "rgba(233,233,237,.6)" }}>
           Fill in the blank
         </span>
-        <span className="rounded-full px-2 py-[3px] text-[9.5px] font-medium" style={{ background: "rgba(145,132,217,.14)", color: "#b5abfc" }}>
+        <span className="rounded-full px-2 py-[3px] text-micro font-medium" style={{ background: "rgba(145,132,217,.14)", color: "#b5abfc" }}>
           {topic}
         </span>
       </div>

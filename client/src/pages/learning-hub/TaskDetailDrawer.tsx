@@ -66,7 +66,7 @@ function TaskTimer({ task, onUpdate, pending }: { task: RoadmapTask; onUpdate: (
   return (
     <div className="rounded-[14px] p-4" style={{ background: "#20222f" }}>
       <div className="flex items-center justify-between">
-        <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
           Time logged
         </div>
         <div className="text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
@@ -166,7 +166,7 @@ function TaskNotesSection({ task, onChanged }: { task: RoadmapTask; onChanged: (
   return (
     <div>
       <div className="flex items-center justify-between">
-        <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
           Notes on this task{notes.length > 0 ? ` (${notes.length})` : ""}
         </div>
       </div>

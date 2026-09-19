@@ -66,7 +66,7 @@ export function BoardDesktop({ onOpen }: { onOpen: (id: string) => void }) {
               <div key={s} style={{ flex: counts[s] || 0.0001, background: STAGE_COLOR[s] }} />
             ))}
           </div>
-          <div className="mt-2 flex justify-between text-[10.5px]" style={{ color: "rgba(233,233,237,.45)" }}>
+          <div className="mt-2 flex justify-between text-micro" style={{ color: "rgba(233,233,237,.45)" }}>
             {FUNNEL_STAGES.map((s) => (
               <span key={s}>
                 {COLUMNS.find((c) => c.key === s)?.label.toLowerCase()} {counts[s]}
@@ -125,7 +125,7 @@ export function BoardDesktop({ onOpen }: { onOpen: (id: string) => void }) {
                     {app.portal ? ` · ${app.portal}` : ""}
                   </div>
                 </div>
-                <span className="justify-self-start rounded-full px-2 py-[3px] text-[9.5px] font-medium" style={{ background: pill.bg, color: pill.color }}>
+                <span className="justify-self-start rounded-full px-2 py-[3px] text-micro font-medium" style={{ background: pill.bg, color: pill.color }}>
                   {COLUMNS.find((c) => c.key === app.status)?.label}
                 </span>
                 <span className="text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>

@@ -161,7 +161,7 @@ export default function JobSearch() {
       <div className="hidden lg:mx-auto lg:my-8 lg:flex lg:max-w-[900px] lg:flex-col lg:gap-[13px]">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+            <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
               Applications
             </div>
             <div className="mt-px text-[26px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>

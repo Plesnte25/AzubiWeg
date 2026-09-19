@@ -74,7 +74,7 @@ export function DesktopSidebar({ onOpenPalette }: { onOpenPalette: () => void })
       >
         <MagnifyingGlass size={14} weight="regular" aria-hidden="true" />
         Search or jump
-        <span className="ml-auto rounded px-[5px] py-[2px] font-mono text-[10px] font-semibold" style={{ background: "rgba(233,233,237,.08)" }}>
+        <span className="ml-auto rounded px-[5px] py-[2px] font-mono text-micro font-semibold" style={{ background: "rgba(233,233,237,.08)" }}>
           ⌘K
         </span>
       </button>
@@ -111,7 +111,7 @@ export function DesktopSidebar({ onOpenPalette }: { onOpenPalette: () => void })
       </div>
 
       <div className="mx-1.5 my-[18px] h-px" style={{ background: "rgba(233,233,237,.08)" }} />
-      <div className="px-[11px] text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+      <div className="px-[11px] text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
         Library
       </div>
       <div className="mt-[7px] flex flex-col gap-0.5">
@@ -141,7 +141,7 @@ export function DesktopSidebar({ onOpenPalette }: { onOpenPalette: () => void })
             className="rounded-[11px] p-[11px_12px] text-left"
             style={{ background: "rgba(145,132,217,.09)", boxShadow: "0 0 0 1px rgba(145,132,217,.3)" }}
           >
-            <div className="flex items-center gap-[7px] text-[9.5px] tracking-[.1em] uppercase" style={{ color: "#9184d9" }}>
+            <div className="flex items-center gap-[7px] text-micro tracking-[.1em] uppercase" style={{ color: "#9184d9" }}>
               <FlagPennant size={12} weight="regular" aria-hidden="true" />
               {activeLevel.toUpperCase()} exam
             </div>
@@ -165,7 +165,7 @@ export function DesktopSidebar({ onOpenPalette }: { onOpenPalette: () => void })
           </div>
           <div className="min-w-0 flex-1 text-left">
             <div className="truncate text-[12.5px] font-medium">{user?.name || "You"}</div>
-            <div className="text-[10.5px]" style={{ color: "rgba(233,233,237,.45)" }}>
+            <div className="text-micro" style={{ color: "rgba(233,233,237,.45)" }}>
               {activeLevel.toUpperCase()}
               {dayNumber !== null ? ` · day ${dayNumber}` : ""}
             </div>

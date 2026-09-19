@@ -34,7 +34,7 @@ export default function BottomTabBar() {
             className={cn("flex flex-1 flex-col items-center gap-1 rounded-[10px] border-0 bg-transparent transition-colors hover:bg-white/5", active ? "text-brand-500" : "text-ink-600")}
           >
             <Icon size={21} weight="regular" aria-hidden="true" />
-            <span className="text-[8.5px] leading-none font-medium tracking-[.06em] uppercase">{dest.label}</span>
+            <span className="text-micro leading-none font-medium tracking-[.06em] uppercase">{dest.label}</span>
           </button>
         );
       })}

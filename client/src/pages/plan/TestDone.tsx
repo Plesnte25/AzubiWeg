@@ -55,7 +55,7 @@ export function TestDone({ attempt, onHome, onSeeNextLevel }: { attempt: ExamAtt
             <div className="text-[42px] leading-none font-medium" style={{ letterSpacing: "-.04em" }}>
               {percent}%
             </div>
-            <div className="mt-1.5 text-[10px] tracking-[.12em] uppercase" style={{ color: "#b5abfc" }}>
+            <div className="mt-1.5 text-micro tracking-[.12em] uppercase" style={{ color: "#b5abfc" }}>
               {passed ? "passed" : "scored"}
             </div>
           </div>
@@ -81,7 +81,7 @@ export function TestDone({ attempt, onHome, onSeeNextLevel }: { attempt: ExamAtt
             <Trophy size={21} weight="regular" style={{ color: "#b5abfc" }} aria-hidden="true" />
           </div>
           <div className="flex-1">
-            <div className="text-[10px] tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
+            <div className="text-micro tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
               Level unlocked
             </div>
             <div className="mt-0.5 text-[16px] font-medium">{nextLevel} is now open</div>
@@ -92,7 +92,7 @@ export function TestDone({ attempt, onHome, onSeeNextLevel }: { attempt: ExamAtt
 
       {attempt.sectionBreakdown && attempt.sectionBreakdown.length > 0 && (
         <div className="mt-6 text-left">
-          <div className="mb-2.5 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+          <div className="mb-2.5 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
             By section
           </div>
           <div className="flex flex-col gap-2.5">

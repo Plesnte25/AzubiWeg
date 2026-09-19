@@ -77,7 +77,7 @@ export function Constellation({ words, highlightWordId }: { words: Word[]; highl
       </svg>
       {highlight && (
         <span
-          className="pointer-events-none absolute text-[10px] leading-none whitespace-nowrap"
+          className="pointer-events-none absolute text-micro leading-none whitespace-nowrap"
           style={{
             left: `${(highlight.x / W) * 100}%`,
             top: `${(highlight.y / H) * 100 + 6}%`,

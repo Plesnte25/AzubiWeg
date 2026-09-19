@@ -76,7 +76,7 @@ export default function BoardMobile({ onOpen }: { onOpen: (id: string) => void }
               <div key={s} style={{ flex: counts[s] || 0.0001, background: STAGE_COLOR[s] }} />
             ))}
           </div>
-          <div className="mt-1.5 flex justify-between text-[9.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="mt-1.5 flex justify-between text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
             {FUNNEL_STAGES.map((s) => (
               <span key={s}>
                 {COLUMNS.find((c) => c.key === s)?.label.toLowerCase()} {counts[s]}
@@ -137,10 +137,10 @@ export default function BoardMobile({ onOpen }: { onOpen: (id: string) => void }
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <span className="rounded-full px-2 py-[3px] text-[9.5px] font-medium" style={{ background: pill.bg, color: pill.color }}>
+                    <span className="rounded-full px-2 py-[3px] text-micro font-medium" style={{ background: pill.bg, color: pill.color }}>
                       {COLUMNS.find((c) => c.key === app.status)?.label}
                     </span>
-                    <span className="text-[9.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
+                    <span className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
                       {relativeDay(app.appliedAt ?? app.createdAt)}
                     </span>
                   </div>

@@ -114,12 +114,12 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
           {!loading && current && (
             <div className="mt-2.5 flex justify-center gap-1.5">
               {current.themenfeld[0] && (
-                <span className="rounded-full px-2 py-1 text-[9.5px]" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
+                <span className="rounded-full px-2 py-1 text-micro" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
                   {THEMENFELD_LABELS[current.themenfeld[0]]}
                 </span>
               )}
               <span
-                className="flex items-center gap-1 rounded-full px-2 py-1 text-[9.5px]"
+                className="flex items-center gap-1 rounded-full px-2 py-1 text-micro"
                 style={{ background: "rgba(145,132,217,.14)", color: "#b5abfc" }}
               >
                 <Timer size={10} weight="regular" aria-hidden="true" />
@@ -150,7 +150,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                     boxShadow: "0 0 0 1px #3f424d, 0 18px 44px rgba(0,0,0,.5)",
                   }}
                 >
-                  <div className="text-[10px] tracking-[.14em] uppercase" style={{ color: chipColor(current) }}>
+                  <div className="text-micro tracking-[.14em] uppercase" style={{ color: chipColor(current) }}>
                     {fullArtLabel(current)}
                   </div>
                   <div className="text-[38px] leading-[1.1] font-medium" style={{ letterSpacing: "-.03em" }}>
@@ -204,7 +204,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                   {current.example && <div className="text-[14px] leading-[1.5]" style={{ color: "rgba(233,233,237,.85)" }}>{current.example}</div>}
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     {current.declension?.nom?.pl && (
-                      <span className="rounded-full px-2 py-1 text-[10.5px]" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
+                      <span className="rounded-full px-2 py-1 text-micro" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
                         plural: {current.declension.nom.pl}
                       </span>
                     )}
@@ -236,7 +236,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                   pointerEvents: revealed ? "auto" : "none",
                 }}
               >
-                <div className="mb-2.5 text-center text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+                <div className="mb-2.5 text-center text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
                   How did that go?
                 </div>
                 <div className="grid grid-cols-3 gap-1.5">
@@ -257,7 +257,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                       >
                         <Icon size={17} weight="regular" aria-hidden="true" />
                         <span className="text-[11.5px] font-medium">{label}</span>
-                        <span className="text-[9px]" style={{ color: emphasized ? "rgba(210,206,253,.6)" : "rgba(233,233,237,.62)" }}>
+                        <span className="text-micro" style={{ color: emphasized ? "rgba(210,206,253,.6)" : "rgba(233,233,237,.62)" }}>
                           {preview ? formatInterval(preview[g].interval) : "…"}
                         </span>
                       </button>
@@ -322,12 +322,12 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
 
             <div className="flex justify-center gap-1.5">
               {current.themenfeld[0] && (
-                <span className="rounded-full px-2 py-1 text-[9.5px]" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
+                <span className="rounded-full px-2 py-1 text-micro" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
                   {THEMENFELD_LABELS[current.themenfeld[0]]}
                 </span>
               )}
               <span
-                className="flex items-center gap-1 rounded-full px-2 py-1 text-[9.5px]"
+                className="flex items-center gap-1 rounded-full px-2 py-1 text-micro"
                 style={{ background: "rgba(145,132,217,.14)", color: "#b5abfc" }}
               >
                 <Timer size={10} weight="regular" aria-hidden="true" />
@@ -354,7 +354,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                     boxShadow: "0 0 0 1px #3f424d, 0 18px 44px rgba(0,0,0,.5)",
                   }}
                 >
-                  <div className="text-[10px] tracking-[.14em] uppercase" style={{ color: chipColor(current) }}>
+                  <div className="text-micro tracking-[.14em] uppercase" style={{ color: chipColor(current) }}>
                     {fullArtLabel(current)}
                   </div>
                   <div className="text-[38px] leading-[1.1] font-medium" style={{ letterSpacing: "-.03em" }}>
@@ -408,7 +408,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                   {current.example && <div className="text-[14px] leading-[1.5]" style={{ color: "rgba(233,233,237,.85)" }}>{current.example}</div>}
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     {current.declension?.nom?.pl && (
-                      <span className="rounded-full px-2 py-1 text-[10.5px]" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
+                      <span className="rounded-full px-2 py-1 text-micro" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
                         plural: {current.declension.nom.pl}
                       </span>
                     )}
@@ -426,7 +426,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                   pointerEvents: revealed ? "auto" : "none",
                 }}
               >
-                <div className="mb-2.5 text-center text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+                <div className="mb-2.5 text-center text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
                   How did that go?
                 </div>
                 <div className="grid grid-cols-3 gap-1.5">
@@ -447,7 +447,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                       >
                         <Icon size={17} weight="regular" aria-hidden="true" />
                         <span className="text-[11.5px] font-medium">{label}</span>
-                        <span className="text-[9px]" style={{ color: emphasized ? "rgba(210,206,253,.6)" : "rgba(233,233,237,.62)" }}>
+                        <span className="text-micro" style={{ color: emphasized ? "rgba(210,206,253,.6)" : "rgba(233,233,237,.62)" }}>
                           {preview ? formatInterval(preview[g].interval) : "…"}
                         </span>
                       </button>
