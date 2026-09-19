@@ -73,6 +73,16 @@ describe("withComputedFields", () => {
     expect(result.state).toBeDefined();
   });
 
+  it("hides stale editorial metadata from learner-facing word responses", () => {
+    const result = withComputedFields({
+      ...word("(Noun) cat _(source: Wiktionary)_", "generated"),
+      form: null,
+      example: "Die Katze schläft. _(hand-written -- literary quotation)_",
+    });
+    expect(result.meaning).toBe("(Noun) cat");
+    expect(result.example).toBe("Die Katze schläft.");
+  });
+
   it("published_review for an ambiguous/mt-fallback meaning under review", () => {
     expect(withComputedFields(word("(Noun) castle", "review")).enrichmentStatus).toBe("published_review");
   });

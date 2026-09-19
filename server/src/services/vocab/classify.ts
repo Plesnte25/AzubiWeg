@@ -1,5 +1,5 @@
 import type { CefrLevel, Themenfeld } from "@prisma/client";
-import type { CardCuration } from "../vault/format.js";
+import { stripEditorialMetadata, type CardCuration } from "../vault/format.js";
 import { deriveEnrichmentStatus, type DerivedEnrichmentStatus } from "../enrichment/index.js";
 
 export type Wortart = "Nomen" | "Verb" | "Adjektiv" | "Adverb" | "Funktionswort" | "Wendung";
@@ -341,10 +341,16 @@ export function withComputedFields<
     srDue: Date | null;
     srInterval: number | null;
     curation: CardCuration;
+    form?: string | null;
+    example?: string | null;
   },
 >(word: T): T & { wortart: Wortart; genus: Genus; state: SrsState; enrichmentStatus: DerivedEnrichmentStatus } {
   return {
     ...word,
+    meaning: word.meaning ? stripEditorialMetadata(word.meaning) : null,
+    grammar: word.grammar ? stripEditorialMetadata(word.grammar) : null,
+    form: word.form ? stripEditorialMetadata(word.form) : word.form,
+    example: word.example ? stripEditorialMetadata(word.example) : word.example,
     wortart: deriveWortart(word.meaning, word.grammar),
     genus: deriveGenus(word.grammar),
     state: deriveSrsState(word),
