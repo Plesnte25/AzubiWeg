@@ -15,6 +15,69 @@ just closed out (Task Detail modal, Syllabus 3-pane rework, Sources rebuild
 
 ## Resolved during the redesign (for reference — no action needed)
 
+- **2026-09-19, contrast & readability audit pass** — an HIG-grounded
+  design review (contrast, focus, type scale) against `docs/screenshots/`
+  found 4 Critical accessibility issues, all real and reproducible, plus a
+  long tail of duplicate instances of the same underlying bugs. Fixed:
+  1. **Muted text below 4.5:1** — `--color-ink-400` (≈3.3:1 against the
+     page/card backgrounds) was the default color of `Card.Description`
+     and was used directly for real body/caption copy (helper text,
+     timestamps, empty-state messages, field labels) across ~90 call
+     sites, plus 129 raw inline `rgba(233,233,237,.3/.35/.4)` duplicates of
+     the same value across 47 files that bypassed the token entirely (this
+     codebase writes literal hex/rgba inline per `CLAUDE.md`'s Nocturne
+     convention, so the token-class fix alone didn't cover them). Swapped
+     every real-content instance to `--color-ink-600` (≈6.3:1), leaving
+     decorative icon fills (held to the 3:1 non-text threshold, not text's
+     4.5:1), completed/strikethrough items, locked/upcoming syllabus
+     stations, and MCQ's deliberate post-answer dimming of unselected
+     options untouched. Found and fixed 2 more instances of the same bug
+     hiding under different token names along the way: `Syllabus.tsx`'s
+     item-count ternary was dimming the *current*, actionable station
+     identically to a locked upcoming one; `StationDetailModal.tsx`'s
+     "skipped" label and `StationAccordion.tsx`'s "open"/"closed" label
+     had been miscategorized as an intentional dim state — neither has the
+     line-through styling that actually marks "completed," so both were
+     fixed like any other real-content label.
+  2. **Primary button text below 4.5:1** — `--color-brand-400/500/600` all
+     alias the identical `#9184d9`, and white text on it computes to
+     ≈3.2:1. That hex is *also* correctly used as light text-on-dark
+     elsewhere (active tab, `CircleIconButton`, toolbar icons), so it
+     couldn't just be darkened in place — added dedicated
+     `--color-brand-solid`/`-solid-light` tokens (reusing the existing
+     `#5d5294` value, ≈6.8:1 for white text) and pointed `Button.tsx`'s
+     primary variant and the CTA gradient at those instead. The actual CTA
+     gradient was hardcoded as a raw `linear-gradient(160deg,#9184d9,
+     #5d5294)` literal 39 times across 23 files (bypassing the token
+     system the same way the ink-400 duplicates did) — bulk-replaced by
+     exact string match, verified the `90deg` progress-bar-fill variant
+     (a different, not-broken use case) was untouched. Also fixed 2 more
+     white-on-`#9184d9` sites found the same way as above:
+     `StationDetailModal.tsx`'s completed-checkbox fill (`bg-ok-600`) and
+     "on today" badge (`bg-brand-500`).
+  3. **No visible keyboard-focus ring on buttons/links** — the
+     2026-09-16 pass below added `focus-visible` for `input`/`select`/
+     `textarea` only; `button`/`a`/`[role="button"]` still had zero
+     feedback despite the app's ⌘K palette and G-chord nav being aimed at
+     keyboard users. Extended the same rule to cover them.
+  4. **Sub-11px type sizes** — 210 literal `text-[Npx]` Tailwind sizes
+     (7/8.5/9/9.5/10/10.5px) across 52 files, including the primary
+     bottom-tab-bar labels (`text-[8.5px]`) and the exam-countdown "DAYS"
+     label in the collapsed desktop rail (`text-[7px]`, the smallest in
+     the app, also compounding issue #1). Raised `--text-micro`
+     10px → 11px and consolidated the whole tail onto it rather than
+     adding new near-duplicate steps. Visually spot-checked the layouts
+     most likely to break from the size bump (job-search kanban board,
+     stats charts/heatmap, syllabus stations, tab bar/rail) at mobile and
+     desktop widths — no wrapping or overflow found.
+
+  Verified via `npm run build` after every batch plus Playwright against
+  the demo account: a real keyboard-tab pass confirmed the new focus ring
+  renders (a 150ms `box-shadow` transition means it must be read after it
+  settles, not immediately on keypress — false negative on the first
+  pass), and the Dashboard/Syllabus/Vocabulary/Jobs/Stats screens were
+  screenshotted at both breakpoints and compared against `docs/screenshots/`.
+
 - **2026-09-16, elite UI/UX audit pass** — a 6-category audit (layout/
   alignment, spacing/rhythm, typography, interactive states, borders/
   shadows/radii, responsive/edge-cases) run via 3 parallel codebase audits,
