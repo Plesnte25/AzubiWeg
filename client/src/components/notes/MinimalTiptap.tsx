@@ -149,7 +149,7 @@ export function MinimalTiptapToolbar({ editor, wordCount }: { editor: Editor | n
       >
         <ListNumbers size={14} weight="regular" aria-hidden="true" />
       </ToolbarButton>
-      <span className="ml-auto text-[11px]" style={{ color: "rgba(233,233,237,.35)" }}>
+      <span className="ml-auto text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
         {wordCount} words
       </span>
     </div>

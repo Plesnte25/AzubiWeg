@@ -46,7 +46,7 @@ export function StationNotesPanel({
   return (
     <div className="flex min-h-0 flex-col">
       <div className="flex items-center justify-between">
-        <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>
+        <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
           Notes · this station
         </div>
         <button type="button" onClick={focusComposer} className="flex items-center gap-1 text-[11.5px] font-medium" style={{ color: "#b5abfc" }}>
@@ -82,7 +82,7 @@ export function StationNotesPanel({
 
       <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {notes.length === 0 ? (
-          <p className="py-6 text-center text-[12px]" style={{ color: "rgba(233,233,237,.35)" }}>
+          <p className="py-6 text-center text-[12px]" style={{ color: "rgba(233,233,237,.62)" }}>
             No notes for this station yet.
           </p>
         ) : (
@@ -96,7 +96,7 @@ export function StationNotesPanel({
                     {linkedItem.title}
                   </div>
                 ) : (
-                  <div className="mb-1 text-[10.5px]" style={{ color: "rgba(233,233,237,.35)" }}>
+                  <div className="mb-1 text-[10.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
                     not linked to a task
                   </div>
                 )}
@@ -117,7 +117,7 @@ export function StationNotesPanel({
             <NoteComposer key={composerItem.id} syllabusItemId={composerItem.id} onCreated={invalidate} />
           </>
         ) : (
-          <p className="text-[12px]" style={{ color: "rgba(233,233,237,.4)" }}>
+          <p className="text-[12px]" style={{ color: "rgba(233,233,237,.62)" }}>
             Add an item to this station to start taking notes.
           </p>
         )}

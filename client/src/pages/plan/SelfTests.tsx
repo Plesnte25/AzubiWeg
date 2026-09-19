@@ -89,7 +89,7 @@ export default function SelfTests() {
       <div className="mt-5 flex flex-1 flex-col gap-[9px]">
         {weakest.length > 0 && (
           <>
-            <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>
+            <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
               Weakest areas
             </div>
             {weakest.map((w) => (
@@ -139,7 +139,7 @@ export default function SelfTests() {
             style={{ border: "1px solid rgba(145,132,217,.35)", background: "rgba(145,132,217,.07)" }}
           >
             <div>
-              <div className="text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.35)" }}>
+              <div className="text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
                 Gate to {NEXT_LEVEL[examStatus.level] ?? "next level"}
               </div>
               <div className="mt-0.5 text-[13.5px] font-medium">

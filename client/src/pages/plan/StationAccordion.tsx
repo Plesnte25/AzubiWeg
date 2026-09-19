@@ -55,7 +55,7 @@ export function StationAccordion({
     <div className="flex min-h-0 flex-col">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>
+          <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
             Station {resolvedIdx + 1}
           </div>
           <div className="mt-0.5 text-[19px] font-medium">{station.theme}</div>
@@ -87,7 +87,7 @@ export function StationAccordion({
         )}
       </div>
 
-      <p className="mt-2 text-[11.5px]" style={{ color: "rgba(233,233,237,.4)" }}>
+      <p className="mt-2 text-[11.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
         Tap a task to open its full detail · drag a task into Notes to attach a note.
       </p>
 
@@ -142,7 +142,7 @@ export function StationAccordion({
                     on today
                   </span>
                 )}
-                <span className="shrink-0 text-[11px]" style={{ color: "rgba(233,233,237,.35)" }}>
+                <span className="shrink-0 text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
                   {done || item.skippedAt ? "closed" : "open"}
                 </span>
                 <CaretDown
@@ -160,7 +160,7 @@ export function StationAccordion({
                       {item.description}
                     </p>
                   )}
-                  <div className="mt-1.5 flex items-center gap-1.5 text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>
+                  <div className="mt-1.5 flex items-center gap-1.5 text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
                     <NotePencil size={12} weight="regular" aria-hidden="true" />
                     {noteCount} note{noteCount === 1 ? "" : "s"}
                   </div>

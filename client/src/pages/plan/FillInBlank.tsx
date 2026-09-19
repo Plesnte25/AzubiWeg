@@ -106,7 +106,7 @@ export function FillInBlankView({
         />
         <div
           className="mt-3 text-[12px] leading-[1.5] transition-colors duration-200"
-          style={{ color: checked ? (correct ? "#b5abfc" : "#e4c4b6") : "rgba(233,233,237,.4)" }}
+          style={{ color: checked ? (correct ? "#b5abfc" : "#e4c4b6") : "rgba(233,233,237,.62)" }}
         >
           {checked ? feedback : "Case doesn't matter here."}
         </div>

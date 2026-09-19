@@ -105,7 +105,7 @@ export function StationNode({
           <div className="text-[15px] font-medium" style={{ color: status === "done" ? "rgba(233,233,237,.8)" : "rgba(233,233,237,.45)" }}>
             {station.theme}
           </div>
-          <div className="text-[11.5px]" style={{ color: status === "done" ? "rgba(233,233,237,.45)" : "rgba(233,233,237,.3)" }}>
+          <div className="text-[11.5px]" style={{ color: status === "done" ? "rgba(233,233,237,.45)" : status === "upcoming" ? "rgba(233,233,237,.3)" : "rgba(233,233,237,.62)" }}>
             {total} item{total === 1 ? "" : "s"}
             {status === "upcoming" ? " · opens after this station" : ""}
           </div>
@@ -227,7 +227,7 @@ export default function Syllabus() {
       {mdView === "sources" ? (
         <div className="mt-4 flex flex-col gap-2.5">
           {(sourcesData?.sources.length ?? 0) === 0 ? (
-            <p className="py-8 text-center text-[13.5px]" style={{ color: "rgba(233,233,237,.4)" }}>
+            <p className="py-8 text-center text-[13.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
               No sources yet.
             </p>
           ) : (

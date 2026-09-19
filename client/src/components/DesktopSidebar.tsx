@@ -101,7 +101,7 @@ export function DesktopSidebar({ onOpenPalette }: { onOpenPalette: () => void })
                 {dest.label}
               </span>
               {badge && (
-                <span className="text-[11px]" style={{ color: active ? "#b5abfc" : "rgba(233,233,237,.4)" }}>
+                <span className="text-[11px]" style={{ color: active ? "#b5abfc" : "rgba(233,233,237,.62)" }}>
                   {badge}
                 </span>
               )}
@@ -111,7 +111,7 @@ export function DesktopSidebar({ onOpenPalette }: { onOpenPalette: () => void })
       </div>
 
       <div className="mx-1.5 my-[18px] h-px" style={{ background: "rgba(233,233,237,.08)" }} />
-      <div className="px-[11px] text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.35)" }}>
+      <div className="px-[11px] text-[9.5px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
         Library
       </div>
       <div className="mt-[7px] flex flex-col gap-0.5">

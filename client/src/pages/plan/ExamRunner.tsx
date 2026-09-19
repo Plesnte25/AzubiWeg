@@ -146,7 +146,7 @@ export default function ExamRunner() {
 
       <div className="flex flex-1 flex-col justify-center gap-5 py-6">
         <div>
-          <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>
+          <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
             {q.section.replace("_", " ")}
           </div>
           <div className="mt-2 text-[20px] leading-snug font-medium">{q.prompt}</div>

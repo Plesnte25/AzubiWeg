@@ -454,7 +454,7 @@ export default function Notes() {
           {grouped.map((group) => (
             <div key={group.source} className="flex flex-col gap-[9px]">
               {bucket === "all" && (
-                <div className="mt-2 text-[10px] tracking-[.12em] uppercase first:mt-0" style={{ color: "rgba(233,233,237,.4)" }}>
+                <div className="mt-2 text-[10px] tracking-[.12em] uppercase first:mt-0" style={{ color: "rgba(233,233,237,.62)" }}>
                   {SOURCE_LABEL[group.source as FeedRow["source"]]} · {group.rows.length}
                 </div>
               )}
@@ -552,7 +552,7 @@ export default function Notes() {
             {grouped.map((group) => (
               <div key={group.source} className="flex flex-col gap-[9px]">
                 {bucket === "all" && (
-                  <div className="mt-2 text-[10px] tracking-[.12em] uppercase first:mt-0" style={{ color: "rgba(233,233,237,.4)" }}>
+                  <div className="mt-2 text-[10px] tracking-[.12em] uppercase first:mt-0" style={{ color: "rgba(233,233,237,.62)" }}>
                     {SOURCE_LABEL[group.source as FeedRow["source"]]} · {group.rows.length}
                   </div>
                 )}
@@ -594,7 +594,7 @@ export default function Notes() {
         ) : expandedRow?.source === "notebook" || expandedRow?.source === "unit" ? (
           <NotebookUnitDetailPane row={expandedRow} onClose={() => setExpanded(null)} onChanged={invalidate} />
         ) : (
-          <div className="grid h-full place-items-center px-6 text-center text-[13px]" style={{ color: "rgba(233,233,237,.4)" }}>
+          <div className="grid h-full place-items-center px-6 text-center text-[13px]" style={{ color: "rgba(233,233,237,.62)" }}>
             Select a note, or create a new one.
           </div>
         )}

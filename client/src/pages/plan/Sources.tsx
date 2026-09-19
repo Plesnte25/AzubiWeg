@@ -211,7 +211,7 @@ export function SourceRow({ source }: { source: StudySource }) {
     <div className="overflow-hidden rounded-xl" style={{ background: "#1c1f2c" }}>
       <CoverImageSlot source={source} onChanged={() => invalidateHub(queryClient)} />
       <div className="p-3">
-        <div className="flex items-center gap-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: hasProgress ? "#b5abfc" : "rgba(233,233,237,.4)" }}>
+        <div className="flex items-center gap-1.5 text-[10px] tracking-[.1em] uppercase" style={{ color: hasProgress ? "#b5abfc" : "rgba(233,233,237,.62)" }}>
           <Icon size={11} weight="regular" aria-hidden="true" />
           {meta.label}
         </div>
@@ -235,7 +235,7 @@ export function SourceRow({ source }: { source: StudySource }) {
           </span>
         </div>
 
-        <div className="mt-1.5 flex items-center justify-between text-[10.5px]" style={{ color: "rgba(233,233,237,.35)" }}>
+        <div className="mt-1.5 flex items-center justify-between text-[10.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
           <span>Updated {relativeDate(source.updatedAt)}</span>
         </div>
 
@@ -428,7 +428,7 @@ function ActivityFeed() {
         Recent activity
       </span>
       {entries.length === 0 ? (
-        <p className="mt-3 text-[12.5px]" style={{ color: "rgba(233,233,237,.4)" }}>
+        <p className="mt-3 text-[12.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
           Nothing logged yet — add a source above to get started.
         </p>
       ) : (
@@ -443,7 +443,7 @@ function ActivityFeed() {
                     {e.sourceTitle && e.kind !== "added" && <span className="font-medium">{e.sourceTitle} — </span>}
                     {e.title}
                   </span>
-                  <div className="text-[10.5px]" style={{ color: "rgba(233,233,237,.35)" }}>
+                  <div className="text-[10.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
                     {new Date(e.at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                   </div>
                 </div>
@@ -545,7 +545,7 @@ export default function Sources() {
         <SourceGrid
           sources={shown}
           empty={
-            <p className="py-8 text-center text-[13.5px]" style={{ color: "rgba(233,233,237,.4)" }}>
+            <p className="py-8 text-center text-[13.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
               No sources yet — add one above.
             </p>
           }
@@ -606,7 +606,7 @@ export default function Sources() {
         <SourceGrid
           sources={shown}
           empty={
-            <p className="py-8 text-center text-[13.5px]" style={{ color: "rgba(233,233,237,.4)" }}>
+            <p className="py-8 text-center text-[13.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
               No sources yet — add one above.
             </p>
           }

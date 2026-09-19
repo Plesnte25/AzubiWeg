@@ -131,7 +131,7 @@ export default function ExamGate() {
           reporting a real click-occlusion on "Start exam", not by eyeballing
           a screenshot. */}
       <div className="mt-auto pt-5 pb-[100px]">
-        <div className="mb-3 flex items-start gap-2 text-[11.5px] leading-[1.5]" style={{ color: "rgba(233,233,237,.4)" }}>
+        <div className="mb-3 flex items-start gap-2 text-[11.5px] leading-[1.5]" style={{ color: "rgba(233,233,237,.62)" }}>
           <LockSimple size={13} weight="regular" style={{ marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
           {onCooldown && data.nextAvailableAt
             ? `No pausing, no hints. Next attempt available ${new Date(data.nextAvailableAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}.`

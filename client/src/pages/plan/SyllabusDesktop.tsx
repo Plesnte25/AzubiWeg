@@ -142,7 +142,7 @@ export function SyllabusDesktop() {
               )}
 
               <div className="mt-4 h-px" style={{ background: "rgba(233,233,237,.08)" }} />
-              <div className="mt-3 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.35)" }}>
+              <div className="mt-3 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
                 Full path · {stations.length} station{stations.length === 1 ? "" : "s"}
               </div>
             </div>
@@ -190,7 +190,7 @@ export function SyllabusDesktop() {
                 onAddNote={(item) => setComposerItemId(item.id)}
               />
             ) : (
-              <div className="grid h-full place-items-center text-[13px]" style={{ color: "rgba(233,233,237,.4)" }}>
+              <div className="grid h-full place-items-center text-[13px]" style={{ color: "rgba(233,233,237,.62)" }}>
                 No stations yet.
               </div>
             )}
@@ -210,7 +210,7 @@ export function SyllabusDesktop() {
                 onComposerItemChange={setComposerItemId}
               />
             ) : (
-              <div className="grid h-full place-items-center text-[13px]" style={{ color: "rgba(233,233,237,.4)" }}>
+              <div className="grid h-full place-items-center text-[13px]" style={{ color: "rgba(233,233,237,.62)" }}>
                 No station selected.
               </div>
             )}

@@ -220,7 +220,7 @@ export function StationDetailModal({
                   {item.description && <span className="mt-0.5 block truncate text-caption text-ink-600">{item.description}</span>}
                 </div>
                 {isCurrent && <span className="shrink-0 rounded-full bg-brand-solid px-2 py-0.5 text-micro font-semibold text-white">on today</span>}
-                {item.skippedAt && <span className="shrink-0 text-micro text-ink-400">skipped</span>}
+                {item.skippedAt && <span className="shrink-0 text-micro text-ink-600">skipped</span>}
                 {!isPreview && (
                   <button
                     onClick={() => {

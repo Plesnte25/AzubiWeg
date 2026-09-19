@@ -211,10 +211,10 @@ function TomorrowCard({ tomorrow }: { tomorrow: { day: { tasks: { id: string; ti
   return (
     <div className="rounded-xl p-[13px]" style={{ border: "1px dashed rgba(233,233,237,.14)" }}>
       <div className="flex items-center justify-between">
-        <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>
+        <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
           Tomorrow
         </div>
-        <span className="text-[10px]" style={{ color: "rgba(233,233,237,.35)" }}>
+        <span className="text-[10px]" style={{ color: "rgba(233,233,237,.62)" }}>
           scheduled for you
         </span>
       </div>
@@ -747,7 +747,7 @@ function WeekOverview({ onOpenTask }: { onOpenTask: (t: RoadmapTask) => void }) 
                     </span>
                   )}
                 </div>
-                <span className="text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>
+                <span className="text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
                   {active.length === 0 ? "rest day" : `${done}/${active.length} done`}
                 </span>
               </div>

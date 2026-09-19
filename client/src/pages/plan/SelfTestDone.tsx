@@ -118,7 +118,7 @@ export function SelfTestDone({
           className="mt-5 rounded-xl p-3 text-left"
           style={{ background: "#1c1f2c", boxShadow: "0 0 0 1px rgba(233,233,237,.08)" }}
         >
-          <div className="flex items-center gap-2 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>
+          <div className="flex items-center gap-2 text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
             <XCircle size={13} weight="regular" aria-hidden="true" />
             {wrongCount} wrong
           </div>

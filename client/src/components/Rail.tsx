@@ -149,7 +149,7 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
             <div className="text-[15px] leading-none font-medium" style={{ color: "#d2cefd" }}>
               {examDaysRaw >= 0 ? examDaysRaw : Math.abs(examDaysRaw)}
             </div>
-            <div className="text-[7px] tracking-[.08em]" style={{ color: "rgba(233,233,237,.5)" }}>
+            <div className="text-micro tracking-[.08em]" style={{ color: "rgba(233,233,237,.62)" }}>
               DAYS
             </div>
           </button>
