@@ -83,6 +83,13 @@ export function stripIpaSlashes(ipa: string): string {
   return ipa.replace(/^\/+|\/+$/g, "");
 }
 
+/** Removes editorial/source notes appended to an example for vault
+ * maintenance. These notes are useful to the curator but are not learner
+ * content and must not be exposed through the app's Word fields. */
+export function stripExampleMetadata(example: string): string {
+  return example.replace(/\s+_\([^)]*\)_\s*$/g, "").trim();
+}
+
 export function stripBullet(text: string): string {
   return text.startsWith("- ") ? text.slice(2) : text;
 }
@@ -138,7 +145,9 @@ export function parseCardFields(cardLine: string): CardFields {
     ipa: ipaRaw ? stripIpaSlashes(ipaRaw.trim()) : null,
     grammar: field("Grammar"),
     form: field("Form"),
-    example: exampleRaw ? exampleRaw.replace(/^\*|\*$/g, "") : null,
+    example: exampleRaw
+      ? stripExampleMetadata(exampleRaw).replace(/^\*([\s\S]*)\*$/, "$1").trim()
+      : null,
     audioPath: audioMatch ? audioMatch[1]! : null,
     lesson: lessonMatch ? lessonMatch[1]! : null,
     curation,

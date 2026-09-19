@@ -460,6 +460,20 @@ describe("firstMeaning / firstExample", () => {
     expect(firstExample(senses).text).toBe("Short quote.");
   });
 
+  it("drops an overlong quotation instead of publishing it as a card example", () => {
+    expect(
+      firstExample([
+        {
+          glosses: ["a"],
+          examples: [{
+            text: `This is an intentionally long literary quotation ${"that ".repeat(30)}should not be published.`,
+            type: "quotation",
+          }],
+        },
+      ]),
+    ).toEqual({ text: null, translation: null });
+  });
+
   it("picks the shortest candidate within the best tier when multiple are equally good", () => {
     const senses: KaikkiSenseRaw[] = [
       { glosses: ["a"], examples: [{ text: "Das ist ein längerer aber immer noch normaler Beispielsatz." }] },

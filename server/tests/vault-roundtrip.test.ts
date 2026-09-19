@@ -11,6 +11,7 @@ import {
   cardFront,
   shouldProtectCard,
   firstProtected,
+  stripExampleMetadata,
   stripIpaSlashes,
   type CardCuration,
 } from "../src/services/vault/format.js";
@@ -98,11 +99,29 @@ describe("field extraction", () => {
     expect(phrase.fields.audioPath).toBe("audio/Es_geht_mir_gut.-tts.mp3");
     expect(phrase.fields.lesson).toBe("hallo");
   });
+
+  it("keeps curator-only example annotations out of parsed Word content", () => {
+    const line =
+      "- **Katze** :: **Meaning:** cat<br>**Example:** *Die Katze schläft.* _(hand-written -- source note)_<br>\n";
+    expect(parseCardFields(line).example).toBe("Die Katze schläft.");
+  });
 });
 
 describe("stripIpaSlashes", () => {
   it("strips a single outer-wrapped pair", () => {
     expect(stripIpaSlashes("/hʊnt/")).toBe("hʊnt");
+  });
+
+  describe("stripExampleMetadata", () => {
+    it("removes a trailing curator note from the learner-facing example", () => {
+      expect(
+        stripExampleMetadata("Die Katze schläft auf dem Sofa. _(hand-written -- source note)_"),
+      ).toBe("Die Katze schläft auf dem Sofa.");
+    });
+
+    it("preserves ordinary parenthetical sentence content", () => {
+      expect(stripExampleMetadata("Er kommt (wie immer) pünktlich.")).toBe("Er kommt (wie immer) pünktlich.");
+    });
   });
 
   it("strips a double-wrapped value in one pass (the real 2026-09-18 incident's corruption pattern)", () => {

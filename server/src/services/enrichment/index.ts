@@ -209,7 +209,14 @@ export async function enrichResolved(
   // senses, or the only meaning came from the machine-translation fallback)
   // -- PONS availability/failure must never independently create, remove,
   // or alter this (see pons.ts's doc comment).
-  const needsReview = res.ambiguous || res.source === "translation";
+  const needsReview = res.ambiguous || res.source === "translation" || !example;
+  const reviewNote = res.ambiguous
+    ? "Multiple plausible meanings; verify the intended sense."
+    : res.source === "translation"
+      ? "Meaning came from machine translation; verify it."
+      : !example
+        ? "No short pedagogical example was found; add one manually."
+        : null;
 
   // PONS: live, server-log-only diagnostic only -- printed here for whoever
   // is watching the server log, but its result plays no part in anything
@@ -237,7 +244,7 @@ export async function enrichResolved(
     typed: res.typed,
     rejected: null,
     curation: needsReview ? "review" : "generated",
-    reviewNote: needsReview ? "Multiple plausible meanings; verify the intended sense." : null,
+    reviewNote,
   };
 }
 

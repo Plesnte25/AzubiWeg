@@ -606,6 +606,7 @@ function collapseWhitespace(text: string): string {
 }
 
 const MIN_EXAMPLE_LEN = 8;
+export const MAX_PEDAGOGICAL_EXAMPLE_LEN = 160;
 // A leading "1925, Some Author, Title, p.123" -- style bibliographic opener,
 // independent of Kaikki's own type/ref tags (which are sometimes missing/
 // inconsistent) -- catches the same class of long literary/archaic
@@ -628,7 +629,8 @@ export function firstExample(senses: KaikkiSenseRaw[]): { text: string | null; t
   const candidates = senses
     .flatMap((s) => s.examples ?? [])
     .filter((e): e is typeof e & { text: string } => !!e.text)
-    .map((e) => ({ ...e, text: collapseWhitespace(e.text) }));
+    .map((e) => ({ ...e, text: collapseWhitespace(e.text) }))
+    .filter((e) => e.text.length <= MAX_PEDAGOGICAL_EXAMPLE_LEN);
   if (!candidates.length) return { text: null, translation: null };
 
   const tierOf = (e: (typeof candidates)[number]): number => {
@@ -644,7 +646,6 @@ export function firstExample(senses: KaikkiSenseRaw[]): { text: string | null; t
   return { text: best.text, translation: cleanExampleTranslation(best.translation ?? null) };
 }
 
-const MAX_PEDAGOGICAL_EXAMPLE_LEN = 160;
 const MATERIALLY_LONGER_FACTOR = 1.5;
 
 /** Keeps the existing example/translation pair unless the candidate is a
