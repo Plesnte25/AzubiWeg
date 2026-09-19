@@ -169,10 +169,10 @@ export default function Vocabulary() {
 
       <div className="mt-[15px] min-h-0 flex-1 overflow-y-auto pb-2.5">
         <div className="flex items-center justify-between px-[18px] pb-2">
-          <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>
+          <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
             {resultLabel}
           </div>
-          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.35)" }}>
+          <div className="text-[10px]" style={{ color: "rgba(233,233,237,.62)" }}>
             history
           </div>
         </div>
@@ -371,7 +371,7 @@ export default function Vocabulary() {
         {effectiveSelectedId ? (
           <WordDetailContent key={effectiveSelectedId} id={effectiveSelectedId} embedded />
         ) : (
-          <div className="grid h-full place-items-center text-[13px]" style={{ color: "rgba(233,233,237,.4)" }}>
+          <div className="grid h-full place-items-center text-[13px]" style={{ color: "rgba(233,233,237,.62)" }}>
             No words yet.
           </div>
         )}

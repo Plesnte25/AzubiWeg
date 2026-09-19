@@ -268,7 +268,7 @@ export default function Dashboard() {
         <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
           <div className="flex items-baseline gap-[3px]">
             <span className="tabular text-[21px] font-medium" style={{ letterSpacing: "-.02em" }}>{minsToday}</span>
-            <span className="text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>/ {DAILY_MINUTES_GOAL}</span>
+            <span className="text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>/ {DAILY_MINUTES_GOAL}</span>
           </div>
           <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>minutes today</div>
           <div className="mt-0.5 h-[3px] overflow-hidden rounded-full" style={{ background: "#292b31" }}>
@@ -283,7 +283,7 @@ export default function Dashboard() {
             <span className="tabular text-[21px] font-medium" style={{ letterSpacing: "-.02em" }}>
               {data.roadmapToday?.tasksDone ?? 0}
             </span>
-            <span className="text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>/ {data.roadmapToday?.tasksTotal ?? 0}</span>
+            <span className="text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>/ {data.roadmapToday?.tasksTotal ?? 0}</span>
           </div>
           <div className="text-[10px]" style={{ color: "rgba(233,233,237,.5)" }}>plan tasks</div>
           <div className="mt-0.5 h-[3px] overflow-hidden rounded-full" style={{ background: "#292b31" }}>
@@ -306,7 +306,7 @@ export default function Dashboard() {
             <span className="tabular text-[21px] font-medium" style={{ letterSpacing: "-.02em", color: examAmber ? "#e4c4b6" : "#b5abfc" }}>
               {examDaysRaw === null ? "—" : examDaysRaw >= 0 ? examDaysRaw : Math.abs(examDaysRaw)}
             </span>
-            <span className="text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>
+            <span className="text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
               {examDaysRaw === null ? "" : examDaysRaw > 0 ? "d" : examDaysRaw === 0 ? "" : "d ago"}
             </span>
           </div>
@@ -468,7 +468,7 @@ export default function Dashboard() {
             <div className="rounded-xl p-[13px]" style={{ background: "#1c1f2c" }}>
               <div className="flex items-baseline gap-[3px]">
                 <span className="text-[22px] font-medium" style={{ letterSpacing: "-.02em" }}>{minsToday}</span>
-                <span className="text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>/ {DAILY_MINUTES_GOAL}</span>
+                <span className="text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>/ {DAILY_MINUTES_GOAL}</span>
               </div>
               <div className="text-[10.5px]" style={{ color: "rgba(233,233,237,.55)" }}>minutes today</div>
               <div className="mt-[3px] h-[3px] overflow-hidden rounded-full" style={{ background: "#292b31" }}>
@@ -478,7 +478,7 @@ export default function Dashboard() {
             <div className="rounded-xl p-[13px]" style={{ background: "#1c1f2c" }}>
               <div className="flex items-baseline gap-[3px]">
                 <span className="text-[22px] font-medium" style={{ letterSpacing: "-.02em" }}>{data.roadmapToday?.tasksDone ?? 0}</span>
-                <span className="text-[11px]" style={{ color: "rgba(233,233,237,.4)" }}>/ {data.roadmapToday?.tasksTotal ?? 0}</span>
+                <span className="text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>/ {data.roadmapToday?.tasksTotal ?? 0}</span>
               </div>
               <div className="text-[10.5px]" style={{ color: "rgba(233,233,237,.55)" }}>plan tasks</div>
               <div className="mt-[3px] h-[3px] overflow-hidden rounded-full" style={{ background: "#292b31" }}>
@@ -613,7 +613,7 @@ export default function Dashboard() {
             )}
             <div className="flex min-h-0 flex-1 flex-col gap-[7px] overflow-y-auto px-4 pb-3.5">
               {(todayFull?.tasks ?? []).length === 0 ? (
-                <p className="text-[12.5px]" style={{ color: "rgba(233,233,237,.4)" }}>Nothing planned for today yet.</p>
+                <p className="text-[12.5px]" style={{ color: "rgba(233,233,237,.62)" }}>Nothing planned for today yet.</p>
               ) : (
                 todayFull!.tasks.map((task) => {
                   const done = task.completedAt !== null;
@@ -683,7 +683,7 @@ export default function Dashboard() {
                   className="mt-1.5 rounded-[10px] p-3 text-left transition-opacity hover:opacity-80"
                   style={{ border: "1px dashed rgba(233,233,237,.16)", opacity: 0.55 }}
                 >
-                  <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>Next day tasks · tap to pull in</div>
+                  <div className="text-[10px] tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>Next day tasks · tap to pull in</div>
                   <div className="mt-1.5 flex flex-col gap-1">
                     {tomorrowFull.day.tasks.slice(0, 3).map((t) => (
                       <div key={t.id} className="truncate text-[12.5px]">{t.title}</div>
@@ -740,7 +740,7 @@ export default function Dashboard() {
           <span className="rounded-full border px-1.5 py-px text-[9.5px]" style={{ borderColor: "rgba(233,233,237,.14)", color: "rgba(233,233,237,.62)" }}>
             {nextTask?.skill ? SKILL_LABELS[nextTask.skill] : "Free"}
           </span>
-          <span className="text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.4)" }}>today's plan</span>
+          <span className="text-[10px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>today's plan</span>
         </div>
         <div className="mt-[9px] text-xl font-medium text-pretty" style={{ letterSpacing: "-.02em" }}>
           {!roadmapStarted ? "Start your 26-week roadmap" : nextTask ? nextTask.title : "Nothing left on today's plan."}
