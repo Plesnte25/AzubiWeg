@@ -15,6 +15,7 @@ import { HourOfDayChart } from "./HourOfDayChart";
 import { RetentionCurve } from "./RetentionCurve";
 import { SkillProgressGauges } from "./SkillProgressGauges";
 import { SourcesRollupCard } from "./SourcesRollupCard";
+import { MasteryInsightsCard } from "./MasteryInsightsCard";
 import { VocabBreakdownCard } from "./VocabBreakdownCard";
 import { WeakAreasCard } from "./WeakAreasCard";
 
@@ -263,6 +264,12 @@ export default function Stats() {
       {progress && examStatus && (
         <div className="mt-[18px] rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
           <ExamTrendCard testAvg={progress.kpis.testAvg} readiness={progress.readiness} attempts={examStatus.attempts} />
+        </div>
+      )}
+
+      {progress && (
+        <div className="mt-[18px] rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+          <MasteryInsightsCard distribution={progress.masteryDistribution} trend={progress.masteryTrend} />
         </div>
       )}
 
@@ -593,6 +600,12 @@ export default function Stats() {
           {progress && examStatus && (
             <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
               <ExamTrendCard testAvg={progress.kpis.testAvg} readiness={progress.readiness} attempts={examStatus.attempts} />
+            </div>
+          )}
+
+          {progress && (
+            <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+              <MasteryInsightsCard distribution={progress.masteryDistribution} trend={progress.masteryTrend} />
             </div>
           )}
 
