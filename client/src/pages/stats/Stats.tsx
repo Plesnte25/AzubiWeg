@@ -16,6 +16,7 @@ import { RetentionCurve } from "./RetentionCurve";
 import { SkillProgressGauges } from "./SkillProgressGauges";
 import { SourcesRollupCard } from "./SourcesRollupCard";
 import { MasteryInsightsCard } from "./MasteryInsightsCard";
+import { GoalFeasibilityCard } from "./GoalFeasibilityCard";
 import { VocabBreakdownCard } from "./VocabBreakdownCard";
 import { WeakAreasCard } from "./WeakAreasCard";
 
@@ -356,8 +357,15 @@ export default function Stats() {
               <div className="h-full rounded-full" style={{ width: `${progress.readiness.syllabusPercent}%`, background: "#9184d9" }} />
             </div>
           </div>
+
+          {pace && (
+            <div className="mt-3">
+              <GoalFeasibilityCard feasibility={pace.goalFeasibility} />
+            </div>
+          )}
         </div>
       )}
+
     </div>
 
     {/* Desktop (lg+) — German Companion Desktop.dc.html id="2f": icon rail
@@ -521,6 +529,8 @@ export default function Stats() {
                   <div className="h-full rounded-full" style={{ width: `${progress.readiness.syllabusPercent}%`, background: "#9184d9" }} />
                 </div>
               </div>
+
+              {pace && <GoalFeasibilityCard feasibility={pace.goalFeasibility} />}
             </>
           )}
         </div>
