@@ -13,5 +13,5 @@
     "noEmit": true,
     "outDir": "../dist-scripts"
   },
-  "include": ["backfill-ipa-slashes.ts", "../src/**/*.ts"]
+  "include": ["backfill-ipa-slashes.ts", "backfill-examples.ts", "../src/**/*.ts"]
 }
