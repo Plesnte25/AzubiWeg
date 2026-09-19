@@ -606,7 +606,7 @@ function collapseWhitespace(text: string): string {
 }
 
 const MIN_EXAMPLE_LEN = 8;
-export const MAX_PEDAGOGICAL_EXAMPLE_LEN = 160;
+export const MAX_PEDAGOGICAL_EXAMPLE_LEN = 100;
 // A leading "1925, Some Author, Title, p.123" -- style bibliographic opener,
 // independent of Kaikki's own type/ref tags (which are sometimes missing/
 // inconsistent) -- catches the same class of long literary/archaic
@@ -619,9 +619,9 @@ const CITATION_SHAPED_RE = /^\d{4},/;
  * plain usage example (not quotation-tagged, not citation-shaped, long
  * enough to be a real sentence, contains a space so it isn't a bare
  * single-token fragment). Tier 1: real text that fails the "sentence-like"
- * checks. Tier 2 (fallback only): quotation-tagged or citation-shaped --
- * literary/archaic quotations, used only when nothing better exists. Picks
- * the shortest candidate within the best available tier. Real incident:
+ * checks. Citation-shaped and quotation-tagged material is rejected entirely:
+ * it is source metadata, not learner content. Picks the shortest candidate
+ * within the best available tier. Real incident:
  * short hand-picked pedagogical examples were replaced by long archaic
  * quotations (Hegel excerpts, 19th-century religious text, a 1925 calendar
  * citation) purely because they happened to appear in an earlier sense. */
@@ -630,12 +630,11 @@ export function firstExample(senses: KaikkiSenseRaw[]): { text: string | null; t
     .flatMap((s) => s.examples ?? [])
     .filter((e): e is typeof e & { text: string } => !!e.text)
     .map((e) => ({ ...e, text: collapseWhitespace(e.text) }))
-    .filter((e) => e.text.length <= MAX_PEDAGOGICAL_EXAMPLE_LEN);
+    .filter((e) => e.text.length <= MAX_PEDAGOGICAL_EXAMPLE_LEN)
+    .filter((e) => e.type !== "quotation" && !e.ref && !CITATION_SHAPED_RE.test(e.text));
   if (!candidates.length) return { text: null, translation: null };
 
   const tierOf = (e: (typeof candidates)[number]): number => {
-    const isQuotation = e.type === "quotation" || !!e.ref || CITATION_SHAPED_RE.test(e.text);
-    if (isQuotation) return 2;
     const isSentenceLike = e.text.length >= MIN_EXAMPLE_LEN && e.text.includes(" ");
     return isSentenceLike ? 0 : 1;
   };
@@ -647,6 +646,17 @@ export function firstExample(senses: KaikkiSenseRaw[]): { text: string | null; t
 }
 
 const MATERIALLY_LONGER_FACTOR = 1.5;
+
+/** A learner-facing example must be short, sentence-like, and free of
+ * citation-shaped or quotation-only source material. */
+export function isPedagogicalExample(example: string | null): boolean {
+  if (!example) return false;
+  const text = collapseWhitespace(example);
+  if (text.length > MAX_PEDAGOGICAL_EXAMPLE_LEN || text.length < MIN_EXAMPLE_LEN || !text.includes(" ")) {
+    return false;
+  }
+  return !CITATION_SHAPED_RE.test(text) && !/[“”"]/.test(text);
+}
 
 /** Keeps the existing example/translation pair unless the candidate is a
  * real improvement -- never blanks a real example with null, never accepts
@@ -660,9 +670,12 @@ export function pickBetterExample(
   existing: { example: string | null; exampleTranslation: string | null },
   candidate: { example: string | null; exampleTranslation: string | null },
 ): { example: string | null; exampleTranslation: string | null } {
-  if (!candidate.example) return existing;
-  if (candidate.example.length > MAX_PEDAGOGICAL_EXAMPLE_LEN) return existing;
-  if (!existing.example) return candidate;
-  if (candidate.example.length > existing.example.length * MATERIALLY_LONGER_FACTOR) return existing;
+  if (!isPedagogicalExample(candidate.example)) return existing;
+  if (!isPedagogicalExample(existing.example)) return candidate;
+  const candidateText = candidate.example;
+  const existingText = existing.example;
+  if (candidateText && existingText && candidateText.length > existingText.length * MATERIALLY_LONGER_FACTOR) {
+    return existing;
+  }
   return candidate;
 }

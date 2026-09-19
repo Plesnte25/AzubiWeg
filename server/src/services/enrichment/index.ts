@@ -7,6 +7,7 @@ import {
   findEntryById,
   findPrimaryEntry,
   isEnglishCognate,
+  isPedagogicalExample,
   pickBetterExample,
   resolveWord,
   translateText,
@@ -209,12 +210,12 @@ export async function enrichResolved(
   // senses, or the only meaning came from the machine-translation fallback)
   // -- PONS availability/failure must never independently create, remove,
   // or alter this (see pons.ts's doc comment).
-  const needsReview = res.ambiguous || res.source === "translation" || !example;
+  const needsReview = res.ambiguous || res.source === "translation" || !isPedagogicalExample(example);
   const reviewNote = res.ambiguous
     ? "Multiple plausible meanings; verify the intended sense."
     : res.source === "translation"
       ? "Meaning came from machine translation; verify it."
-      : !example
+      : !isPedagogicalExample(example)
         ? "No short pedagogical example was found; add one manually."
         : null;
 

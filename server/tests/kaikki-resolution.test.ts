@@ -11,6 +11,7 @@ import {
   firstMeaning,
   isSpellingCognate,
   looksLikeEnglishLoanword,
+  isPedagogicalExample,
   pickBetterExample,
   prioritizeEntry,
   resolutionTitles,
@@ -452,12 +453,12 @@ describe("firstMeaning / firstExample", () => {
     expect(firstExample(senses).text).toBe("Zeig mir ein Beispiel.");
   });
 
-  it("falls back to the shortest quotation when every candidate is quotation-tagged (no coverage regression)", () => {
+  it("rejects quotation-only senses instead of publishing literary source text", () => {
     const senses: KaikkiSenseRaw[] = [
       { glosses: ["a"], examples: [{ text: "A very long archaic quotation indeed.", type: "quotation" }] },
       { glosses: ["b"], examples: [{ text: "Short quote.", type: "quotation" }] },
     ];
-    expect(firstExample(senses).text).toBe("Short quote.");
+    expect(firstExample(senses)).toEqual({ text: null, translation: null });
   });
 
   it("drops an overlong quotation instead of publishing it as a card example", () => {
@@ -494,8 +495,8 @@ describe("pickBetterExample", () => {
     expect(pickBetterExample(existing, { example: null, exampleTranslation: null })).toEqual(existing);
   });
 
-  it("rejects a candidate over 160 characters outright, even with no existing example at all", () => {
-    const long = "a".repeat(161);
+  it("rejects a candidate over 100 characters outright, even with no existing example at all", () => {
+    const long = "a".repeat(101);
     const existing = { example: null, exampleTranslation: null };
     expect(pickBetterExample(existing, { example: long, exampleTranslation: "x" })).toEqual(existing);
   });
@@ -531,8 +532,20 @@ describe("pickBetterExample", () => {
 
   it("accepts a genuinely shorter improvement over the existing value", () => {
     const existing = { example: "Ein etwas längerer Beispielsatz als nötig.", exampleTranslation: "old" };
-    const candidate = { example: "Kurz.", exampleTranslation: "Short." };
+    const candidate = { example: "Das ist kurz.", exampleTranslation: "That is short." };
     expect(pickBetterExample(existing, candidate)).toEqual(candidate);
+  });
+
+  it("replaces a stale overlong example with a short pedagogical candidate", () => {
+    const existing = { example: "Das ".padEnd(141, "x"), exampleTranslation: "old" };
+    const candidate = { example: "Wir sprechen Deutsch.", exampleTranslation: "We speak German." };
+    expect(pickBetterExample(existing, candidate)).toEqual(candidate);
+  });
+
+  it("rejects citation-shaped and quoted examples as learner content", () => {
+    expect(isPedagogicalExample("2006, Some Author, Title, p. 103")).toBe(false);
+    expect(isPedagogicalExample("„Das ist gut.“")).toBe(false);
+    expect(isPedagogicalExample("Das ist gut.")).toBe(true);
   });
 });
 
