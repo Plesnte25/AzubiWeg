@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregateReview, goetheReadiness } from "../src/services/learning/review.js";
+import { aggregateReview, goetheReadiness, masteryDistribution, masteryTrend } from "../src/services/learning/review.js";
 import type { LevelProgress } from "../src/services/learning/progress.js";
 
 describe("aggregateReview", () => {
@@ -146,5 +146,50 @@ describe("goetheReadiness", () => {
     ]);
     expect(r.level).toBe("a1");
     expect(r.trend).toBe("up");
+  });
+});
+
+describe("masteryDistribution", () => {
+  it("counts items into each mastery bucket", () => {
+    const dist = masteryDistribution([
+      { masteryState: "not_started" },
+      { masteryState: "learning" },
+      { masteryState: "learning" },
+      { masteryState: "mastered" },
+    ]);
+    expect(dist).toEqual({ not_started: 1, learning: 2, passed: 0, mastered: 1 });
+  });
+
+  it("returns all-zero buckets for an empty list", () => {
+    expect(masteryDistribution([])).toEqual({ not_started: 0, learning: 0, passed: 0, mastered: 0 });
+  });
+});
+
+describe("masteryTrend", () => {
+  it("buckets attempts by ISO week (Monday start) and computes pass rate", () => {
+    // Mon 2026-07-06 .. Sun 2026-07-12 is one ISO week
+    const trend = masteryTrend([
+      { createdAt: new Date("2026-07-06T09:00:00Z"), passed: true },
+      { createdAt: new Date("2026-07-08T09:00:00Z"), passed: false },
+      { createdAt: new Date("2026-07-12T09:00:00Z"), passed: true },
+      // next week
+      { createdAt: new Date("2026-07-13T09:00:00Z"), passed: true },
+    ]);
+    expect(trend).toEqual([
+      { weekStart: "2026-07-06", attempts: 3, passed: 2, passRate: 67 },
+      { weekStart: "2026-07-13", attempts: 1, passed: 1, passRate: 100 },
+    ]);
+  });
+
+  it("returns an empty array for no attempts", () => {
+    expect(masteryTrend([])).toEqual([]);
+  });
+
+  it("sorts weeks chronologically regardless of input order", () => {
+    const trend = masteryTrend([
+      { createdAt: new Date("2026-08-03T09:00:00Z"), passed: true },
+      { createdAt: new Date("2026-07-06T09:00:00Z"), passed: true },
+    ]);
+    expect(trend.map((t) => t.weekStart)).toEqual(["2026-07-06", "2026-08-03"]);
   });
 });

@@ -159,6 +159,71 @@ export interface GoetheReadiness {
   readinessLabel: "not started" | "building" | "ready soon" | "exam ready";
 }
 
+export interface MasteryTrendPoint {
+  /** ISO week start (Monday), e.g. "2026-07-06" — buckets attempts by
+   * calendar week so sparse personal-instance data still reads as a
+   * meaningful trend line rather than a noisy daily scatter. */
+  weekStart: string;
+  attempts: number;
+  passed: number;
+  passRate: number;
+}
+
+/** Monday of the ISO week containing `date`, at UTC midnight — shared
+ * bucketing key for weekly mastery trend rollups. */
+function isoWeekStart(date: Date): string {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay(); // 0=Sun..6=Sat
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diffToMonday);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Buckets exercise-attempt history into weekly pass-rate points — "mastery
+ * over time" for the Progress destination's trend chart. Pure function over
+ * already-fetched attempts (createdAt/passed), oldest-first in the output so
+ * charting libraries don't need to re-sort. Weeks with zero attempts are not
+ * synthesized as zero-filled gaps — this reflects real activity only, same
+ * honesty principle as loggedMinutes/tasksWithLoggedTime above.
+ */
+export function masteryTrend(attempts: { createdAt: Date; passed: boolean }[]): MasteryTrendPoint[] {
+  const buckets = new Map<string, { attempts: number; passed: number }>();
+  for (const a of attempts) {
+    const week = isoWeekStart(a.createdAt);
+    const entry = buckets.get(week) ?? { attempts: 0, passed: 0 };
+    entry.attempts += 1;
+    if (a.passed) entry.passed += 1;
+    buckets.set(week, entry);
+  }
+  return [...buckets.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([weekStart, v]) => ({
+      weekStart,
+      attempts: v.attempts,
+      passed: v.passed,
+      passRate: Math.round((v.passed / v.attempts) * 100),
+    }));
+}
+
+export interface MasteryDistribution {
+  not_started: number;
+  learning: number;
+  passed: number;
+  mastered: number;
+}
+
+/** Current snapshot of how many syllabus items sit in each mastery state —
+ * the "where do things stand right now" companion to masteryTrend's "how did
+ * we get here" line. */
+export function masteryDistribution(
+  items: { masteryState: keyof MasteryDistribution }[],
+): MasteryDistribution {
+  const dist: MasteryDistribution = { not_started: 0, learning: 0, passed: 0, mastered: 0 };
+  for (const item of items) dist[item.masteryState] += 1;
+  return dist;
+}
+
 /**
  * A heuristic, not a promise: combines current-level syllabus completion
  * with recent self-test scores at that level. `readinessLabel` must always be

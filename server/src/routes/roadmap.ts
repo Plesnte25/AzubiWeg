@@ -7,7 +7,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { computeBestStreak, computeDayStreak, localDateKey } from "../services/learning/activity.js";
 import { setRoadmapTaskCompletion } from "../services/learning/completion-sync.js";
 import { levelProgress, levelStates } from "../services/learning/progress.js";
-import { aggregateReview, goetheReadiness, skillPerformance, weakAreasFromBreakdowns } from "../services/learning/review.js";
+import { aggregateReview, goetheReadiness, masteryDistribution, masteryTrend, skillPerformance, weakAreasFromBreakdowns } from "../services/learning/review.js";
 import { computeRoadmapPace } from "../services/learning/pace.js";
 import { addDaysUTC, computeBacklog, dayStatus, diffReseed } from "../services/learning/roadmap.js";
 import { DEFAULT_ROADMAP_DAYS, ROADMAP_VERSION, type DefaultRoadmapDay } from "../services/learning/roadmap-defaults.js";
@@ -962,6 +962,16 @@ roadmapRouter.get("/progress", async (req, res) => {
     }),
   ]);
 
+  const [masteryItems, exerciseAttempts] = await Promise.all([
+    prisma.syllabusItem.findMany({ where: { userId: req.userId }, select: { masteryState: true } }),
+    // last 6 months is plenty for a weekly-bucketed trend line without
+    // scanning a personal instance's entire attempt history every load
+    prisma.exerciseAttempt.findMany({
+      where: { userId: req.userId, createdAt: { gte: addDaysUTC(today, -182) } },
+      select: { createdAt: true, passed: true },
+    }),
+  ]);
+
   res.json({
     period,
     rangeStart,
@@ -987,6 +997,8 @@ roadmapRouter.get("/progress", async (req, res) => {
     improvedMost,
     streakGrid,
     readiness: goetheReadiness(levelProgress(readinessItems), recentResults),
+    masteryDistribution: masteryDistribution(masteryItems),
+    masteryTrend: masteryTrend(exerciseAttempts),
     timeCoverage: { tasksCompleted: current.tasksCompleted, tasksWithLoggedTime: current.tasksWithLoggedTime },
   });
 });
