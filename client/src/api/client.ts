@@ -69,6 +69,18 @@ export class ApiError extends Error {
   }
 }
 
+function handleUnauthorized(res: Response): void {
+  if (res.status === 401 && getToken()) {
+    clearSession();
+    window.location.href = "/login";
+  }
+}
+
+async function throwApiError(res: Response): Promise<never> {
+  const body = (await res.json().catch(() => ({}))) as { error?: string };
+  throw new ApiError(res.status, body.error ?? `Request failed (${res.status})`);
+}
+
 export function getToken(): string | null {
   return localStorage.getItem("token");
 }
@@ -108,13 +120,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...init.headers,
     },
   });
-  if (res.status === 401 && getToken()) {
-    clearSession();
-    window.location.href = "/login";
-  }
+  handleUnauthorized(res);
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new ApiError(res.status, body.error ?? `Request failed (${res.status})`);
+    await throwApiError(res);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
@@ -123,13 +131,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 async function requestBlob(path: string): Promise<Blob> {
   const token = getToken();
   const res = await fetch(path, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-  if (res.status === 401 && getToken()) {
-    clearSession();
-    window.location.href = "/login";
-  }
+  handleUnauthorized(res);
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new ApiError(res.status, body.error ?? `Request failed (${res.status})`);
+    await throwApiError(res);
   }
   return res.blob();
 }

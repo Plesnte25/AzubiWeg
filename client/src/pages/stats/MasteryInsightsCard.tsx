@@ -44,31 +44,30 @@ export function MasteryInsightsCard({
         ))}
       </div>
 
-      {trend.length > 0 && (
-        <div className="mt-3">
+      <div className="mt-3">
           <div className="mb-1 text-micro tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.5)" }}>
             Weekly pass trend
           </div>
-          <div className="flex h-10 items-end gap-1">
-            {trend.slice(-12).map((p) => (
-              <div key={p.weekStart} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <div
-                  className="w-full rounded-[3px]"
-                  style={{ height: `${Math.max(8, Math.round((p.passRate / 100) * 32))}px`, background: "#9184d9" }}
-                  title={`${p.weekStart}: ${p.passRate}% (${p.passed}/${p.attempts})`}
-                />
-              </div>
-            ))}
-          </div>
+          {trend.length > 0 ? (
+            <div className="flex h-10 items-end gap-1">
+              {trend.slice(-12).map((p) => (
+                <div key={p.weekStart} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+                  <div
+                    className="w-full rounded-[3px]"
+                    style={{ height: `${Math.max(8, Math.round((p.passRate / 100) * 32))}px`, background: "#9184d9" }}
+                    title={`${p.weekStart}: ${p.passRate}% (${p.passed}/${p.attempts})`}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-micro" style={{ color: "rgba(233,233,237,.55)" }}>No recent attempts yet.</p>
+          )}
           <div className="mt-1 text-micro" style={{ color: "rgba(233,233,237,.55)" }}>
-            {latest
-              ? `${latest.passRate}% this week (${latest.passed}/${latest.attempts})`
-              : "No recent attempts yet"}
+            {latest ? `${latest.passRate}% this week (${latest.passed}/${latest.attempts})` : null}
             {total > 0 ? ` · ${Math.round((distribution.mastered / total) * 100)}% mastered overall` : ""}
           </div>
         </div>
-      )}
     </div>
   );
 }
-
