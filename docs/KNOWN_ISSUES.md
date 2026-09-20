@@ -9,9 +9,23 @@ re-deriving the investigation.
 
 ## Open — needs a fix
 
-Nothing open as of the 2026-09-07 pass below — see that entry for what was
-just closed out (Task Detail modal, Syllabus 3-pane rework, Sources rebuild
-+ Google Books/podcast/generic-preview engines, Stats expansion).
+- **2026-09-20, from the Mastery Syllabus remediation pass** — two loose
+  ends the fix pass (`0dba600`/`4130208`/`6ded832`/`4ab51d3`) didn't touch,
+  per `docs/AUDIT_2026-09-20.md`'s post-remediation verification:
+  1. `server/src/services/learning/prerequisites.ts`'s `blockedTopicIds()`
+     (per-level prerequisite-gating logic) still has zero test coverage —
+     the original audit flagged it alongside `mastery.ts`/`mistakes.ts`,
+     but only those two got regression tests added.
+  2. `client/src/pages/plan/SelfTests.tsx` still has no real desktop layout
+     at 1440px — renders as a single mobile-width column with ~60% unused
+     viewport, unlike every sibling screen in the same nav group (Plan/
+     Syllabus/Stats), which all got real multi-column desktop treatments.
+     Not necessarily a defect — worth a product call on whether it needs
+     one — but flagged since it was never claimed fixed.
+
+Otherwise nothing open as of the 2026-09-07 pass below — see that entry for
+what was just closed out (Task Detail modal, Syllabus 3-pane rework, Sources
+rebuild + Google Books/podcast/generic-preview engines, Stats expansion).
 
 ## Resolved during the redesign (for reference — no action needed)
 
