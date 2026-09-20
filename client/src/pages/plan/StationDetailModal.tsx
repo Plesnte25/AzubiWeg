@@ -265,7 +265,7 @@ export function StationDetailModal({
   );
 }
 
-function TopicWorkspace({ itemId, onCompleted, onClose }: { itemId: string; onCompleted: () => void; onClose: () => void }) {
+export function TopicWorkspace({ itemId, onCompleted, onClose }: { itemId: string; onCompleted: () => void; onClose: () => void }) {
   const { data, isLoading } = useQuery({ queryKey: ["learning", "workspace", itemId], queryFn: () => api.syllabusWorkspace(itemId) });
   const [answer, setAnswer] = useState("");
   const [mistakeCategory, setMistakeCategory] = useState<SyllabusMistakeCategory | "">("");
@@ -298,57 +298,57 @@ function TopicWorkspace({ itemId, onCompleted, onClose }: { itemId: string; onCo
   const submit = useMutation({
     mutationFn: () => api.submitSyllabusExercise(
       itemId,
-      answer || "audio",
+      answer || (data?.item.exerciseType === "self_check" ? "self-check" : "audio"),
       mistakeCategory || null,
-      data?.item.skill === "writing" || data?.item.exerciseType === "speaking_audio" ? rubric : null,
+      data?.item.skill === "writing" || data?.item.exerciseType === "speaking_audio" || data?.item.exerciseType === "self_check" ? rubric : null,
     ),
     onSuccess: (result) => {
       if (result.passed && data?.item.exerciseType !== "speaking_audio") onCompleted();
     },
   });
 
-  if (isLoading || !data) return <div className="mt-3 rounded-xl bg-ink-50 p-4 text-caption text-ink-600">Loading lesson…</div>;
+  if (isLoading || !data) return <div className="mt-3 rounded-xl bg-card p-4 text-caption text-ink-600">Loading lesson…</div>;
   const { item } = data;
   return (
-    <section className="mt-3 rounded-2xl border border-hairline bg-white p-4 shadow-sm" aria-label={`Study ${item.title}`}>
+    <section className="mt-3 rounded-2xl border border-hairline bg-card p-4 shadow-card" aria-label={`Study ${item.title}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-micro font-semibold uppercase tracking-[.12em] text-ink-500">Topic workspace</p>
+          <p className="text-micro font-semibold uppercase tracking-[.12em] text-ink-600">Topic workspace</p>
           <h3 className="mt-1 text-body font-bold text-ink-900">{item.title}</h3>
         </div>
-        <button type="button" onClick={onClose} className="shrink-0 text-caption text-ink-500 hover:text-ink-900">Close</button>
+        <button type="button" onClick={onClose} className="shrink-0 text-caption text-ink-600 hover:text-ink-900">Close</button>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
-        {item.skill && <span className="rounded-full bg-ink-100 px-2 py-1 text-micro font-semibold uppercase tracking-[.08em] text-ink-700">{item.skill}</span>}
+        {item.skill && <span className="rounded-full bg-ink-50 px-2 py-1 text-micro font-semibold uppercase tracking-[.08em] text-ink-700">{item.skill}</span>}
         {item.exerciseType && <span className="rounded-full bg-brand-50 px-2 py-1 text-micro font-semibold uppercase tracking-[.08em] text-brand-700">{item.exerciseType.replace("_", " ")}</span>}
       </div>
 
       {item.learningOutcome && (
         <div className="mt-4 rounded-xl bg-ink-50 p-3">
-          <p className="text-micro font-semibold uppercase tracking-[.12em] text-ink-500">Outcome</p>
+          <p className="text-micro font-semibold uppercase tracking-[.12em] text-ink-600">Outcome</p>
           <p className="mt-1 text-caption text-ink-700">{item.learningOutcome}</p>
         </div>
       )}
 
       <div className="mt-4 space-y-3">
         {item.resourceTitle && (
-          <div className="rounded-xl border border-hairline bg-ink-25 p-3">
-            <p className="text-micro font-semibold uppercase tracking-[.12em] text-ink-500">Study</p>
+          <div className="rounded-xl border border-hairline bg-ink-50 p-3">
+            <p className="text-micro font-semibold uppercase tracking-[.12em] text-ink-600">Study</p>
             <h4 className="mt-1 text-caption font-bold text-ink-900">{item.resourceTitle}</h4>
             {item.resourceBody && <p className="mt-1 whitespace-pre-line text-caption text-ink-700">{item.resourceBody}</p>}
           </div>
         )}
 
         {item.skill === "listening" && (
-          <div className="rounded-xl border border-hairline bg-white p-3">
-            <p className="text-micro font-semibold uppercase tracking-[.12em] text-ink-500">Listening</p>
+          <div className="rounded-xl border border-hairline bg-ink-50 p-3">
+            <p className="text-micro font-semibold uppercase tracking-[.12em] text-ink-600">Listening</p>
             {item.resourceAudioUrl || generatedAudioUrl ? (
               <>
                 <audio className="mt-2 w-full" controls preload="metadata" src={item.resourceAudioUrl ?? generatedAudioUrl ?? undefined}>
                   Your browser cannot play this audio source.
                 </audio>
-                <p className="mt-2 text-micro text-ink-500">Listen twice: first for the main idea, then for key details.</p>
+                <p className="mt-2 text-micro text-ink-600">Listen twice: first for the main idea, then for key details.</p>
                 {item.listeningPrompt && <p className="mt-2 text-caption text-ink-700"><strong>Listen for:</strong> {item.listeningPrompt}</p>}
               </>
             ) : (
@@ -364,7 +364,7 @@ function TopicWorkspace({ itemId, onCompleted, onClose }: { itemId: string; onCo
               <div className="mt-3 border-t border-hairline pt-2">
                 <button
                   type="button"
-                  className="text-caption font-semibold text-ink-700 hover:text-ink-950"
+                  className="text-caption font-semibold text-ink-700 hover:text-ink-900"
                   onClick={() => setShowTranscript((visible) => !visible)}
                   aria-expanded={showTranscript}
                 >
@@ -377,55 +377,59 @@ function TopicWorkspace({ itemId, onCompleted, onClose }: { itemId: string; onCo
         )}
 
         {item.guidedPractice && (
-          <div className="rounded-xl border border-hairline bg-brand-25 p-3">
-            <p className="text-micro font-semibold uppercase tracking-[.12em] text-ink-500">Practice</p>
+          <div className="rounded-xl border border-hairline bg-brand-50 p-3">
+            <p className="text-micro font-semibold uppercase tracking-[.12em] text-ink-600">Practice</p>
             <p className="mt-1 text-caption text-ink-700">{item.guidedPractice}</p>
           </div>
         )}
 
         {item.exercisePrompt && (
-          <div className="rounded-xl border border-hairline bg-ink-25 p-3">
-            <p className="text-micro font-semibold uppercase tracking-[.12em] text-ink-500">Exercise</p>
+          <div className="rounded-xl border border-hairline bg-ink-50 p-3">
+            <p className="text-micro font-semibold uppercase tracking-[.12em] text-ink-600">Exercise</p>
             <p className="mt-1 text-caption text-ink-700">{item.exercisePrompt}</p>
 
             {item.exerciseType === "multiple_choice" && item.exerciseOptions?.options?.length ? (
               <div className="mt-3 space-y-2">
                 {item.exerciseOptions.options.map((option, index) => (
-                  <label key={option} className="flex cursor-pointer items-center gap-2 rounded-lg border border-hairline bg-white p-2 text-caption">
+                  <label key={option} className="flex cursor-pointer items-center gap-2 rounded-lg border border-hairline bg-card p-2 text-caption text-ink-900">
                     <input type="radio" name={`exercise-${item.id}`} checked={answer === String(index)} onChange={() => setAnswer(String(index))} />
                     <span>{option}</span>
                   </label>
                 ))}
               </div>
             ) : item.exerciseType === "listening_audio" || item.exerciseType === "speaking_audio" ? (
-              <div className="mt-3 rounded-lg border border-hairline bg-white p-3">
+              <div className="mt-3 rounded-lg border border-hairline bg-card p-3">
                 <p className="text-caption text-ink-600">
                   {item.exerciseType === "listening_audio" ? "Listen to the assigned audio, then upload your spoken summary or answer." : "Record yourself completing this speaking task."}
                 </p>
                 <div className="mt-2">
                   <AudioRecorder syllabusItemId={item.id} onUploaded={() => setAudioUploaded(true)} />
                 </div>
-                {audioUploaded && <p className="mt-2 text-caption text-success-700">Audio uploaded. Submit it for feedback.</p>}
+                {audioUploaded && <p className="mt-2 text-caption text-ok-700">Audio uploaded. Submit it for feedback.</p>}
               </div>
             ) : (
               <textarea
                 value={answer}
                 onChange={(event) => setAnswer(event.target.value)}
                 rows={3}
-                className="mt-3 w-full rounded-lg border border-hairline bg-white p-2 text-caption outline-none focus:border-brand-500"
+                className="mt-3 w-full rounded-lg border border-hairline bg-card p-2 text-caption text-ink-900 outline-none focus:border-brand-500"
                 placeholder={item.exerciseType === "correction" ? "Write the corrected German sentence…" : "Write your answer in German…"}
               />
             )}
 
-            {(item.skill === "writing" || item.exerciseType === "speaking_audio") && (
-              <fieldset className="mt-3 rounded-lg border border-hairline bg-white p-3">
+            {(item.skill === "writing" || item.exerciseType === "speaking_audio" || item.exerciseType === "self_check") && (
+              <fieldset className="mt-3 rounded-lg border border-hairline bg-card p-3">
                 <legend className="px-1 text-caption font-semibold text-ink-700">
-                  {item.exerciseType === "speaking_audio" ? "Before submitting, review your recording" : "Before submitting, check your work"}
+                  {item.exerciseType === "speaking_audio"
+                    ? "Before submitting, review your recording"
+                    : item.exerciseType === "self_check"
+                      ? "Confirm your understanding"
+                      : "Before submitting, check your work"}
                 </legend>
                 {([
-                  ["taskFulfilled", item.exerciseType === "speaking_audio" ? "I completed every part of the speaking prompt." : "I answered every part of the prompt."],
-                  ["grammarChecked", item.exerciseType === "speaking_audio" ? "I listened to my recording once." : "I checked verb forms, articles, and word order."],
-                  ["understandable", item.exerciseType === "speaking_audio" ? "My message is understandable without reading the prompt." : "A German learner could understand my meaning."],
+                  ["taskFulfilled", item.exerciseType === "speaking_audio" ? "I completed every part of the speaking prompt." : item.exerciseType === "self_check" ? "I can explain the target concept." : "I answered every part of the prompt."],
+                  ["grammarChecked", item.exerciseType === "speaking_audio" ? "I listened to my recording once." : item.exerciseType === "self_check" ? "I can produce a correct example." : "I checked verb forms, articles, and word order."],
+                  ["understandable", item.exerciseType === "speaking_audio" ? "My message is understandable without reading the prompt." : item.exerciseType === "self_check" ? "I know what to review if I am unsure." : "A German learner could understand my meaning."],
                 ] as const).map(([key, label]) => (
                   <label key={key} className="mt-2 flex items-start gap-2 text-caption text-ink-700">
                     <input
@@ -444,7 +448,7 @@ function TopicWorkspace({ itemId, onCompleted, onClose }: { itemId: string; onCo
               <select
                 value={mistakeCategory}
                 onChange={(event) => setMistakeCategory(event.target.value as SyllabusMistakeCategory | "")}
-                className="mt-1 block w-full rounded-lg border border-hairline bg-white p-2 text-caption outline-none focus:border-brand-500"
+                className="mt-1 block w-full rounded-lg border border-hairline bg-card p-2 text-caption text-ink-900 outline-none focus:border-brand-500"
               >
                 <option value="">Choose after an incorrect attempt</option>
                 <option value="gender_article">Gender / article</option>
@@ -462,14 +466,14 @@ function TopicWorkspace({ itemId, onCompleted, onClose }: { itemId: string; onCo
 
             <button
               type="button"
-              disabled={submit.isPending || (item.exerciseType === "listening_audio" || item.exerciseType === "speaking_audio" ? !audioUploaded : answer.trim().length === 0)}
+              disabled={submit.isPending || (item.exerciseType === "listening_audio" || item.exerciseType === "speaking_audio" ? !audioUploaded : item.exerciseType === "self_check" ? Object.values(rubric).filter(Boolean).length < 3 : answer.trim().length === 0)}
               onClick={() => submit.mutate()}
               className="mt-3 rounded-lg bg-brand-solid px-3 py-2 text-caption font-semibold text-white disabled:opacity-50"
             >
               {submit.isPending ? "Checking…" : "Check and complete"}
             </button>
             {submit.data && (
-              <p className={`mt-2 text-caption ${submit.data.passed ? "text-success-700" : "text-danger-600"}`}>
+              <p className={`mt-2 text-caption ${submit.data.passed ? "text-ok-700" : "text-danger-600"}`}>
                 {submit.data.feedback}
               </p>
             )}

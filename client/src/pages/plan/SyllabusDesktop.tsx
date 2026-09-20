@@ -10,6 +10,7 @@ import { AddItemSheet, LEVEL_LABELS, LEVELS, StationNode } from "./Syllabus";
 import { StationAccordion } from "./StationAccordion";
 import { StationNotesPanel } from "./StationNotesPanel";
 import { deriveStations, stationStatus } from "./stations";
+import { TopicWorkspace } from "./StationDetailModal";
 
 /**
  * The Syllabus desktop screen (Claude Design handoff turn 7a) — replaces
@@ -36,8 +37,10 @@ export function SyllabusDesktop() {
   // gets linked to an item from a station the user has since navigated
   // away from.
   const [composerItemId, setComposerItemId] = useState<string | null>(null);
+  const [workspaceItemId, setWorkspaceItemId] = useState<string | null>(null);
   useEffect(() => {
     setComposerItemId(null);
+    setWorkspaceItemId(null);
   }, [selectedTheme]);
   const currentStationRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -162,6 +165,7 @@ export function SyllabusDesktop() {
           {/* Column 2 — inline accordion station detail */}
           <div className="min-h-0">
             {selectedStation ? (
+            <>
               <StationAccordion
                 station={selectedStation}
                 resolvedIdx={selectedIdx}
@@ -184,12 +188,24 @@ export function SyllabusDesktop() {
                     skipStation.mutate({ level, theme: selectedStation.theme, skipped: true });
                   }
                 }}
+                onStudy={(item) => setWorkspaceItemId(item.id)}
                 onPractice={(item) => {
                   if (item.roadmapTaskId) push("/plan", { state: { openTaskId: item.roadmapTaskId } });
                 }}
                 onAddNote={(item) => setComposerItemId(item.id)}
               />
-            ) : (
+              {workspaceItemId && (
+                <TopicWorkspace
+                  itemId={workspaceItemId}
+                  onCompleted={() => {
+                    invalidateHub(queryClient);
+                    setWorkspaceItemId(null);
+                  }}
+                  onClose={() => setWorkspaceItemId(null)}
+                />
+              )}
+            </>
+          ) : (
               <div className="grid h-full place-items-center text-[13px]" style={{ color: "rgba(233,233,237,.62)" }}>
                 No stations yet.
               </div>

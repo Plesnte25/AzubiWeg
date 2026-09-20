@@ -16,7 +16,7 @@ import {
   TrendUp,
 } from "@phosphor-icons/react";
 import { api } from "../../api/client";
-import type { RoadmapDayStatus, RoadmapTask } from "../../api/types";
+import type { RoadmapDayStatus, RoadmapTask, RoadmapTodayResponse } from "../../api/types";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { toast } from "../../components/ui/Toast";
 import { cn } from "../../lib/cn";
@@ -283,6 +283,44 @@ function DailyJournalCard({ date }: { date: string }) {
   );
 }
 
+function PlanSupportCards({
+  capacityMinutes,
+  onCapacityChange,
+  capacityPending,
+  queueData,
+  mistakeData,
+  date,
+  onReview,
+  onTopicReview,
+}: {
+  capacityMinutes: 5 | 20 | 45 | 90 | 180 | 330;
+  onCapacityChange: (minutes: 5 | 20 | 45 | 90 | 180 | 330) => void;
+  capacityPending: boolean;
+  queueData: RoadmapTodayResponse | undefined;
+  mistakeData: { mistakes: { category: string; count: number; topics: string[] }[] } | undefined;
+  date: string;
+  onReview: () => void;
+  onTopicReview: (id: string) => void;
+}) {
+  return (
+    <>
+      <CapacityPicker value={capacityMinutes} onChange={onCapacityChange} pending={capacityPending} />
+      {queueData?.queues && <RevisionQueue words={queueData.queues.revision} onOpen={onReview} />}
+      {queueData?.queues && <TopicReviewQueue topics={queueData.queues.topicReviews} onOpen={onTopicReview} />}
+      {mistakeData && <MistakeSummary mistakes={mistakeData.mistakes} />}
+      {(queueData?.queues.blockedTaskIds.length ?? 0) > 0 && (
+        <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,.04)", boxShadow: "0 0 0 1px rgba(255,255,255,.08)" }}>
+          <div className="text-[13px] font-semibold">Prerequisites first</div>
+          <div className="mt-0.5 text-[11px]" style={{ color: "rgba(233,233,237,.55)" }}>
+            {queueData?.queues.blockedTaskIds.length} later task{queueData?.queues.blockedTaskIds.length === 1 ? "" : "s"} will unlock as earlier syllabus topics are passed.
+          </div>
+        </div>
+      )}
+      <DailyJournalCard date={date} />
+    </>
+  );
+}
+
 // Sources dropped (redundant — it's the same combined page as Syllabus).
 // Tests stays, since it was added deliberately as the only discoverable
 // entry point into self-tests outside a finished review session. Notes is
@@ -475,6 +513,7 @@ export default function Plan() {
   });
   const today = selectedDate ? (selectedResp ? { date: selectedResp.day.date, tasks: selectedResp.day.tasks } : undefined) : todayResp;
   const todayLoading = selectedDate ? selectedRespLoading : todayRespLoading;
+  const queueData = selectedDate ? undefined : todayResp;
 
   useEffect(() => {
     if (!pendingOpenTaskId || !todayResp) return;
@@ -585,23 +624,16 @@ export default function Plan() {
               </div>
             )}
 
-            <CapacityPicker
-              value={todayResp?.capacity.minutes ?? roadmapStatus?.studyCapacityMinutes ?? 45}
-              onChange={(minutes) => capacity.mutate(minutes)}
-              pending={capacity.isPending}
+            <PlanSupportCards
+              capacityMinutes={todayResp?.capacity.minutes ?? roadmapStatus?.studyCapacityMinutes ?? 45}
+              onCapacityChange={(minutes) => capacity.mutate(minutes)}
+              capacityPending={capacity.isPending}
+              queueData={queueData}
+              mistakeData={mistakeData}
+              date={today.date.slice(0, 10)}
+              onReview={() => push("/review")}
+              onTopicReview={(id) => push("/plan/syllabus", { state: { openItemId: id } })}
             />
-            {todayResp?.queues && <RevisionQueue words={todayResp.queues.revision} onOpen={() => push("/review")} />}
-            {todayResp?.queues && <TopicReviewQueue topics={todayResp.queues.topicReviews} onOpen={(id) => push("/plan/syllabus", { state: { openItemId: id } })} />}
-            {mistakeData && <MistakeSummary mistakes={mistakeData.mistakes} />}
-            {(todayResp?.queues.blockedTaskIds?.length ?? 0) > 0 && (
-              <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,.04)", boxShadow: "0 0 0 1px rgba(255,255,255,.08)" }}>
-                <div className="text-[13px] font-semibold">Prerequisites first</div>
-                <div className="mt-0.5 text-[11px]" style={{ color: "rgba(233,233,237,.55)" }}>
-                  {todayResp?.queues.blockedTaskIds?.length} later task{todayResp?.queues.blockedTaskIds?.length === 1 ? "" : "s"} will unlock as earlier syllabus topics are passed.
-                </div>
-              </div>
-            )}
-            <DailyJournalCard date={today.date.slice(0, 10)} />
 
             <div className="mt-4 flex items-center gap-2.5">
               <div className="h-[5px] flex-1 overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
@@ -619,16 +651,16 @@ export default function Plan() {
                 </p>
               ) : (
                 <>
-                  {todayResp?.queues && todayResp.queues.coreTaskIds.length > 0 && (
+                  {queueData?.queues && queueData.queues.coreTaskIds.length > 0 && (
                     <div className="mb-1 text-micro font-semibold uppercase tracking-[.12em]" style={{ color: "rgba(233,233,237,.45)" }}>Core learning</div>
                   )}
-                  {today.tasks.filter((task) => !todayResp?.queues || todayResp.queues.coreTaskIds.includes(task.id)).map((t) => (
+                  {today.tasks.filter((task) => !queueData?.queues || task.completedAt !== null || queueData.queues.coreTaskIds.includes(task.id)).map((t) => (
                     <TaskRow key={t.id} task={t} onToggle={(c) => toggle.mutate({ id: t.id, completed: c })} onOpen={() => setOpenTask(t)} />
                   ))}
-                  {todayResp?.capacity.hasMore && (
+                  {queueData?.capacity.hasMore && (
                     <div className="mt-2 mb-1 text-micro font-semibold uppercase tracking-[.12em]" style={{ color: "rgba(233,233,237,.45)" }}>Optional acceleration</div>
                   )}
-                  {todayResp?.queues.accelerationTaskIds.map((id) => today.tasks.find((task) => task.id === id)).filter((task): task is RoadmapTask => !!task).map((t) => (
+                  {queueData?.queues.accelerationTaskIds.map((id) => today.tasks.find((task) => task.id === id)).filter((task): task is RoadmapTask => !!task).map((t) => (
                     <TaskRow key={t.id} task={t} onToggle={(c) => toggle.mutate({ id: t.id, completed: c })} onOpen={() => setOpenTask(t)} />
                   ))}
                 </>
@@ -680,15 +712,16 @@ export default function Plan() {
                 their own row below, not beside it. */}
             {weekDays && <WeekStrip days={weekDays} selectedDate={selectedDate} onSelect={setSelectedDate} />}
 
-            <CapacityPicker
-              value={todayResp?.capacity.minutes ?? roadmapStatus?.studyCapacityMinutes ?? 45}
-              onChange={(minutes) => capacity.mutate(minutes)}
-              pending={capacity.isPending}
+            <PlanSupportCards
+              capacityMinutes={todayResp?.capacity.minutes ?? roadmapStatus?.studyCapacityMinutes ?? 45}
+              onCapacityChange={(minutes) => capacity.mutate(minutes)}
+              capacityPending={capacity.isPending}
+              queueData={queueData}
+              mistakeData={mistakeData}
+              date={today.date.slice(0, 10)}
+              onReview={() => push("/review")}
+              onTopicReview={(id) => push("/plan/syllabus", { state: { openItemId: id } })}
             />
-            {todayResp?.queues && <RevisionQueue words={todayResp.queues.revision} onOpen={() => push("/review")} />}
-            {todayResp?.queues && <TopicReviewQueue topics={todayResp.queues.topicReviews} onOpen={(id) => push("/plan/syllabus", { state: { openItemId: id } })} />}
-            {mistakeData && <MistakeSummary mistakes={mistakeData.mistakes} />}
-            <DailyJournalCard date={today.date.slice(0, 10)} />
 
             <div className="flex items-center gap-2.5">
               <div className="h-[5px] flex-1 overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
@@ -706,9 +739,25 @@ export default function Plan() {
                     {selectedDate ? "Nothing scheduled." : "Nothing scheduled today."}
                   </p>
                 ) : (
-                  today.tasks.map((t) => (
-                    <TaskRow key={t.id} task={t} onToggle={(c) => toggle.mutate({ id: t.id, completed: c })} onOpen={() => setOpenTask(t)} />
-                  ))
+                  <>
+                    {queueData?.queues && queueData.queues.coreTaskIds.length > 0 && (
+                      <div className="mb-1 text-micro font-semibold uppercase tracking-[.12em]" style={{ color: "rgba(233,233,237,.45)" }}>Core learning</div>
+                    )}
+                    {today.tasks
+                      .filter((task) => !queueData?.queues || task.completedAt !== null || queueData.queues.coreTaskIds.includes(task.id))
+                      .map((t) => (
+                        <TaskRow key={t.id} task={t} onToggle={(c) => toggle.mutate({ id: t.id, completed: c })} onOpen={() => setOpenTask(t)} />
+                      ))}
+                    {queueData?.capacity.hasMore && (
+                      <div className="mt-2 mb-1 text-micro font-semibold uppercase tracking-[.12em]" style={{ color: "rgba(233,233,237,.45)" }}>Optional acceleration</div>
+                    )}
+                    {queueData?.queues.accelerationTaskIds
+                      .map((id) => today.tasks.find((task) => task.id === id))
+                      .filter((task): task is RoadmapTask => !!task)
+                      .map((t) => (
+                        <TaskRow key={t.id} task={t} onToggle={(c) => toggle.mutate({ id: t.id, completed: c })} onOpen={() => setOpenTask(t)} />
+                      ))}
+                  </>
                 )}
                 {!selectedDate && today.tasks.length > 0 && today.tasks.every((t) => t.completedAt !== null) && (
                   <KeepGoingCard onPull={() => pullForward.mutate(3)} pending={pullForward.isPending} />

@@ -32,6 +32,7 @@ export function StationAccordion({
   onDeleteItem,
   onAddItem,
   onSkip,
+  onStudy,
   onPractice,
   onAddNote,
 }: {
@@ -45,6 +46,7 @@ export function StationAccordion({
   onDeleteItem: (id: string) => void;
   onAddItem: () => void;
   onSkip: () => void;
+  onStudy: (item: SyllabusItem) => void;
   onPractice: (item: SyllabusItem) => void;
   onAddNote: (item: SyllabusItem) => void;
 }) {
@@ -165,6 +167,11 @@ export function StationAccordion({
                     {noteCount} note{noteCount === 1 ? "" : "s"}
                   </div>
                   <div className="mt-2 flex items-center gap-3">
+                    {!isPreview && (
+                      <button type="button" onClick={() => onStudy(item)} className="text-[12.5px] font-semibold" style={{ color: "#b5abfc" }}>
+                        Study
+                      </button>
+                    )}
                     {item.roadmapTaskId && (
                       <button type="button" onClick={() => onPractice(item)} className="text-[12.5px] font-semibold" style={{ color: "#b5abfc" }}>
                         Practice
