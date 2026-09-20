@@ -32,6 +32,11 @@ describe("planDailyQueues", () => {
       expect(failedReview(now).toISOString()).toBe("2026-01-02T00:00:00.000Z");
     });
 
+    it("caps failure backoff at the shortest review interval", () => {
+      const now = new Date("2026-01-01T00:00:00Z");
+      expect(nextMastery(0, 99, now).reviewDueAt.toISOString()).toBe("2026-01-02T00:00:00.000Z");
+    });
+
     it("marks only scheduled topics as due", () => {
       expect(isReviewDue("mastered", new Date("2020-01-01T00:00:00Z"), new Date("2026-01-01T00:00:00Z"))).toBe(true);
       expect(isReviewDue("not_started", new Date("2020-01-01T00:00:00Z"), new Date("2026-01-01T00:00:00Z"))).toBe(false);
@@ -69,6 +74,16 @@ describe("planDailyQueues", () => {
     ])).toEqual([
       { category: "case", count: 3, topics: ["Accusative objects", "Dative objects"] },
       { category: "gender_article", count: 1, topics: ["Articles"] },
+    ]);
+  });
+
+  it("keeps equal-frequency mistake categories in insertion order", () => {
+    expect(summarizeMistakes([
+      { mistakeCategory: "spelling", syllabusItem: { title: "A" } },
+      { mistakeCategory: "case", syllabusItem: { title: "B" } },
+    ])).toEqual([
+      { category: "spelling", count: 1, topics: ["A"] },
+      { category: "case", count: 1, topics: ["B"] },
     ]);
   });
 });

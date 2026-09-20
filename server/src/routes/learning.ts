@@ -31,6 +31,7 @@ import { fetchGenericPreview } from "../services/learning/genericPreview.js";
 import { buildCourseUnits, buildManualUnits, buildPlaylistUnits, resizeManualUnits, unitProgress } from "../services/learning/units.js";
 import { extractPlaylistId, fetchPlaylist } from "../services/learning/youtube.js";
 import { deleteStoredFile } from "./files.js";
+import { gradeSyllabusExercise } from "../services/learning/exercise-grading.js";
 
 export const learningRouter = Router();
 learningRouter.use(requireAuth);
@@ -189,8 +190,6 @@ learningRouter.post("/syllabus/:id/exercise", async (req, res) => {
   if (!item.exerciseType || !item.exercisePrompt) return res.status(400).json({ error: "This topic has no exercise yet" });
 
   const answer = parsed.data.answer;
-  const normalized = answer.toLocaleLowerCase("de-DE").replace(/\s+/g, " ").trim();
-  const expected = item.exerciseAnswer?.toLocaleLowerCase("de-DE").replace(/\s+/g, " ").trim();
   const options = item.exerciseOptions as { options?: unknown[]; correctIndex?: unknown } | null;
   const audioEvidence = item.exerciseType === "listening_audio" || item.exerciseType === "speaking_audio"
     ? await prisma.uploadedFile.findFirst({
@@ -200,30 +199,16 @@ learningRouter.post("/syllabus/:id/exercise", async (req, res) => {
     })
     : null;
   const rubric = parsed.data.rubricAssessment;
-  const writingScore = rubric
-    ? [rubric.taskFulfilled, rubric.grammarChecked, rubric.understandable].filter(Boolean).length
-    : 0;
-  const passed = item.exerciseType === "listening_audio" || item.exerciseType === "speaking_audio"
-    ? audioEvidence !== null
-    : item.skill === "writing"
-      ? normalized.length >= 20 && writingScore >= 2
-    : item.exerciseType === "multiple_choice" && options
-      ? Number(answer) === options.correctIndex
-      : expected
-        ? normalized === expected
-        : normalized.length >= 12;
-  const recordingDurationNote = audioEvidence?.durationSeconds
-    ? ` Recording length: ~${audioEvidence.durationSeconds}s.`
-    : "";
-  const feedback = passed && item.exerciseType === "speaking_audio"
-    ? writingScore === 3
-      ? `Passed. You completed the speaking checklist.${recordingDurationNote} Keep the recording and repeat the task once more without reading.`
-      : `Recording saved and passed.${recordingDurationNote} Next time, complete all three speaking checks for a stronger self-review.`
-    : passed
-      ? "Passed. Compare your answer with the lesson and keep the correction in your notes."
-    : expected
-      ? "Not quite. Review the resource, then try the exact target form again."
-      : "Add a complete sentence with the target concept, then try again.";
+  const { passed, feedback } = gradeSyllabusExercise({
+    exerciseType: item.exerciseType,
+    skill: item.skill,
+    exerciseAnswer: item.exerciseAnswer,
+    exerciseOptions: options,
+    answer,
+    rubricAssessment: rubric,
+    audioEvidence: audioEvidence !== null,
+    recordingDurationSeconds: audioEvidence?.durationSeconds ?? null,
+  });
 
   const attempt = await prisma.$transaction(async (tx) => {
     const lastSuccessfulAttempt = await tx.exerciseAttempt.findFirst({

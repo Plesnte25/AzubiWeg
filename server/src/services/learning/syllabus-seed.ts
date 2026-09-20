@@ -28,101 +28,40 @@ export async function ensureSyllabusSeeded(userId: string): Promise<void> {
     return;
   }
 
-  // Apply newly authored exercise metadata without reseeding or disturbing
-  // learner mastery, attempts, notebook fields, or attached evidence.
-  for (const item of DEFAULT_SYLLABUS_ITEMS) {
-    const seed = syllabusItemSeed(item);
-    await prisma.syllabusItem.updateMany({
-      where: { userId, level: item.level, title: item.title },
-      data: {
-        exerciseType: seed.exerciseType,
-        exercisePrompt: seed.exercisePrompt,
-        exerciseAnswer: seed.exerciseAnswer,
-        exerciseOptions: seed.exerciseOptions,
-        learningOutcome: seed.learningOutcome,
-        resourceTitle: seed.resourceTitle,
-        resourceBody: seed.resourceBody,
-        resourceUrl: seed.resourceUrl,
-        resourceAudioUrl: seed.resourceAudioUrl,
-        resourceTranscript: seed.resourceTranscript,
-        listeningPrompt: seed.listeningPrompt,
-        guidedPractice: seed.guidedPractice,
-      },
-    });
-  }
-
   if (user.syllabusVersion >= SYLLABUS_VERSION) return;
 
-  // the authored syllabus was revised: replace the user's copy, carrying
-  // completions/notes over wherever a (level, title) still exists in the new set
+  // Apply authored changes only while advancing the version. Keeping this
+  // inside one transaction makes repeated/concurrent requests idempotent and
+  // prevents a current-version user from receiving an unexpected write.
   await prisma.$transaction(async (tx) => {
+    const claimed = await tx.user.updateMany({
+      where: { id: userId, syllabusVersion: { lt: SYLLABUS_VERSION } },
+      data: { syllabusVersion: SYLLABUS_VERSION },
+    });
+    if (claimed.count === 0) return;
+
     const existing = await tx.syllabusItem.findMany({
       where: { userId },
       select: {
         id: true,
         level: true,
         title: true,
-        completedAt: true,
-        examples: true,
-        exceptions: true,
-        commonMistakes: true,
       },
     });
-    const oldKeyById = new Map(existing.map((i) => [i.id, key(i.level, i.title)]));
-    const completedAt = new Map(
-      existing.filter((i) => i.completedAt !== null).map((i) => [key(i.level, i.title), i.completedAt]),
-    );
-    // Grammar Notebook fields are the user's own notes, not authored
-    // content — carried over the same way completedAt is, never reset from
-    // DEFAULT_SYLLABUS_ITEMS (which has no opinion on these fields at all)
-    const notesByKey = new Map(
-      existing
-        .filter((i) => i.examples || i.exceptions || i.commonMistakes)
-        .map((i) => [
-          key(i.level, i.title),
-          { examples: i.examples, exceptions: i.exceptions, commonMistakes: i.commonMistakes },
-        ]),
-    );
-    // detach note files first — deleting items would cascade them away
-    const attachedFiles = await tx.uploadedFile.findMany({
-      where: { userId, syllabusItemId: { not: null } },
-      select: { id: true, syllabusItemId: true },
-    });
-    await tx.uploadedFile.updateMany({
-      where: { userId, syllabusItemId: { not: null } },
-      data: { syllabusItemId: null },
-    });
-
-    await tx.syllabusItem.deleteMany({ where: { userId } });
-    await tx.syllabusItem.createMany({
-      data: DEFAULT_SYLLABUS_ITEMS.map((item, i) => {
-        const notes = notesByKey.get(key(item.level, item.title));
-        return {
-          userId,
-          ...syllabusItemSeed(item),
-          sortOrder: i,
-          completedAt: completedAt.get(key(item.level, item.title)) ?? null,
-          examples: notes?.examples ?? null,
-          exceptions: notes?.exceptions ?? null,
-          commonMistakes: notes?.commonMistakes ?? null,
-        };
-      }),
-    });
-
-    // re-attach notes to same-titled items in the new syllabus
-    const fresh = await tx.syllabusItem.findMany({
-      where: { userId },
-      select: { id: true, level: true, title: true },
-    });
-    const newIdByKey = new Map(fresh.map((i) => [key(i.level, i.title), i.id]));
-    for (const file of attachedFiles) {
-      const oldKey = file.syllabusItemId ? oldKeyById.get(file.syllabusItemId) : undefined;
-      const newId = oldKey ? newIdByKey.get(oldKey) : undefined;
-      if (newId) {
-        await tx.uploadedFile.update({ where: { id: file.id }, data: { syllabusItemId: newId } });
+    const existingByKey = new Map(existing.map((item) => [key(item.level, item.title), item.id]));
+    for (const [sortOrder, item] of DEFAULT_SYLLABUS_ITEMS.entries()) {
+      const seed = syllabusItemSeed(item);
+      const existingId = existingByKey.get(key(item.level, item.title));
+      if (existingId) {
+        await tx.syllabusItem.update({
+          where: { id: existingId },
+          data: { ...seed, sortOrder },
+        });
+      } else {
+        await tx.syllabusItem.create({
+          data: { userId, ...seed, sortOrder },
+        });
       }
     }
-
-    await tx.user.update({ where: { id: userId }, data: { syllabusVersion: SYLLABUS_VERSION } });
   });
 }
