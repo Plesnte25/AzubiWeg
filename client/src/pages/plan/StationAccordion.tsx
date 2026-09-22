@@ -57,11 +57,11 @@ export function StationAccordion({
     <div className="flex min-h-0 flex-col">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-600)" }}>
             Station {resolvedIdx + 1}
           </div>
           <div className="mt-0.5 text-[19px] font-medium">{station.theme}</div>
-          <div className="mt-0.5 text-[12px]" style={{ color: "rgba(233,233,237,.45)" }}>
+          <div className="mt-0.5 text-[12px]" style={{ color: "var(--color-ink-400)" }}>
             {station.items.length} item{station.items.length === 1 ? "" : "s"} · {closedCount}/{station.items.length} closed
           </div>
         </div>
@@ -72,7 +72,7 @@ export function StationAccordion({
               onClick={onAddItem}
               title="Add item"
               className="grid size-8 place-items-center rounded-full"
-              style={{ background: "#20222f", color: "rgba(233,233,237,.65)" }}
+              style={{ background: "var(--color-ink-50)", color: "var(--color-ink-600)" }}
             >
               <Plus size={15} weight="regular" aria-hidden="true" />
             </button>
@@ -81,7 +81,7 @@ export function StationAccordion({
               onClick={onSkip}
               title={skipped ? "Un-skip station" : "Skip station"}
               className="grid size-8 place-items-center rounded-full"
-              style={{ background: "#20222f", color: "rgba(233,233,237,.65)" }}
+              style={{ background: "var(--color-ink-50)", color: "var(--color-ink-600)" }}
             >
               <SkipForward size={15} weight="regular" aria-hidden="true" />
             </button>
@@ -89,7 +89,7 @@ export function StationAccordion({
         )}
       </div>
 
-      <p className="mt-2 text-[11.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
+      <p className="mt-2 text-[11.5px]" style={{ color: "var(--color-ink-600)" }}>
         Tap a task to open its full detail · drag a task into Notes to attach a note.
       </p>
 
@@ -108,7 +108,7 @@ export function StationAccordion({
                 e.dataTransfer.effectAllowed = "link";
               }}
               className="rounded-xl px-2 py-2"
-              style={{ background: isCurrent ? "rgba(145,132,217,.08)" : "transparent" }}
+              style={{ background: isCurrent ? "var(--color-brand-50)" : "transparent" }}
             >
               <div
                 role="button"
@@ -119,7 +119,7 @@ export function StationAccordion({
                 }}
                 className="flex w-full cursor-pointer items-center gap-2.5 text-left"
               >
-                <DotsThree size={14} weight="bold" style={{ color: "rgba(233,233,237,.25)", cursor: "grab" }} aria-hidden="true" />
+                <DotsThree size={14} weight="bold" style={{ color: "var(--color-hairline)", cursor: "grab" }} aria-hidden="true" />
                 <button
                   type="button"
                   disabled={isPreview}
@@ -129,28 +129,28 @@ export function StationAccordion({
                   }}
                   aria-label={done ? "Mark not done" : "Mark done"}
                   className="grid size-[18px] shrink-0 place-items-center rounded-full disabled:cursor-not-allowed"
-                  style={{ background: done ? "#9184d9" : "transparent", border: done ? "none" : "1px solid rgba(233,233,237,.3)" }}
+                  style={{ background: done ? "var(--color-brand-500)" : "transparent", border: done ? "none" : "1px solid var(--color-ink-300)" }}
                 >
-                  {done && <Check size={11} weight="bold" style={{ color: "#161826" }} aria-hidden="true" />}
+                  {done && <Check size={11} weight="bold" style={{ color: "var(--color-paper)" }} aria-hidden="true" />}
                 </button>
                 <span
                   className="min-w-0 flex-1 truncate text-[14px]"
-                  style={{ color: done ? "rgba(233,233,237,.4)" : "#e9e9ed", textDecoration: done ? "line-through" : "none" }}
+                  style={{ color: done ? "var(--color-ink-400)" : "var(--color-ink-900)", textDecoration: done ? "line-through" : "none" }}
                 >
                   {item.title}
                 </span>
                 {isCurrent && (
-                  <span className="shrink-0 rounded-full px-2 py-0.5 text-micro font-medium" style={{ background: "#9184d9", color: "#161826" }}>
+                  <span className="shrink-0 rounded-full px-2 py-0.5 text-micro font-medium" style={{ background: "var(--color-brand-500)", color: "var(--color-paper)" }}>
                     on today
                   </span>
                 )}
-                <span className="shrink-0 text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
+                <span className="shrink-0 text-[11px]" style={{ color: "var(--color-ink-600)" }}>
                   {done || item.skippedAt ? "closed" : "open"}
                 </span>
                 <CaretDown
                   size={12}
                   weight="bold"
-                  style={{ color: "rgba(233,233,237,.3)", transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform .15s" }}
+                  style={{ color: "var(--color-ink-300)", transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform .15s" }}
                   aria-hidden="true"
                 />
               </div>
@@ -158,26 +158,26 @@ export function StationAccordion({
               {isExpanded && (
                 <div className="mt-2 pl-[38px]">
                   {item.description && (
-                    <p className="text-[12.5px]" style={{ color: "rgba(233,233,237,.6)" }}>
+                    <p className="text-[12.5px]" style={{ color: "var(--color-ink-600)" }}>
                       {item.description}
                     </p>
                   )}
-                  <div className="mt-1.5 flex items-center gap-1.5 text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
+                  <div className="mt-1.5 flex items-center gap-1.5 text-[11px]" style={{ color: "var(--color-ink-600)" }}>
                     <NotePencil size={12} weight="regular" aria-hidden="true" />
                     {noteCount} note{noteCount === 1 ? "" : "s"}
                   </div>
                   <div className="mt-2 flex items-center gap-3">
                     {!isPreview && (
-                      <button type="button" onClick={() => onStudy(item)} className="text-[12.5px] font-semibold" style={{ color: "#b5abfc" }}>
+                      <button type="button" onClick={() => onStudy(item)} className="text-[12.5px] font-semibold" style={{ color: "var(--color-brand-700)" }}>
                         Study
                       </button>
                     )}
                     {item.roadmapTaskId && (
-                      <button type="button" onClick={() => onPractice(item)} className="text-[12.5px] font-semibold" style={{ color: "#b5abfc" }}>
+                      <button type="button" onClick={() => onPractice(item)} className="text-[12.5px] font-semibold" style={{ color: "var(--color-brand-700)" }}>
                         Practice
                       </button>
                     )}
-                    <button type="button" onClick={() => onAddNote(item)} className="text-[12.5px]" style={{ color: "rgba(233,233,237,.55)" }}>
+                    <button type="button" onClick={() => onAddNote(item)} className="text-[12.5px]" style={{ color: "var(--color-ink-600)" }}>
                       + note
                     </button>
                     {!isPreview && (
@@ -187,7 +187,7 @@ export function StationAccordion({
                           if (confirm(`Delete "${item.title}"? This can't be undone.`)) onDeleteItem(item.id);
                         }}
                         className="ml-auto text-[11.5px]"
-                        style={{ color: "rgba(233,233,237,.4)" }}
+                        style={{ color: "var(--color-ink-400)" }}
                       >
                         <Trash size={13} weight="regular" aria-hidden="true" />
                       </button>

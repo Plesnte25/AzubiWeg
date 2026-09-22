@@ -119,18 +119,18 @@ function CoverImageSlot({ source, onChanged }: { source: StudySource; onChanged:
         fileInput.current?.click();
       }}
       className="relative block h-[84px] w-full shrink-0 rounded-t-xl"
-      style={{ background: "#20222f" }}
+      style={{ background: "var(--color-ink-50)" }}
     >
       <div className="absolute inset-0 overflow-hidden rounded-t-xl">
         {displayUrl ? (
           <img src={displayUrl} alt="" className="size-full object-cover" />
         ) : (
           <div className="grid size-full place-items-center">
-            <Icon size={26} weight="regular" style={{ color: "rgba(233,233,237,.25)" }} aria-hidden="true" />
+            <Icon size={26} weight="regular" style={{ color: "var(--color-hairline)" }} aria-hidden="true" />
           </div>
         )}
         {uploading && (
-          <div className="absolute inset-0 grid place-items-center text-[11px]" style={{ background: "rgba(10,11,18,.55)", color: "#e9e9ed" }}>
+          <div className="absolute inset-0 grid place-items-center text-[11px]" style={{ background: "rgba(10,11,18,.55)", color: "var(--color-on-dark-ink-900)" }}>
             Uploading…
           </div>
         )}
@@ -192,14 +192,14 @@ export function SourceRow({ source }: { source: StudySource }) {
         target={source.url?.startsWith("/") ? undefined : "_blank"}
         rel="noreferrer"
         className="flex items-center gap-2.5 rounded-xl p-3"
-        style={{ background: "#1c1f2c" }}
+        style={{ background: "var(--color-card)" }}
       >
-        <div className="grid size-9 shrink-0 place-items-center rounded-[9px]" style={{ background: "#20222f" }}>
-          <LinkSimple size={16} weight="regular" style={{ color: "rgba(233,233,237,.6)" }} aria-hidden="true" />
+        <div className="grid size-9 shrink-0 place-items-center rounded-[9px]" style={{ background: "var(--color-ink-50)" }}>
+          <LinkSimple size={16} weight="regular" style={{ color: "var(--color-ink-600)" }} aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="truncate text-[13.5px] font-medium">{source.title}</div>
-          <div className="mt-px truncate text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+          <div className="mt-px truncate text-[11px]" style={{ color: "var(--color-ink-400)" }}>
             {source.provider ?? "Link"} · saved {relativeDate(source.createdAt)}
           </div>
         </div>
@@ -208,39 +208,39 @@ export function SourceRow({ source }: { source: StudySource }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl" style={{ background: "#1c1f2c" }}>
+    <div className="overflow-hidden rounded-xl" style={{ background: "var(--color-card)" }}>
       <CoverImageSlot source={source} onChanged={() => invalidateHub(queryClient)} />
       <div className="p-3">
-        <div className="flex items-center gap-1.5 text-micro tracking-[.1em] uppercase" style={{ color: hasProgress ? "#b5abfc" : "rgba(233,233,237,.62)" }}>
+        <div className="flex items-center gap-1.5 text-micro tracking-[.1em] uppercase" style={{ color: hasProgress ? "var(--color-brand-700)" : "var(--color-ink-600)" }}>
           <Icon size={11} weight="regular" aria-hidden="true" />
           {meta.label}
         </div>
         <button type="button" onClick={() => (hasUnits ? setExpanded((v) => !v) : bump.mutate())} className="mt-1 block w-full text-left">
           <div className="truncate text-[14.5px] font-medium">{source.title}</div>
-          <div className="mt-0.5 truncate text-[11.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="mt-0.5 truncate text-[11.5px]" style={{ color: "var(--color-ink-400)" }}>
             {source.provider ?? "—"}
             {source.totalUnits ? ` · ${source.completedUnits}/${source.totalUnits} ${UNIT_LABEL_META[source.unitLabel].toLowerCase()}` : ""}
           </div>
         </button>
 
         <div className="mt-2.5 flex items-center gap-2">
-          <div className="h-[5px] flex-1 overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
+          <div className="h-[5px] flex-1 overflow-hidden rounded-[3px]" style={{ background: "var(--color-hairline-soft)" }}>
             <div
               className="h-full rounded-[3px] transition-[width] duration-500"
-              style={{ width: `${pct ?? Math.min(100, source.completedUnits * 10)}%`, background: pct !== null && pct >= 100 ? "#b5abfc" : "linear-gradient(90deg,#5d5294,#9184d9)" }}
+              style={{ width: `${pct ?? Math.min(100, source.completedUnits * 10)}%`, background: pct !== null && pct >= 100 ? "var(--color-brand-700)" : "linear-gradient(90deg,var(--color-brand-solid),var(--color-brand-500))" }}
             />
           </div>
-          <span className="shrink-0 text-[11.5px] font-medium" style={{ color: pct !== null && pct >= 100 ? "#b5abfc" : "rgba(233,233,237,.75)" }}>
+          <span className="shrink-0 text-[11.5px] font-medium" style={{ color: pct !== null && pct >= 100 ? "var(--color-brand-700)" : "var(--color-ink-700)" }}>
             {pct === null ? source.completedUnits : pct >= 100 ? "done" : `${pct}%`}
           </span>
         </div>
 
-        <div className="mt-1.5 flex items-center justify-between text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
+        <div className="mt-1.5 flex items-center justify-between text-micro" style={{ color: "var(--color-ink-600)" }}>
           <span>Updated {relativeDate(source.updatedAt)}</span>
         </div>
 
         {expanded && hasUnits && (
-          <div className="mt-3 flex flex-col gap-0.5 border-t pt-2.5" style={{ borderColor: "rgba(233,233,237,.08)" }}>
+          <div className="mt-3 flex flex-col gap-0.5 border-t pt-2.5" style={{ borderColor: "var(--color-hairline-soft)" }}>
             {source.units.map((unit) => {
               const done = unit.completedAt !== null;
               return (
@@ -255,13 +255,13 @@ export function SourceRow({ source }: { source: StudySource }) {
                 >
                   <span
                     className="grid size-[16px] shrink-0 place-items-center rounded-full text-micro text-white"
-                    style={{ background: done ? "#9184d9" : "transparent", border: done ? "none" : "1px solid rgba(233,233,237,.3)" }}
+                    style={{ background: done ? "var(--color-brand-500)" : "transparent", border: done ? "none" : "1px solid var(--color-ink-300)" }}
                   >
                     {done ? "✓" : ""}
                   </span>
                   <span
                     className="min-w-0 flex-1 truncate text-[12.5px]"
-                    style={{ color: done ? "rgba(233,233,237,.45)" : "rgba(233,233,237,.85)", textDecoration: done ? "line-through" : "none" }}
+                    style={{ color: done ? "var(--color-ink-400)" : "var(--color-ink-700)", textDecoration: done ? "line-through" : "none" }}
                   >
                     {unit.position}. {unit.title}
                   </span>
@@ -283,7 +283,7 @@ function TypePickerButton({ type, active, onClick }: { type: StudySourceType; ac
       type="button"
       onClick={onClick}
       className="flex flex-1 flex-col items-center gap-1 rounded-[10px] py-2.5 text-micro"
-      style={{ background: active ? "rgba(145,132,217,.18)" : "#20222f", color: active ? "#d2cefd" : "rgba(233,233,237,.6)" }}
+      style={{ background: active ? "var(--color-brand-100)" : "var(--color-ink-50)", color: active ? "var(--color-brand-800)" : "var(--color-ink-600)" }}
     >
       <Icon size={17} weight="regular" aria-hidden="true" />
       {meta.label}
@@ -325,7 +325,7 @@ function AddSourceSheet({ onClose }: { onClose: () => void }) {
   });
 
   return (
-    <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+    <div className="rounded-xl p-3.5" style={{ background: "var(--color-card)" }}>
       <div className="flex gap-1.5">
         {PICKER_TYPES.map((t) => (
           <TypePickerButton key={t} type={t} active={type === t} onClick={() => setType(t)} />
@@ -338,7 +338,7 @@ function AddSourceSheet({ onClose }: { onClose: () => void }) {
           onChange={(e) => setTitle(e.target.value)}
           placeholder={type === "book" || type === "audio" ? "Title (searched for real metadata)" : "Title"}
           className="box-border w-full rounded-[10px] px-3 py-2 text-[13.5px] outline-none"
-          style={{ background: "#20222f", color: "#e9e9ed", border: "1px solid rgba(233,233,237,.14)" }}
+          style={{ background: "var(--color-ink-50)", color: "var(--color-ink-900)", border: "1px solid var(--color-hairline)" }}
         />
         <div className="flex gap-2">
           <input
@@ -346,14 +346,14 @@ function AddSourceSheet({ onClose }: { onClose: () => void }) {
             onChange={(e) => setProvider(e.target.value)}
             placeholder="Provider / author"
             className="box-border min-w-0 flex-1 rounded-[10px] px-3 py-2 text-[13.5px] outline-none"
-            style={{ background: "#20222f", color: "#e9e9ed", border: "1px solid rgba(233,233,237,.14)" }}
+            style={{ background: "var(--color-ink-50)", color: "var(--color-ink-900)", border: "1px solid var(--color-hairline)" }}
           />
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="URL (optional)"
             className="box-border min-w-0 flex-1 rounded-[10px] px-3 py-2 text-[13.5px] outline-none"
-            style={{ background: "#20222f", color: "#e9e9ed", border: "1px solid rgba(233,233,237,.14)" }}
+            style={{ background: "var(--color-ink-50)", color: "var(--color-ink-900)", border: "1px solid var(--color-hairline)" }}
           />
         </div>
 
@@ -365,13 +365,13 @@ function AddSourceSheet({ onClose }: { onClose: () => void }) {
               placeholder="Total units"
               inputMode="numeric"
               className="box-border w-28 rounded-[10px] px-3 py-2 text-[13.5px] outline-none"
-              style={{ background: "#20222f", color: "#e9e9ed", border: "1px solid rgba(233,233,237,.14)" }}
+              style={{ background: "var(--color-ink-50)", color: "var(--color-ink-900)", border: "1px solid var(--color-hairline)" }}
             />
             <select
               value={unitLabel}
               onChange={(e) => setUnitLabel(e.target.value as StudySourceUnitLabel)}
               className="box-border min-w-0 flex-1 rounded-[10px] px-3 py-2 text-[13.5px] outline-none"
-              style={{ background: "#20222f", color: "#e9e9ed", border: "1px solid rgba(233,233,237,.14)" }}
+              style={{ background: "var(--color-ink-50)", color: "var(--color-ink-900)", border: "1px solid var(--color-hairline)" }}
             >
               {Object.entries(UNIT_LABEL_META).map(([key, label]) => (
                 <option key={key} value={key}>
@@ -393,7 +393,7 @@ function AddSourceSheet({ onClose }: { onClose: () => void }) {
         </button>
       </div>
       {error && (
-        <p className="mt-2 text-[12px]" style={{ color: "#e4c4b6" }}>
+        <p className="mt-2 text-[12px]" style={{ color: "var(--color-danger-700)" }}>
           {error}
         </p>
       )}
@@ -402,10 +402,10 @@ function AddSourceSheet({ onClose }: { onClose: () => void }) {
 }
 
 const FEED_ICONS: Record<ActivityFeedEntry["kind"], { icon: typeof CheckCircle; color: string }> = {
-  lesson: { icon: CheckCircle, color: "#b5abfc" },
-  manual: { icon: CheckCircle, color: "#b5abfc" },
-  completed: { icon: Trophy, color: "#e4c4b6" },
-  added: { icon: PlusCircle, color: "rgba(233,233,237,.5)" },
+  lesson: { icon: CheckCircle, color: "var(--color-brand-700)" },
+  manual: { icon: CheckCircle, color: "var(--color-brand-700)" },
+  completed: { icon: Trophy, color: "var(--color-danger-700)" },
+  added: { icon: PlusCircle, color: "var(--color-ink-400)" },
 };
 
 /** Milestones only (turn 10a) — lesson/session completions, "finished this
@@ -423,12 +423,12 @@ function ActivityFeed() {
   const entries = data?.pages.flatMap((p) => p.entries) ?? [];
 
   return (
-    <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-      <span className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+    <div className="rounded-xl p-3.5" style={{ background: "var(--color-card)" }}>
+      <span className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-400)" }}>
         Recent activity
       </span>
       {entries.length === 0 ? (
-        <p className="mt-3 text-[12.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
+        <p className="mt-3 text-[12.5px]" style={{ color: "var(--color-ink-600)" }}>
           Nothing logged yet — add a source above to get started.
         </p>
       ) : (
@@ -439,11 +439,11 @@ function ActivityFeed() {
               <div key={e.id} className="flex items-start gap-2.5 text-[12.5px]">
                 <Icon size={15} weight="regular" style={{ color, flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
                 <div className="min-w-0 flex-1">
-                  <span style={{ color: "rgba(233,233,237,.8)" }}>
+                  <span style={{ color: "var(--color-ink-700)" }}>
                     {e.sourceTitle && e.kind !== "added" && <span className="font-medium">{e.sourceTitle} — </span>}
                     {e.title}
                   </span>
-                  <div className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
+                  <div className="text-micro" style={{ color: "var(--color-ink-600)" }}>
                     {new Date(e.at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                   </div>
                 </div>
@@ -453,7 +453,7 @@ function ActivityFeed() {
         </div>
       )}
       {hasNextPage && (
-        <button type="button" onClick={() => fetchNextPage()} className="mt-2.5 text-[11.5px] font-medium" style={{ color: "#b5abfc" }}>
+        <button type="button" onClick={() => fetchNextPage()} className="mt-2.5 text-[11.5px] font-medium" style={{ color: "var(--color-brand-700)" }}>
           View all
         </button>
       )}
@@ -479,7 +479,7 @@ export default function Sources() {
   const [showAdd, setShowAdd] = useState(false);
 
   if (isLoading || !data) {
-    return <div className="-mx-4 -my-4 min-h-[calc(100dvh-40px)]" style={{ background: "#161826" }} />;
+    return <div className="-mx-4 -my-4 min-h-[calc(100dvh-40px)]" style={{ background: "var(--color-paper)" }} />;
   }
 
   const sources = data.sources;
@@ -501,14 +501,14 @@ export default function Sources() {
     <>
     <div
       className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-[18px] pt-[calc(env(safe-area-inset-top)+18px)] lg:hidden"
-      style={{ background: "radial-gradient(110% 38% at 22% 4%, #23253a, #161826 58%)" }}
+      style={{ background: "radial-gradient(110% 38% at 22% 4%, var(--color-ink-50), var(--color-paper) 58%)" }}
     >
-      <div className="flex items-center justify-between text-[13px]" style={{ color: "rgba(233,233,237,.55)" }}>
+      <div className="flex items-center justify-between text-[13px]" style={{ color: "var(--color-ink-600)" }}>
         <button type="button" onClick={goBack} className="flex items-center gap-[3px]" style={{ color: "inherit" }}>
           <CaretLeft size={14} weight="regular" aria-hidden="true" />
           {backLabel}
         </button>
-        <button type="button" onClick={() => setShowAdd((v) => !v)} className="flex items-center gap-[5px] text-[12.5px] font-medium" style={{ color: "#b5abfc" }}>
+        <button type="button" onClick={() => setShowAdd((v) => !v)} className="flex items-center gap-[5px] text-[12.5px] font-medium" style={{ color: "var(--color-brand-700)" }}>
           <Plus size={14} weight="regular" aria-hidden="true" />
           Add
         </button>
@@ -517,7 +517,7 @@ export default function Sources() {
       <div className="mt-2.5 text-[26px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
         Sources
       </div>
-      <div className="mt-0.5 text-[12px]" style={{ color: "rgba(233,233,237,.5)" }}>
+      <div className="mt-0.5 text-[12px]" style={{ color: "var(--color-ink-400)" }}>
         {sources.length} source{sources.length === 1 ? "" : "s"} · {activeCount} active · {overallPct}% through everything you've added
       </div>
 
@@ -528,7 +528,7 @@ export default function Sources() {
             type="button"
             onClick={() => setFilter(f.key)}
             className="shrink-0 rounded-full px-[11px] py-[5px] text-[12px] whitespace-nowrap"
-            style={{ background: filter === f.key ? "rgba(145,132,217,.22)" : "#20222f", color: filter === f.key ? "#d2cefd" : "rgba(233,233,237,.6)" }}
+            style={{ background: filter === f.key ? "var(--color-brand-100)" : "var(--color-ink-50)", color: filter === f.key ? "var(--color-brand-800)" : "var(--color-ink-600)" }}
           >
             {f.label}
           </button>
@@ -545,7 +545,7 @@ export default function Sources() {
         <SourceGrid
           sources={shown}
           empty={
-            <p className="py-8 text-center text-[13.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
+            <p className="py-8 text-center text-[13.5px]" style={{ color: "var(--color-ink-600)" }}>
               No sources yet — add one above.
             </p>
           }
@@ -572,7 +572,7 @@ export default function Sources() {
             <div className="text-[19px] leading-tight font-medium" style={{ letterSpacing: "-.02em" }}>
               Sources
             </div>
-            <div className="text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+            <div className="text-[11px]" style={{ color: "var(--color-ink-400)" }}>
               {sources.length} source{sources.length === 1 ? "" : "s"} · {activeCount} active · {overallPct}% through everything you've added
             </div>
           </div>
@@ -594,7 +594,7 @@ export default function Sources() {
               type="button"
               onClick={() => setFilter(f.key)}
               className="rounded-full px-[11px] py-[5px] text-[12px] whitespace-nowrap"
-              style={{ background: filter === f.key ? "rgba(145,132,217,.22)" : "#20222f", color: filter === f.key ? "#d2cefd" : "rgba(233,233,237,.6)" }}
+              style={{ background: filter === f.key ? "var(--color-brand-100)" : "var(--color-ink-50)", color: filter === f.key ? "var(--color-brand-800)" : "var(--color-ink-600)" }}
             >
               {f.label}
             </button>
@@ -606,7 +606,7 @@ export default function Sources() {
         <SourceGrid
           sources={shown}
           empty={
-            <p className="py-8 text-center text-[13.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
+            <p className="py-8 text-center text-[13.5px]" style={{ color: "var(--color-ink-600)" }}>
               No sources yet — add one above.
             </p>
           }

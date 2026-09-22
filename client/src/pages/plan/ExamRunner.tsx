@@ -89,7 +89,7 @@ export default function ExamRunner() {
 
   if (result) {
     return (
-      <div className="flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)]" style={{ background: "radial-gradient(100% 42% at 50% 14%, #262a60 0%, #161826 70%)" }}>
+      <div className="flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)]" style={{ background: "radial-gradient(100% 42% at 50% 14%, var(--color-ink-50) 0%, var(--color-paper) 70%)" }}>
         <TestDone attempt={result} onHome={() => goBack()} onSeeNextLevel={() => goBack()} />
       </div>
     );
@@ -97,9 +97,9 @@ export default function ExamRunner() {
 
   if (startError) {
     return (
-      <div className="flex min-h-[calc(100dvh-40px)] flex-col items-center justify-center gap-3 px-5 text-center" style={{ background: "#161826" }}>
-        <p style={{ color: "rgba(233,233,237,.6)" }}>{startError}</p>
-        <button type="button" onClick={goBack} className="text-[13px]" style={{ color: "#b5abfc" }}>
+      <div className="flex min-h-[calc(100dvh-40px)] flex-col items-center justify-center gap-3 px-5 text-center" style={{ background: "var(--color-paper)" }}>
+        <p style={{ color: "var(--color-ink-600)" }}>{startError}</p>
+        <button type="button" onClick={goBack} className="text-[13px]" style={{ color: "var(--color-brand-700)" }}>
           ‹ Back
         </button>
       </div>
@@ -108,7 +108,7 @@ export default function ExamRunner() {
 
   if (!session) {
     return (
-      <div className="flex min-h-[calc(100dvh-40px)] flex-col gap-3 px-5 pt-[calc(env(safe-area-inset-top)+18px)]" style={{ background: "#161826" }}>
+      <div className="flex min-h-[calc(100dvh-40px)] flex-col gap-3 px-5 pt-[calc(env(safe-area-inset-top)+18px)]" style={{ background: "var(--color-paper)" }}>
         <Skeleton className="h-6 w-40" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -119,15 +119,15 @@ export default function ExamRunner() {
   const answered = answers[q.qid] !== undefined;
 
   return (
-    <div className="flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)]" style={{ background: "radial-gradient(120% 50% at 50% 0%, #1d2033, #161826 62%)" }}>
+    <div className="flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)]" style={{ background: "radial-gradient(120% 50% at 50% 0%, var(--color-ink-50), var(--color-paper) 62%)" }}>
       <div className="flex items-center gap-2.5">
-        <button type="button" onClick={close} aria-label="Leave exam" style={{ color: "rgba(233,233,237,.55)" }}>
+        <button type="button" onClick={close} aria-label="Leave exam" style={{ color: "var(--color-ink-600)" }}>
           <X size={19} weight="regular" aria-hidden="true" />
         </button>
-        <div className="h-[5px] flex-1 overflow-hidden rounded-full" style={{ background: "#292b31" }}>
-          <div className="h-full rounded-full transition-[width] duration-300" style={{ width: `${(index / session.questions.length) * 100}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }} />
+        <div className="h-[5px] flex-1 overflow-hidden rounded-full" style={{ background: "var(--color-hairline-soft)" }}>
+          <div className="h-full rounded-full transition-[width] duration-300" style={{ width: `${(index / session.questions.length) * 100}%`, background: "linear-gradient(90deg,var(--color-brand-solid),var(--color-brand-700))" }} />
         </div>
-        <div className="min-w-[42px] text-right text-[12px]" style={{ color: "rgba(233,233,237,.5)" }}>
+        <div className="min-w-[42px] text-right text-[12px]" style={{ color: "var(--color-ink-400)" }}>
           {index + 1}/{session.questions.length}
         </div>
       </div>
@@ -136,7 +136,7 @@ export default function ExamRunner() {
         <div className="mt-2.5 flex justify-center">
           <span
             className="flex items-center gap-1 rounded-full px-2 py-1 text-micro"
-            style={{ background: secondsLeft < 120 ? "rgba(209,155,134,.16)" : "rgba(145,132,217,.14)", color: secondsLeft < 120 ? "#e4c4b6" : "#b5abfc" }}
+            style={{ background: secondsLeft < 120 ? "var(--color-danger-100)" : "var(--color-brand-50)", color: secondsLeft < 120 ? "var(--color-danger-700)" : "var(--color-brand-700)" }}
           >
             <Timer size={10} weight="regular" aria-hidden="true" />
             {formatClock(secondsLeft)} left
@@ -146,7 +146,7 @@ export default function ExamRunner() {
 
       <div className="flex flex-1 flex-col justify-center gap-5 py-6">
         <div>
-          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-600)" }}>
             {q.section.replace("_", " ")}
           </div>
           <div className="mt-2 text-[20px] leading-snug font-medium">{q.prompt}</div>
@@ -162,7 +162,7 @@ export default function ExamRunner() {
                   type="button"
                   onClick={() => recordAnswer(q.qid, i)}
                   className="rounded-[11px] p-3.5 text-left text-[14.5px]"
-                  style={{ border: `1px solid ${selected ? "#9184d9" : "rgba(233,233,237,.14)"}`, background: selected ? "rgba(145,132,217,.13)" : "transparent", color: selected ? "#d2cefd" : "#e9e9ed" }}
+                  style={{ border: `1px solid ${selected ? "var(--color-brand-500)" : "var(--color-hairline)"}`, background: selected ? "var(--color-brand-100)" : "transparent", color: selected ? "var(--color-brand-800)" : "var(--color-ink-900)" }}
                 >
                   {choice}
                 </button>
@@ -181,7 +181,7 @@ export default function ExamRunner() {
                   type="button"
                   onClick={() => recordAnswer(q.qid, v)}
                   className="flex-1 rounded-[11px] p-3.5 text-[15px] font-medium"
-                  style={{ border: `1px solid ${selected ? "#9184d9" : "rgba(233,233,237,.14)"}`, background: selected ? "rgba(145,132,217,.13)" : "transparent", color: selected ? "#d2cefd" : "#e9e9ed" }}
+                  style={{ border: `1px solid ${selected ? "var(--color-brand-500)" : "var(--color-hairline)"}`, background: selected ? "var(--color-brand-100)" : "transparent", color: selected ? "var(--color-brand-800)" : "var(--color-ink-900)" }}
                 >
                   {v ? "Richtig" : "Falsch"}
                 </button>
@@ -200,7 +200,7 @@ export default function ExamRunner() {
             }}
             placeholder="Type your answer…"
             className="box-border w-full rounded-[11px] px-[13px] py-3 text-[16px] outline-none"
-            style={{ background: "#20222f", color: "#e9e9ed", border: "1px solid #9184d9" }}
+            style={{ background: "var(--color-ink-50)", color: "var(--color-ink-900)", border: "1px solid var(--color-brand-500)" }}
           />
         )}
       </div>

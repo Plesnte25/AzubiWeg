@@ -102,19 +102,19 @@ export function ExamSchedule({
   return (
     <BottomSheet open={open} onClose={onClose}>
       <div className="flex items-center gap-[9px]">
-        <div className="grid size-9 shrink-0 place-items-center rounded-[11px]" style={{ background: "rgba(145,132,217,.18)" }}>
-          <FlagPennant size={18} weight="regular" style={{ color: "#d2cefd" }} aria-hidden="true" />
+        <div className="grid size-9 shrink-0 place-items-center rounded-[11px]" style={{ background: "var(--color-brand-100)" }}>
+          <FlagPennant size={18} weight="regular" style={{ color: "var(--color-brand-800)" }} aria-hidden="true" />
         </div>
         <div className="flex-1">
           <div className="text-[17px] font-medium">Schedule your exam</div>
-          <div className="mt-0.5 text-[11.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="mt-0.5 text-[11.5px]" style={{ color: "var(--color-ink-400)" }}>
             {isFresh ? "No exam target set yet" : `Currently ${new Date(`${syllabus!.routePace.examTargetDate}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`}
           </div>
         </div>
       </div>
 
       <div className="mt-4">
-        <div className="mb-[7px] text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
+        <div className="mb-[7px] text-[11px]" style={{ color: "var(--color-ink-400)" }}>
           Exam date
         </div>
         <input
@@ -123,9 +123,9 @@ export function ExamSchedule({
           min={addDays(today, 1)}
           onChange={(e) => setPicked(e.target.value)}
           className="box-border w-full rounded-[11px] px-[13px] text-[15px] outline-none"
-          style={{ minHeight: 46, background: "#20222f", color: "#e9e9ed", border: "1px solid rgba(233,233,237,.14)" }}
+          style={{ minHeight: 46, background: "var(--color-ink-50)", color: "var(--color-ink-900)", border: "1px solid var(--color-hairline)" }}
         />
-        <div className="mt-[9px] flex items-start gap-[7px] text-[11.5px] leading-[1.45]" style={{ color: comfortable ? "#b5abfc" : "#e4c4b6" }}>
+        <div className="mt-[9px] flex items-start gap-[7px] text-[11.5px] leading-[1.45]" style={{ color: comfortable ? "var(--color-brand-700)" : "var(--color-danger-700)" }}>
           <Sparkle size={13} weight="fill" className="mt-0.5 shrink-0" aria-hidden="true" />
           {note}
         </div>
@@ -141,7 +141,7 @@ export function ExamSchedule({
               type="button"
               onClick={() => setPicked(iso)}
               className="flex-1 rounded-[10px] py-2 text-[12.5px]"
-              style={{ border: `1px solid ${on ? "#9184d9" : "rgba(233,233,237,.14)"}`, background: on ? "rgba(145,132,217,.16)" : "transparent", color: on ? "#d2cefd" : "rgba(233,233,237,.62)" }}
+              style={{ border: `1px solid ${on ? "var(--color-brand-500)" : "var(--color-hairline)"}`, background: on ? "var(--color-brand-100)" : "transparent", color: on ? "var(--color-brand-800)" : "var(--color-ink-600)" }}
             >
               {n} d
             </button>
@@ -150,15 +150,15 @@ export function ExamSchedule({
       </div>
 
       {picked && pickedDays >= 1 && (
-        <div className="mt-4 rounded-xl p-3" style={{ background: "#20222f" }}>
-          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+        <div className="mt-4 rounded-xl p-3" style={{ background: "var(--color-ink-50)" }}>
+          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-600)" }}>
             What this sets
           </div>
-          <div className="mt-2 flex items-center gap-2 text-[12.5px]" style={{ color: "rgba(233,233,237,.65)" }}>
+          <div className="mt-2 flex items-center gap-2 text-[12.5px]" style={{ color: "var(--color-ink-600)" }}>
             {neededPerWeek > 0 ? `~${neededPerWeek} syllabus items a week to stay on pace` : "Pace recalculates once you have items left to plan"}
           </div>
           {neededPerWeek > 0 && sustainablePerWeek !== null && (
-            <div className="mt-1.5 flex items-start gap-[7px] text-[11.5px] leading-[1.45]" style={{ color: feasible ? "rgba(233,233,237,.5)" : "#e4c4b6" }}>
+            <div className="mt-1.5 flex items-start gap-[7px] text-[11.5px] leading-[1.45]" style={{ color: feasible ? "var(--color-ink-400)" : "var(--color-danger-700)" }}>
               {feasible
                 ? `Within your study-capacity setting (~${sustainablePerWeek}/week sustainable).`
                 : `That's above your study-capacity setting (~${sustainablePerWeek}/week sustainable) — consider a later date or raising capacity in Settings.`}
@@ -168,7 +168,7 @@ export function ExamSchedule({
       )}
 
       <div className="mt-4 flex gap-[9px] pb-1">
-        <button type="button" onClick={onClose} className="min-h-[46px] flex-1 rounded-[11px] text-[14px] font-medium" style={{ background: "#20222f" }}>
+        <button type="button" onClick={onClose} className="min-h-[46px] flex-1 rounded-[11px] text-[14px] font-medium" style={{ background: "var(--color-ink-50)" }}>
           Cancel
         </button>
         <button

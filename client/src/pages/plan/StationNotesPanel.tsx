@@ -46,10 +46,10 @@ export function StationNotesPanel({
   return (
     <div className="flex min-h-0 flex-col">
       <div className="flex items-center justify-between">
-        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-600)" }}>
           Notes · this station
         </div>
-        <button type="button" onClick={focusComposer} className="flex items-center gap-1 text-[11.5px] font-medium" style={{ color: "#b5abfc" }}>
+        <button type="button" onClick={focusComposer} className="flex items-center gap-1 text-[11.5px] font-medium" style={{ color: "var(--color-brand-700)" }}>
           <Plus size={12} weight="bold" aria-hidden="true" />
           New
         </button>
@@ -72,9 +72,9 @@ export function StationNotesPanel({
         }}
         className="mt-3 rounded-[11px] px-3 py-3.5 text-center text-[11.5px]"
         style={{
-          border: `1.5px dashed ${dragOver ? "#9184d9" : "rgba(145,132,217,.35)"}`,
-          background: dragOver ? "rgba(145,132,217,.1)" : "transparent",
-          color: "rgba(233,233,237,.5)",
+          border: `1.5px dashed ${dragOver ? "var(--color-brand-500)" : "var(--color-brand-500)"}`,
+          background: dragOver ? "var(--color-brand-50)" : "transparent",
+          color: "var(--color-ink-400)",
         }}
       >
         Drag a task here to attach a note to it
@@ -82,21 +82,21 @@ export function StationNotesPanel({
 
       <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {notes.length === 0 ? (
-          <p className="py-6 text-center text-[12px]" style={{ color: "rgba(233,233,237,.62)" }}>
+          <p className="py-6 text-center text-[12px]" style={{ color: "var(--color-ink-600)" }}>
             No notes for this station yet.
           </p>
         ) : (
           notes.map((note) => {
             const linkedItem = station.items.find((i) => i.id === note.syllabusItemId);
             return (
-              <div key={note.id} className="rounded-xl p-2.5" style={{ background: "#1c1f2c" }}>
+              <div key={note.id} className="rounded-xl p-2.5" style={{ background: "var(--color-card)" }}>
                 {linkedItem ? (
-                  <div className="mb-1 flex items-center gap-1 text-micro font-medium" style={{ color: "#d2cefd" }}>
+                  <div className="mb-1 flex items-center gap-1 text-micro font-medium" style={{ color: "var(--color-brand-800)" }}>
                     <LinkSimple size={10} weight="regular" aria-hidden="true" />
                     {linkedItem.title}
                   </div>
                 ) : (
-                  <div className="mb-1 text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
+                  <div className="mb-1 text-micro" style={{ color: "var(--color-ink-600)" }}>
                     not linked to a task
                   </div>
                 )}
@@ -107,17 +107,17 @@ export function StationNotesPanel({
         )}
       </div>
 
-      <div id="station-notes-composer" className="mt-2.5 rounded-[11px] p-2.5" style={{ border: "1px solid rgba(233,233,237,.14)" }}>
+      <div id="station-notes-composer" className="mt-2.5 rounded-[11px] p-2.5" style={{ border: "1px solid var(--color-hairline)" }}>
         {composerItem ? (
           <>
-            <div className="mb-1.5 flex items-center gap-1 text-micro font-medium" style={{ color: "#b5abfc" }}>
+            <div className="mb-1.5 flex items-center gap-1 text-micro font-medium" style={{ color: "var(--color-brand-700)" }}>
               <LinkSimple size={10} weight="regular" aria-hidden="true" />
               Note for: {composerItem.title}
             </div>
             <NoteComposer key={composerItem.id} syllabusItemId={composerItem.id} onCreated={invalidate} />
           </>
         ) : (
-          <p className="text-[12px]" style={{ color: "rgba(233,233,237,.62)" }}>
+          <p className="text-[12px]" style={{ color: "var(--color-ink-600)" }}>
             Add an item to this station to start taking notes.
           </p>
         )}

@@ -50,13 +50,13 @@ export function SelfTestDone({
     <div className="flex flex-1 flex-col text-center">
       <div className="mt-4 grid place-items-center">
         <svg width="146" height="146" viewBox="0 0 120 120" style={{ transform: "rotate(-90deg)", position: "absolute" }}>
-          <circle cx="60" cy="60" r={RING_RADIUS} fill="none" stroke="#292b31" strokeWidth="6" />
+          <circle cx="60" cy="60" r={RING_RADIUS} fill="none" stroke="var(--color-hairline-soft)" strokeWidth="6" />
           <circle
             cx="60"
             cy="60"
             r={RING_RADIUS}
             fill="none"
-            stroke="#9184d9"
+            stroke="var(--color-brand-500)"
             strokeWidth="6"
             strokeLinecap="round"
             strokeDasharray={RING_CIRCUMFERENCE}
@@ -69,7 +69,7 @@ export function SelfTestDone({
             <div className="text-[42px] leading-none font-medium" style={{ letterSpacing: "-.04em" }}>
               {percent}%
             </div>
-            <div className="mt-1.5 text-micro tracking-[.12em] uppercase" style={{ color: "#b5abfc" }}>
+            <div className="mt-1.5 text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-brand-700)" }}>
               scored
             </div>
           </div>
@@ -80,14 +80,14 @@ export function SelfTestDone({
         <div className="text-[26px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
           Test done.
         </div>
-        <div className="mt-1.5 text-[13px]" style={{ color: "rgba(233,233,237,.6)" }}>
+        <div className="mt-1.5 text-[13px]" style={{ color: "var(--color-ink-600)" }}>
           {correctCount} of {total} correct · {formatClock(elapsedSeconds)}
         </div>
       </div>
 
       {byTopic.size > 0 && (
         <div className="mt-6 text-left">
-          <div className="mb-2.5 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+          <div className="mb-2.5 text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-400)" }}>
             By topic
           </div>
           <div className="flex flex-col gap-2.5">
@@ -97,12 +97,12 @@ export function SelfTestDone({
                 <div key={topic}>
                   <div className="mb-1 flex justify-between text-[13px]">
                     <span>{topic}</span>
-                    <span style={{ color: "rgba(233,233,237,.5)" }}>
+                    <span style={{ color: "var(--color-ink-400)" }}>
                       {v.correct}/{v.total}
                     </span>
                   </div>
-                  <div className="h-[5px] overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
-                    <div className="h-full rounded-[3px]" style={{ width: `${pct}%`, background: pct >= 70 ? "#9184d9" : "#d19b86" }} />
+                  <div className="h-[5px] overflow-hidden rounded-[3px]" style={{ background: "var(--color-hairline-soft)" }}>
+                    <div className="h-full rounded-[3px]" style={{ width: `${pct}%`, background: pct >= 70 ? "var(--color-brand-500)" : "var(--color-danger-600)" }} />
                   </div>
                 </div>
               );
@@ -116,13 +116,13 @@ export function SelfTestDone({
           type="button"
           onClick={onReviewWrong}
           className="mt-5 rounded-xl p-3 text-left"
-          style={{ background: "#1c1f2c", boxShadow: "0 0 0 1px rgba(233,233,237,.08)" }}
+          style={{ background: "var(--color-card)", boxShadow: "0 0 0 1px var(--color-hairline-soft)" }}
         >
-          <div className="flex items-center gap-2 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="flex items-center gap-2 text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-600)" }}>
             <XCircle size={13} weight="regular" aria-hidden="true" />
             {wrongCount} wrong
           </div>
-          <div className="mt-1.5 text-[12.5px]" style={{ color: "#b5abfc" }}>
+          <div className="mt-1.5 text-[12.5px]" style={{ color: "var(--color-brand-700)" }}>
             Review them now →
           </div>
         </button>
@@ -133,7 +133,7 @@ export function SelfTestDone({
           type="button"
           onClick={() => push("/notes/edit/new", { state: { contextTag: "/Self-tests" } })}
           className="flex min-h-[48px] flex-1 items-center justify-center gap-[7px] rounded-[11px] text-[14px] font-medium"
-          style={{ background: "#20222f" }}
+          style={{ background: "var(--color-ink-50)" }}
         >
           <NotePencil size={15} weight="regular" aria-hidden="true" />
           Note

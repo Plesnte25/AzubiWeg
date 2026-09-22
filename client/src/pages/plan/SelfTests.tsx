@@ -27,16 +27,16 @@ export default function SelfTests() {
   const { data: examStatus } = useQuery({ queryKey: ["learning", "exam", "status"], queryFn: api.examStatus });
 
   if (isLoading || !quizResults) {
-    return <div className="-mx-4 -my-4 min-h-[calc(100dvh-40px)]" style={{ background: "#161826" }} />;
+    return <div className="-mx-4 -my-4 min-h-[calc(100dvh-40px)]" style={{ background: "var(--color-paper)" }} />;
   }
 
   const weakest = quizResults.weakestTopics;
 
   return (
     <div
-      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col overflow-y-auto bg-[radial-gradient(110%_42%_at_78%_4%,#252a4d,#161826_60%)] px-[18px] pt-[calc(env(safe-area-inset-top)+18px)] pb-[calc(env(safe-area-inset-bottom)+90px)] lg:mx-0 lg:my-0 lg:min-h-0 lg:max-w-[760px] lg:bg-none lg:px-[60px] lg:py-[26px]"
+      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col overflow-y-auto bg-[radial-gradient(110%_42%_at_78%_4%,var(--color-ink-50),var(--color-paper)_60%)] px-[18px] pt-[calc(env(safe-area-inset-top)+18px)] pb-[calc(env(safe-area-inset-bottom)+90px)] lg:mx-0 lg:my-0 lg:min-h-0 lg:max-w-[760px] lg:bg-none lg:px-[60px] lg:py-[26px]"
     >
-      <div className="flex items-center justify-between text-[13px]" style={{ color: "rgba(233,233,237,.55)" }}>
+      <div className="flex items-center justify-between text-[13px]" style={{ color: "var(--color-ink-600)" }}>
         <button type="button" onClick={goBack} className="flex items-center gap-[3px]" style={{ color: "inherit" }}>
           <CaretLeft size={14} weight="regular" aria-hidden="true" />
           {backLabel}
@@ -52,32 +52,32 @@ export default function SelfTests() {
       <div className="mt-2.5 text-[26px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
         Self-tests
       </div>
-      <div className="mt-0.5 text-[12px]" style={{ color: "rgba(233,233,237,.5)" }}>
+      <div className="mt-0.5 text-[12px]" style={{ color: "var(--color-ink-400)" }}>
         Vocabulary, grammar, real-life situations — adapts to your recent scores.
       </div>
 
       <div className="mt-4 flex gap-[9px]">
-        <div className="flex-1 rounded-xl p-3" style={{ background: "#1c1f2c" }}>
+        <div className="flex-1 rounded-xl p-3" style={{ background: "var(--color-card)" }}>
           <div className="text-[21px] font-medium">{quizResults.avg === null ? "—" : `${quizResults.avg}%`}</div>
-          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "var(--color-ink-400)" }}>
             avg · {quizResults.testsTaken} test{quizResults.testsTaken === 1 ? "" : "s"} taken
           </div>
         </div>
-        <div className="flex-1 rounded-xl p-3" style={{ background: "#1c1f2c" }}>
-          <div className="truncate text-[21px] font-medium" style={{ color: "#b5abfc" }}>
+        <div className="flex-1 rounded-xl p-3" style={{ background: "var(--color-card)" }}>
+          <div className="truncate text-[21px] font-medium" style={{ color: "var(--color-brand-700)" }}>
             {weakest[0]?.topic ?? "—"}
           </div>
-          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "var(--color-ink-400)" }}>
             weakest area
           </div>
         </div>
       </div>
 
       {showHistory && (
-        <div className="mt-3 flex flex-col gap-1.5 rounded-xl p-3" style={{ background: "#1c1f2c" }}>
+        <div className="mt-3 flex flex-col gap-1.5 rounded-xl p-3" style={{ background: "var(--color-card)" }}>
           {quizResults.results.slice(0, 8).map((r) => (
             <div key={r.id} className="flex items-center justify-between text-[12.5px]">
-              <span style={{ color: "rgba(233,233,237,.6)" }}>{new Date(r.takenAt).toLocaleDateString()}</span>
+              <span style={{ color: "var(--color-ink-600)" }}>{new Date(r.takenAt).toLocaleDateString()}</span>
               <span className="font-medium">
                 {r.score}/{r.total}
               </span>
@@ -89,23 +89,23 @@ export default function SelfTests() {
       <div className="mt-5 flex flex-1 flex-col gap-[9px]">
         {weakest.length > 0 && (
           <>
-            <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+            <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-600)" }}>
               Weakest areas
             </div>
             {weakest.map((w) => (
-              <div key={w.topic} className="flex items-center gap-[13px] rounded-xl p-3.5" style={{ background: "#20222f" }}>
-                <div className="grid size-[38px] shrink-0 place-items-center rounded-[11px]" style={{ background: "#292b31", color: "rgba(233,233,237,.7)" }}>
+              <div key={w.topic} className="flex items-center gap-[13px] rounded-xl p-3.5" style={{ background: "var(--color-ink-50)" }}>
+                <div className="grid size-[38px] shrink-0 place-items-center rounded-[11px]" style={{ background: "var(--color-hairline-soft)", color: "var(--color-ink-700)" }}>
                   <Target size={19} weight="regular" aria-hidden="true" />
                 </div>
                 <div className="flex-1">
                   <div className="text-[15px] font-medium">{w.topic}</div>
-                  <div className="text-[11.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+                  <div className="text-[11.5px]" style={{ color: "var(--color-ink-400)" }}>
                     {w.correct} of {w.total} correct recently
                   </div>
                 </div>
                 <span
                   className="shrink-0 rounded-full px-2 py-[3px] text-micro"
-                  style={{ background: "rgba(209,155,134,.16)", color: "#e4c4b6" }}
+                  style={{ background: "var(--color-danger-100)", color: "var(--color-danger-700)" }}
                 >
                   {w.percent}%
                 </span>
@@ -118,15 +118,15 @@ export default function SelfTests() {
           type="button"
           onClick={() => push("/plan/self-tests/run", { state: { size: Math.round(length / 1.5) } })}
           className="mt-2 rounded-xl p-3.5 text-left"
-          style={{ border: "1px solid rgba(145,132,217,.35)", background: "rgba(145,132,217,.07)" }}
+          style={{ border: "1px solid var(--color-brand-500)", background: "var(--color-brand-50)" }}
         >
           <div className="flex items-center gap-[9px]">
-            <Sparkle size={16} weight="regular" style={{ color: "#b5abfc" }} aria-hidden="true" />
-            <div className="text-[13.5px] font-medium" style={{ color: "#d2cefd" }}>
+            <Sparkle size={16} weight="regular" style={{ color: "var(--color-brand-700)" }} aria-hidden="true" />
+            <div className="text-[13.5px] font-medium" style={{ color: "var(--color-brand-800)" }}>
               Mixed test from your mistakes
             </div>
           </div>
-          <div className="mt-[5px] text-[11.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="mt-[5px] text-[11.5px]" style={{ color: "var(--color-ink-400)" }}>
             A short adaptive session, weighted to your recent scores
           </div>
         </button>
@@ -136,10 +136,10 @@ export default function SelfTests() {
             type="button"
             onClick={() => push("/plan/exam-gate")}
             className="mt-auto flex items-center justify-between rounded-xl p-3 text-left"
-            style={{ border: "1px solid rgba(145,132,217,.35)", background: "rgba(145,132,217,.07)" }}
+            style={{ border: "1px solid var(--color-brand-500)", background: "var(--color-brand-50)" }}
           >
             <div>
-              <div className="text-micro tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+              <div className="text-micro tracking-[.1em] uppercase" style={{ color: "var(--color-ink-600)" }}>
                 Gate to {NEXT_LEVEL[examStatus.level] ?? "next level"}
               </div>
               <div className="mt-0.5 text-[13.5px] font-medium">
@@ -147,7 +147,7 @@ export default function SelfTests() {
                 {examStatus.reason === "already_passed" ? "passed" : examStatus.reason === "cooldown" ? "cooling down" : "unlocked"}
               </div>
             </div>
-            <FlagPennant size={16} weight="regular" style={{ color: "#b5abfc" }} aria-hidden="true" />
+            <FlagPennant size={16} weight="regular" style={{ color: "var(--color-brand-700)" }} aria-hidden="true" />
           </button>
         )}
       </div>
@@ -160,8 +160,8 @@ export default function SelfTests() {
             onClick={() => setLength(n)}
             className="rounded-full px-2.5 py-1 text-[11.5px] font-medium"
             style={{
-              background: length === n ? "rgba(145,132,217,.22)" : "#20222f",
-              color: length === n ? "#d2cefd" : "rgba(233,233,237,.6)",
+              background: length === n ? "var(--color-brand-100)" : "var(--color-ink-50)",
+              color: length === n ? "var(--color-brand-800)" : "var(--color-ink-600)",
             }}
           >
             {n} · {Math.round(n * 1.1)} min

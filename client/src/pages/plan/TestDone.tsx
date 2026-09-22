@@ -36,13 +36,13 @@ export function TestDone({ attempt, onHome, onSeeNextLevel }: { attempt: ExamAtt
     <div className="flex flex-1 flex-col text-center">
       <div className="mt-4 grid place-items-center">
         <svg width="146" height="146" viewBox="0 0 120 120" style={{ transform: "rotate(-90deg)", position: "absolute" }}>
-          <circle cx="60" cy="60" r={RING_RADIUS} fill="none" stroke="#292b31" strokeWidth="6" />
+          <circle cx="60" cy="60" r={RING_RADIUS} fill="none" stroke="var(--color-hairline-soft)" strokeWidth="6" />
           <circle
             cx="60"
             cy="60"
             r={RING_RADIUS}
             fill="none"
-            stroke="#9184d9"
+            stroke="var(--color-brand-500)"
             strokeWidth="6"
             strokeLinecap="round"
             strokeDasharray={RING_CIRCUMFERENCE}
@@ -55,7 +55,7 @@ export function TestDone({ attempt, onHome, onSeeNextLevel }: { attempt: ExamAtt
             <div className="text-[42px] leading-none font-medium" style={{ letterSpacing: "-.04em" }}>
               {percent}%
             </div>
-            <div className="mt-1.5 text-micro tracking-[.12em] uppercase" style={{ color: "#b5abfc" }}>
+            <div className="mt-1.5 text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-brand-700)" }}>
               {passed ? "passed" : "scored"}
             </div>
           </div>
@@ -66,7 +66,7 @@ export function TestDone({ attempt, onHome, onSeeNextLevel }: { attempt: ExamAtt
         <div className="text-[26px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
           {passed ? `${LEVEL_LABELS[attempt.level]} exam passed.` : "Not quite there yet."}
         </div>
-        <div className="mt-1.5 text-[13px]" style={{ color: "rgba(233,233,237,.6)" }}>
+        <div className="mt-1.5 text-[13px]" style={{ color: "var(--color-ink-600)" }}>
           {score} of {total} correct
           {!passed && " — try again once your cooldown clears"}
         </div>
@@ -75,24 +75,24 @@ export function TestDone({ attempt, onHome, onSeeNextLevel }: { attempt: ExamAtt
       {passed && nextLevel && (
         <div
           className="mt-6 flex items-center gap-3 rounded-[14px] p-3.5 text-left"
-          style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a" }}
+          style={{ background: "linear-gradient(160deg,var(--color-brand-100),var(--color-brand-50))", boxShadow: "0 0 0 1px var(--color-brand-100)" }}
         >
-          <div className="grid size-[42px] shrink-0 place-items-center rounded-xl" style={{ background: "rgba(145,132,217,.18)" }}>
-            <Trophy size={21} weight="regular" style={{ color: "#b5abfc" }} aria-hidden="true" />
+          <div className="grid size-[42px] shrink-0 place-items-center rounded-xl" style={{ background: "var(--color-brand-100)" }}>
+            <Trophy size={21} weight="regular" style={{ color: "var(--color-brand-700)" }} aria-hidden="true" />
           </div>
           <div className="flex-1">
-            <div className="text-micro tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
+            <div className="text-micro tracking-[.1em] uppercase" style={{ color: "var(--color-brand-700)" }}>
               Level unlocked
             </div>
             <div className="mt-0.5 text-[16px] font-medium">{nextLevel} is now open</div>
           </div>
-          <CaretRight size={16} weight="regular" style={{ color: "#b5abfc" }} aria-hidden="true" />
+          <CaretRight size={16} weight="regular" style={{ color: "var(--color-brand-700)" }} aria-hidden="true" />
         </div>
       )}
 
       {attempt.sectionBreakdown && attempt.sectionBreakdown.length > 0 && (
         <div className="mt-6 text-left">
-          <div className="mb-2.5 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+          <div className="mb-2.5 text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-400)" }}>
             By section
           </div>
           <div className="flex flex-col gap-2.5">
@@ -104,12 +104,12 @@ export function TestDone({ attempt, onHome, onSeeNextLevel }: { attempt: ExamAtt
                 <div key={s}>
                   <div className="mb-1 flex justify-between text-[13px]">
                     <span>{SECTION_LABEL[s]}</span>
-                    <span style={{ color: "rgba(233,233,237,.5)" }}>
+                    <span style={{ color: "var(--color-ink-400)" }}>
                       {row.correct}/{row.total}
                     </span>
                   </div>
-                  <div className="h-[5px] overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
-                    <div className="h-full rounded-[3px]" style={{ width: `${pct}%`, background: pct >= 70 ? "#9184d9" : "#d19b86" }} />
+                  <div className="h-[5px] overflow-hidden rounded-[3px]" style={{ background: "var(--color-hairline-soft)" }}>
+                    <div className="h-full rounded-[3px]" style={{ width: `${pct}%`, background: pct >= 70 ? "var(--color-brand-500)" : "var(--color-danger-600)" }} />
                   </div>
                 </div>
               );
@@ -119,7 +119,7 @@ export function TestDone({ attempt, onHome, onSeeNextLevel }: { attempt: ExamAtt
       )}
 
       <div className="mt-auto flex gap-[9px] pb-4 pt-6">
-        <button type="button" onClick={onHome} className="min-h-[48px] flex-1 rounded-[11px] text-[14px] font-medium" style={{ background: "#20222f" }}>
+        <button type="button" onClick={onHome} className="min-h-[48px] flex-1 rounded-[11px] text-[14px] font-medium" style={{ background: "var(--color-ink-50)" }}>
           Home
         </button>
         {passed && nextLevel ? (

@@ -64,12 +64,12 @@ function TaskTimer({ task, onUpdate, pending }: { task: RoadmapTask; onUpdate: (
   const fillPct = Math.min(100, (elapsed / estimateSeconds) * 100);
 
   return (
-    <div className="rounded-[14px] p-4" style={{ background: "#20222f" }}>
+    <div className="rounded-[14px] p-4" style={{ background: "var(--color-ink-50)" }}>
       <div className="flex items-center justify-between">
-        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-400)" }}>
           Time logged
         </div>
-        <div className="text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+        <div className="text-[11px]" style={{ color: "var(--color-ink-400)" }}>
           {Math.round(elapsed / 60)} / {estimateMinutes(task)} min estimate
         </div>
       </div>
@@ -96,14 +96,14 @@ function TaskTimer({ task, onUpdate, pending }: { task: RoadmapTask; onUpdate: (
             if (confirm("Reset this task's logged time to 0?")) onUpdate({ timerAction: "reset" });
           }}
           className="hidden shrink-0 rounded-[9px] p-2 lg:grid lg:place-items-center"
-          style={{ color: "rgba(233,233,237,.5)" }}
+          style={{ color: "var(--color-ink-400)" }}
         >
           <ArrowCounterClockwise size={16} weight="regular" aria-hidden="true" />
         </button>
       </div>
 
-      <div className="mt-2.5 h-[5px] overflow-hidden rounded-[3px]" style={{ background: "rgba(233,233,237,.08)" }}>
-        <div className="h-full rounded-[3px]" style={{ width: `${fillPct}%`, background: "linear-gradient(to right,#423a6a,#9184d9)" }} />
+      <div className="mt-2.5 h-[5px] overflow-hidden rounded-[3px]" style={{ background: "var(--color-hairline-soft)" }}>
+        <div className="h-full rounded-[3px]" style={{ width: `${fillPct}%`, background: "linear-gradient(to right,var(--color-brand-100),var(--color-brand-500))" }} />
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -114,7 +114,7 @@ function TaskTimer({ task, onUpdate, pending }: { task: RoadmapTask; onUpdate: (
             disabled={pending}
             onClick={() => onUpdate({ setSeconds: elapsed + s })}
             className="rounded-full px-2.5 py-1 text-[11.5px]"
-            style={{ border: "1px solid rgba(233,233,237,.16)", color: "rgba(233,233,237,.7)" }}
+            style={{ border: "1px solid var(--color-hairline)", color: "var(--color-ink-700)" }}
           >
             +{s / 60} min
           </button>
@@ -135,7 +135,7 @@ function TaskTimer({ task, onUpdate, pending }: { task: RoadmapTask; onUpdate: (
               }}
               placeholder="min"
               className="w-16 rounded-[7px] px-2 py-1 text-[12.5px] outline-none"
-              style={{ background: "#161826", border: "1px solid rgba(233,233,237,.16)", color: "#e9e9ed" }}
+              style={{ background: "var(--color-paper)", border: "1px solid var(--color-hairline)", color: "var(--color-ink-900)" }}
             />
           </span>
         ) : (
@@ -146,7 +146,7 @@ function TaskTimer({ task, onUpdate, pending }: { task: RoadmapTask; onUpdate: (
               setManualOpen(true);
             }}
             className="text-[11.5px] font-medium"
-            style={{ color: "#b5abfc" }}
+            style={{ color: "var(--color-brand-700)" }}
           >
             Enter manually
           </button>
@@ -166,7 +166,7 @@ function TaskNotesSection({ task, onChanged }: { task: RoadmapTask; onChanged: (
   return (
     <div>
       <div className="flex items-center justify-between">
-        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-400)" }}>
           Notes on this task{notes.length > 0 ? ` (${notes.length})` : ""}
         </div>
       </div>
@@ -235,22 +235,22 @@ export function TaskDetailDrawer({
             onClick={() => toggle.mutate(!done)}
             aria-label={done ? "Mark not done" : "Mark done"}
             className="grid size-6 shrink-0 place-items-center rounded-full"
-            style={{ background: done ? "#9184d9" : "transparent", border: done ? "none" : "1px solid rgba(233,233,237,.25)" }}
+            style={{ background: done ? "var(--color-brand-500)" : "transparent", border: done ? "none" : "1px solid var(--color-hairline)" }}
           >
-            {done && <Check size={13} weight="bold" style={{ color: "#161826" }} aria-hidden="true" />}
+            {done && <Check size={13} weight="bold" style={{ color: "var(--color-paper)" }} aria-hidden="true" />}
           </button>
-          <h2 className={`text-[18px] font-medium ${done ? "line-through" : ""}`} style={{ color: done ? "rgba(233,233,237,.5)" : "#e9e9ed" }}>
+          <h2 className={`text-[18px] font-medium ${done ? "line-through" : ""}`} style={{ color: done ? "var(--color-ink-400)" : "var(--color-ink-900)" }}>
             {task.title}
           </h2>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {task.skill && (
-            <span className="rounded-full px-2.5 py-0.5 text-[11px] font-medium" style={{ background: "rgba(145,132,217,.16)", color: "#d2cefd" }}>
+            <span className="rounded-full px-2.5 py-0.5 text-[11px] font-medium" style={{ background: "var(--color-brand-100)", color: "var(--color-brand-800)" }}>
               {SKILL_LABELS[task.skill]}
             </span>
           )}
           {task.syllabusItem && (
-            <span className="rounded-full px-2.5 py-0.5 text-[11px]" style={{ background: "rgba(233,233,237,.08)", color: "rgba(233,233,237,.6)" }}>
+            <span className="rounded-full px-2.5 py-0.5 text-[11px]" style={{ background: "var(--color-hairline-soft)", color: "var(--color-ink-600)" }}>
               {task.syllabusItem.level.toUpperCase()}
               {task.syllabusItem.theme ? ` · ${task.syllabusItem.theme}` : ""}
             </span>
@@ -259,11 +259,11 @@ export function TaskDetailDrawer({
       </div>
 
       <div className="space-y-4">
-        {task.description && <p className="text-[13.5px]" style={{ color: "rgba(233,233,237,.62)" }}>{task.description}</p>}
+        {task.description && <p className="text-[13.5px]" style={{ color: "var(--color-ink-600)" }}>{task.description}</p>}
 
         <div className="flex flex-wrap items-center gap-4">
           {typeCta && !done && (
-            <button type="button" onClick={() => onNavigate(typeCta.to)} className="text-[13px] font-semibold" style={{ color: "#b5abfc" }}>
+            <button type="button" onClick={() => onNavigate(typeCta.to)} className="text-[13px] font-semibold" style={{ color: "var(--color-brand-700)" }}>
               {typeCta.label}
             </button>
           )}
@@ -272,7 +272,7 @@ export function TaskDetailDrawer({
               type="button"
               onClick={() => onNavigate("syllabus")}
               className="text-[13px] font-semibold"
-              style={{ color: "#b5abfc" }}
+              style={{ color: "var(--color-brand-700)" }}
             >
               View in syllabus →
             </button>
@@ -302,7 +302,7 @@ export function TaskDetailDrawer({
               Mark complete
             </span>
           </button>
-          <button type="button" onClick={close} className="min-h-[44px] flex-1 rounded-[11px] border text-[14px] font-medium" style={{ borderColor: "rgba(233,233,237,.16)" }}>
+          <button type="button" onClick={close} className="min-h-[44px] flex-1 rounded-[11px] border text-[14px] font-medium" style={{ borderColor: "var(--color-hairline)" }}>
             Done
           </button>
         </div>

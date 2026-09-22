@@ -50,7 +50,7 @@ export function FillInBlankView({
   return (
     <div
       className="flex min-h-[calc(100dvh-40px)] flex-col overflow-y-auto px-5 pt-[calc(env(safe-area-inset-top)+18px)] pb-[calc(env(safe-area-inset-bottom)+20px)] lg:mx-auto lg:max-w-[480px]"
-      style={{ background: "radial-gradient(120% 46% at 50% 0%, #1f2236, #161826 62%)" }}
+      style={{ background: "radial-gradient(120% 46% at 50% 0%, var(--color-ink-50), var(--color-paper) 62%)" }}
     >
       <div className="flex items-center gap-[11px]">
         <button
@@ -58,32 +58,32 @@ export function FillInBlankView({
           onClick={onClose}
           aria-label="Leave test"
           className="grid size-[30px] place-items-center"
-          style={{ color: "rgba(233,233,237,.55)" }}
+          style={{ color: "var(--color-ink-600)" }}
         >
           <X size={19} weight="regular" aria-hidden="true" />
         </button>
-        <div className="h-1 flex-1 overflow-hidden rounded-[2px]" style={{ background: "#292b31" }}>
+        <div className="h-1 flex-1 overflow-hidden rounded-[2px]" style={{ background: "var(--color-hairline-soft)" }}>
           <div
             className="h-full rounded-[2px] transition-[width] duration-400"
-            style={{ width: `${(qNum / qTotal) * 100}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }}
+            style={{ width: `${(qNum / qTotal) * 100}%`, background: "linear-gradient(90deg,var(--color-brand-solid),var(--color-brand-700))" }}
           />
         </div>
-        <span className="text-[12px]" style={{ color: "rgba(233,233,237,.5)" }}>
+        <span className="text-[12px]" style={{ color: "var(--color-ink-400)" }}>
           {qNum}/{qTotal}
         </span>
       </div>
 
       <div className="mt-5 flex items-center gap-[7px]">
-        <span className="rounded-full px-2 py-[3px] text-micro font-medium" style={{ background: "#20222f", color: "rgba(233,233,237,.6)" }}>
+        <span className="rounded-full px-2 py-[3px] text-micro font-medium" style={{ background: "var(--color-ink-50)", color: "var(--color-ink-600)" }}>
           Fill in the blank
         </span>
-        <span className="rounded-full px-2 py-[3px] text-micro font-medium" style={{ background: "rgba(145,132,217,.14)", color: "#b5abfc" }}>
+        <span className="rounded-full px-2 py-[3px] text-micro font-medium" style={{ background: "var(--color-brand-50)", color: "var(--color-brand-700)" }}>
           {topic}
         </span>
       </div>
 
       <div className="mt-4">
-        <div className="text-[11px] tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+        <div className="text-[11px] tracking-[.1em] uppercase" style={{ color: "var(--color-ink-400)" }}>
           Type your answer
         </div>
         <div className="mt-3 text-[19px] leading-[1.5] font-medium" style={{ letterSpacing: "-.02em" }}>
@@ -100,31 +100,31 @@ export function FillInBlankView({
           placeholder="…"
           className="mt-3 min-w-32 border-0 bg-transparent px-1 pb-1.5 text-center text-[17px] outline-none"
           style={{
-            color: "#e9e9ed",
-            borderBottom: `2px solid ${checked ? (correct ? "#9184d9" : "rgba(209,155,134,.7)") : "#5d5294"}`,
+            color: "var(--color-ink-900)",
+            borderBottom: `2px solid ${checked ? (correct ? "var(--color-brand-500)" : "var(--color-danger-600)") : "var(--color-brand-solid)"}`,
           }}
         />
         <div
           className="mt-3 text-[12px] leading-[1.5] transition-colors duration-200"
-          style={{ color: checked ? (correct ? "#b5abfc" : "#e4c4b6") : "rgba(233,233,237,.62)" }}
+          style={{ color: checked ? (correct ? "var(--color-brand-700)" : "var(--color-danger-700)") : "var(--color-ink-600)" }}
         >
           {checked ? feedback : "Case doesn't matter here."}
         </div>
         {checked && (
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             {notebookState.status === "idle" && (
-              <button type="button" disabled={adding} onClick={() => onAdd()} className="text-[11.5px] font-medium" style={{ color: "#b5abfc" }}>
+              <button type="button" disabled={adding} onClick={() => onAdd()} className="text-[11.5px] font-medium" style={{ color: "var(--color-brand-700)" }}>
                 {adding ? "Saving…" : "Add to notebook"}
               </button>
             )}
             {notebookState.status === "saved" && (
-              <span className="text-[11.5px]" style={{ color: "#9184d9" }}>
+              <span className="text-[11.5px]" style={{ color: "var(--color-brand-500)" }}>
                 Added to notebook
               </span>
             )}
             {notebookState.status === "pick" && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
+                <span className="text-[11px]" style={{ color: "var(--color-ink-400)" }}>
                   Which station?
                 </span>
                 {notebookState.candidates.map((theme) => (
@@ -133,7 +133,7 @@ export function FillInBlankView({
                     type="button"
                     onClick={() => onAdd(theme)}
                     className="rounded-full px-2 py-0.5 text-[11px]"
-                    style={{ border: "1px solid rgba(233,233,237,.16)", color: "rgba(233,233,237,.75)" }}
+                    style={{ border: "1px solid var(--color-hairline)", color: "var(--color-ink-700)" }}
                   >
                     {theme}
                   </button>
@@ -150,7 +150,7 @@ export function FillInBlankView({
             type="button"
             onClick={onSkip}
             className="min-h-[46px] flex-1 rounded-[11px] text-[14px] font-medium"
-            style={{ background: "#20222f" }}
+            style={{ background: "var(--color-ink-50)" }}
           >
             Skip
           </button>

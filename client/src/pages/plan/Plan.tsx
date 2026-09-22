@@ -83,14 +83,14 @@ function WeekStrip({
             onClick={() => onSelect(isToday ? null : plainDate)}
             className="flex flex-1 flex-col items-center gap-[3px] rounded-[9px] py-[7px]"
             style={{
-              background: isSelected ? "linear-gradient(160deg,#2b2741,#232532)" : isOverdue ? "rgba(209,155,134,.14)" : "#1c1f2c",
-              boxShadow: isSelected ? "0 0 0 1px #423a6a" : isOverdue ? "0 0 0 1px rgba(209,155,134,.35)" : "none",
+              background: isSelected ? "linear-gradient(160deg,var(--color-brand-100),var(--color-brand-50))" : isOverdue ? "var(--color-danger-100)" : "var(--color-card)",
+              boxShadow: isSelected ? "0 0 0 1px var(--color-brand-100)" : isOverdue ? "0 0 0 1px var(--color-danger-600)" : "none",
             }}
           >
-            <span className="text-micro opacity-75" style={{ color: isOverdue ? "#e4c4b6" : undefined }}>
+            <span className="text-micro opacity-75" style={{ color: isOverdue ? "var(--color-danger-700)" : undefined }}>
               {fmtWeekday(d.date)}
             </span>
-            <span className="text-[11px] font-medium" style={{ color: isOverdue ? "#e4c4b6" : undefined }}>
+            <span className="text-[11px] font-medium" style={{ color: isOverdue ? "var(--color-danger-700)" : undefined }}>
               {isDone ? (
                 <Check size={11} weight="bold" aria-hidden="true" />
               ) : d.total > 0 ? (
@@ -116,21 +116,21 @@ function TaskRow({ task, onToggle, onOpen }: { task: RoadmapTask; onToggle: (c: 
         aria-label={done ? "Mark not done" : "Mark done"}
         className="grid size-5 shrink-0 place-items-center rounded-full"
         style={{
-          background: done ? "#9184d9" : "transparent",
-          border: done ? "none" : "1px solid rgba(233,233,237,.25)",
+          background: done ? "var(--color-brand-500)" : "transparent",
+          border: done ? "none" : "1px solid var(--color-hairline)",
         }}
       >
-        {done && <Check size={13} weight="bold" style={{ color: "#161826" }} aria-hidden="true" />}
+        {done && <Check size={13} weight="bold" style={{ color: "var(--color-paper)" }} aria-hidden="true" />}
       </button>
       <div onClick={onOpen} className="min-w-0 flex-1 cursor-pointer">
-        <div className="truncate text-[14.5px]" style={{ color: done ? "rgba(233,233,237,.4)" : "#e9e9ed", textDecoration: done ? "line-through" : "none" }}>
+        <div className="truncate text-[14.5px]" style={{ color: done ? "var(--color-ink-400)" : "var(--color-ink-900)", textDecoration: done ? "line-through" : "none" }}>
           {task.title}
         </div>
-        <div className="mt-px text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+        <div className="mt-px text-[11px]" style={{ color: "var(--color-ink-400)" }}>
           {task.skill ? SKILL_LABELS[task.skill] : "General"} · ~{estimateMinutes(task)} min
         </div>
       </div>
-      <CaretDown size={15} weight="regular" style={{ color: "rgba(233,233,237,.3)", transform: "rotate(-90deg)" }} aria-hidden="true" />
+      <CaretDown size={15} weight="regular" style={{ color: "var(--color-ink-300)", transform: "rotate(-90deg)" }} aria-hidden="true" />
     </div>
   );
 }
@@ -139,7 +139,7 @@ function CapacityPicker({ value, onChange, pending }: { value: number; onChange:
   const options = [5, 20, 45, 90, 180, 330] as const;
   return (
     <div className="flex items-center gap-2 overflow-x-auto">
-      <span className="shrink-0 text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>Study capacity</span>
+      <span className="shrink-0 text-[11px]" style={{ color: "var(--color-ink-400)" }}>Study capacity</span>
       {options.map((minutes) => (
         <button
           key={minutes}
@@ -147,7 +147,7 @@ function CapacityPicker({ value, onChange, pending }: { value: number; onChange:
           disabled={pending}
           onClick={() => onChange(minutes)}
           className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium disabled:opacity-50"
-          style={{ background: value === minutes ? "#9184d9" : "#20222f", color: value === minutes ? "#161826" : "rgba(233,233,237,.65)" }}
+          style={{ background: value === minutes ? "var(--color-brand-500)" : "var(--color-ink-50)", color: value === minutes ? "var(--color-paper)" : "var(--color-ink-600)" }}
         >
           {minutes >= 60 ? `${minutes / 60}h` : `${minutes}m`}
         </button>
@@ -158,20 +158,20 @@ function CapacityPicker({ value, onChange, pending }: { value: number; onChange:
 
 function RevisionQueue({ words, onOpen }: { words: { id: string; headword: string; meaning: string | null }[]; onOpen: () => void }) {
   return (
-    <div className="rounded-xl p-3" style={{ background: "rgba(145,132,217,.12)", boxShadow: "0 0 0 1px rgba(145,132,217,.24)" }}>
+    <div className="rounded-xl p-3" style={{ background: "var(--color-brand-50)", boxShadow: "0 0 0 1px var(--color-brand-100)" }}>
       <div className="flex items-center justify-between">
         <div>
           <div className="text-[13px] font-semibold">Morning revision</div>
-          <div className="mt-0.5 text-[11px]" style={{ color: "rgba(233,233,237,.55)" }}>Start here · {words.length} due word{words.length === 1 ? "" : "s"}</div>
+          <div className="mt-0.5 text-[11px]" style={{ color: "var(--color-ink-600)" }}>Start here · {words.length} due word{words.length === 1 ? "" : "s"}</div>
         </div>
-        <button type="button" onClick={onOpen} className="rounded-full px-3 py-1.5 text-[11px] font-semibold" style={{ background: "#9184d9", color: "#161826" }}>
+        <button type="button" onClick={onOpen} className="rounded-full px-3 py-1.5 text-[11px] font-semibold" style={{ background: "var(--color-brand-500)", color: "var(--color-paper)" }}>
           Review
         </button>
       </div>
       {words.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {words.slice(0, 4).map((word) => (
-            <span key={word.id} className="rounded-full px-2 py-1 text-[11px]" style={{ background: "rgba(22,24,38,.45)", color: "rgba(233,233,237,.75)" }}>
+            <span key={word.id} className="rounded-full px-2 py-1 text-[11px]" style={{ background: "var(--color-hairline-soft)", color: "var(--color-ink-700)" }}>
               {word.headword}
             </span>
           ))}
@@ -184,13 +184,13 @@ function RevisionQueue({ words, onOpen }: { words: { id: string; headword: strin
 function TopicReviewQueue({ topics, onOpen }: { topics: { id: string; title: string; level: string }[]; onOpen: (id: string) => void }) {
   if (topics.length === 0) return null;
   return (
-    <div className="rounded-xl p-3" style={{ background: "rgba(209,155,134,.12)", boxShadow: "0 0 0 1px rgba(209,155,134,.24)" }}>
+    <div className="rounded-xl p-3" style={{ background: "var(--color-danger-100)", boxShadow: "0 0 0 1px var(--color-danger-100)" }}>
       <div className="text-[13px] font-semibold">Topic reviews due</div>
-      <div className="mt-0.5 text-[11px]" style={{ color: "rgba(233,233,237,.55)" }}>Revisit these topics before new learning.</div>
+      <div className="mt-0.5 text-[11px]" style={{ color: "var(--color-ink-600)" }}>Revisit these topics before new learning.</div>
       <div className="mt-2 space-y-1">
         {topics.map((topic) => (
           <button key={topic.id} type="button" onClick={() => onOpen(topic.id)} className="block w-full truncate rounded-lg px-2 py-1.5 text-left text-[12px] hover:bg-white/5">
-            <span style={{ color: "#e4c4b6" }}>{topic.level.toUpperCase()}</span> · {topic.title}
+            <span style={{ color: "var(--color-danger-700)" }}>{topic.level.toUpperCase()}</span> · {topic.title}
           </button>
         ))}
       </div>
@@ -213,12 +213,12 @@ function MistakeSummary({ mistakes }: { mistakes: { category: string; count: num
     other: "Other",
   };
   return (
-    <div className="rounded-xl p-3" style={{ background: "rgba(209,155,134,.08)", boxShadow: "0 0 0 1px rgba(209,155,134,.18)" }}>
+    <div className="rounded-xl p-3" style={{ background: "var(--color-danger-50)", boxShadow: "0 0 0 1px var(--color-danger-100)" }}>
       <div className="text-[13px] font-semibold">Focus areas</div>
-      <div className="mt-0.5 text-[11px]" style={{ color: "rgba(233,233,237,.55)" }}>Your recent exercise errors will shape future review.</div>
+      <div className="mt-0.5 text-[11px]" style={{ color: "var(--color-ink-600)" }}>Your recent exercise errors will shape future review.</div>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {mistakes.slice(0, 4).map((mistake) => (
-          <span key={mistake.category} className="rounded-full px-2 py-1 text-[11px]" style={{ background: "rgba(22,24,38,.45)", color: "#e4c4b6" }}>
+          <span key={mistake.category} className="rounded-full px-2 py-1 text-[11px]" style={{ background: "var(--color-hairline-soft)", color: "var(--color-danger-700)" }}>
             {labels[mistake.category] ?? mistake.category} · {mistake.count}
           </span>
         ))}
@@ -249,9 +249,9 @@ function DailyJournalCard({ date }: { date: string }) {
   });
 
   return (
-    <section className="rounded-xl p-3" style={{ background: "#20222f" }}>
+    <section className="rounded-xl p-3" style={{ background: "var(--color-ink-50)" }}>
       <div className="text-[13px] font-semibold">Daily journal</div>
-      <div className="mt-0.5 text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>Capture what to remember before you leave today.</div>
+      <div className="mt-0.5 text-[11px]" style={{ color: "var(--color-ink-400)" }}>Capture what to remember before you leave today.</div>
       <div className="mt-3 grid gap-2">
         {([
           ["learned", "What did you learn?"],
@@ -264,7 +264,7 @@ function DailyJournalCard({ date }: { date: string }) {
             onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}
             rows={2}
             placeholder={placeholder}
-            className="w-full resize-y rounded-lg border border-white/10 bg-[#161826] p-2 text-[12px] text-[#e9e9ed] outline-none placeholder:text-white/35 focus:border-[#9184d9]"
+            className="w-full resize-y rounded-lg border border-white/10 bg-[var(--color-paper)] p-2 text-[12px] text-[var(--color-ink-900)] outline-none placeholder:text-white/35 focus:border-[var(--color-brand-500)]"
           />
         ))}
       </div>
@@ -273,11 +273,11 @@ function DailyJournalCard({ date }: { date: string }) {
         disabled={save.isPending}
         onClick={() => save.mutate()}
         className="mt-2 rounded-lg px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
-        style={{ background: "#9184d9", color: "#161826" }}
+        style={{ background: "var(--color-brand-500)", color: "var(--color-paper)" }}
       >
         {save.isPending ? "Saving…" : "Save journal"}
       </button>
-      {save.isSuccess && <span className="ml-2 text-[11px]" style={{ color: "rgba(233,233,237,.55)" }}>Saved</span>}
+      {save.isSuccess && <span className="ml-2 text-[11px]" style={{ color: "var(--color-ink-600)" }}>Saved</span>}
     </section>
   );
 }
@@ -308,9 +308,9 @@ function PlanSupportCards({
       {queueData?.queues && <TopicReviewQueue topics={queueData.queues.topicReviews} onOpen={onTopicReview} />}
       {mistakeData && <MistakeSummary mistakes={mistakeData.mistakes} />}
       {(queueData?.queues.blockedTaskIds.length ?? 0) > 0 && (
-        <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,.04)", boxShadow: "0 0 0 1px rgba(255,255,255,.08)" }}>
+        <div className="rounded-xl p-3" style={{ background: "var(--color-hairline-soft)", boxShadow: "0 0 0 1px var(--color-hairline)" }}>
           <div className="text-[13px] font-semibold">Prerequisites first</div>
-          <div className="mt-0.5 text-[11px]" style={{ color: "rgba(233,233,237,.55)" }}>
+          <div className="mt-0.5 text-[11px]" style={{ color: "var(--color-ink-600)" }}>
             {queueData?.queues.blockedTaskIds.length} later task{queueData?.queues.blockedTaskIds.length === 1 ? "" : "s"} will unlock as earlier syllabus topics are passed.
           </div>
         </div>
@@ -353,21 +353,21 @@ function PlanHeader({
   const titleDate = selectedDate ? new Date(`${selectedDate}T00:00:00`) : null;
   return (
     <div>
-      <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+      <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-400)" }}>
         Roadmap
       </div>
       <div className="mt-px text-[26px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
         {view === "week" ? "This week" : titleDate ? titleDate.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }) : "Today"}
       </div>
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
-        <div className="flex gap-1 rounded-full p-1" style={{ background: "#20222f" }}>
+        <div className="flex gap-1 rounded-full p-1" style={{ background: "var(--color-ink-50)" }}>
           {(["day", "week"] as const).map((v) => (
             <button
               key={v}
               type="button"
               onClick={() => onView(v)}
               className="rounded-full px-3 py-1 text-[11.5px] font-medium capitalize"
-              style={{ background: view === v ? "#9184d9" : "transparent", color: view === v ? "#161826" : "rgba(233,233,237,.6)" }}
+              style={{ background: view === v ? "var(--color-brand-500)" : "transparent", color: view === v ? "var(--color-paper)" : "var(--color-ink-600)" }}
             >
               {v}
             </button>
@@ -379,7 +379,7 @@ function PlanHeader({
             type="button"
             onClick={() => push(to)}
             className={cn("flex min-h-[30px] items-center gap-1.5 rounded-full px-3 text-[11.5px] font-medium", mobileOnly && "lg:hidden")}
-            style={{ background: "#20222f", color: "rgba(233,233,237,.75)" }}
+            style={{ background: "var(--color-ink-50)", color: "var(--color-ink-700)" }}
           >
             <Icon size={13} weight="regular" aria-hidden="true" />
             {label}
@@ -393,16 +393,16 @@ function PlanHeader({
 
 function TomorrowCard({ tomorrow }: { tomorrow: { day: { tasks: { id: string; title: string }[] } } | undefined }) {
   return (
-    <div className="rounded-xl p-[13px]" style={{ border: "1px dashed rgba(233,233,237,.14)" }}>
+    <div className="rounded-xl p-[13px]" style={{ border: "1px dashed var(--color-hairline)" }}>
       <div className="flex items-center justify-between">
-        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-600)" }}>
           Tomorrow
         </div>
-        <span className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
+        <span className="text-micro" style={{ color: "var(--color-ink-600)" }}>
           scheduled for you
         </span>
       </div>
-      <div className="mt-2 flex flex-col gap-[5px] text-[12.5px]" style={{ color: "rgba(233,233,237,.6)" }}>
+      <div className="mt-2 flex flex-col gap-[5px] text-[12.5px]" style={{ color: "var(--color-ink-600)" }}>
         {!tomorrow ? (
           <Skeleton className="h-4 w-32" />
         ) : tomorrow.day.tasks.length === 0 ? (
@@ -410,7 +410,7 @@ function TomorrowCard({ tomorrow }: { tomorrow: { day: { tasks: { id: string; ti
         ) : (
           tomorrow.day.tasks.slice(0, 3).map((t) => (
             <div key={t.id} className="flex items-center gap-2">
-              <Cards size={13} weight="regular" style={{ color: "rgba(233,233,237,.35)" }} aria-hidden="true" />
+              <Cards size={13} weight="regular" style={{ color: "var(--color-ink-300)" }} aria-hidden="true" />
               {t.title}
             </div>
           ))
@@ -430,9 +430,9 @@ function TomorrowCard({ tomorrow }: { tomorrow: { day: { tasks: { id: string; ti
  * reaches here. */
 function ActivationPrompt({ onActivate, pending }: { onActivate: () => void; pending: boolean }) {
   return (
-    <div className="mt-4 rounded-2xl p-5 text-center" style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a" }}>
+    <div className="mt-4 rounded-2xl p-5 text-center" style={{ background: "linear-gradient(160deg,var(--color-brand-100),var(--color-brand-50))", boxShadow: "0 0 0 1px var(--color-brand-100)" }}>
       <div className="text-[15px] font-medium">Start your 26-week roadmap</div>
-      <p className="mx-auto mt-1.5 max-w-[280px] text-[12.5px] leading-[1.5]" style={{ color: "rgba(233,233,237,.6)" }}>
+      <p className="mx-auto mt-1.5 max-w-[280px] text-[12.5px] leading-[1.5]" style={{ color: "var(--color-ink-600)" }}>
         Generates a day-by-day plan to Goethe-exam readiness from your syllabus progress.
       </p>
       <button
@@ -455,8 +455,8 @@ function ActivationPrompt({ onActivate, pending }: { onActivate: () => void; pen
  * pulled-forward task logs real time exactly like any other task. */
 function KeepGoingCard({ onPull, pending }: { onPull: () => void; pending: boolean }) {
   return (
-    <div className="mt-1.5 rounded-[10px] p-3.5 text-center" style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a" }}>
-      <div className="flex items-center justify-center gap-1.5 text-[13px] font-medium" style={{ color: "#d2cefd" }}>
+    <div className="mt-1.5 rounded-[10px] p-3.5 text-center" style={{ background: "linear-gradient(160deg,var(--color-brand-100),var(--color-brand-50))", boxShadow: "0 0 0 1px var(--color-brand-100)" }}>
+      <div className="flex items-center justify-center gap-1.5 text-[13px] font-medium" style={{ color: "var(--color-brand-800)" }}>
         <Sparkle size={14} weight="regular" aria-hidden="true" />
         Nice work. Keep going?
       </div>
@@ -597,7 +597,7 @@ export default function Plan() {
           pre-desktop-pass layout. */}
       <div
         className="-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-[18px] pt-[calc(env(safe-area-inset-top)+18px)] lg:hidden"
-        style={{ background: "radial-gradient(110% 40% at 20% 4%, #22253c, #161826 58%)" }}
+        style={{ background: "radial-gradient(110% 40% at 20% 4%, var(--color-ink-50), var(--color-paper) 58%)" }}
       >
         <PlanHeader view={view} onView={setView} selectedDate={selectedDate} push={push} />
 
@@ -635,29 +635,29 @@ export default function Plan() {
             />
 
             <div className="mt-4 flex items-center gap-2.5">
-              <div className="h-[5px] flex-1 overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
-                <div className="h-full rounded-[3px] transition-[width] duration-300" style={{ width: `${progressPct}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }} />
+              <div className="h-[5px] flex-1 overflow-hidden rounded-[3px]" style={{ background: "var(--color-hairline-soft)" }}>
+                <div className="h-full rounded-[3px] transition-[width] duration-300" style={{ width: `${progressPct}%`, background: "linear-gradient(90deg,var(--color-brand-solid),var(--color-brand-700))" }} />
               </div>
-              <span className="text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
+              <span className="text-[11px]" style={{ color: "var(--color-ink-400)" }}>
                 {today.tasks.filter((t) => t.completedAt !== null).length} of {today.tasks.length} · {minutesLeft} min left
               </span>
             </div>
 
             <div className="mt-[18px] flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-2.5">
               {today.tasks.length === 0 ? (
-                <p className="py-6 text-center text-[13.5px]" style={{ color: "rgba(233,233,237,.45)" }}>
+                <p className="py-6 text-center text-[13.5px]" style={{ color: "var(--color-ink-400)" }}>
                   {selectedDate ? "Nothing scheduled." : "Nothing scheduled today."}
                 </p>
               ) : (
                 <>
                   {queueData?.queues && queueData.queues.coreTaskIds.length > 0 && (
-                    <div className="mb-1 text-micro font-semibold uppercase tracking-[.12em]" style={{ color: "rgba(233,233,237,.45)" }}>Core learning</div>
+                    <div className="mb-1 text-micro font-semibold uppercase tracking-[.12em]" style={{ color: "var(--color-ink-400)" }}>Core learning</div>
                   )}
                   {today.tasks.filter((task) => !queueData?.queues || task.completedAt !== null || queueData.queues.coreTaskIds.includes(task.id)).map((t) => (
                     <TaskRow key={t.id} task={t} onToggle={(c) => toggle.mutate({ id: t.id, completed: c })} onOpen={() => setOpenTask(t)} />
                   ))}
                   {queueData?.capacity.hasMore && (
-                    <div className="mt-2 mb-1 text-micro font-semibold uppercase tracking-[.12em]" style={{ color: "rgba(233,233,237,.45)" }}>Optional acceleration</div>
+                    <div className="mt-2 mb-1 text-micro font-semibold uppercase tracking-[.12em]" style={{ color: "var(--color-ink-400)" }}>Optional acceleration</div>
                   )}
                   {queueData?.queues.accelerationTaskIds.map((id) => today.tasks.find((task) => task.id === id)).filter((task): task is RoadmapTask => !!task).map((t) => (
                     <TaskRow key={t.id} task={t} onToggle={(c) => toggle.mutate({ id: t.id, completed: c })} onOpen={() => setOpenTask(t)} />
@@ -723,10 +723,10 @@ export default function Plan() {
             />
 
             <div className="flex items-center gap-2.5">
-              <div className="h-[5px] flex-1 overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
-                <div className="h-full rounded-[3px] transition-[width] duration-300" style={{ width: `${progressPct}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }} />
+              <div className="h-[5px] flex-1 overflow-hidden rounded-[3px]" style={{ background: "var(--color-hairline-soft)" }}>
+                <div className="h-full rounded-[3px] transition-[width] duration-300" style={{ width: `${progressPct}%`, background: "linear-gradient(90deg,var(--color-brand-solid),var(--color-brand-700))" }} />
               </div>
-              <span className="text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
+              <span className="text-[11px]" style={{ color: "var(--color-ink-400)" }}>
                 {today.tasks.filter((t) => t.completedAt !== null).length} of {today.tasks.length} · {minutesLeft} min left
               </span>
             </div>
@@ -734,13 +734,13 @@ export default function Plan() {
             <div className="grid gap-5" style={{ gridTemplateColumns: "1.4fr 1fr" }}>
               <div className="flex flex-col gap-2">
                 {today.tasks.length === 0 ? (
-                  <p className="py-6 text-center text-[13.5px]" style={{ color: "rgba(233,233,237,.45)" }}>
+                  <p className="py-6 text-center text-[13.5px]" style={{ color: "var(--color-ink-400)" }}>
                     {selectedDate ? "Nothing scheduled." : "Nothing scheduled today."}
                   </p>
                 ) : (
                   <>
                     {queueData?.queues && queueData.queues.coreTaskIds.length > 0 && (
-                      <div className="mb-1 text-micro font-semibold uppercase tracking-[.12em]" style={{ color: "rgba(233,233,237,.45)" }}>Core learning</div>
+                      <div className="mb-1 text-micro font-semibold uppercase tracking-[.12em]" style={{ color: "var(--color-ink-400)" }}>Core learning</div>
                     )}
                     {today.tasks
                       .filter((task) => !queueData?.queues || task.completedAt !== null || queueData.queues.coreTaskIds.includes(task.id))
@@ -748,7 +748,7 @@ export default function Plan() {
                         <TaskRow key={t.id} task={t} onToggle={(c) => toggle.mutate({ id: t.id, completed: c })} onOpen={() => setOpenTask(t)} />
                       ))}
                     {queueData?.capacity.hasMore && (
-                      <div className="mt-2 mb-1 text-micro font-semibold uppercase tracking-[.12em]" style={{ color: "rgba(233,233,237,.45)" }}>Optional acceleration</div>
+                      <div className="mt-2 mb-1 text-micro font-semibold uppercase tracking-[.12em]" style={{ color: "var(--color-ink-400)" }}>Optional acceleration</div>
                     )}
                     {queueData?.queues.accelerationTaskIds
                       .map((id) => today.tasks.find((task) => task.id === id))
@@ -856,9 +856,9 @@ function WeekOverview({ onOpenTask }: { onOpenTask: (t: RoadmapTask) => void }) 
   return (
     <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pb-2.5">
       <div className={data.lateAcrossPlan > 0 ? "flex gap-3" : undefined}>
-        <div className="flex-1 rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
+        <div className="flex-1 rounded-xl p-3.5" style={{ background: "var(--color-card)" }}>
           <div className="flex items-baseline justify-between">
-            <span className="text-[12px]" style={{ color: "rgba(233,233,237,.5)" }}>
+            <span className="text-[12px]" style={{ color: "var(--color-ink-400)" }}>
               Week {data.week} of {data.totalWeeks}
             </span>
             <span className="tabular text-[13px] font-medium">
@@ -869,7 +869,7 @@ function WeekOverview({ onOpenTask }: { onOpenTask: (t: RoadmapTask) => void }) 
             <>
               <div className="mt-1.5 text-[14px] font-medium">{data.theme}</div>
               {matchedStation && (
-                <button type="button" onClick={() => push("/plan/syllabus")} className="mt-1 text-[11.5px]" style={{ color: "#b5abfc" }}>
+                <button type="button" onClick={() => push("/plan/syllabus")} className="mt-1 text-[11.5px]" style={{ color: "var(--color-brand-700)" }}>
                   Open in syllabus →
                 </button>
               )}
@@ -878,12 +878,12 @@ function WeekOverview({ onOpenTask }: { onOpenTask: (t: RoadmapTask) => void }) 
         </div>
 
         {data.lateAcrossPlan > 0 && (
-          <div className="flex-1 rounded-xl p-3.5" style={{ background: "rgba(209,155,134,.14)" }}>
+          <div className="flex-1 rounded-xl p-3.5" style={{ background: "var(--color-danger-100)" }}>
             <div className="flex items-baseline justify-between">
-              <span className="text-[11px] tracking-[.08em] uppercase" style={{ color: "#e4c4b6" }}>
+              <span className="text-[11px] tracking-[.08em] uppercase" style={{ color: "var(--color-danger-700)" }}>
                 Late across the plan
               </span>
-              <span className="tabular text-[15px] font-medium" style={{ color: "#e4c4b6" }}>
+              <span className="tabular text-[15px] font-medium" style={{ color: "var(--color-danger-700)" }}>
                 {data.lateAcrossPlan}
               </span>
             </div>
@@ -892,17 +892,17 @@ function WeekOverview({ onOpenTask }: { onOpenTask: (t: RoadmapTask) => void }) 
                 type="button"
                 onClick={() => undo.mutate(pendingUndo)}
                 className="mt-2 flex items-center gap-1.5 text-[12px] font-medium"
-                style={{ color: "#e4c4b6" }}
+                style={{ color: "var(--color-danger-700)" }}
               >
                 <ArrowCounterClockwise size={13} weight="regular" aria-hidden="true" />
                 Undo ({pendingUndo.length} moved)
               </button>
             ) : (
               <div className="mt-2 flex flex-wrap gap-2">
-                <button type="button" onClick={() => pullIntoToday.mutate()} className="rounded-[9px] px-2.5 py-1.5 text-[12px] font-medium" style={{ background: "rgba(233,233,237,.1)", color: "#e4c4b6" }}>
+                <button type="button" onClick={() => pullIntoToday.mutate()} className="rounded-[9px] px-2.5 py-1.5 text-[12px] font-medium" style={{ background: "var(--color-hairline)", color: "var(--color-danger-700)" }}>
                   Pull into today
                 </button>
-                <button type="button" onClick={() => spread.mutate()} className="rounded-[9px] px-2.5 py-1.5 text-[12px] font-medium" style={{ background: "rgba(233,233,237,.1)", color: "#e4c4b6" }}>
+                <button type="button" onClick={() => spread.mutate()} className="rounded-[9px] px-2.5 py-1.5 text-[12px] font-medium" style={{ background: "var(--color-hairline)", color: "var(--color-danger-700)" }}>
                   Spread over 3 days
                 </button>
               </div>
@@ -917,10 +917,10 @@ function WeekOverview({ onOpenTask }: { onOpenTask: (t: RoadmapTask) => void }) 
           { icon: TrendUp, value: data.pace.actualTasksPerDay, label: "actual/day" },
           { icon: Timer, value: data.pace.daysLeft, label: "days left" },
         ].map(({ icon: Icon, value, label }) => (
-          <div key={label} className="flex flex-col items-center gap-1 rounded-xl p-3 text-center" style={{ background: "#1c1f2c" }}>
-            <Icon size={15} weight="regular" style={{ color: "#9184d9" }} aria-hidden="true" />
+          <div key={label} className="flex flex-col items-center gap-1 rounded-xl p-3 text-center" style={{ background: "var(--color-card)" }}>
+            <Icon size={15} weight="regular" style={{ color: "var(--color-brand-500)" }} aria-hidden="true" />
             <div className="tabular text-[15px] font-medium text-white">{value}</div>
-            <div className="text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>{label}</div>
+            <div className="text-[11px]" style={{ color: "var(--color-ink-400)" }}>{label}</div>
           </div>
         ))}
       </div>
@@ -937,7 +937,7 @@ function WeekOverview({ onOpenTask }: { onOpenTask: (t: RoadmapTask) => void }) 
         const dateChip = (
           <div
             className="grid size-[34px] shrink-0 place-items-center rounded-[10px] text-center leading-none"
-            style={{ background: isToday ? "linear-gradient(150deg,#a99dfa,#9184d9)" : "#292b31", color: isToday ? "#161826" : "rgba(233,233,237,.75)" }}
+            style={{ background: isToday ? "linear-gradient(150deg,var(--color-brand-700),var(--color-brand-500))" : "var(--color-hairline-soft)", color: isToday ? "var(--color-paper)" : "var(--color-ink-700)" }}
           >
             <span className="block text-micro font-medium tracking-[.06em] uppercase opacity-80">{dayAbbrev}</span>
             <span className="block text-[13px] font-semibold">{dayNum}</span>
@@ -951,16 +951,16 @@ function WeekOverview({ onOpenTask }: { onOpenTask: (t: RoadmapTask) => void }) 
               type="button"
               onClick={() => setExpandedDayOffset(day.dayOffset)}
               className="flex items-center gap-2.5 rounded-xl p-3 text-left"
-              style={{ background: "#1c1f2c", opacity: day.status === "done" ? 0.6 : 1 }}
+              style={{ background: "var(--color-card)", opacity: day.status === "done" ? 0.6 : 1 }}
             >
               {dateChip}
               <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
                 {dateObj.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
               </span>
-              <span className="flex shrink-0 items-center gap-1.5 text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+              <span className="flex shrink-0 items-center gap-1.5 text-[11px]" style={{ color: "var(--color-ink-400)" }}>
                 {active.length === 0 ? "rest day" : day.status === "done" ? `${done}/${active.length} kept` : `${active.length} planned`}
                 {day.status === "done" && active.length > 0 && done === active.length && (
-                  <Check size={12} weight="bold" style={{ color: "#9184d9" }} aria-hidden="true" />
+                  <Check size={12} weight="bold" style={{ color: "var(--color-brand-500)" }} aria-hidden="true" />
                 )}
                 <CaretRight size={13} weight="regular" aria-hidden="true" />
               </span>
@@ -972,7 +972,7 @@ function WeekOverview({ onOpenTask }: { onOpenTask: (t: RoadmapTask) => void }) 
           <div
             key={day.dayOffset}
             className="rounded-xl p-3.5"
-            style={{ background: isToday ? "linear-gradient(160deg,#2b2741,#232532)" : "#1c1f2c", boxShadow: isToday ? "0 0 0 1px #423a6a" : "none" }}
+            style={{ background: isToday ? "linear-gradient(160deg,var(--color-brand-100),var(--color-brand-50))" : "var(--color-card)", boxShadow: isToday ? "0 0 0 1px var(--color-brand-100)" : "none" }}
           >
             <div className="flex w-full items-center gap-2.5 text-left">
               {dateChip}
@@ -982,12 +982,12 @@ function WeekOverview({ onOpenTask }: { onOpenTask: (t: RoadmapTask) => void }) 
                     {dateObj.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
                   </span>
                   {isToday && (
-                    <span className="rounded-full px-1.5 py-px text-micro font-semibold" style={{ background: "rgba(145,132,217,.22)", color: "#d2cefd" }}>
+                    <span className="rounded-full px-1.5 py-px text-micro font-semibold" style={{ background: "var(--color-brand-100)", color: "var(--color-brand-800)" }}>
                       Today
                     </span>
                   )}
                 </div>
-                <span className="text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
+                <span className="text-[11px]" style={{ color: "var(--color-ink-600)" }}>
                   {active.length === 0 ? "rest day" : `${done}/${active.length} done`}
                 </span>
               </div>
@@ -1000,11 +1000,11 @@ function WeekOverview({ onOpenTask }: { onOpenTask: (t: RoadmapTask) => void }) 
                       type="button"
                       onClick={() => toggle.mutate({ id: t.id, completed: t.completedAt === null })}
                       className="grid size-4 shrink-0 place-items-center rounded-full"
-                      style={{ background: t.completedAt !== null ? "#9184d9" : "transparent", border: t.completedAt !== null ? "none" : "1px solid rgba(233,233,237,.25)" }}
+                      style={{ background: t.completedAt !== null ? "var(--color-brand-500)" : "transparent", border: t.completedAt !== null ? "none" : "1px solid var(--color-hairline)" }}
                     >
-                      {t.completedAt !== null && <Check size={10} weight="bold" style={{ color: "#161826" }} aria-hidden="true" />}
+                      {t.completedAt !== null && <Check size={10} weight="bold" style={{ color: "var(--color-paper)" }} aria-hidden="true" />}
                     </button>
-                    <button type="button" onClick={() => onOpenTask(t)} className="min-w-0 flex-1 truncate text-left text-[13px]" style={{ color: t.completedAt !== null ? "rgba(233,233,237,.4)" : "#e9e9ed", textDecoration: t.completedAt !== null ? "line-through" : "none" }}>
+                    <button type="button" onClick={() => onOpenTask(t)} className="min-w-0 flex-1 truncate text-left text-[13px]" style={{ color: t.completedAt !== null ? "var(--color-ink-400)" : "var(--color-ink-900)", textDecoration: t.completedAt !== null ? "line-through" : "none" }}>
                       {t.title}
                     </button>
                   </div>

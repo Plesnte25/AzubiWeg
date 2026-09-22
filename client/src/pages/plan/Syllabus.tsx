@@ -47,7 +47,7 @@ export function StationNode({
       {!isLast && (
         <div
           className="absolute top-[2px] w-[2px]"
-          style={{ left: 13, bottom: -10, background: status === "upcoming" ? "#292b31" : "linear-gradient(180deg,#9184d9,#5d5294)" }}
+          style={{ left: 13, bottom: -10, background: status === "upcoming" ? "var(--color-hairline-soft)" : "linear-gradient(180deg,var(--color-brand-500),var(--color-brand-solid))" }}
         />
       )}
       <div
@@ -55,10 +55,10 @@ export function StationNode({
         style={{
           left: 0,
           top: 2,
-          background: status === "done" ? "#9184d9" : status === "current" ? "linear-gradient(150deg,#a99dfa,#9184d9)" : "transparent",
-          boxShadow: status === "current" ? "0 0 0 5px rgba(145,132,217,.18)" : "none",
-          border: status === "upcoming" ? "1px solid #3f424d" : "none",
-          color: status === "upcoming" ? "rgba(233,233,237,.35)" : "#161826",
+          background: status === "done" ? "var(--color-brand-500)" : status === "current" ? "linear-gradient(150deg,var(--color-brand-700),var(--color-brand-500))" : "transparent",
+          boxShadow: status === "current" ? "0 0 0 5px var(--color-brand-100)" : "none",
+          border: status === "upcoming" ? "1px solid var(--color-hairline)" : "none",
+          color: status === "upcoming" ? "var(--color-ink-300)" : "var(--color-paper)",
         }}
       >
         {status === "done" ? <Check size={16} weight="bold" aria-hidden="true" /> : index + 1}
@@ -66,7 +66,7 @@ export function StationNode({
 
       <div
         className="text-micro tracking-[.12em] uppercase"
-        style={{ color: status === "done" ? "rgba(233,233,237,.4)" : status === "current" ? "#b5abfc" : "rgba(233,233,237,.3)" }}
+        style={{ color: status === "done" ? "var(--color-ink-400)" : status === "current" ? "var(--color-brand-700)" : "var(--color-ink-300)" }}
       >
         {status === "done" ? "complete" : status === "current" ? "you are here" : "locked"}
       </div>
@@ -76,25 +76,25 @@ export function StationNode({
           type="button"
           onClick={onOpen}
           className="mt-2 w-full rounded-xl p-3.5 text-left"
-          style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a" }}
+          style={{ background: "linear-gradient(160deg,var(--color-brand-100),var(--color-brand-50))", boxShadow: "0 0 0 1px var(--color-brand-100)" }}
         >
           <div className="flex items-baseline justify-between">
             <span className="text-[17px] font-medium">{station.theme}</span>
-            <span className="text-[12px]" style={{ color: "#b5abfc" }}>
+            <span className="text-[12px]" style={{ color: "var(--color-brand-700)" }}>
               {done}/{total}
             </span>
           </div>
-          <div className="mt-2 h-[5px] overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
-            <div className="h-full rounded-[3px]" style={{ width: `${total === 0 ? 0 : (done / total) * 100}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }} />
+          <div className="mt-2 h-[5px] overflow-hidden rounded-[3px]" style={{ background: "var(--color-hairline-soft)" }}>
+            <div className="h-full rounded-[3px]" style={{ width: `${total === 0 ? 0 : (done / total) * 100}%`, background: "linear-gradient(90deg,var(--color-brand-solid),var(--color-brand-700))" }} />
           </div>
           <div className="mt-2 flex flex-wrap gap-[5px]">
             {station.items.slice(0, 3).map((i) => (
-              <span key={i.id} className="rounded-full px-2 py-1 text-micro" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
+              <span key={i.id} className="rounded-full px-2 py-1 text-micro" style={{ background: "var(--color-hairline-soft)", color: "var(--color-ink-600)" }}>
                 {i.title}
               </span>
             ))}
             {station.items.length > 3 && (
-              <span className="rounded-full px-2 py-1 text-micro" style={{ border: "1px solid rgba(233,233,237,.14)", color: "rgba(233,233,237,.5)" }}>
+              <span className="rounded-full px-2 py-1 text-micro" style={{ border: "1px solid var(--color-hairline)", color: "var(--color-ink-400)" }}>
                 +{station.items.length - 3}
               </span>
             )}
@@ -102,10 +102,10 @@ export function StationNode({
         </button>
       ) : (
         <button type="button" onClick={onOpen} className="text-left">
-          <div className="text-[15px] font-medium" style={{ color: status === "done" ? "rgba(233,233,237,.8)" : "rgba(233,233,237,.45)" }}>
+          <div className="text-[15px] font-medium" style={{ color: status === "done" ? "var(--color-ink-700)" : "var(--color-ink-400)" }}>
             {station.theme}
           </div>
-          <div className="text-[11.5px]" style={{ color: status === "done" ? "rgba(233,233,237,.45)" : status === "upcoming" ? "rgba(233,233,237,.3)" : "rgba(233,233,237,.62)" }}>
+          <div className="text-[11.5px]" style={{ color: status === "done" ? "var(--color-ink-400)" : status === "upcoming" ? "var(--color-ink-300)" : "var(--color-ink-600)" }}>
             {total} item{total === 1 ? "" : "s"}
             {status === "upcoming" ? " · opens after this station" : ""}
           </div>
@@ -157,7 +157,7 @@ export default function Syllabus() {
 
   if (isLoading || !data) {
     return (
-      <div className="-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)]" style={{ background: "#161826" }} />
+      <div className="-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)]" style={{ background: "var(--color-paper)" }} />
     );
   }
 
@@ -189,14 +189,14 @@ export default function Syllabus() {
     <>
     <div
       className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col overflow-y-auto px-5 pt-[calc(env(safe-area-inset-top)+18px)] pb-6 lg:hidden"
-      style={{ background: "linear-gradient(180deg,#161826 0%,#1c1e30 60%,#161826 100%)" }}
+      style={{ background: "linear-gradient(180deg,var(--color-paper) 0%,var(--color-ink-50) 60%,var(--color-paper) 100%)" }}
     >
       <div className="flex items-center justify-between">
-        <button type="button" onClick={goBack} className="flex items-center gap-[3px] text-[13px]" style={{ color: "rgba(233,233,237,.55)" }}>
+        <button type="button" onClick={goBack} className="flex items-center gap-[3px] text-[13px]" style={{ color: "var(--color-ink-600)" }}>
           <CaretLeft size={14} weight="regular" aria-hidden="true" />
           {backLabel}
         </button>
-        <div className="flex gap-1 rounded-full p-1" style={{ background: "#20222f" }}>
+        <div className="flex gap-1 rounded-full p-1" style={{ background: "var(--color-ink-50)" }}>
           {LEVELS.map((l) => {
             const ls = data.lockStates[LEVELS.indexOf(l)]!;
             return (
@@ -205,7 +205,7 @@ export default function Syllabus() {
                 type="button"
                 onClick={() => setUserLevel(l)}
                 className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold"
-                style={{ background: l === level ? "#9184d9" : "transparent", color: l === level ? "#161826" : ls === "done" ? "#b5abfc" : "rgba(233,233,237,.6)" }}
+                style={{ background: l === level ? "var(--color-brand-500)" : "transparent", color: l === level ? "var(--color-paper)" : ls === "done" ? "var(--color-brand-700)" : "var(--color-ink-600)" }}
               >
                 {ls === "locked" && <Lock size={9} weight="fill" aria-hidden="true" />}
                 {LEVEL_LABELS[l]}
@@ -216,14 +216,14 @@ export default function Syllabus() {
         </div>
       </div>
 
-      <div className="mt-3 flex gap-1 rounded-full p-1 lg:hidden" style={{ background: "#20222f", width: "fit-content" }}>
+      <div className="mt-3 flex gap-1 rounded-full p-1 lg:hidden" style={{ background: "var(--color-ink-50)", width: "fit-content" }}>
         {(["syllabus", "sources"] as const).map((v) => (
           <button
             key={v}
             type="button"
             onClick={() => setMdView(v)}
             className="rounded-full px-3 py-1 text-[12px] font-medium capitalize"
-            style={{ background: mdView === v ? "#9184d9" : "transparent", color: mdView === v ? "#161826" : "rgba(233,233,237,.6)" }}
+            style={{ background: mdView === v ? "var(--color-brand-500)" : "transparent", color: mdView === v ? "var(--color-paper)" : "var(--color-ink-600)" }}
           >
             {v}
           </button>
@@ -233,7 +233,7 @@ export default function Syllabus() {
       {mdView === "sources" ? (
         <div className="mt-4 flex flex-col gap-2.5">
           {(sourcesData?.sources.length ?? 0) === 0 ? (
-            <p className="py-8 text-center text-[13.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
+            <p className="py-8 text-center text-[13.5px]" style={{ color: "var(--color-ink-600)" }}>
               No sources yet.
             </p>
           ) : (
@@ -245,14 +245,14 @@ export default function Syllabus() {
       <div className="mt-3 text-[26px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
         Syllabus
       </div>
-      <div className="mt-0.5 text-[12px]" style={{ color: "rgba(233,233,237,.45)" }}>
+      <div className="mt-0.5 text-[12px]" style={{ color: "var(--color-ink-400)" }}>
         {LEVEL_LABELS[level]} route · {stations.length} station{stations.length === 1 ? "" : "s"} · {levelProgress.percent}%
       </div>
 
       {lockState === "locked" && (
-        <div className="mt-5 flex items-center gap-2 rounded-xl p-3.5" style={{ background: "rgba(233,233,237,.06)" }}>
-          <Lock size={16} weight="regular" style={{ color: "rgba(233,233,237,.4)", flexShrink: 0 }} aria-hidden="true" />
-          <p className="text-[12.5px]" style={{ color: "rgba(233,233,237,.6)" }}>
+        <div className="mt-5 flex items-center gap-2 rounded-xl p-3.5" style={{ background: "var(--color-hairline-soft)" }}>
+          <Lock size={16} weight="regular" style={{ color: "var(--color-ink-400)", flexShrink: 0 }} aria-hidden="true" />
+          <p className="text-[12.5px]" style={{ color: "var(--color-ink-600)" }}>
             {priorProgress && priorProgress.percent < 100
               ? `Finish ${LEVEL_LABELS[priorLevel!]} first — previewing ${LEVEL_LABELS[level]} read-only.`
               : priorExamGate?.hasContent
@@ -302,7 +302,7 @@ export default function Syllabus() {
           <div className="relative" style={{ paddingLeft: 34 }}>
             <div
               className="absolute grid size-7 place-items-center rounded-full"
-              style={{ left: 0, top: 2, border: "1px solid #5d5294", color: "#b5abfc" }}
+              style={{ left: 0, top: 2, border: "1px solid var(--color-brand-solid)", color: "var(--color-brand-700)" }}
             >
               <Flag size={14} weight="regular" aria-hidden="true" />
             </div>
@@ -310,13 +310,13 @@ export default function Syllabus() {
               type="button"
               onClick={() => push("/plan/exam-gate")}
               className="w-full rounded-xl p-3 py-3.5 text-left"
-              style={{ border: "1px solid rgba(145,132,217,.4)", background: "rgba(145,132,217,.08)" }}
+              style={{ border: "1px solid var(--color-brand-500)", background: "var(--color-brand-50)" }}
             >
-              <div className="text-micro tracking-[.12em] uppercase" style={{ color: "#b5abfc" }}>
+              <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-brand-700)" }}>
                 Self-test · gate to {LEVELS[levelIdx + 1] ? LEVEL_LABELS[LEVELS[levelIdx + 1]!] : "next level"}
               </div>
               <div className="mt-0.5 text-[15px] font-medium">{LEVEL_LABELS[level]} final exam</div>
-              <div className="mt-0.5 text-[11.5px]" style={{ color: "rgba(233,233,237,.45)" }}>
+              <div className="mt-0.5 text-[11.5px]" style={{ color: "var(--color-ink-400)" }}>
                 {examGate.hasContent && "passed" in examGate ? (examGate.passed ? "Passed" : "Ready — syllabus complete") : "Not yet available"}
               </div>
             </button>
@@ -364,7 +364,7 @@ export function AddItemSheet({ level, theme, onClose, onAdded }: { level: CefrLe
         onKeyDown={(e) => e.key === "Enter" && title.trim() && save.mutate()}
         placeholder="Item title"
         className="mt-3 box-border w-full rounded-[11px] px-[13px] outline-none"
-        style={{ minHeight: 44, color: "#e9e9ed", background: "#20222f", border: "1px solid rgba(233,233,237,.14)" }}
+        style={{ minHeight: 44, color: "var(--color-ink-900)", background: "var(--color-ink-50)", border: "1px solid var(--color-hairline)" }}
       />
       <button
         type="button"

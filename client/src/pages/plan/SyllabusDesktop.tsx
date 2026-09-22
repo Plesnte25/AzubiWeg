@@ -102,7 +102,7 @@ export function SyllabusDesktop() {
                 <div className="text-[22px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
                   Syllabus
                 </div>
-                <div className="flex gap-1 rounded-full p-1" style={{ background: "#20222f" }}>
+                <div className="flex gap-1 rounded-full p-1" style={{ background: "var(--color-ink-50)" }}>
                   {LEVELS.map((l) => {
                     const ls = data.lockStates[LEVELS.indexOf(l)]!;
                     return (
@@ -114,7 +114,7 @@ export function SyllabusDesktop() {
                           setSelectedTheme(null);
                         }}
                         className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold"
-                        style={{ background: l === level ? "#9184d9" : "transparent", color: l === level ? "#161826" : ls === "done" ? "#b5abfc" : "rgba(233,233,237,.6)" }}
+                        style={{ background: l === level ? "var(--color-brand-500)" : "transparent", color: l === level ? "var(--color-paper)" : ls === "done" ? "var(--color-brand-700)" : "var(--color-ink-600)" }}
                       >
                         {ls === "locked" && <Lock size={9} weight="fill" aria-hidden="true" />}
                         {LEVEL_LABELS[l]}
@@ -124,17 +124,17 @@ export function SyllabusDesktop() {
                   })}
                 </div>
               </div>
-              <div className="mt-0.5 text-[11.5px]" style={{ color: "rgba(233,233,237,.45)" }}>
+              <div className="mt-0.5 text-[11.5px]" style={{ color: "var(--color-ink-400)" }}>
                 {LEVEL_LABELS[level]} route · {stations.length} station{stations.length === 1 ? "" : "s"} · {levelProgress.percent}%
               </div>
-              <div className="mt-2 h-[5px] overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
-                <div className="h-full rounded-[3px]" style={{ width: `${levelProgress.percent}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }} />
+              <div className="mt-2 h-[5px] overflow-hidden rounded-[3px]" style={{ background: "var(--color-hairline-soft)" }}>
+                <div className="h-full rounded-[3px]" style={{ width: `${levelProgress.percent}%`, background: "linear-gradient(90deg,var(--color-brand-solid),var(--color-brand-700))" }} />
               </div>
 
               {lockState === "locked" && (
-                <div className="mt-4 flex items-center gap-2 rounded-xl p-3" style={{ background: "rgba(233,233,237,.06)" }}>
-                  <Lock size={14} weight="regular" style={{ color: "rgba(233,233,237,.4)", flexShrink: 0 }} aria-hidden="true" />
-                  <p className="text-[11.5px]" style={{ color: "rgba(233,233,237,.6)" }}>
+                <div className="mt-4 flex items-center gap-2 rounded-xl p-3" style={{ background: "var(--color-hairline-soft)" }}>
+                  <Lock size={14} weight="regular" style={{ color: "var(--color-ink-400)", flexShrink: 0 }} aria-hidden="true" />
+                  <p className="text-[11.5px]" style={{ color: "var(--color-ink-600)" }}>
                     {priorProgress && priorProgress.percent < 100
                       ? `Finish ${LEVEL_LABELS[priorLevel!]} first — previewing read-only.`
                       : priorExamGate?.hasContent
@@ -144,8 +144,8 @@ export function SyllabusDesktop() {
                 </div>
               )}
 
-              <div className="mt-4 h-px" style={{ background: "rgba(233,233,237,.08)" }} />
-              <div className="mt-3 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+              <div className="mt-4 h-px" style={{ background: "var(--color-hairline-soft)" }} />
+              <div className="mt-3 text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-600)" }}>
                 Full path · {stations.length} station{stations.length === 1 ? "" : "s"}
               </div>
             </div>
@@ -206,7 +206,7 @@ export function SyllabusDesktop() {
               )}
             </>
           ) : (
-              <div className="grid h-full place-items-center text-[13px]" style={{ color: "rgba(233,233,237,.62)" }}>
+              <div className="grid h-full place-items-center text-[13px]" style={{ color: "var(--color-ink-600)" }}>
                 No stations yet.
               </div>
             )}
@@ -226,7 +226,7 @@ export function SyllabusDesktop() {
                 onComposerItemChange={setComposerItemId}
               />
             ) : (
-              <div className="grid h-full place-items-center text-[13px]" style={{ color: "rgba(233,233,237,.62)" }}>
+              <div className="grid h-full place-items-center text-[13px]" style={{ color: "var(--color-ink-600)" }}>
                 No station selected.
               </div>
             )}

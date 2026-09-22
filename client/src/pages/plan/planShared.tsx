@@ -39,7 +39,7 @@ export function AddTaskComposer({ date, onDone }: { date: string; onDone: () => 
         type="button"
         onClick={() => setOpen(true)}
         className="flex w-full items-center gap-2.5 rounded-xl p-[13px] text-left text-[14px]"
-        style={{ border: "1px dashed rgba(145,132,217,.4)", color: "#b5abfc" }}
+        style={{ border: "1px dashed var(--color-brand-500)", color: "var(--color-brand-700)" }}
       >
         <Plus size={17} weight="regular" aria-hidden="true" />
         Add a task to today
@@ -59,7 +59,7 @@ export function AddTaskComposer({ date, onDone }: { date: string; onDone: () => 
         }}
         placeholder="e.g. Read one page of a German book"
         className="box-border w-full rounded-[11px] px-[13px] text-[14px] outline-none"
-        style={{ minHeight: 44, color: "#e9e9ed", background: "#20222f", border: "1px solid #9184d9" }}
+        style={{ minHeight: 44, color: "var(--color-ink-900)", background: "var(--color-ink-50)", border: "1px solid var(--color-brand-500)" }}
       />
       <div className="mt-2 flex flex-wrap gap-[7px]">
         {TASK_PRESETS.map((p) => (
@@ -68,7 +68,7 @@ export function AddTaskComposer({ date, onDone }: { date: string; onDone: () => 
             type="button"
             onClick={() => setTitle(p)}
             className="rounded-full px-[11px] py-[5px] text-[11.5px] whitespace-nowrap"
-            style={{ border: "1px solid rgba(233,233,237,.14)", color: "rgba(233,233,237,.65)" }}
+            style={{ border: "1px solid var(--color-hairline)", color: "var(--color-ink-600)" }}
           >
             {p}
           </button>
@@ -79,7 +79,7 @@ export function AddTaskComposer({ date, onDone }: { date: string; onDone: () => 
           type="button"
           onClick={() => setOpen(false)}
           className="min-h-[42px] flex-1 rounded-[10px] text-[13.5px] font-medium"
-          style={{ background: "#20222f" }}
+          style={{ background: "var(--color-ink-50)" }}
         >
           Cancel
         </button>
@@ -105,20 +105,20 @@ export function ChapterProgressCard({ station, onOpen }: { station: { theme: str
   if (!station) return null;
   const done = station.items.filter((i) => i.completedAt !== null).length;
   return (
-    <div className="rounded-xl p-[15px]" style={{ background: "#1c1f2c" }}>
-      <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+    <div className="rounded-xl p-[15px]" style={{ background: "var(--color-card)" }}>
+      <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-400)" }}>
         Chapter progress
       </div>
       <div className="mt-1 flex items-baseline justify-between">
         <span className="text-[15px] font-medium">{station.theme}</span>
-        <span className="tabular text-[13px]" style={{ color: "rgba(233,233,237,.5)" }}>
+        <span className="tabular text-[13px]" style={{ color: "var(--color-ink-400)" }}>
           {done}/{station.items.length}
         </span>
       </div>
-      <div className="mt-2.5 h-[5px] overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
+      <div className="mt-2.5 h-[5px] overflow-hidden rounded-[3px]" style={{ background: "var(--color-hairline-soft)" }}>
         <div
           className="h-full rounded-[3px]"
-          style={{ width: `${station.items.length === 0 ? 0 : Math.round((done / station.items.length) * 100)}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }}
+          style={{ width: `${station.items.length === 0 ? 0 : Math.round((done / station.items.length) * 100)}%`, background: "linear-gradient(90deg,var(--color-brand-solid),var(--color-brand-700))" }}
         />
       </div>
       <button type="button" onClick={onOpen} className="mt-3 min-h-[38px] w-full rounded-[10px] text-[13px] font-medium text-white" style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}>

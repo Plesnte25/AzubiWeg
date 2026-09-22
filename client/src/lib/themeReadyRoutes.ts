@@ -17,7 +17,7 @@
  * single theme's tokens apply, so it doesn't violate the project's
  * no-coexisting-old/new-UI convention.
  */
-export const THEME_READY_ROUTE_PREFIXES: string[] = ["/", "/words", "/review"];
+export const THEME_READY_ROUTE_PREFIXES: string[] = ["/", "/words", "/review", "/plan", "/exam-take"];
 
 export function isThemeReadyRoute(pathname: string): boolean {
   return THEME_READY_ROUTE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

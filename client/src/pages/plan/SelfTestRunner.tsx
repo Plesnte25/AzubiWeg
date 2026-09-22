@@ -113,11 +113,11 @@ export default function SelfTestRunner() {
 
   if (startError) {
     return (
-      <div className="flex min-h-[calc(100dvh-40px)] flex-col items-center justify-center gap-3 px-6 text-center" style={{ background: "#161826" }}>
-        <p className="text-[13.5px]" style={{ color: "rgba(233,233,237,.6)" }}>
+      <div className="flex min-h-[calc(100dvh-40px)] flex-col items-center justify-center gap-3 px-6 text-center" style={{ background: "var(--color-paper)" }}>
+        <p className="text-[13.5px]" style={{ color: "var(--color-ink-600)" }}>
           {startError}
         </p>
-        <button type="button" onClick={goBack} className="text-[13px]" style={{ color: "#b5abfc" }}>
+        <button type="button" onClick={goBack} className="text-[13px]" style={{ color: "var(--color-brand-700)" }}>
           ‹ Back
         </button>
       </div>
@@ -125,7 +125,7 @@ export default function SelfTestRunner() {
   }
 
   if (!session) {
-    return <div className="min-h-[calc(100dvh-40px)]" style={{ background: "#1f2236" }} />;
+    return <div className="min-h-[calc(100dvh-40px)]" style={{ background: "var(--color-paper)" }} />;
   }
 
   const q = session.questions[index];
@@ -174,7 +174,7 @@ export default function SelfTestRunner() {
     return (
       <div
         className="flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)] lg:mx-auto lg:max-w-[480px]"
-        style={{ background: "radial-gradient(100% 42% at 50% 14%, #262a60 0%, #161826 70%)" }}
+        style={{ background: "radial-gradient(100% 42% at 50% 14%, var(--color-ink-50) 0%, var(--color-paper) 70%)" }}
       >
         <SelfTestDone
           answers={answers}
