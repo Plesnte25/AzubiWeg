@@ -89,7 +89,7 @@ export default function Vocabulary() {
     <>
     <div
       className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col pt-[calc(env(safe-area-inset-top)+18px)] lg:hidden"
-      style={{ background: "#161826" }}
+      style={{ background: "var(--color-paper)" }}
     >
       <div className="px-[18px]">
         <div className="flex items-center justify-between">
@@ -97,7 +97,7 @@ export default function Vocabulary() {
             <div className="text-[26px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
               Words
             </div>
-            <div className="text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+            <div className="text-[11px]" style={{ color: "var(--color-ink-400)" }}>
               {allWords.length} total · {shakyCount} shaky
             </div>
           </div>
@@ -119,10 +119,10 @@ export default function Vocabulary() {
             placeholder="Search your words"
             aria-label="Search your words"
             className="min-h-[42px] w-full rounded-[11px] pr-[38px] pl-9 text-[15px] outline-none"
-            style={{ background: "#1c1f2c", color: "#e9e9ed", border: "1px solid rgba(233,233,237,.1)" }}
+            style={{ background: "var(--color-card)", color: "var(--color-ink-900)", border: "1px solid var(--color-hairline)" }}
           />
-          <MagnifyingGlass size={16} weight="regular" className="absolute top-[13px] left-3" style={{ color: "rgba(233,233,237,.45)" }} aria-hidden="true" />
-          <SlidersHorizontal size={16} weight="regular" className="absolute top-[13px] right-3" style={{ color: "rgba(233,233,237,.45)" }} aria-hidden="true" />
+          <MagnifyingGlass size={16} weight="regular" className="absolute top-[13px] left-3" style={{ color: "var(--color-ink-400)" }} aria-hidden="true" />
+          <SlidersHorizontal size={16} weight="regular" className="absolute top-[13px] right-3" style={{ color: "var(--color-ink-400)" }} aria-hidden="true" />
         </div>
 
         <div className="mt-[11px] flex gap-1.5 overflow-hidden">
@@ -135,8 +135,8 @@ export default function Vocabulary() {
                 onClick={() => setFilter(f.key)}
                 className="rounded-full px-[11px] py-[5px] text-[12px] whitespace-nowrap transition-colors"
                 style={{
-                  background: active ? "rgba(145,132,217,.22)" : "#20222f",
-                  color: active ? "#d2cefd" : "rgba(233,233,237,.6)",
+                  background: active ? "var(--color-brand-100)" : "var(--color-ink-50)",
+                  color: active ? "var(--color-brand-800)" : "var(--color-ink-600)",
                 }}
               >
                 {f.label} ({countFor(f.key)})
@@ -156,8 +156,8 @@ export default function Vocabulary() {
                 onClick={() => setFilter(active ? "all" : f.key)}
                 className="rounded-full px-[11px] py-[5px] text-[12px] whitespace-nowrap transition-colors"
                 style={{
-                  background: active ? "rgba(228,196,182,.22)" : "rgba(228,196,182,.1)",
-                  color: "#e4c4b6",
+                  background: active ? "var(--color-warning-100)" : "var(--color-warning-50)",
+                  color: "var(--color-warning-600)",
                 }}
               >
                 {f.label} ({count})
@@ -169,10 +169,10 @@ export default function Vocabulary() {
 
       <div className="mt-[15px] min-h-0 flex-1 overflow-y-auto pb-2.5">
         <div className="flex items-center justify-between px-[18px] pb-2">
-          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-600)" }}>
             {resultLabel}
           </div>
-          <div className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="text-micro" style={{ color: "var(--color-ink-600)" }}>
             history
           </div>
         </div>
@@ -186,7 +186,7 @@ export default function Vocabulary() {
               key={w.id}
               {...clickableRowProps(() => push(`/words/${w.id}`))}
               className="flex cursor-pointer items-center gap-3 px-[18px] py-3 transition-[filter] duration-150 hover:brightness-110"
-              style={{ borderBottom: "1px solid rgba(233,233,237,.06)" }}
+              style={{ borderBottom: "1px solid var(--color-hairline-soft)" }}
             >
               <div
                 className="grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[11px] font-medium"
@@ -206,7 +206,7 @@ export default function Vocabulary() {
                     </span>
                   )}
                 </div>
-                <div className="truncate text-[11.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+                <div className="truncate text-[11.5px]" style={{ color: "var(--color-ink-400)" }}>
                   {w.meaning ? stripLeadingPosTag(w.meaning) : "no meaning yet"}
                   {plural ? ` · Pl. ${plural}` : ""}
                 </div>
@@ -216,15 +216,15 @@ export default function Vocabulary() {
                   <i key={i} className="block w-1 rounded-[1px]" style={{ height: h, background: barColor(h) }} />
                 ))}
               </div>
-              <CaretRight size={13} weight="regular" style={{ color: "rgba(233,233,237,.3)" }} aria-hidden="true" />
+              <CaretRight size={13} weight="regular" style={{ color: "var(--color-ink-300)" }} aria-hidden="true" />
             </div>
           );
         })}
 
         {filtered.length === 0 && (
           <div className="flex flex-col items-center px-6 py-10 text-center">
-            <MagnifyingGlass size={22} weight="regular" style={{ color: "rgba(233,233,237,.3)" }} aria-hidden="true" />
-            <div className="mt-2.5 text-[13.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+            <MagnifyingGlass size={22} weight="regular" style={{ color: "var(--color-ink-300)" }} aria-hidden="true" />
+            <div className="mt-2.5 text-[13.5px]" style={{ color: "var(--color-ink-400)" }}>
               Nothing matches &ldquo;{query}&rdquo;.
             </div>
             <button
@@ -256,7 +256,7 @@ export default function Vocabulary() {
               <div className="text-[19px] leading-tight font-medium" style={{ letterSpacing: "-.02em" }}>
                 Words
               </div>
-              <div className="text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+              <div className="text-[11px]" style={{ color: "var(--color-ink-400)" }}>
                 {allWords.length} total · {shakyCount} shaky
               </div>
             </div>
@@ -277,9 +277,9 @@ export default function Vocabulary() {
               placeholder="Search your words"
               aria-label="Search your words"
               className="min-h-[38px] w-full rounded-[10px] pl-[34px] text-[13.5px] outline-none"
-              style={{ background: "#1c1f2c", color: "#e9e9ed", border: "1px solid rgba(233,233,237,.1)" }}
+              style={{ background: "var(--color-card)", color: "var(--color-ink-900)", border: "1px solid var(--color-hairline)" }}
             />
-            <MagnifyingGlass size={15} weight="regular" className="absolute top-[11px] left-[11px]" style={{ color: "rgba(233,233,237,.45)" }} aria-hidden="true" />
+            <MagnifyingGlass size={15} weight="regular" className="absolute top-[11px] left-[11px]" style={{ color: "var(--color-ink-400)" }} aria-hidden="true" />
           </div>
           <div className="mt-[9px] flex flex-wrap gap-1.5">
             {FILTERS.map((f) => {
@@ -290,7 +290,7 @@ export default function Vocabulary() {
                   type="button"
                   onClick={() => setFilter(f.key)}
                   className="rounded-full px-[10px] py-1 text-micro whitespace-nowrap"
-                  style={{ background: active ? "rgba(145,132,217,.22)" : "#20222f", color: active ? "#d2cefd" : "rgba(233,233,237,.6)" }}
+                  style={{ background: active ? "var(--color-brand-100)" : "var(--color-ink-50)", color: active ? "var(--color-brand-800)" : "var(--color-ink-600)" }}
                 >
                   {f.label} ({countFor(f.key)})
                 </button>
@@ -306,7 +306,7 @@ export default function Vocabulary() {
                   type="button"
                   onClick={() => setFilter(active ? "all" : f.key)}
                   className="rounded-full px-[10px] py-1 text-micro whitespace-nowrap"
-                  style={{ background: active ? "rgba(228,196,182,.22)" : "rgba(228,196,182,.1)", color: "#e4c4b6" }}
+                  style={{ background: active ? "var(--color-warning-100)" : "var(--color-warning-50)", color: "var(--color-warning-600)" }}
                 >
                   {f.label} ({count})
                 </button>
@@ -332,9 +332,9 @@ export default function Vocabulary() {
                 {...clickableRowProps(() => setSelectedId(w.id))}
                 className="flex cursor-grab items-center gap-[11px] px-[18px] py-[11px] transition-[background,box-shadow,filter] duration-150 hover:brightness-110 active:cursor-grabbing"
                 style={{
-                  background: active ? "linear-gradient(90deg,rgba(145,132,217,.14),transparent)" : "transparent",
-                  boxShadow: active ? "inset 2px 0 0 #9184d9" : "none",
-                  borderBottom: "1px solid rgba(233,233,237,.06)",
+                  background: active ? "linear-gradient(90deg,var(--color-brand-100),transparent)" : "transparent",
+                  boxShadow: active ? "inset 2px 0 0 var(--color-brand-500)" : "none",
+                  borderBottom: "1px solid var(--color-hairline-soft)",
                 }}
               >
                 <div className="grid size-8 shrink-0 place-items-center rounded-[9px] text-micro font-medium" style={{ background: chipBg(w), color: chipColor(w) }}>
@@ -352,7 +352,7 @@ export default function Vocabulary() {
                       </span>
                     )}
                   </div>
-                  <div className="truncate text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
+                  <div className="truncate text-[11px]" style={{ color: "var(--color-ink-400)" }}>
                     {w.meaning ? stripLeadingPosTag(w.meaning) : "no meaning yet"}
                   </div>
                 </div>
@@ -371,7 +371,7 @@ export default function Vocabulary() {
         {effectiveSelectedId ? (
           <WordDetailContent key={effectiveSelectedId} id={effectiveSelectedId} embedded />
         ) : (
-          <div className="grid h-full place-items-center text-[13px]" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="grid h-full place-items-center text-[13px]" style={{ color: "var(--color-ink-600)" }}>
             No words yet.
           </div>
         )}

@@ -16,20 +16,20 @@ const CASES: { key: keyof DeclensionTable; label: string }[] = [
 export function DeclensionCard({ declension, form }: { declension: DeclensionTable; form: string | null }) {
   const plural = declension.nom?.pl;
   return (
-    <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c", boxShadow: "0 0 0 1px rgba(233,233,237,.06)" }}>
+    <div className="rounded-xl p-3.5" style={{ background: "var(--color-card)", boxShadow: "0 0 0 1px var(--color-hairline-soft)" }}>
       <div className="flex justify-between">
-        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
+        <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-brand-500)" }}>
           Declension
         </div>
         {plural && (
-          <span className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
+          <span className="text-micro" style={{ color: "var(--color-ink-600)" }}>
             plural: die {plural}
           </span>
         )}
       </div>
       <table className="mt-2 w-full text-[13px]">
         <thead>
-          <tr style={{ color: "rgba(233,233,237,.62)" }}>
+          <tr style={{ color: "var(--color-ink-600)" }}>
             <th className="pb-1.5 text-left text-micro font-normal">Case</th>
             <th className="pb-1.5 text-left text-micro font-normal">Singular</th>
             <th className="pb-1.5 text-left text-micro font-normal">Plural</th>
@@ -40,7 +40,7 @@ export function DeclensionCard({ declension, form }: { declension: DeclensionTab
             const cell = declension[key];
             return (
               <tr key={key}>
-                <td className="py-1" style={{ color: "rgba(233,233,237,.55)" }}>
+                <td className="py-1" style={{ color: "var(--color-ink-600)" }}>
                   {label}
                 </td>
                 <td className="py-1">{cell?.sg ?? "—"}</td>
@@ -51,7 +51,7 @@ export function DeclensionCard({ declension, form }: { declension: DeclensionTab
         </tbody>
       </table>
       {form && (
-        <div className="mt-2 rounded-lg px-2.5 py-2 text-[11px]" style={{ color: "rgba(233,233,237,.45)", background: "rgba(145,132,217,.08)" }}>
+        <div className="mt-2 rounded-lg px-2.5 py-2 text-[11px]" style={{ color: "var(--color-ink-400)", background: "var(--color-brand-50)" }}>
           {form}
         </div>
       )}

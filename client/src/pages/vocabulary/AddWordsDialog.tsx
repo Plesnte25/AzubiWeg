@@ -107,7 +107,7 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
     <BottomSheet open={open} onClose={onClose}>
       <form onSubmit={submit} className="flex flex-col gap-[18px]">
         <div className="flex items-center justify-between">
-          <button type="button" onClick={onClose} className="min-h-0 px-1.5 py-1 text-[13px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <button type="button" onClick={onClose} className="min-h-0 px-1.5 py-1 text-[13px]" style={{ color: "var(--color-ink-400)" }}>
             Cancel
           </button>
           <span className="text-[16px] font-medium">New word</span>
@@ -115,14 +115,14 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
             type="submit"
             disabled={add.isPending || words.length === 0}
             className="min-h-0 px-1.5 py-1 text-[13px] font-medium disabled:opacity-40"
-            style={{ color: "#b5abfc" }}
+            style={{ color: "var(--color-brand-700)" }}
           >
             {add.isPending ? "Saving…" : "Save"}
           </button>
         </div>
 
         <div>
-          <div className="mb-1.5 text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="mb-1.5 text-[11px]" style={{ color: "var(--color-ink-400)" }}>
             German word{words.length > 1 ? "s" : ""}
           </div>
           <textarea
@@ -132,17 +132,17 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
             placeholder={"Genehmigung\n(comma or newline separated for more than one)"}
             rows={singleWord ? 1 : 3}
             className="w-full resize-none bg-transparent text-[24px] leading-tight font-medium outline-none"
-            style={{ color: "#e9e9ed", letterSpacing: "-.02em", borderBottom: "2px solid #9184d9", paddingBottom: 7 }}
+            style={{ color: "var(--color-ink-900)", letterSpacing: "-.02em", borderBottom: "2px solid var(--color-brand-500)", paddingBottom: 7 }}
           />
         </div>
 
         {singleWord && (
           <div>
             <div className="mb-[7px] flex items-baseline justify-between">
-              <div className="text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
+              <div className="text-[11px]" style={{ color: "var(--color-ink-400)" }}>
                 Article
               </div>
-              <div className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
+              <div className="text-micro" style={{ color: "var(--color-ink-600)" }}>
                 guessed from the ending
               </div>
             </div>
@@ -154,9 +154,9 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
                     key={g}
                     className="flex-1 rounded-[11px] py-[11px] text-center text-[15px] font-medium"
                     style={{
-                      border: `1px solid ${on ? GENUS_COLORS[g] : "rgba(233,233,237,.14)"}`,
-                      background: on ? "rgba(145,132,217,.14)" : "transparent",
-                      color: on ? GENUS_COLORS[g] : "rgba(233,233,237,.55)",
+                      border: `1px solid ${on ? GENUS_COLORS[g] : "var(--color-hairline)"}`,
+                      background: on ? "var(--color-brand-100)" : "transparent",
+                      color: on ? GENUS_COLORS[g] : "var(--color-ink-600)",
                     }}
                   >
                     {g}
@@ -164,7 +164,7 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
                 );
               })}
             </div>
-            <div className="mt-[9px] flex items-start gap-[7px] text-[11.5px] leading-[1.45]" style={{ color: "#b5abfc" }}>
+            <div className="mt-[9px] flex items-start gap-[7px] text-[11.5px] leading-[1.45]" style={{ color: "var(--color-brand-700)" }}>
               <Sparkle size={13} weight="fill" className="mt-0.5 shrink-0" aria-hidden="true" />
               {suggested
                 ? `Nouns ending like this are usually ${suggested} — the real article comes from the dictionary lookup once you save.`
@@ -173,12 +173,12 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
           </div>
         )}
 
-        <p className="text-[12px]" style={{ color: "rgba(233,233,237,.5)" }}>
+        <p className="text-[12px]" style={{ color: "var(--color-ink-400)" }}>
           Meaning, pronunciation &amp; audio are fetched automatically once saved.
         </p>
 
         <div>
-          <div className="mb-1.5 text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="mb-1.5 text-[11px]" style={{ color: "var(--color-ink-400)" }}>
             Lesson / Woche (optional)
           </div>
           <input
@@ -186,13 +186,13 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
             onChange={(e) => setLesson(e.target.value)}
             placeholder="e.g. week-05"
             className="w-full border-0 bg-transparent pb-[7px] text-[15px] outline-none"
-            style={{ color: "#e9e9ed", borderBottom: "1px solid rgba(233,233,237,.14)" }}
+            style={{ color: "var(--color-ink-900)", borderBottom: "1px solid var(--color-hairline)" }}
           />
         </div>
 
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
+            <span className="text-[11px]" style={{ color: "var(--color-ink-400)" }}>
               Level
             </span>
             <div className="flex gap-1">
@@ -203,8 +203,8 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
                   onClick={() => setLevel(o.value)}
                   className="rounded-full px-2 py-1 text-micro font-medium"
                   style={{
-                    background: level === o.value ? "rgba(145,132,217,.22)" : "#20222f",
-                    color: level === o.value ? "#d2cefd" : "rgba(233,233,237,.6)",
+                    background: level === o.value ? "var(--color-brand-100)" : "var(--color-ink-50)",
+                    color: level === o.value ? "var(--color-brand-800)" : "var(--color-ink-600)",
                   }}
                 >
                   {o.label}
@@ -216,7 +216,7 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
 
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
+            <span className="text-[11px]" style={{ color: "var(--color-ink-400)" }}>
               Themenfeld
             </span>
             <div className="flex gap-1">
@@ -227,8 +227,8 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
                   onClick={() => setThemeMode(m)}
                   className="rounded-full px-2 py-1 text-micro font-medium"
                   style={{
-                    background: themeMode === m ? "rgba(145,132,217,.22)" : "#20222f",
-                    color: themeMode === m ? "#d2cefd" : "rgba(233,233,237,.6)",
+                    background: themeMode === m ? "var(--color-brand-100)" : "var(--color-ink-50)",
+                    color: themeMode === m ? "var(--color-brand-800)" : "var(--color-ink-600)",
                   }}
                 >
                   {m === "auto" ? "Auto" : m === "unclassified" ? "Unclassified" : "Pick (max 2)"}
@@ -247,8 +247,8 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
                     onClick={() => toggleTheme(t)}
                     className="rounded-full px-2 py-1 text-micro"
                     style={{
-                      border: `1px solid ${on ? "#9184d9" : "rgba(233,233,237,.14)"}`,
-                      color: on ? "#d2cefd" : "rgba(233,233,237,.6)",
+                      border: `1px solid ${on ? "var(--color-brand-500)" : "var(--color-hairline)"}`,
+                      color: on ? "var(--color-brand-800)" : "var(--color-ink-600)",
                     }}
                   >
                     {THEMENFELD_LABELS[t]}
@@ -260,17 +260,17 @@ export function AddWordsDialog({ open, onClose, initialWord = "" }: AddWordsDial
         </div>
 
         {add.isError && (
-          <p className="text-[12px]" style={{ color: "#e4c4b6" }}>
+          <p className="text-[12px]" style={{ color: "var(--color-danger-700)" }}>
             {String(add.error)}
           </p>
         )}
         {add.isSuccess && add.data.words.length > 0 && (
-          <p className="text-[12px]" style={{ color: "#b5abfc" }}>
+          <p className="text-[12px]" style={{ color: "var(--color-brand-700)" }}>
             Added {add.data.words.map((w) => w?.headword).join(", ")}
           </p>
         )}
 
-        <div className="flex items-center gap-2 pb-1 text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
+        <div className="flex items-center gap-2 pb-1 text-[11px]" style={{ color: "var(--color-ink-600)" }}>
           <CalendarCheck size={13} weight="regular" aria-hidden="true" />
           Lands in today&rsquo;s &ldquo;new&rdquo; stack · first review tomorrow
         </div>

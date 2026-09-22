@@ -25,7 +25,7 @@ export function ReviewNotesPane({ wordId }: { wordId: string }) {
   return (
     <div className="flex h-full flex-col overflow-y-auto px-[18px] py-[18px]">
       <div className="flex items-center gap-1.5">
-        <NotePencil size={14} weight="regular" style={{ color: "#b5abfc" }} aria-hidden="true" />
+        <NotePencil size={14} weight="regular" style={{ color: "var(--color-brand-700)" }} aria-hidden="true" />
         <div className="text-[13.5px] font-medium" style={{ letterSpacing: "-.01em" }}>
           Notes
         </div>
@@ -37,14 +37,14 @@ export function ReviewNotesPane({ wordId }: { wordId: string }) {
 
       {notes.length > 0 && (
         <>
-          <div className="mt-4 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="mt-4 text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-600)" }}>
             Earlier
           </div>
           <div className="mt-2 flex flex-col gap-2">
             {notes.map((note) => (
-              <div key={note.id} className="rounded-xl p-3" style={{ background: "#1c1f2c" }}>
+              <div key={note.id} className="rounded-xl p-3" style={{ background: "var(--color-card)" }}>
                 <div className="truncate text-[13px] font-medium">{note.title || "(untitled)"}</div>
-                <div className="mt-0.5 truncate text-[11.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+                <div className="mt-0.5 truncate text-[11.5px]" style={{ color: "var(--color-ink-400)" }}>
                   {noteSnippet(note.body) || "empty note"}
                 </div>
               </div>

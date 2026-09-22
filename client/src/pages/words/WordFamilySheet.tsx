@@ -26,19 +26,19 @@ export function WordFamilySheet({ wordId, headword, open, onClose }: { wordId: s
   return (
     <BottomSheet open={open} onClose={onClose}>
       <div className="flex items-center gap-1.5">
-        <LinkSimple size={16} weight="regular" style={{ color: "#b5abfc" }} aria-hidden="true" />
+        <LinkSimple size={16} weight="regular" style={{ color: "var(--color-brand-700)" }} aria-hidden="true" />
         <span className="text-[16px] font-medium">{headword}&rsquo;s word family</span>
       </div>
 
       <div className="mt-3 flex flex-col gap-4 pb-2">
         {isLoading && (
-          <p className="text-[13px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <p className="text-[13px]" style={{ color: "var(--color-ink-400)" }}>
             Looking up related words…
           </p>
         )}
 
         {!isLoading && members.length === 0 && (
-          <p className="text-[13px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <p className="text-[13px]" style={{ color: "var(--color-ink-400)" }}>
             No family data for this word — DErivBase (the dictionary this is sourced from) doesn&rsquo;t cover every lemma.
           </p>
         )}
@@ -48,7 +48,7 @@ export function WordFamilySheet({ wordId, headword, open, onClose }: { wordId: s
           if (rows.length === 0) return null;
           return (
             <div key={key}>
-              <div className="mb-1.5 text-micro tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+              <div className="mb-1.5 text-micro tracking-[.1em] uppercase" style={{ color: "var(--color-ink-600)" }}>
                 {label}
               </div>
               <div className="flex flex-col gap-1">
@@ -62,15 +62,15 @@ export function WordFamilySheet({ wordId, headword, open, onClose }: { wordId: s
                     key={`${m.headword}-${i}`}
                     onClick={m.ownedWordId ? () => { onClose(); push(`/words/${m.ownedWordId}`); } : undefined}
                     className="flex items-center justify-between rounded-[11px] px-3 py-[9px]"
-                    style={{ background: "#20222f", cursor: m.ownedWordId ? "pointer" : "default" }}
+                    style={{ background: "var(--color-ink-50)", cursor: m.ownedWordId ? "pointer" : "default" }}
                   >
                     <div>
                       <span className="text-[13.5px]">{m.headword}</span>
-                      <span className="ml-1.5 text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
+                      <span className="ml-1.5 text-[11px]" style={{ color: "var(--color-ink-600)" }}>
                         {m.pos}
                       </span>
                     </div>
-                    <span className="text-micro" style={{ color: m.ownedWordId ? "#b5abfc" : "rgba(233,233,237,.62)" }}>
+                    <span className="text-micro" style={{ color: m.ownedWordId ? "var(--color-brand-700)" : "var(--color-ink-600)" }}>
                       {m.ownedWordId ? "in your words" : "not added yet"}
                     </span>
                   </div>

@@ -6,11 +6,11 @@
  * CLAUDE.md's normal "hide missing data" convention). */
 export function EmptyStateCard({ label, message }: { label: string; message: string }) {
   return (
-    <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c", boxShadow: "0 0 0 1px rgba(233,233,237,.06)" }}>
-      <div className="text-micro tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
+    <div className="rounded-xl p-3.5" style={{ background: "var(--color-card)", boxShadow: "0 0 0 1px var(--color-hairline-soft)" }}>
+      <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-brand-500)" }}>
         {label}
       </div>
-      <div className="mt-2 text-[13px] leading-[1.5]" style={{ color: "rgba(233,233,237,.62)" }}>
+      <div className="mt-2 text-[13px] leading-[1.5]" style={{ color: "var(--color-ink-600)" }}>
         {message}
       </div>
     </div>

@@ -82,11 +82,14 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
   const outerClass = embedded
     ? "flex h-full flex-col gap-[13px] overflow-y-auto px-[22px] py-[22px]"
     : "animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col gap-[13px] overflow-y-auto px-[18px] pt-[calc(env(safe-area-inset-top)+18px)] pb-6 lg:mx-auto lg:my-8 lg:min-h-0 lg:max-w-[640px] lg:rounded-[20px] lg:border lg:border-white/5 lg:pb-8";
-  const outerStyle = embedded ? undefined : { background: "radial-gradient(120% 38% at 30% 0%, #252840, #161826 55%)" };
+  const outerStyle = embedded ? undefined : { background: "radial-gradient(120% 38% at 30% 0%, var(--color-ink-50), var(--color-paper) 55%)" };
 
   if (!wordsData) {
     return (
-      <div className={embedded ? "flex h-full flex-col gap-3 p-[22px]" : "-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col gap-3 px-[18px] pt-[calc(env(safe-area-inset-top)+18px)]"} style={embedded ? undefined : { background: "#161826" }}>
+      <div
+        className={embedded ? "flex h-full flex-col gap-3 p-[22px]" : "-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col gap-3 px-[18px] pt-[calc(env(safe-area-inset-top)+18px)]"}
+        style={embedded ? undefined : { background: "var(--color-paper)" }}
+      >
         <Skeleton className="h-5 w-24" />
         <Skeleton className="h-10 w-48" />
         <Skeleton className="h-32 w-full" />
@@ -98,11 +101,11 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
     return (
       <div
         className={embedded ? "flex h-full flex-col items-center justify-center gap-3" : "-mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col items-center justify-center gap-3 px-[18px]"}
-        style={embedded ? undefined : { background: "#161826" }}
+        style={embedded ? undefined : { background: "var(--color-paper)" }}
       >
-        <p style={{ color: "rgba(233,233,237,.6)" }}>That word isn&rsquo;t in your vocab anymore.</p>
+        <p style={{ color: "var(--color-ink-600)" }}>That word isn&rsquo;t in your vocab anymore.</p>
         {!embedded && (
-          <button type="button" onClick={goBack} className="text-[13px]" style={{ color: "#b5abfc" }}>
+          <button type="button" onClick={goBack} className="text-[13px]" style={{ color: "var(--color-brand-700)" }}>
             ‹ {backLabel}
           </button>
         )}
@@ -117,7 +120,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
 
   return (
     <div className={outerClass} style={outerStyle}>
-      <div className="flex items-center justify-between text-[13px]" style={{ color: "rgba(233,233,237,.55)" }}>
+      <div className="flex items-center justify-between text-[13px]" style={{ color: "var(--color-ink-600)" }}>
         {embedded ? (
           <span />
         ) : (
@@ -132,7 +135,10 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
               type="button"
               onClick={() => toggleStarred.mutate(!word.starred)}
               className="flex items-center gap-1.5 rounded-[9px] px-2.5 py-1.5 text-[12.5px] font-medium"
-              style={{ background: word.starred ? "rgba(145,132,217,.18)" : "#20222f", color: word.starred ? "#d2cefd" : "#e9e9ed" }}
+              style={{
+                background: word.starred ? "var(--color-brand-100)" : "var(--color-ink-50)",
+                color: word.starred ? "var(--color-brand-800)" : "var(--color-ink-900)",
+              }}
             >
               <Star size={14} weight={word.starred ? "fill" : "regular"} aria-hidden="true" />
               Star
@@ -141,7 +147,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
               type="button"
               onClick={() => setShowFamily(true)}
               className="flex items-center gap-1.5 rounded-[9px] px-2.5 py-1.5 text-[12.5px] font-medium"
-              style={{ background: "#20222f", color: "#e9e9ed" }}
+              style={{ background: "var(--color-ink-50)", color: "var(--color-ink-900)" }}
             >
               <LinkSimple size={14} weight="regular" aria-hidden="true" />
               Family
@@ -168,7 +174,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
               aria-label="Delete word"
               title="Delete word"
               className="grid size-8 shrink-0 place-items-center rounded-[9px]"
-              style={{ background: "#20222f", color: "#e9e9ed" }}
+              style={{ background: "var(--color-ink-50)", color: "var(--color-ink-900)" }}
             >
               <Trash size={14} weight="regular" aria-hidden="true" />
             </button>
@@ -183,10 +189,10 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
 
       <div>
         <div className="flex items-center gap-2.5">
-          <span className="rounded-full px-3 py-1 text-[12px]" style={{ background: "rgba(233,233,237,.08)", color: chipColor(word) }}>
+          <span className="rounded-full px-3 py-1 text-[12px]" style={{ background: "var(--color-hairline-soft)", color: chipColor(word) }}>
             {fullArtLabel(word)}
           </span>
-          <span className="text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+          <span className="text-[11px]" style={{ color: "var(--color-ink-400)" }}>
             {word.level ? word.level.toUpperCase() : "—"} · {word.lesson ?? "—"}
           </span>
           {badge && (
@@ -195,7 +201,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
             </span>
           )}
           {!embedded && word.starred && (
-            <Star size={14} weight="fill" style={{ color: "#b5abfc" }} aria-hidden="true" />
+            <Star size={14} weight="fill" style={{ color: "var(--color-brand-700)" }} aria-hidden="true" />
           )}
         </div>
         <div className="mt-2 flex items-center gap-3 text-[36px] leading-tight font-medium" style={{ letterSpacing: "-.03em" }}>
@@ -211,7 +217,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
           </button>
         </div>
         <div className="flex items-start gap-1.5">
-          <div className="text-[15px]" style={{ color: "rgba(233,233,237,.6)" }}>
+          <div className="text-[15px]" style={{ color: "var(--color-ink-600)" }}>
             {word.meaning
               ? stripLeadingPosTag(word.meaning)
               : word.enrichmentStatus === "unresolved"
@@ -224,15 +230,18 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
             onClick={() => setEditingMeaning(true)}
             aria-label="Edit meaning"
             className="mt-0.5 shrink-0"
-            style={{ color: "rgba(233,233,237,.35)" }}
+            style={{ color: "var(--color-ink-300)" }}
           >
             <PencilSimple size={13} weight="regular" aria-hidden="true" />
           </button>
         </div>
         {word.reviewNote && (
-          <div className="mt-2 flex items-start gap-2 rounded-xl px-[13px] py-[11px]" style={{ background: "rgba(228,196,182,.1)", boxShadow: "0 0 0 1px rgba(228,196,182,.28)" }}>
-            <WarningCircle size={15} weight="regular" style={{ color: "#e4c4b6", marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
-            <div className="text-[12.5px] leading-[1.5]" style={{ color: "#e4c4b6" }}>
+          <div
+            className="mt-2 flex items-start gap-2 rounded-xl px-[13px] py-[11px]"
+            style={{ background: "var(--color-warning-50)", boxShadow: "0 0 0 1px var(--color-warning-100)" }}
+          >
+            <WarningCircle size={15} weight="regular" style={{ color: "var(--color-warning-600)", marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
+            <div className="text-[12.5px] leading-[1.5]" style={{ color: "var(--color-warning-600)" }}>
               {word.reviewNote}
             </div>
           </div>
@@ -258,20 +267,20 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
       <ReviewHistoryCard word={word} entries={wordHistory} />
 
       <div>
-        <div className="mb-2 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+        <div className="mb-2 text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-400)" }}>
           In a sentence
         </div>
         {word.example ? (
           <>
-            <div className="pl-3 text-[14px] leading-[1.5]" style={{ borderLeft: "2px solid #5d5294" }}>
+            <div className="pl-3 text-[14px] leading-[1.5]" style={{ borderLeft: "2px solid var(--color-brand-solid)" }}>
               {word.example}
             </div>
-            <div className="mt-1 pl-3 text-[12.5px] leading-[1.5]" style={{ color: "rgba(233,233,237,.5)", borderLeft: "2px solid transparent" }}>
+            <div className="mt-1 pl-3 text-[12.5px] leading-[1.5]" style={{ color: "var(--color-ink-400)", borderLeft: "2px solid transparent" }}>
               {word.exampleTranslation ?? "Translation not available yet."}
             </div>
           </>
         ) : (
-          <div className="pl-3 text-[13px] leading-[1.5]" style={{ color: "rgba(233,233,237,.62)", borderLeft: "2px solid transparent" }}>
+          <div className="pl-3 text-[13px] leading-[1.5]" style={{ color: "var(--color-ink-600)", borderLeft: "2px solid transparent" }}>
             No example sentence available for this word yet.
           </div>
         )}
@@ -281,14 +290,14 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
         <div
           onClick={() => setEditingNote(true)}
           className="flex cursor-pointer items-start gap-2.5 rounded-xl px-[13px] py-3"
-          style={{ background: "rgba(145,132,217,.08)", boxShadow: "0 0 0 1px rgba(145,132,217,.28)" }}
+          style={{ background: "var(--color-brand-50)", boxShadow: "0 0 0 1px var(--color-brand-100)" }}
         >
-          <NotePencil size={16} weight="regular" style={{ color: "#b5abfc", marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
+          <NotePencil size={16} weight="regular" style={{ color: "var(--color-brand-700)", marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
           <div>
-            <div className="text-micro tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
+            <div className="text-micro tracking-[.1em] uppercase" style={{ color: "var(--color-brand-700)" }}>
               Your note
             </div>
-            <div className="mt-[3px] text-[13px] leading-[1.5]" style={{ color: "rgba(233,233,237,.8)" }}>
+            <div className="mt-[3px] text-[13px] leading-[1.5]" style={{ color: "var(--color-ink-700)" }}>
               {noteSnippet(note.body) || note.title || "(empty note)"}
             </div>
           </div>
@@ -301,7 +310,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
             type="button"
             onClick={() => push("/review", { state: { words: [word] } })}
             className="min-h-[44px] flex-1 rounded-[10px] border text-[14px] font-medium"
-            style={{ borderColor: "rgba(233,233,237,.16)" }}
+            style={{ borderColor: "var(--color-hairline)" }}
           >
             Drill now
           </button>
@@ -324,7 +333,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
               type="button"
               onClick={() => toggleStarred.mutate(!word.starred)}
               className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px] text-left text-[13.5px]"
-              style={{ background: "#20222f" }}
+              style={{ background: "var(--color-ink-50)" }}
             >
               <Star size={15} weight={word.starred ? "fill" : "regular"} aria-hidden="true" />
               {word.starred ? "Remove star" : "Star this word"}
@@ -334,7 +343,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
             type="button"
             onClick={() => toggleLeech.mutate(!word.leech)}
             className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px] text-left text-[13.5px]"
-            style={{ background: "#20222f" }}
+            style={{ background: "var(--color-ink-50)" }}
           >
             <Flag size={15} weight={word.leech ? "fill" : "regular"} aria-hidden="true" />
             {word.leech ? "Unflag as problem word" : "Flag as problem word"}
@@ -345,7 +354,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
               if (confirm(`Delete "${word.headword}"? This also removes it from your vault.`)) del.mutate();
             }}
             className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px] text-left text-[13.5px]"
-            style={{ background: "rgba(209,155,134,.14)", color: "#e4c4b6" }}
+            style={{ background: "var(--color-danger-100)", color: "var(--color-danger-700)" }}
           >
             <Trash size={15} weight="regular" aria-hidden="true" />
             Delete word
@@ -366,7 +375,7 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
           className="flex flex-col gap-[14px]"
         >
           <div className="flex items-center justify-between">
-            <button type="button" onClick={() => setEditingMeaning(false)} className="min-h-0 px-1.5 py-1 text-[13px]" style={{ color: "rgba(233,233,237,.5)" }}>
+            <button type="button" onClick={() => setEditingMeaning(false)} className="min-h-0 px-1.5 py-1 text-[13px]" style={{ color: "var(--color-ink-400)" }}>
               Cancel
             </button>
             <span className="text-[16px] font-medium">Meaning</span>
@@ -374,13 +383,13 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
               type="submit"
               disabled={editMeaning.isPending || !meaningDraft.trim()}
               className="min-h-0 px-1.5 py-1 text-[13px] font-medium disabled:opacity-40"
-              style={{ color: "#b5abfc" }}
+              style={{ color: "var(--color-brand-700)" }}
             >
               {editMeaning.isPending ? "Saving…" : word.reviewNote ? "Save & mark reviewed" : "Save"}
             </button>
           </div>
           {word.reviewNote && (
-            <p className="text-[12px] leading-[1.5]" style={{ color: "rgba(233,233,237,.5)" }}>
+            <p className="text-[12px] leading-[1.5]" style={{ color: "var(--color-ink-400)" }}>
               {word.reviewNote}
             </p>
           )}
@@ -391,10 +400,10 @@ export function WordDetailContent({ id, embedded = false }: { id: string; embedd
             rows={3}
             autoFocus
             className="w-full resize-none bg-transparent text-[17px] leading-snug outline-none"
-            style={{ color: "#e9e9ed", borderBottom: "2px solid #9184d9", paddingBottom: 7 }}
+            style={{ color: "var(--color-ink-900)", borderBottom: "2px solid var(--color-brand-500)", paddingBottom: 7 }}
           />
           {editMeaning.isError && (
-            <p className="text-[12px]" style={{ color: "#e4c4b6" }}>
+            <p className="text-[12px]" style={{ color: "var(--color-danger-700)" }}>
               {String(editMeaning.error)}
             </p>
           )}

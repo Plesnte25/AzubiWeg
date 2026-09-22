@@ -44,7 +44,7 @@ export function NotesDock({ draggingHeadword }: { draggingHeadword: string | nul
 
   if (editingId) {
     return (
-      <div className="flex h-full flex-col overflow-y-auto rounded-xl" style={{ background: "#1c1f2c" }}>
+      <div className="flex h-full flex-col overflow-y-auto rounded-xl" style={{ background: "var(--color-card)" }}>
         <NoteEditorContent
           key={editingId}
           id={editingId}
@@ -71,18 +71,18 @@ export function NotesDock({ draggingHeadword }: { draggingHeadword: string | nul
           aria-label="New note"
           title="New note"
           className="grid size-6 place-items-center rounded-full"
-          style={{ background: "#20222f", color: "#e9e9ed" }}
+          style={{ background: "var(--color-ink-50)", color: "var(--color-ink-900)" }}
         >
           <Plus size={13} weight="bold" aria-hidden="true" />
         </button>
       </div>
-      <div className="mt-0.5 text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+      <div className="mt-0.5 text-[11px]" style={{ color: "var(--color-ink-400)" }}>
         {notes.length} note{notes.length === 1 ? "" : "s"}
       </div>
 
       <div className="mt-3.5 flex min-h-0 flex-1 flex-col gap-2">
         {notes.length === 0 ? (
-          <p className="py-6 text-center text-[12.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
+          <p className="py-6 text-center text-[12.5px]" style={{ color: "var(--color-ink-600)" }}>
             No notes yet.
           </p>
         ) : (
@@ -110,19 +110,19 @@ export function NotesDock({ draggingHeadword }: { draggingHeadword: string | nul
                 }}
                 className="cursor-pointer rounded-xl p-3 transition-colors"
                 style={{
-                  background: isDragOver ? "rgba(145,132,217,.16)" : "#1c1f2c",
-                  boxShadow: isDragOver ? "0 0 0 1px #9184d9" : "none",
+                  background: isDragOver ? "var(--color-brand-100)" : "var(--color-card)",
+                  boxShadow: isDragOver ? "0 0 0 1px var(--color-brand-500)" : "none",
                 }}
               >
                 {isDragOver && draggingHeadword ? (
-                  <div className="flex items-center gap-1.5 text-[12.5px]" style={{ color: "#d2cefd" }}>
+                  <div className="flex items-center gap-1.5 text-[12.5px]" style={{ color: "var(--color-brand-800)" }}>
                     <NotePencil size={13} weight="regular" aria-hidden="true" />
                     Drop &ldquo;{draggingHeadword}&rdquo; to attach it
                   </div>
                 ) : (
                   <>
                     <div className="truncate text-[13px] font-medium">{note.title || "(untitled)"}</div>
-                    <div className="mt-0.5 truncate text-[11.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+                    <div className="mt-0.5 truncate text-[11.5px]" style={{ color: "var(--color-ink-400)" }}>
                       {noteSnippet(note.body) || "empty note"}
                     </div>
                   </>

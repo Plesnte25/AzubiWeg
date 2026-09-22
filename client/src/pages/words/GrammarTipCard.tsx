@@ -5,11 +5,11 @@
  * slot's placeholder styling this mirrors. */
 export function GrammarTipCard({ tip }: { tip: string | null }) {
   return (
-    <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c", boxShadow: "0 0 0 1px rgba(233,233,237,.06)" }}>
-      <div className="text-micro tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
+    <div className="rounded-xl p-3.5" style={{ background: "var(--color-card)", boxShadow: "0 0 0 1px var(--color-hairline-soft)" }}>
+      <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-brand-500)" }}>
         Grammar tip
       </div>
-      <div className="mt-2 text-[13px] leading-[1.5]" style={{ color: tip ? "rgba(233,233,237,.75)" : "rgba(233,233,237,.62)" }}>
+      <div className="mt-2 text-[13px] leading-[1.5]" style={{ color: tip ? "var(--color-ink-700)" : "var(--color-ink-600)" }}>
         {tip ?? "No grammar tip for this word yet."}
       </div>
     </div>

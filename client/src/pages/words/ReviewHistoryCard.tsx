@@ -3,7 +3,7 @@ import type { ReviewHistoryEntry, Word } from "../../api/types";
 import { barColor, buildSparkline } from "../../lib/wordDisplay";
 
 const GRADE_LABEL = { hard: "Hard", good: "Good", easy: "Easy" } as const;
-const GRADE_COLOR = { hard: "#e4c4b6", good: "rgba(233,233,237,.55)", easy: "rgba(233,233,237,.55)" } as const;
+const GRADE_COLOR = { hard: "var(--color-warning-600)", good: "var(--color-ink-600)", easy: "var(--color-ink-600)" } as const;
 
 function shortDate(iso: string): string {
   const d = new Date(iso);
@@ -50,13 +50,13 @@ export function ReviewHistoryCard({ word, entries }: { word: Word; entries: Revi
   const dueLabel = due?.toLocaleDateString(undefined, { day: "numeric", month: "short", timeZone: "UTC" });
 
   return (
-    <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c", boxShadow: "0 0 0 1px rgba(233,233,237,.06)" }}>
+    <div className="rounded-xl p-3.5" style={{ background: "var(--color-card)", boxShadow: "0 0 0 1px var(--color-hairline-soft)" }}>
       <div className="flex items-baseline justify-between">
-        <div className="flex items-center gap-1.5 text-micro tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
+        <div className="flex items-center gap-1.5 text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-brand-500)" }}>
           <ClockCounterClockwise size={13} weight="regular" aria-hidden="true" />
           Review history
         </div>
-        <span className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
+        <span className="text-micro" style={{ color: "var(--color-ink-600)" }}>
           {chronological.length === 0
             ? "No reviews yet"
             : `${chronological.length} review${chronological.length === 1 ? "" : "s"} · ${percentCorrect}% correct`}
@@ -69,7 +69,7 @@ export function ReviewHistoryCard({ word, entries }: { word: Word; entries: Revi
           return (
             <div key={i} className="flex flex-1 flex-col items-center gap-1">
               <i className="block w-full rounded-[2px]" style={{ height: h, background: barColor(h) }} />
-              <span className="text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
+              <span className="text-micro" style={{ color: "var(--color-ink-600)" }}>
                 {entry ? shortDate(entry.reviewedAt) : ""}
               </span>
             </div>
@@ -83,7 +83,7 @@ export function ReviewHistoryCard({ word, entries }: { word: Word; entries: Revi
             className="mt-2.5 h-px"
             style={{
               background:
-                "linear-gradient(to right, transparent, rgba(233,233,237,.1) 30px, rgba(233,233,237,.1) calc(100% - 30px), transparent)",
+                "linear-gradient(to right, transparent, var(--color-hairline-soft) 30px, var(--color-hairline-soft) calc(100% - 30px), transparent)",
             }}
           />
           <div className="mt-2.5 flex flex-col gap-1.5 text-[12px]">
@@ -95,7 +95,7 @@ export function ReviewHistoryCard({ word, entries }: { word: Word; entries: Revi
                   <span style={{ color: GRADE_COLOR[e.grade] }}>
                     {longDate(e.reviewedAt)} · {GRADE_LABEL[e.grade]}
                   </span>
-                  <span style={{ color: "rgba(233,233,237,.62)" }}>
+                  <span style={{ color: "var(--color-ink-600)" }}>
                     {before !== null ? `interval ${before} d → ${e.intervalAfter} d` : `interval → ${e.intervalAfter} d`}
                   </span>
                 </div>
@@ -106,7 +106,7 @@ export function ReviewHistoryCard({ word, entries }: { word: Word; entries: Revi
       )}
 
       <div className="mt-2.5 flex items-center justify-between pt-0.5">
-        <div className="text-[12px]" style={{ color: "rgba(233,233,237,.5)" }}>
+        <div className="text-[12px]" style={{ color: "var(--color-ink-400)" }}>
           Next review
         </div>
         <div className="text-[13.5px] font-medium">

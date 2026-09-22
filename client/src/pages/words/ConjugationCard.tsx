@@ -18,22 +18,22 @@ const PERSONS: { key: keyof NonNullable<ConjugationTable["present"]>; label: str
 export function ConjugationCard({ headword, conjugation }: { headword: string; conjugation: ConjugationTable }) {
   const present = conjugation.present;
   return (
-    <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c", boxShadow: "0 0 0 1px rgba(233,233,237,.06)" }}>
-      <div className="text-micro tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
+    <div className="rounded-xl p-3.5" style={{ background: "var(--color-card)", boxShadow: "0 0 0 1px var(--color-hairline-soft)" }}>
+      <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-brand-500)" }}>
         {headword} · present tense
       </div>
       {present && (
         <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[13.5px]">
           {PERSONS.map(({ key, label }) => (
             <div key={key} className="flex justify-between">
-              <span style={{ color: "rgba(233,233,237,.5)" }}>{label}</span>
+              <span style={{ color: "var(--color-ink-400)" }}>{label}</span>
               <span>{present[key] ?? "—"}</span>
             </div>
           ))}
         </div>
       )}
       {(conjugation.perfect ?? conjugation.past) && (
-        <div className="mt-2 text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+        <div className="mt-2 text-[11px]" style={{ color: "var(--color-ink-400)" }}>
           {conjugation.perfect ? `perfect: ${conjugation.perfect}` : ""}
           {conjugation.perfect && conjugation.past ? " · " : ""}
           {conjugation.past ? `past: ${conjugation.past}` : ""}

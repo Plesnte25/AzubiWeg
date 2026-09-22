@@ -11,10 +11,13 @@ export const NO_DATA_HEIGHT = 3;
 export const SPARKLINE_SLOTS = 6;
 
 export function barColor(height: number): string {
-  if (height > 13) return "#b5abfc";
-  if (height > 8) return "#9184d9";
-  if (height > 5) return "#5d5294";
-  return "#3f424d";
+  if (height > 13) return "var(--color-brand-700)";
+  if (height > 8) return "var(--color-brand-500)";
+  if (height > 5) return "var(--color-brand-solid)";
+  // neutral, not brand-tinted — matches the original's dark-gray "no data"
+  // tier being visually distinct from the 3 purple-tinted has-data tiers
+  // above, rather than just a fainter purple.
+  return "var(--color-ink-300)";
 }
 
 /** Last `slots` grades (oldest -> newest, left to right), left-padded with
@@ -38,7 +41,7 @@ export function chipColor(word: Word): string {
 /** Gender-tinted badge background (der/die/das only) — a neutral fallback
  * for non-noun words, which have no genus to tint by. */
 export function chipBg(word: Word): string {
-  return word.genus ? GENUS_BG[word.genus] : "rgba(233,233,237,.08)";
+  return word.genus ? GENUS_BG[word.genus] : "var(--color-hairline-soft)";
 }
 
 const LEADING_POS_TAG = /^\((?:Noun|Verb|Adjective|Adverb|Interjection|Pronoun|Preposition|Conjunction|Numeral|Article)\)\s*/i;
@@ -75,8 +78,8 @@ export interface StatusBadge {
 // new color -- both enrichmentStatus values this badge covers are "needs
 // your attention" states, the same semantic the amber pair already carries
 // elsewhere in the app.
-const NEEDS_ATTENTION_BG = "rgba(228,196,182,.14)";
-const NEEDS_ATTENTION_COLOR = "#e4c4b6";
+const NEEDS_ATTENTION_BG = "var(--color-warning-50)";
+const NEEDS_ATTENTION_COLOR = "var(--color-warning-600)";
 
 /** Badge for a word's `enrichmentStatus` -- only for the two states worth
  * surfacing as a visible flag (something the learner should look at and

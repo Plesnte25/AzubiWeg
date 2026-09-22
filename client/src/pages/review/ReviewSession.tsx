@@ -90,23 +90,27 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
     <>
     <div
       className="flex min-h-[calc(100dvh-40px)] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)] lg:hidden"
-      style={{ background: isDone ? "radial-gradient(100% 44% at 50% 16%, #2b2741 0%, #161826 68%)" : "radial-gradient(120% 50% at 50% 0%, #1d2033, #161826 62%)" }}
+      style={{
+        background: isDone
+          ? "radial-gradient(100% 44% at 50% 16%, var(--color-ink-50) 0%, var(--color-paper) 68%)"
+          : "radial-gradient(120% 50% at 50% 0%, var(--color-ink-50), var(--color-paper) 62%)",
+      }}
     >
       {isDone ? (
         <SessionDone done={done} total={total} elapsedSeconds={elapsedSeconds} onHome={() => goBack()} onTakeTest={() => push("/plan/self-tests")} />
       ) : (
         <>
           <div className="flex items-center gap-2.5">
-            <button type="button" onClick={goBack} aria-label="Close review session" style={{ color: "rgba(233,233,237,.55)" }}>
+            <button type="button" onClick={goBack} aria-label="Close review session" style={{ color: "var(--color-ink-600)" }}>
               <X size={19} weight="regular" aria-hidden="true" />
             </button>
-            <div className="h-[5px] flex-1 overflow-hidden rounded-full" style={{ background: "#292b31" }}>
+            <div className="h-[5px] flex-1 overflow-hidden rounded-full" style={{ background: "var(--color-hairline-soft)" }}>
               <div
                 className="h-full rounded-full transition-[width] duration-500"
-                style={{ width: `${progressPercent}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }}
+                style={{ width: `${progressPercent}%`, background: "linear-gradient(90deg,var(--color-brand-solid),var(--color-brand-700))" }}
               />
             </div>
-            <div className="min-w-[42px] text-right text-[12px]" style={{ color: "rgba(233,233,237,.5)" }}>
+            <div className="min-w-[42px] text-right text-[12px]" style={{ color: "var(--color-ink-400)" }}>
               {loading ? "—" : `${total + 1}/${sessionSize}`}
             </div>
           </div>
@@ -114,13 +118,13 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
           {!loading && current && (
             <div className="mt-2.5 flex justify-center gap-1.5">
               {current.themenfeld[0] && (
-                <span className="rounded-full px-2 py-1 text-micro" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
+                <span className="rounded-full px-2 py-1 text-micro" style={{ background: "var(--color-hairline-soft)", color: "var(--color-ink-600)" }}>
                   {THEMENFELD_LABELS[current.themenfeld[0]]}
                 </span>
               )}
               <span
                 className="flex items-center gap-1 rounded-full px-2 py-1 text-micro"
-                style={{ background: "rgba(145,132,217,.14)", color: "#b5abfc" }}
+                style={{ background: "var(--color-brand-50)", color: "var(--color-brand-700)" }}
               >
                 <Timer size={10} weight="regular" aria-hidden="true" />
                 {formatElapsed(elapsedSeconds)} elapsed
@@ -146,8 +150,8 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                   className="absolute inset-0 flex flex-col items-center justify-center gap-3.5 rounded-[20px] p-6 text-center"
                   style={{
                     backfaceVisibility: "hidden",
-                    background: "linear-gradient(165deg,#252838,#1d2030)",
-                    boxShadow: "0 0 0 1px #3f424d, 0 18px 44px rgba(0,0,0,.5)",
+                    background: "linear-gradient(165deg,var(--color-card),var(--color-ink-50))",
+                    boxShadow: "0 0 0 1px var(--color-hairline), 0 18px 44px rgba(0,0,0,.25)",
                   }}
                 >
                   <div className="text-micro tracking-[.14em] uppercase" style={{ color: chipColor(current) }}>
@@ -157,8 +161,8 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                     {current.headword}
                   </div>
                   <div className="absolute bottom-[22px] left-0 right-0 flex flex-col items-center gap-1.5">
-                    <HandTap size={21} weight="regular" className="animate-bob" style={{ color: "rgba(233,233,237,.35)" }} aria-hidden="true" />
-                    <span className="text-[11.5px]" style={{ color: "rgba(233,233,237,.38)" }}>
+                    <HandTap size={21} weight="regular" className="animate-bob" style={{ color: "var(--color-ink-300)" }} aria-hidden="true" />
+                    <span className="text-[11.5px]" style={{ color: "var(--color-ink-300)" }}>
                       Tap to flip
                     </span>
                   </div>
@@ -170,8 +174,8 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                   style={{
                     backfaceVisibility: "hidden",
                     transform: "rotateY(180deg)",
-                    background: "linear-gradient(165deg,#2b2741,#20222f)",
-                    boxShadow: "0 0 0 1px #423a6a, 0 18px 44px rgba(0,0,0,.5)",
+                    background: "linear-gradient(165deg,var(--color-brand-50),var(--color-ink-50))",
+                    boxShadow: "0 0 0 1px var(--color-brand-100), 0 18px 44px rgba(0,0,0,.25)",
                   }}
                 >
                   <div className="flex items-center justify-between">
@@ -198,13 +202,13 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                     className="h-px"
                     style={{
                       background:
-                        "linear-gradient(to right, transparent, rgba(233,233,237,.18) 30px, rgba(233,233,237,.18) calc(100% - 30px), transparent)",
+                        "linear-gradient(to right, transparent, var(--color-hairline) 30px, var(--color-hairline) calc(100% - 30px), transparent)",
                     }}
                   />
-                  {current.example && <div className="text-[14px] leading-[1.5]" style={{ color: "rgba(233,233,237,.85)" }}>{current.example}</div>}
+                  {current.example && <div className="text-[14px] leading-[1.5]" style={{ color: "var(--color-ink-700)" }}>{current.example}</div>}
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     {current.declension?.nom?.pl && (
-                      <span className="rounded-full px-2 py-1 text-micro" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
+                      <span className="rounded-full px-2 py-1 text-micro" style={{ background: "var(--color-hairline-soft)", color: "var(--color-ink-600)" }}>
                         plural: {current.declension.nom.pl}
                       </span>
                     )}
@@ -215,7 +219,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                         push(`/words/${current.id}`);
                       }}
                       className="flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px]"
-                      style={{ color: "rgba(233,233,237,.55)" }}
+                      style={{ color: "var(--color-ink-600)" }}
                     >
                       <BookOpen size={11} weight="regular" aria-hidden="true" />
                       Full entry
@@ -236,7 +240,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                   pointerEvents: revealed ? "auto" : "none",
                 }}
               >
-                <div className="mb-2.5 text-center text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+                <div className="mb-2.5 text-center text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-400)" }}>
                   How did that go?
                 </div>
                 <div className="grid grid-cols-3 gap-1.5">
@@ -250,14 +254,14 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                         onClick={() => submitGrade(g)}
                         className="flex flex-col items-center gap-1 rounded-[11px] px-0.5 py-3 disabled:opacity-50"
                         style={{
-                          border: `1px solid ${emphasized ? "#9184d9" : "rgba(233,233,237,.16)"}`,
-                          background: emphasized ? "rgba(145,132,217,.13)" : "transparent",
-                          color: emphasized ? "#d2cefd" : "#e9e9ed",
+                          border: `1px solid ${emphasized ? "var(--color-brand-500)" : "var(--color-hairline)"}`,
+                          background: emphasized ? "var(--color-brand-100)" : "transparent",
+                          color: emphasized ? "var(--color-brand-800)" : "var(--color-ink-900)",
                         }}
                       >
                         <Icon size={17} weight="regular" aria-hidden="true" />
                         <span className="text-[11.5px] font-medium">{label}</span>
-                        <span className="text-micro" style={{ color: emphasized ? "rgba(210,206,253,.6)" : "rgba(233,233,237,.62)" }}>
+                        <span className="text-micro" style={{ color: emphasized ? "var(--color-brand-700)" : "var(--color-ink-600)" }}>
                           {preview ? formatInterval(preview[g].interval) : "…"}
                         </span>
                       </button>
@@ -266,7 +270,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                 </div>
               </div>
               <div className="grid h-[38px] place-items-center">
-                <div className="text-[12px] transition-opacity duration-300" style={{ opacity: revealed ? 0 : 1, color: "rgba(233,233,237,.62)" }}>
+                <div className="text-[12px] transition-opacity duration-300" style={{ opacity: revealed ? 0 : 1, color: "var(--color-ink-600)" }}>
                   See the answer first, then grade it
                 </div>
               </div>
@@ -285,7 +289,11 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
         the full viewport, same as the mobile block above. */}
     <div
       className="hidden min-h-0 lg:flex lg:h-dvh"
-      style={{ background: isDone ? "radial-gradient(100% 44% at 50% 16%, #2b2741 0%, #161826 68%)" : "radial-gradient(120% 50% at 50% 0%, #1d2033, #161826 62%)" }}
+      style={{
+        background: isDone
+          ? "radial-gradient(100% 44% at 50% 16%, var(--color-ink-50) 0%, var(--color-paper) 68%)"
+          : "radial-gradient(120% 50% at 50% 0%, var(--color-ink-50), var(--color-paper) 62%)",
+      }}
     >
       {isDone ? (
         <div className="mx-auto flex w-full max-w-[640px] flex-col px-8 py-10">
@@ -297,7 +305,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
         </div>
       ) : (
         <>
-          <div className="w-[280px] shrink-0 border-r" style={{ borderColor: "rgba(233,233,237,.08)" }}>
+          <div className="w-[280px] shrink-0 border-r" style={{ borderColor: "var(--color-hairline-soft)" }}>
             <ReviewQueuePane queue={queue} total={total} sessionSize={sessionSize} progressPercent={progressPercent} done={done} />
           </div>
 
@@ -309,26 +317,26 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
               reason the mobile block above doesn't use it either. Centering
               is done per-child instead (justify-center on each row, mx-auto
               on the width-capped grade-row). */}
-          <div className="relative flex min-w-0 flex-1 flex-col justify-center gap-5 border-r px-8 py-8" style={{ borderColor: "rgba(233,233,237,.08)" }}>
+          <div className="relative flex min-w-0 flex-1 flex-col justify-center gap-5 border-r px-8 py-8" style={{ borderColor: "var(--color-hairline-soft)" }}>
             <button
               type="button"
               onClick={goBack}
               aria-label="Close review session"
               className="absolute top-6 left-6"
-              style={{ color: "rgba(233,233,237,.55)" }}
+              style={{ color: "var(--color-ink-600)" }}
             >
               <X size={19} weight="regular" aria-hidden="true" />
             </button>
 
             <div className="flex justify-center gap-1.5">
               {current.themenfeld[0] && (
-                <span className="rounded-full px-2 py-1 text-micro" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
+                <span className="rounded-full px-2 py-1 text-micro" style={{ background: "var(--color-hairline-soft)", color: "var(--color-ink-600)" }}>
                   {THEMENFELD_LABELS[current.themenfeld[0]]}
                 </span>
               )}
               <span
                 className="flex items-center gap-1 rounded-full px-2 py-1 text-micro"
-                style={{ background: "rgba(145,132,217,.14)", color: "#b5abfc" }}
+                style={{ background: "var(--color-brand-50)", color: "var(--color-brand-700)" }}
               >
                 <Timer size={10} weight="regular" aria-hidden="true" />
                 {formatElapsed(elapsedSeconds)} elapsed
@@ -350,8 +358,8 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                   className="absolute inset-0 flex flex-col items-center justify-center gap-3.5 rounded-[20px] p-6 text-center"
                   style={{
                     backfaceVisibility: "hidden",
-                    background: "linear-gradient(165deg,#252838,#1d2030)",
-                    boxShadow: "0 0 0 1px #3f424d, 0 18px 44px rgba(0,0,0,.5)",
+                    background: "linear-gradient(165deg,var(--color-card),var(--color-ink-50))",
+                    boxShadow: "0 0 0 1px var(--color-hairline), 0 18px 44px rgba(0,0,0,.25)",
                   }}
                 >
                   <div className="text-micro tracking-[.14em] uppercase" style={{ color: chipColor(current) }}>
@@ -361,8 +369,8 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                     {current.headword}
                   </div>
                   <div className="absolute bottom-[22px] left-0 right-0 flex flex-col items-center gap-1.5">
-                    <HandTap size={21} weight="regular" className="animate-bob" style={{ color: "rgba(233,233,237,.35)" }} aria-hidden="true" />
-                    <span className="text-[11.5px]" style={{ color: "rgba(233,233,237,.38)" }}>
+                    <HandTap size={21} weight="regular" className="animate-bob" style={{ color: "var(--color-ink-300)" }} aria-hidden="true" />
+                    <span className="text-[11.5px]" style={{ color: "var(--color-ink-300)" }}>
                       Click to flip
                     </span>
                   </div>
@@ -374,8 +382,8 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                   style={{
                     backfaceVisibility: "hidden",
                     transform: "rotateY(180deg)",
-                    background: "linear-gradient(165deg,#2b2741,#20222f)",
-                    boxShadow: "0 0 0 1px #423a6a, 0 18px 44px rgba(0,0,0,.5)",
+                    background: "linear-gradient(165deg,var(--color-brand-50),var(--color-ink-50))",
+                    boxShadow: "0 0 0 1px var(--color-brand-100), 0 18px 44px rgba(0,0,0,.25)",
                   }}
                 >
                   <div className="flex items-center justify-between">
@@ -402,13 +410,13 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                     className="h-px"
                     style={{
                       background:
-                        "linear-gradient(to right, transparent, rgba(233,233,237,.18) 30px, rgba(233,233,237,.18) calc(100% - 30px), transparent)",
+                        "linear-gradient(to right, transparent, var(--color-hairline) 30px, var(--color-hairline) calc(100% - 30px), transparent)",
                     }}
                   />
-                  {current.example && <div className="text-[14px] leading-[1.5]" style={{ color: "rgba(233,233,237,.85)" }}>{current.example}</div>}
+                  {current.example && <div className="text-[14px] leading-[1.5]" style={{ color: "var(--color-ink-700)" }}>{current.example}</div>}
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     {current.declension?.nom?.pl && (
-                      <span className="rounded-full px-2 py-1 text-micro" style={{ background: "#292b31", color: "rgba(233,233,237,.6)" }}>
+                      <span className="rounded-full px-2 py-1 text-micro" style={{ background: "var(--color-hairline-soft)", color: "var(--color-ink-600)" }}>
                         plural: {current.declension.nom.pl}
                       </span>
                     )}
@@ -426,7 +434,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                   pointerEvents: revealed ? "auto" : "none",
                 }}
               >
-                <div className="mb-2.5 text-center text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+                <div className="mb-2.5 text-center text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-400)" }}>
                   How did that go?
                 </div>
                 <div className="grid grid-cols-3 gap-1.5">
@@ -440,14 +448,14 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
                         onClick={() => submitGrade(g)}
                         className="flex flex-col items-center gap-1 rounded-[11px] px-0.5 py-3 disabled:opacity-50"
                         style={{
-                          border: `1px solid ${emphasized ? "#9184d9" : "rgba(233,233,237,.16)"}`,
-                          background: emphasized ? "rgba(145,132,217,.13)" : "transparent",
-                          color: emphasized ? "#d2cefd" : "#e9e9ed",
+                          border: `1px solid ${emphasized ? "var(--color-brand-500)" : "var(--color-hairline)"}`,
+                          background: emphasized ? "var(--color-brand-100)" : "transparent",
+                          color: emphasized ? "var(--color-brand-800)" : "var(--color-ink-900)",
                         }}
                       >
                         <Icon size={17} weight="regular" aria-hidden="true" />
                         <span className="text-[11.5px] font-medium">{label}</span>
-                        <span className="text-micro" style={{ color: emphasized ? "rgba(210,206,253,.6)" : "rgba(233,233,237,.62)" }}>
+                        <span className="text-micro" style={{ color: emphasized ? "var(--color-brand-700)" : "var(--color-ink-600)" }}>
                           {preview ? formatInterval(preview[g].interval) : "…"}
                         </span>
                       </button>
@@ -457,7 +465,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
               </div>
               {!revealed && (
                 <div className="mt-2 grid h-[24px] place-items-center">
-                  <div className="text-[12px]" style={{ color: "rgba(233,233,237,.62)" }}>
+                  <div className="text-[12px]" style={{ color: "var(--color-ink-600)" }}>
                     See the answer first, then grade it
                   </div>
                 </div>
@@ -465,7 +473,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
             </div>
           </div>
 
-          <div className="min-w-0 flex-1 border-r" style={{ borderColor: "rgba(233,233,237,.08)" }}>
+          <div className="min-w-0 flex-1 border-r" style={{ borderColor: "var(--color-hairline-soft)" }}>
             <WordDetailContent key={current.id} id={current.id} embedded />
           </div>
 
