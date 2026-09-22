@@ -197,13 +197,13 @@ export default function Dashboard() {
     <>
     <div
       className="animate-fade-in-screen flex min-h-[calc(100dvh-40px-88px-env(safe-area-inset-bottom))] flex-col px-5 pt-[calc(env(safe-area-inset-top)+18px)] pb-3 lg:hidden"
-      style={{ background: "radial-gradient(120% 48% at 50% 6%, #23263d 0%, #161826 64%)" }}
+      style={{ background: "radial-gradient(120% 48% at 50% 6%, var(--color-ink-50) 0%, var(--color-paper) 64%)" }}
     >
       {/* ── header ── */}
       <div className="flex items-baseline justify-between">
         <div>
           {dayNumber !== null && (
-            <div className="text-micro tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
+            <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-brand-500)" }}>
               {dayLabel} · day {dayNumber}
             </div>
           )}
@@ -213,10 +213,10 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-2.5">
           <div className="flex flex-col items-end gap-1">
-            <span className="rounded-full border px-2 py-0.5 text-micro font-medium uppercase" style={{ borderColor: "rgba(233,233,237,.16)" }}>
+            <span className="rounded-full border px-2 py-0.5 text-micro font-medium uppercase" style={{ borderColor: "var(--color-hairline)" }}>
               {activeLevel.toUpperCase()}
             </span>
-            <span className="flex items-center gap-1 text-[11px]" style={{ color: "rgba(233,233,237,.55)" }}>
+            <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-ink-600)" }}>
               <Fire size={12} weight="fill" aria-hidden="true" />
               {data.streak} days
             </span>
@@ -228,9 +228,9 @@ export default function Dashboard() {
             className="grid size-10 shrink-0 place-items-center rounded-full text-[15px] font-medium"
             style={{
               letterSpacing: "-.01em",
-              color: "#d2cefd",
-              background: "linear-gradient(150deg,#3a3560,#272a45)",
-              border: "1px solid rgba(181,171,252,.4)",
+              color: "var(--color-brand-800)",
+              background: "linear-gradient(150deg,var(--color-brand-100),var(--color-ink-50))",
+              border: "1px solid color-mix(in srgb, var(--color-brand-700) 40%, transparent)",
             }}
           >
             {initials(user?.name)}
@@ -241,7 +241,7 @@ export default function Dashboard() {
         className="mt-[11px] h-px shrink-0"
         style={{
           background:
-            "linear-gradient(to right, transparent, rgba(233,233,237,.16) 40px, rgba(233,233,237,.16) calc(100% - 40px), transparent)",
+            "linear-gradient(to right, transparent, var(--color-hairline) 40px, var(--color-hairline) calc(100% - 40px), transparent)",
         }}
       />
 
@@ -252,46 +252,46 @@ export default function Dashboard() {
         secondaryPercent={activeLevelPercent}
         onStart={() => push("/review")}
       />
-      <div className="mt-2 flex justify-center gap-[18px] text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
+      <div className="mt-2 flex justify-center gap-[18px] text-micro" style={{ color: "var(--color-ink-600)" }}>
         <span className="flex items-center gap-[5px]">
-          <i className="inline-block size-[7px] rounded-sm" style={{ background: "#9184d9" }} />
+          <i className="inline-block size-[7px] rounded-sm" style={{ background: "var(--color-brand-500)" }} />
           review {data.dueToday}
         </span>
         <span className="flex items-center gap-[5px]">
-          <i className="inline-block size-[7px] rounded-sm" style={{ background: "#423a6a" }} />
+          <i className="inline-block size-[7px] rounded-sm" style={{ background: "var(--color-brand-100)" }} />
           new {data.newWords}
         </span>
       </div>
 
       {/* ── day strip ── */}
       <div className="mt-[13px] grid grid-cols-3 gap-2">
-        <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
+        <div className="rounded-xl p-[11px]" style={{ background: "var(--color-card)" }}>
           <div className="flex items-baseline gap-[3px]">
             <span className="tabular text-[21px] font-medium" style={{ letterSpacing: "-.02em" }}>{minsToday}</span>
-            <span className="text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>/ {DAILY_MINUTES_GOAL}</span>
+            <span className="text-[11px]" style={{ color: "var(--color-ink-600)" }}>/ {DAILY_MINUTES_GOAL}</span>
           </div>
-          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>minutes today</div>
-          <div className="mt-0.5 h-[3px] overflow-hidden rounded-full" style={{ background: "#292b31" }}>
+          <div className="text-micro" style={{ color: "var(--color-ink-400)" }}>minutes today</div>
+          <div className="mt-0.5 h-[3px] overflow-hidden rounded-full" style={{ background: "var(--color-hairline-soft)" }}>
             <div
               className="h-full rounded-full transition-[width] duration-300"
-              style={{ width: `${minsPercent}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }}
+              style={{ width: `${minsPercent}%`, background: "linear-gradient(90deg,var(--color-brand-solid),var(--color-brand-700))" }}
             />
           </div>
         </div>
-        <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
+        <div className="rounded-xl p-[11px]" style={{ background: "var(--color-card)" }}>
           <div className="flex items-baseline gap-[3px]">
             <span className="tabular text-[21px] font-medium" style={{ letterSpacing: "-.02em" }}>
               {data.roadmapToday?.tasksDone ?? 0}
             </span>
-            <span className="text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>/ {data.roadmapToday?.tasksTotal ?? 0}</span>
+            <span className="text-[11px]" style={{ color: "var(--color-ink-600)" }}>/ {data.roadmapToday?.tasksTotal ?? 0}</span>
           </div>
-          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>plan tasks</div>
-          <div className="mt-0.5 h-[3px] overflow-hidden rounded-full" style={{ background: "#292b31" }}>
+          <div className="text-micro" style={{ color: "var(--color-ink-400)" }}>plan tasks</div>
+          <div className="mt-0.5 h-[3px] overflow-hidden rounded-full" style={{ background: "var(--color-hairline-soft)" }}>
             <div
               className="h-full rounded-full transition-[width] duration-300"
               style={{
                 width: `${data.roadmapToday && data.roadmapToday.tasksTotal > 0 ? Math.round((data.roadmapToday.tasksDone / data.roadmapToday.tasksTotal) * 100) : 0}%`,
-                background: "linear-gradient(90deg,#5d5294,#b5abfc)",
+                background: "linear-gradient(90deg,var(--color-brand-solid),var(--color-brand-700))",
               }}
             />
           </div>
@@ -300,36 +300,51 @@ export default function Dashboard() {
           type="button"
           onClick={() => setExamScheduleOpen(true)}
           className="rounded-xl p-[11px] text-left"
-          style={{ background: "#1c1f2c" }}
+          style={{ background: "var(--color-card)" }}
         >
           <div className="flex items-baseline gap-[3px]">
-            <span className="tabular text-[21px] font-medium" style={{ letterSpacing: "-.02em", color: examAmber ? "#e4c4b6" : "#b5abfc" }}>
+            <span
+              className="tabular text-[21px] font-medium"
+              style={{ letterSpacing: "-.02em", color: examAmber ? "var(--color-danger-700)" : "var(--color-brand-700)" }}
+            >
               {examDaysRaw === null ? "—" : examDaysRaw >= 0 ? examDaysRaw : Math.abs(examDaysRaw)}
             </span>
-            <span className="text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
+            <span className="text-[11px]" style={{ color: "var(--color-ink-600)" }}>
               {examDaysRaw === null ? "" : examDaysRaw > 0 ? "d" : examDaysRaw === 0 ? "" : "d ago"}
             </span>
           </div>
-          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>to your exam</div>
-          <div className="mt-[3px] text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
+          <div className="text-micro" style={{ color: "var(--color-ink-400)" }}>to your exam</div>
+          <div className="mt-[3px] text-micro" style={{ color: "var(--color-ink-600)" }}>
             {examDate ? examDate.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "Set a date →"}
           </div>
         </button>
       </div>
 
       {/* ── next in your plan hero card ── */}
+      {/* Deliberately stays on the surface-dark tokens (always dark, both
+          themes) rather than the theme-reactive card background — matches
+          the redesign prototype's own "Next up" card, which is solid black
+          even on an otherwise light/cream page (see index.css's
+          --color-surface-dark-* comment). */}
       <div
         {...clickableRowProps(() => setTaskDetailOpen(true))}
         className="relative mt-3 cursor-pointer overflow-hidden rounded-2xl p-3.5 transition-[filter] duration-150 hover:brightness-110"
-        style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a, 0 12px 28px rgba(0,0,0,.4)" }}
+        style={{
+          background: "linear-gradient(160deg,var(--color-surface-dark-2),var(--color-surface-dark-1))",
+          boxShadow: "0 0 0 1px var(--color-on-dark-brand-100), 0 12px 28px rgba(0,0,0,.4)",
+          color: "var(--color-on-dark-ink-900)",
+        }}
       >
         <div
           className="animate-pulse-glow pointer-events-none absolute -top-10 -right-[34px] size-[140px] rounded-full"
           style={{ background: "radial-gradient(closest-side, rgba(145,132,217,.3), transparent)" }}
         />
         <div className="flex items-center gap-1.5">
-          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>Next in your plan</div>
-          <span className="rounded-full border px-1.5 py-px text-micro" style={{ borderColor: "rgba(233,233,237,.14)", color: "rgba(233,233,237,.62)" }}>
+          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-on-dark-brand-500)" }}>Next in your plan</div>
+          <span
+            className="rounded-full border px-1.5 py-px text-micro"
+            style={{ borderColor: "var(--color-on-dark-hairline)", color: "var(--color-on-dark-ink-600)" }}
+          >
             {nextTask?.skill ? SKILL_LABELS[nextTask.skill] : nextTask ? "Your own" : "Free"}
           </span>
         </div>
@@ -357,7 +372,7 @@ export default function Dashboard() {
             {!roadmapStarted ? "Get started" : nextTask ? "Start" : "Practise anyway"} →
           </button>
           {nextTask && (
-            <div className="flex items-center gap-1.5 text-[11.5px]" style={{ color: "rgba(233,233,237,.5)" }}>
+            <div className="flex items-center gap-1.5 text-[11.5px]" style={{ color: "var(--color-on-dark-ink-600)" }}>
               <Clock size={12} weight="regular" aria-hidden="true" />
               {estimateFor(nextTask)}
             </div>
@@ -372,17 +387,17 @@ export default function Dashboard() {
           where mt-auto's slack pushes this block close to the tab bar. */}
       <div className="mt-auto pr-16 pt-4 pb-1">
         <div className="mb-2 flex items-center gap-2.5">
-          <div className="shrink-0 text-micro tracking-[.12em] whitespace-nowrap uppercase" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="shrink-0 text-micro tracking-[.12em] whitespace-nowrap uppercase" style={{ color: "var(--color-ink-400)" }}>
             Weakest right now
           </div>
-          <span className="truncate text-[11px]" style={{ color: "#e4c4b6" }}>
+          <span className="truncate text-[11px]" style={{ color: "var(--color-danger-700)" }}>
             {SKILL_LABELS[weakest.skill]} · {weakest.pct} %
           </span>
           <button
             type="button"
             onClick={() => switchTab("/stats")}
             className="ml-auto flex shrink-0 items-center gap-0.5 text-[11px] whitespace-nowrap"
-            style={{ color: "#b5abfc" }}
+            style={{ color: "var(--color-brand-700)" }}
           >
             Mastery ›
           </button>
@@ -392,13 +407,16 @@ export default function Dashboard() {
             const weak = s.pct < 50;
             return (
               <div key={s.skill} className="flex flex-1 flex-col gap-[5px]">
-                <div className="h-[5px] overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
+                <div className="h-[5px] overflow-hidden rounded-[3px]" style={{ background: "var(--color-hairline-soft)" }}>
                   <div
                     className="h-full rounded-[3px] transition-[width] duration-300"
-                    style={{ width: `${s.pct}%`, background: weak ? "#d19b86" : s.pct >= 70 ? "#b5abfc" : "#796cbf" }}
+                    style={{
+                      width: `${s.pct}%`,
+                      background: weak ? "var(--color-danger-600)" : s.pct >= 70 ? "var(--color-brand-700)" : "var(--color-brand-600)",
+                    }}
                   />
                 </div>
-                <span className="text-micro tracking-[.02em]" style={{ color: weak ? "#e4c4b6" : "rgba(233,233,237,.62)" }}>
+                <span className="text-micro tracking-[.02em]" style={{ color: weak ? "var(--color-danger-700)" : "var(--color-ink-600)" }}>
                   {s.short}
                 </span>
               </div>
@@ -417,12 +435,12 @@ export default function Dashboard() {
         lg:pr-4 on the right for symmetric clearance. ── */}
     <div
       className="hidden min-h-0 lg:flex lg:h-full lg:flex-col lg:pl-4"
-      style={{ background: "radial-gradient(120% 48% at 50% 6%, #23263d 0%, #161826 64%)" }}
+      style={{ background: "radial-gradient(120% 48% at 50% 6%, var(--color-ink-50) 0%, var(--color-paper) 64%)" }}
     >
       <div className="flex items-end justify-between">
         <div>
           {dayNumber !== null && (
-            <div className="text-micro tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
+            <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-brand-500)" }}>
               {dayLabel} · day {dayNumber}
             </div>
           )}
@@ -431,7 +449,7 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="flex items-center gap-[15px]">
-          <span className="flex items-center gap-1 text-[11px]" style={{ color: "rgba(233,233,237,.55)" }}>
+          <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-ink-600)" }}>
             <Fire size={12} weight="fill" aria-hidden="true" />
             {data.streak} days
           </span>
@@ -445,48 +463,48 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
-      <div className="mt-4 h-px shrink-0" style={{ background: "linear-gradient(to right, rgba(233,233,237,.16), rgba(233,233,237,.16) calc(100% - 60px), transparent)" }} />
+      <div className="mt-4 h-px shrink-0" style={{ background: "linear-gradient(to right, var(--color-hairline), var(--color-hairline) calc(100% - 60px), transparent)" }} />
 
       <div className="mt-5 grid min-h-0 flex-1 grid-cols-[300px_1fr_288px] gap-5">
         {/* left column */}
         <div className="flex min-h-0 flex-col gap-3.5">
-          <div className="flex flex-col items-center rounded-2xl p-[18px]" style={{ background: "linear-gradient(160deg,#232338,#1c1f2c)" }}>
+          <div className="flex flex-col items-center rounded-2xl p-[18px]" style={{ background: "linear-gradient(160deg,var(--color-ink-50),var(--color-card))" }}>
             <ReviewDial dueCount={data.dueToday} reviewedToday={data.reviewsToday} secondaryPercent={activeLevelPercent} onStart={() => push("/review")} />
-            <div className="mt-3 flex justify-center gap-[18px] text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
+            <div className="mt-3 flex justify-center gap-[18px] text-micro" style={{ color: "var(--color-ink-600)" }}>
               <span className="flex items-center gap-[5px]">
-                <i className="inline-block size-[7px] rounded-sm" style={{ background: "#9184d9" }} />
+                <i className="inline-block size-[7px] rounded-sm" style={{ background: "var(--color-brand-500)" }} />
                 review {data.dueToday}
               </span>
               <span className="flex items-center gap-[5px]">
-                <i className="inline-block size-[7px] rounded-sm" style={{ background: "#423a6a" }} />
+                <i className="inline-block size-[7px] rounded-sm" style={{ background: "var(--color-brand-100)" }} />
                 new {data.newWords}
               </span>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
-            <div className="rounded-xl p-[13px]" style={{ background: "#1c1f2c" }}>
+            <div className="rounded-xl p-[13px]" style={{ background: "var(--color-card)" }}>
               <div className="flex items-baseline gap-[3px]">
                 <span className="text-[22px] font-medium" style={{ letterSpacing: "-.02em" }}>{minsToday}</span>
-                <span className="text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>/ {DAILY_MINUTES_GOAL}</span>
+                <span className="text-[11px]" style={{ color: "var(--color-ink-600)" }}>/ {DAILY_MINUTES_GOAL}</span>
               </div>
-              <div className="text-micro" style={{ color: "rgba(233,233,237,.55)" }}>minutes today</div>
-              <div className="mt-[3px] h-[3px] overflow-hidden rounded-full" style={{ background: "#292b31" }}>
-                <div className="h-full rounded-full" style={{ width: `${minsPercent}%`, background: "linear-gradient(90deg,#5d5294,#b5abfc)" }} />
+              <div className="text-micro" style={{ color: "var(--color-ink-600)" }}>minutes today</div>
+              <div className="mt-[3px] h-[3px] overflow-hidden rounded-full" style={{ background: "var(--color-hairline-soft)" }}>
+                <div className="h-full rounded-full" style={{ width: `${minsPercent}%`, background: "linear-gradient(90deg,var(--color-brand-solid),var(--color-brand-700))" }} />
               </div>
             </div>
-            <div className="rounded-xl p-[13px]" style={{ background: "#1c1f2c" }}>
+            <div className="rounded-xl p-[13px]" style={{ background: "var(--color-card)" }}>
               <div className="flex items-baseline gap-[3px]">
                 <span className="text-[22px] font-medium" style={{ letterSpacing: "-.02em" }}>{data.roadmapToday?.tasksDone ?? 0}</span>
-                <span className="text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>/ {data.roadmapToday?.tasksTotal ?? 0}</span>
+                <span className="text-[11px]" style={{ color: "var(--color-ink-600)" }}>/ {data.roadmapToday?.tasksTotal ?? 0}</span>
               </div>
-              <div className="text-micro" style={{ color: "rgba(233,233,237,.55)" }}>plan tasks</div>
-              <div className="mt-[3px] h-[3px] overflow-hidden rounded-full" style={{ background: "#292b31" }}>
+              <div className="text-micro" style={{ color: "var(--color-ink-600)" }}>plan tasks</div>
+              <div className="mt-[3px] h-[3px] overflow-hidden rounded-full" style={{ background: "var(--color-hairline-soft)" }}>
                 <div
                   className="h-full rounded-full"
                   style={{
                     width: `${data.roadmapToday && data.roadmapToday.tasksTotal > 0 ? Math.round((data.roadmapToday.tasksDone / data.roadmapToday.tasksTotal) * 100) : 0}%`,
-                    background: "linear-gradient(90deg,#5d5294,#b5abfc)",
+                    background: "linear-gradient(90deg,var(--color-brand-solid),var(--color-brand-700))",
                   }}
                 />
               </div>
@@ -494,12 +512,12 @@ export default function Dashboard() {
           </div>
 
           {last7Days.length > 0 && (
-            <button type="button" onClick={() => switchTab("/stats")} className="rounded-xl p-[14px] text-left" style={{ background: "#1c1f2c" }}>
+            <button type="button" onClick={() => switchTab("/stats")} className="rounded-xl p-[14px] text-left" style={{ background: "var(--color-card)" }}>
               {/* labeled "activity", not "streak" — this is a per-day minutes
                   heatmap with no gap/break logic, so it can't represent a
                   real streak; the one authoritative streak number lives in
                   the header badge above. */}
-              <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>7-day activity</div>
+              <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-400)" }}>7-day activity</div>
               <div className="mt-2.5 flex gap-[6px]">
                 {last7Days.map((cell, i) => {
                   const isToday = i === last7Days.length - 1;
@@ -508,7 +526,7 @@ export default function Dashboard() {
                       key={cell.date}
                       title={`${cell.date}: ${cell.minutes} min`}
                       className="h-[22px] flex-1 rounded-[5px]"
-                      style={{ background: isToday ? "#b5abfc" : heatmapColor(cell.minutes) }}
+                      style={{ background: isToday ? "var(--color-brand-700)" : heatmapColor(cell.minutes) }}
                     />
                   );
                 })}
@@ -516,20 +534,23 @@ export default function Dashboard() {
             </button>
           )}
 
-          <button type="button" onClick={() => switchTab("/stats")} className="mt-auto rounded-xl p-[14px] text-left" style={{ background: "#1c1f2c" }}>
+          <button type="button" onClick={() => switchTab("/stats")} className="mt-auto rounded-xl p-[14px] text-left" style={{ background: "var(--color-card)" }}>
             <div className="flex items-center gap-[9px]">
-              <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>Weakest right now</div>
-              <span className="text-[11px]" style={{ color: "#e4c4b6" }}>{SKILL_LABELS[weakest.skill]} · {weakest.pct} %</span>
+              <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-400)" }}>Weakest right now</div>
+              <span className="text-[11px]" style={{ color: "var(--color-danger-700)" }}>{SKILL_LABELS[weakest.skill]} · {weakest.pct} %</span>
             </div>
             <div className="mt-2.5 flex gap-[6px]">
               {weakestStrip.map((s) => {
                 const weak = s.pct < 50;
                 return (
                   <div key={s.skill} className="flex flex-1 flex-col gap-[5px]">
-                    <div className="h-[5px] overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
-                      <div className="h-full rounded-[3px]" style={{ width: `${s.pct}%`, background: weak ? "#d19b86" : s.pct >= 70 ? "#b5abfc" : "#796cbf" }} />
+                    <div className="h-[5px] overflow-hidden rounded-[3px]" style={{ background: "var(--color-hairline-soft)" }}>
+                      <div
+                        className="h-full rounded-[3px]"
+                        style={{ width: `${s.pct}%`, background: weak ? "var(--color-danger-600)" : s.pct >= 70 ? "var(--color-brand-700)" : "var(--color-brand-600)" }}
+                      />
                     </div>
-                    <span className="text-micro" style={{ color: weak ? "#e4c4b6" : "rgba(233,233,237,.55)" }}>{s.short}</span>
+                    <span className="text-micro" style={{ color: weak ? "var(--color-danger-700)" : "var(--color-ink-600)" }}>{s.short}</span>
                   </div>
                 );
               })}
@@ -542,12 +563,19 @@ export default function Dashboard() {
           <div
             {...clickableRowProps(() => setTaskDetailOpen(true))}
             className="relative cursor-pointer overflow-hidden rounded-2xl p-[18px] transition-[filter] duration-150 hover:brightness-110"
-            style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a, 0 12px 28px rgba(0,0,0,.4)" }}
+            style={{
+              background: "linear-gradient(160deg,var(--color-surface-dark-2),var(--color-surface-dark-1))",
+              boxShadow: "0 0 0 1px var(--color-on-dark-brand-100), 0 12px 28px rgba(0,0,0,.4)",
+              color: "var(--color-on-dark-ink-900)",
+            }}
           >
             <div className="animate-pulse-glow pointer-events-none absolute -top-[50px] -right-10 size-[180px] rounded-full" style={{ background: "radial-gradient(closest-side, rgba(145,132,217,.28), transparent)" }} />
             <div className="flex items-center gap-2">
-              <div className="text-micro tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>Next in your plan</div>
-              <span className="rounded-full border px-1.5 py-px text-micro" style={{ borderColor: "rgba(233,233,237,.14)", color: "rgba(233,233,237,.62)" }}>
+              <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-on-dark-brand-500)" }}>Next in your plan</div>
+              <span
+                className="rounded-full border px-1.5 py-px text-micro"
+                style={{ borderColor: "var(--color-on-dark-hairline)", color: "var(--color-on-dark-ink-600)" }}
+              >
                 {nextTask?.skill ? SKILL_LABELS[nextTask.skill] : nextTask ? "Your own" : "Free"}
               </span>
             </div>
@@ -555,7 +583,7 @@ export default function Dashboard() {
               {!roadmapStarted ? "Start your 26-week roadmap" : nextTask ? nextTask.title : "Everything on today's plan is done."}
             </div>
             {roadmapStarted && (
-              <div className="mt-1.5 text-[12.5px] leading-[1.5]" style={{ color: "rgba(233,233,237,.65)" }}>
+              <div className="mt-1.5 text-[12.5px] leading-[1.5]" style={{ color: "var(--color-on-dark-ink-600)" }}>
                 {nextTask ? (nextTask.description ?? "Part of today's roadmap plan.") : "You can still open a self-test or work ahead on new words."}
               </div>
             )}
@@ -576,7 +604,7 @@ export default function Dashboard() {
                 {!roadmapStarted ? "Get started" : nextTask ? "Start" : "Practise anyway"} →
               </button>
               {nextTask && (
-                <div className="flex items-center gap-1.5 text-[11.5px]" style={{ color: "rgba(233,233,237,.55)" }}>
+                <div className="flex items-center gap-1.5 text-[11.5px]" style={{ color: "var(--color-on-dark-ink-600)" }}>
                   <Clock size={12} weight="regular" aria-hidden="true" />
                   {estimateFor(nextTask)}
                 </div>
@@ -584,18 +612,18 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl" style={{ background: "#1c1f2c" }}>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl" style={{ background: "var(--color-card)" }}>
             <div className="flex items-center justify-between px-4 pt-3.5 pb-2.5">
-              <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
+              <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-400)" }}>
                 Today's plan · {data.roadmapToday?.tasksDone ?? 0} of {data.roadmapToday?.tasksTotal ?? 0} done
               </div>
               <div className="flex items-center gap-3">
                 {todayFull && (
-                  <button type="button" onClick={() => setAddingTask((v) => !v)} className="text-[11.5px]" style={{ color: "#b5abfc" }}>
+                  <button type="button" onClick={() => setAddingTask((v) => !v)} className="text-[11.5px]" style={{ color: "var(--color-brand-700)" }}>
                     + Add task
                   </button>
                 )}
-                <button type="button" onClick={() => switchTab("/plan")} className="flex items-center gap-[5px] text-[11.5px]" style={{ color: "#b5abfc" }}>
+                <button type="button" onClick={() => switchTab("/plan")} className="flex items-center gap-[5px] text-[11.5px]" style={{ color: "var(--color-brand-700)" }}>
                   See plan
                 </button>
               </div>
@@ -613,7 +641,7 @@ export default function Dashboard() {
             )}
             <div className="flex min-h-0 flex-1 flex-col gap-[7px] overflow-y-auto px-4 pb-3.5">
               {(todayFull?.tasks ?? []).length === 0 ? (
-                <p className="text-[12.5px]" style={{ color: "rgba(233,233,237,.62)" }}>Nothing planned for today yet.</p>
+                <p className="text-[12.5px]" style={{ color: "var(--color-ink-600)" }}>Nothing planned for today yet.</p>
               ) : (
                 todayFull!.tasks.map((task) => {
                   const done = task.completedAt !== null;
@@ -624,8 +652,9 @@ export default function Dashboard() {
                       {...clickableRowProps(isNext ? () => setTaskDetailOpen(true) : undefined)}
                       className={`flex items-center gap-[11px] rounded-[10px] p-3 transition-[filter] duration-150 ${isNext ? "hover:brightness-110" : ""}`}
                       style={{
-                        background: isNext ? "linear-gradient(160deg,#2b2741,#232532)" : done ? "#20222f" : "#20222f",
-                        boxShadow: isNext ? "0 0 0 1px #423a6a" : "none",
+                        background: isNext ? "linear-gradient(160deg,var(--color-surface-dark-2),var(--color-surface-dark-1))" : "var(--color-ink-50)",
+                        color: isNext ? "var(--color-on-dark-ink-900)" : "inherit",
+                        boxShadow: isNext ? "0 0 0 1px var(--color-on-dark-brand-100)" : "none",
                         opacity: done ? 0.6 : 1,
                         cursor: isNext ? "pointer" : "default",
                       }}
@@ -638,16 +667,22 @@ export default function Dashboard() {
                           toggle.mutate({ id: task.id, completed: !done });
                         }}
                         className="grid size-5 shrink-0 place-items-center rounded-[6px]"
-                        style={{ background: done ? "#9184d9" : "transparent", border: done ? "none" : "1.5px solid rgba(233,233,237,.28)" }}
+                        style={{
+                          background: done ? "var(--color-brand-500)" : "transparent",
+                          border: done ? "none" : `1.5px solid ${isNext ? "var(--color-on-dark-hairline)" : "var(--color-hairline)"}`,
+                        }}
                       >
-                        {done && <Check size={12} weight="regular" style={{ color: "#161826" }} aria-hidden="true" />}
+                        {done && <Check size={12} weight="regular" style={{ color: "var(--color-paper)" }} aria-hidden="true" />}
                       </button>
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-[13.5px] font-medium" style={{ textDecoration: done ? "line-through" : "none", textDecorationColor: "rgba(233,233,237,.35)" }}>
+                        <div
+                          className="truncate text-[13.5px] font-medium"
+                          style={{ textDecoration: done ? "line-through" : "none", textDecorationColor: "var(--color-ink-400)" }}
+                        >
                           {task.title}
                         </div>
                         {task.minutesSpent !== null && (
-                          <div className="text-micro" style={{ color: "rgba(233,233,237,.45)" }}>
+                          <div className="text-micro" style={{ color: isNext ? "var(--color-on-dark-ink-600)" : "var(--color-ink-400)" }}>
                             {task.minutesSpent} min
                           </div>
                         )}
@@ -658,8 +693,15 @@ export default function Dashboard() {
               )}
 
               {todayFull && todayFull.tasks.length > 0 && todayFull.tasks.every((t) => t.completedAt !== null) && (
-                <div className="mt-1.5 rounded-[10px] p-3.5 text-center" style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a" }}>
-                  <div className="flex items-center justify-center gap-1.5 text-[13px] font-medium" style={{ color: "#d2cefd" }}>
+                <div
+                  className="mt-1.5 rounded-[10px] p-3.5 text-center"
+                  style={{
+                    background: "linear-gradient(160deg,var(--color-surface-dark-2),var(--color-surface-dark-1))",
+                    boxShadow: "0 0 0 1px var(--color-on-dark-brand-100)",
+                    color: "var(--color-on-dark-ink-900)",
+                  }}
+                >
+                  <div className="flex items-center justify-center gap-1.5 text-[13px] font-medium" style={{ color: "var(--color-on-dark-brand-800)" }}>
                     <Sparkle size={14} weight="regular" aria-hidden="true" />
                     Nice work. Keep going?
                   </div>
@@ -681,9 +723,9 @@ export default function Dashboard() {
                   disabled={pullForward.isPending}
                   onClick={() => pullForward.mutate(3)}
                   className="mt-1.5 rounded-[10px] p-3 text-left transition-opacity hover:opacity-80"
-                  style={{ border: "1px dashed rgba(233,233,237,.16)", opacity: 0.55 }}
+                  style={{ border: "1px dashed var(--color-hairline)", opacity: 0.55 }}
                 >
-                  <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>Next day tasks · tap to pull in</div>
+                  <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-600)" }}>Next day tasks · tap to pull in</div>
                   <div className="mt-1.5 flex flex-col gap-1">
                     {tomorrowFull.day.tasks.slice(0, 3).map((t) => (
                       <div key={t.id} className="truncate text-[12.5px]">{t.title}</div>
@@ -700,20 +742,20 @@ export default function Dashboard() {
           <ChapterProgressCard station={matchedStation} onOpen={() => switchTab("/plan/syllabus")} />
 
           {sourcesData && sourcesData.sources.length > 0 && (
-            <div className="flex min-h-0 flex-col gap-[11px] overflow-hidden rounded-xl p-[14px]" style={{ background: "#1c1f2c" }}>
+            <div className="flex min-h-0 flex-col gap-[11px] overflow-hidden rounded-xl p-[14px]" style={{ background: "var(--color-card)" }}>
               <div className="flex items-center justify-between">
-                <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>Sources in play</div>
-                <button type="button" onClick={() => switchTab("/plan/sources")} style={{ color: "rgba(233,233,237,.35)" }}>›</button>
+                <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-400)" }}>Sources in play</div>
+                <button type="button" onClick={() => switchTab("/plan/sources")} style={{ color: "var(--color-ink-300)" }}>›</button>
               </div>
               <div className="flex flex-col gap-[11px] overflow-hidden">
                 {sourcesData.sources.slice(0, 3).map((s) => (
                   <button key={s.id} type="button" onClick={() => switchTab("/plan/sources")} className="block w-full text-left">
                     <div className="flex items-center gap-[9px]">
                       <span className="min-w-0 flex-1 truncate text-[12.5px]">{s.title}</span>
-                      <span className="text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>{s.percent ?? s.completedUnits}{s.percent !== null ? "%" : ""}</span>
+                      <span className="text-[11px]" style={{ color: "var(--color-ink-400)" }}>{s.percent ?? s.completedUnits}{s.percent !== null ? "%" : ""}</span>
                     </div>
-                    <div className="mt-1.5 h-1 overflow-hidden rounded-[2px]" style={{ background: "#292b31" }}>
-                      <div className="h-full" style={{ width: `${s.percent ?? 0}%`, background: "linear-gradient(90deg,#5d5294,#9184d9)" }} />
+                    <div className="mt-1.5 h-1 overflow-hidden rounded-[2px]" style={{ background: "var(--color-hairline-soft)" }}>
+                      <div className="h-full" style={{ width: `${s.percent ?? 0}%`, background: "linear-gradient(90deg,var(--color-brand-solid),var(--color-brand-500))" }} />
                     </div>
                   </button>
                 ))}
@@ -721,14 +763,14 @@ export default function Dashboard() {
             </div>
           )}
 
-          <button type="button" onClick={() => switchTab("/jobs")} className="mt-auto rounded-xl p-[14px] text-left" style={{ background: "#1c1f2c" }}>
+          <button type="button" onClick={() => switchTab("/jobs")} className="mt-auto rounded-xl p-[14px] text-left" style={{ background: "var(--color-card)" }}>
             <div className="flex items-center gap-2">
-              <Briefcase size={14} weight="regular" style={{ color: "#b5abfc" }} aria-hidden="true" />
-              <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>Applications</div>
+              <Briefcase size={14} weight="regular" style={{ color: "var(--color-brand-700)" }} aria-hidden="true" />
+              <div className="text-micro tracking-[.12em] uppercase" style={{ color: "var(--color-ink-400)" }}>Applications</div>
             </div>
             <div className="mt-1.5 flex items-baseline gap-2">
               <span className="text-[20px] font-medium">{data.applications.wishlist + data.applications.applied + data.applications.interview}</span>
-              <span className="text-[11.5px]" style={{ color: "rgba(233,233,237,.55)" }}>open · {data.applications.offer} offer{data.applications.offer === 1 ? "" : "s"}</span>
+              <span className="text-[11.5px]" style={{ color: "var(--color-ink-600)" }}>open · {data.applications.offer} offer{data.applications.offer === 1 ? "" : "s"}</span>
             </div>
           </button>
         </div>
@@ -737,15 +779,15 @@ export default function Dashboard() {
 
       <BottomSheet open={taskDetailOpen} onClose={() => setTaskDetailOpen(false)}>
         <div className="flex items-center gap-1.5">
-          <span className="rounded-full border px-1.5 py-px text-micro" style={{ borderColor: "rgba(233,233,237,.14)", color: "rgba(233,233,237,.62)" }}>
+          <span className="rounded-full border px-1.5 py-px text-micro" style={{ borderColor: "var(--color-hairline)", color: "var(--color-ink-600)" }}>
             {nextTask?.skill ? SKILL_LABELS[nextTask.skill] : "Free"}
           </span>
-          <span className="text-micro tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>today's plan</span>
+          <span className="text-micro tracking-[.1em] uppercase" style={{ color: "var(--color-ink-600)" }}>today's plan</span>
         </div>
         <div className="mt-[9px] text-xl font-medium text-pretty" style={{ letterSpacing: "-.02em" }}>
           {!roadmapStarted ? "Start your 26-week roadmap" : nextTask ? nextTask.title : "Nothing left on today's plan."}
         </div>
-        <div className="mt-[9px] text-[13px] leading-[1.55] text-pretty" style={{ color: "rgba(233,233,237,.7)" }}>
+        <div className="mt-[9px] text-[13px] leading-[1.55] text-pretty" style={{ color: "var(--color-ink-700)" }}>
           {!roadmapStarted
             ? "Generates a day-by-day plan to Goethe-exam readiness from your syllabus progress."
             : nextTask
@@ -753,29 +795,29 @@ export default function Dashboard() {
               : "You can still open a self-test or work ahead on new words."}
         </div>
         {liveNextTask?.syllabusItem && (
-          <div className="mt-[9px] text-[12.5px] leading-[1.5] text-pretty" style={{ color: "rgba(233,233,237,.55)" }}>
+          <div className="mt-[9px] text-[12.5px] leading-[1.5] text-pretty" style={{ color: "var(--color-ink-600)" }}>
             {liveNextTask.syllabusItem.level.toUpperCase()}
             {liveNextTask.syllabusItem.theme ? ` · ${liveNextTask.syllabusItem.theme}` : ""}
             {liveNextTask.syllabusItem.description ? ` — ${liveNextTask.syllabusItem.description}` : ""}
           </div>
         )}
         <div className="mt-[15px] flex flex-col gap-[9px]">
-          <div className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px]" style={{ background: "#20222f" }}>
-            <span className="flex-1 text-[12.5px]" style={{ color: "rgba(233,233,237,.6)" }}>Estimated</span>
+          <div className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px]" style={{ background: "var(--color-ink-50)" }}>
+            <span className="flex-1 text-[12.5px]" style={{ color: "var(--color-ink-600)" }}>Estimated</span>
             <span className="flex items-center gap-1.5 text-[12.5px] font-medium">
               <Clock size={12} weight="regular" aria-hidden="true" />
               {nextTask ? estimateFor(nextTask) : "—"}
             </span>
           </div>
-          <div className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px]" style={{ background: "#20222f" }}>
-            <span className="flex-1 text-[12.5px]" style={{ color: "rgba(233,233,237,.6)" }}>Moves</span>
+          <div className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px]" style={{ background: "var(--color-ink-50)" }}>
+            <span className="flex-1 text-[12.5px]" style={{ color: "var(--color-ink-600)" }}>Moves</span>
             <span className="text-[12.5px] font-medium">
               {nextTask?.skill ? SKILL_LABELS[nextTask.skill] : nextTask ? "Your own goal" : "Your choice"}
             </span>
           </div>
           {liveNextTask && liveNextTask.minutesSpent !== null && (
-            <div className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px]" style={{ background: "#20222f" }}>
-              <span className="flex-1 text-[12.5px]" style={{ color: "rgba(233,233,237,.6)" }}>Already logged</span>
+            <div className="flex items-center gap-2.5 rounded-[11px] px-3 py-[11px]" style={{ background: "var(--color-ink-50)" }}>
+              <span className="flex-1 text-[12.5px]" style={{ color: "var(--color-ink-600)" }}>Already logged</span>
               <span className="text-[12.5px] font-medium">{liveNextTask.minutesSpent} min</span>
             </div>
           )}
@@ -785,7 +827,7 @@ export default function Dashboard() {
             type="button"
             onClick={() => setTaskDetailOpen(false)}
             className="min-h-[46px] flex-1 rounded-[11px] border text-[14px] font-medium"
-            style={{ borderColor: "rgba(233,233,237,.16)" }}
+            style={{ borderColor: "var(--color-hairline)" }}
           >
             Not now
           </button>

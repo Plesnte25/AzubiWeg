@@ -231,6 +231,23 @@
   --color-surface-dark-1: #1c1f2c;
   --color-surface-dark-2: #20222f;
   --color-surface-dark-3: #20222f;
+
+  /* Companion text/accent tokens for content sitting ON a --color-surface-
+     dark-* card. Deliberately NOT overridden in either [data-theme="..."]
+     block below — always resolve to their one literal value regardless of
+     the active theme, same as surface-dark-* itself. Without these, a
+     component correctly using surface-dark-* for its background but a
+     theme-reactive var(--color-ink-*) for its text would flip to dark text
+     in light mode — dark-on-dark, unreadable (caught live on Dashboard's
+     "Next in your plan" card during the Phase 3 pilot). */
+  --color-on-dark-ink-900: #e9e9ed;
+  --color-on-dark-ink-700: rgba(233, 233, 237, 0.85);
+  --color-on-dark-ink-600: rgba(233, 233, 237, 0.62);
+  --color-on-dark-hairline: rgba(233, 233, 237, 0.16);
+  --color-on-dark-brand-100: #423a6a;
+  --color-on-dark-brand-500: #9184d9;
+  --color-on-dark-brand-700: #b5abfc;
+  --color-on-dark-brand-800: #d2cefd;
 }
 
 /* Nocturne v2 — light theme override (redesign prototype's warm cream/

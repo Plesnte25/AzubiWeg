@@ -43,25 +43,25 @@ export default function ReviewDial({
       aria-label="Start reviewing"
     >
       <svg width={176} height={176} viewBox="0 0 120 120" style={{ transform: "rotate(-90deg)" }}>
-        <circle cx={60} cy={60} r={OUTER_R} fill="none" stroke="#292b31" strokeWidth={7} />
+        <circle cx={60} cy={60} r={OUTER_R} fill="none" stroke="var(--color-hairline-soft)" strokeWidth={7} />
         <circle
           cx={60}
           cy={60}
           r={OUTER_R}
           fill="none"
-          stroke="#423a6a"
+          stroke="var(--color-brand-100)"
           strokeWidth={7}
           strokeLinecap="round"
           strokeDasharray={OUTER_CIRCUMFERENCE}
           style={{ strokeDashoffset: outerOffset, transition: "stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)" }}
         />
-        <circle cx={60} cy={60} r={INNER_R} fill="none" stroke="#292b31" strokeWidth={5} />
+        <circle cx={60} cy={60} r={INNER_R} fill="none" stroke="var(--color-hairline-soft)" strokeWidth={5} />
         <circle
           cx={60}
           cy={60}
           r={INNER_R}
           fill="none"
-          stroke="#9184d9"
+          stroke="var(--color-brand-500)"
           strokeWidth={5}
           strokeLinecap="round"
           strokeDasharray={INNER_CIRCUMFERENCE}
@@ -82,10 +82,10 @@ export default function ReviewDial({
         >
           {dueCount}
         </div>
-        <div className="mt-0.5 text-micro tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
+        <div className="mt-0.5 text-micro tracking-[.1em] uppercase" style={{ color: "var(--color-brand-700)" }}>
           due now
         </div>
-        <div className="mt-0.5 text-micro" style={{ color: "rgba(233,233,237,.62)" }}>
+        <div className="mt-0.5 text-micro" style={{ color: "var(--color-ink-600)" }}>
           tap to review
         </div>
       </div>
