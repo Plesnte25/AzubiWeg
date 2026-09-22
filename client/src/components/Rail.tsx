@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { useState } from "react";
-import { BookOpen, Exam, FlagPennant, MagnifyingGlass, NotePencil } from "@phosphor-icons/react";
+import { BookOpen, Exam, FlagPennant, MagnifyingGlass, Moon, NotePencil, Sun } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
 import { api, getUser } from "../api/client";
 import { isActivePath, NAV_DESTINATIONS } from "../lib/navDestinations";
 import { levelStates } from "../lib/levels";
 import { useNavStack } from "../lib/navStack";
+import { useTheme } from "../lib/theme";
 import { ProfileSheet } from "./ProfileSheet";
 
 // Desktop's unified rail carries a 6th destination (Notes) mobile's bottom
@@ -42,6 +43,7 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
   const { data } = useQuery({ queryKey: ["dashboard"], queryFn: api.dashboard });
   const [profileOpen, setProfileOpen] = useState(false);
   const user = getUser();
+  const { theme, toggleTheme } = useTheme();
 
   const states = data ? levelStates(data.learning.levels) : [];
   const activeLevel = data ? (data.learning.levels[Math.max(0, states.indexOf("active"))]?.level ?? "a1") : "a1";
@@ -63,12 +65,20 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
   return (
     <div
       className="fixed inset-y-0 left-0 z-30 hidden w-[84px] flex-col items-center gap-[5px] border-r py-5 lg:flex"
-      style={{ borderColor: "rgba(233,233,237,.08)", background: "linear-gradient(180deg,#1a1c2b,#161826)", color: "#e9e9ed" }}
+      style={{
+        borderColor: "var(--color-hairline-soft)",
+        background: "linear-gradient(180deg,var(--color-ink-50),var(--color-paper))",
+        color: "var(--color-ink-900)",
+      }}
     >
       <div
         title="AzubiWeg"
         className="mb-3 grid size-[30px] place-items-center rounded-[9px] text-[14px] font-medium"
-        style={{ background: "rgba(145,132,217,.16)", boxShadow: "0 0 0 1px rgba(181,171,252,.4)", color: "#d2cefd" }}
+        style={{
+          background: "var(--color-brand-100)",
+          boxShadow: "0 0 0 1px color-mix(in srgb, var(--color-brand-700) 40%, transparent)",
+          color: "var(--color-brand-800)",
+        }}
       >
         W
       </div>
@@ -78,13 +88,23 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
         onClick={onOpenPalette}
         title="Search or jump — ⌘K"
         className="mb-1 flex w-[40px] flex-col items-center gap-1 rounded-[10px] py-2 transition-[filter] duration-150 hover:brightness-110"
-        style={{ background: "#20222f", color: "rgba(233,233,237,.55)" }}
+        style={{ background: "var(--color-ink-50)", color: "var(--color-ink-600)" }}
       >
         <MagnifyingGlass size={15} weight="regular" aria-hidden="true" />
-        
+
       </button>
 
-      <div className="my-1 h-px w-[44px]" style={{ background: "rgba(233,233,237,.08)" }} />
+      <button
+        type="button"
+        onClick={toggleTheme}
+        title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        className="mb-1 flex w-[40px] flex-col items-center gap-1 rounded-[10px] py-2 transition-[filter] duration-150 hover:brightness-110"
+        style={{ background: "var(--color-ink-50)", color: "var(--color-ink-600)" }}
+      >
+        {theme === "dark" ? <Sun size={15} weight="regular" aria-hidden="true" /> : <Moon size={15} weight="regular" aria-hidden="true" />}
+      </button>
+
+      <div className="my-1 h-px w-[44px]" style={{ background: "var(--color-hairline-soft)" }} />
 
       <div className="flex flex-col items-center gap-1">
         {RAIL_NAV_DESTINATIONS.map((dest) => {
@@ -98,7 +118,7 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
               onClick={() => switchTab(dest.to)}
               title={dest.label}
               className="relative flex w-[60px] flex-col items-center gap-1 rounded-[10px] py-2 transition-colors duration-150 hover:bg-white/5"
-              style={{ background: active ? "rgba(145,132,217,.16)" : undefined, color: active ? "#d2cefd" : "rgba(233,233,237,.55)" }}
+              style={{ background: active ? "var(--color-brand-100)" : undefined, color: active ? "var(--color-brand-800)" : "var(--color-ink-600)" }}
             >
               <span className="relative">
                 <Icon size={18} weight="regular" aria-hidden="true" />
@@ -106,7 +126,7 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
                   <i
                     aria-hidden="true"
                     className="absolute -top-0.5 -right-0.5 block size-[6px] rounded-full"
-                    style={{ background: "#9184d9" }}
+                    style={{ background: "var(--color-brand-500)" }}
                   />
                 )}
               </span>
@@ -116,7 +136,7 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
         })}
       </div>
 
-      <div className="my-2 h-px w-[44px]" style={{ background: "rgba(233,233,237,.08)" }} />
+      <div className="my-2 h-px w-[44px]" style={{ background: "var(--color-hairline-soft)" }} />
 
       <div className="flex flex-col items-center gap-2.5">
         {LIBRARY_ITEMS.map((item) => {
@@ -128,7 +148,7 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
               onClick={() => push(item.to)}
               title={item.label}
               className="grid size-[30px] place-items-center rounded-[9px] transition-colors duration-150 hover:bg-white/5"
-              style={{ color: "rgba(233,233,237,.4)" }}
+              style={{ color: "var(--color-ink-400)" }}
             >
               <Icon size={18} weight="regular" aria-hidden="true" />
             </button>
@@ -143,13 +163,13 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
             onClick={() => push("/settings")}
             title={examTitle}
             className="grid size-14 place-items-center gap-px rounded-2xl text-center transition-[filter] duration-150 hover:brightness-110"
-            style={{ background: "rgba(145,132,217,.09)", boxShadow: "0 0 0 1px rgba(145,132,217,.3)" }}
+            style={{ background: "var(--color-brand-50)", boxShadow: "0 0 0 1px color-mix(in srgb, var(--color-brand-500) 30%, transparent)" }}
           >
-            <FlagPennant size={11} weight="regular" style={{ color: "#9184d9" }} aria-hidden="true" />
-            <div className="text-[15px] leading-none font-medium" style={{ color: "#d2cefd" }}>
+            <FlagPennant size={11} weight="regular" style={{ color: "var(--color-brand-500)" }} aria-hidden="true" />
+            <div className="text-[15px] leading-none font-medium" style={{ color: "var(--color-brand-800)" }}>
               {examDaysRaw >= 0 ? examDaysRaw : Math.abs(examDaysRaw)}
             </div>
-            <div className="text-micro tracking-[.08em]" style={{ color: "rgba(233,233,237,.62)" }}>
+            <div className="text-micro tracking-[.08em]" style={{ color: "var(--color-ink-600)" }}>
               DAYS
             </div>
           </button>
@@ -162,7 +182,12 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
         >
           <div
             className="grid size-8 shrink-0 place-items-center rounded-full text-[12.5px] font-medium"
-            style={{ letterSpacing: "-.01em", color: "#d2cefd", background: "linear-gradient(150deg,#3a3560,#272a45)", border: "1px solid rgba(181,171,252,.4)" }}
+            style={{
+              letterSpacing: "-.01em",
+              color: "var(--color-brand-800)",
+              background: "linear-gradient(150deg,var(--color-brand-100),var(--color-ink-50))",
+              border: "1px solid color-mix(in srgb, var(--color-brand-700) 40%, transparent)",
+            }}
           >
             {initials(user?.name)}
           </div>

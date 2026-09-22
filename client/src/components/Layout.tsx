@@ -4,6 +4,7 @@ import { useActivityHeartbeat } from "../hooks/useActivityHeartbeat";
 import { cn } from "../lib/cn";
 import { isTransientPath, NavStackProvider, useNavStack } from "../lib/navStack";
 import { QUICK_LINKS } from "../lib/navDestinations";
+import { isThemeReadyRoute } from "../lib/themeReadyRoutes";
 import BottomTabBar from "./BottomTabBar";
 import CaptureFab from "./CaptureFab";
 import { CommandPalette } from "./CommandPalette";
@@ -123,6 +124,13 @@ export default function Layout() {
         {!isTransient && <Rail onOpenPalette={() => setPaletteOpen(true)} />}
 
         <main
+          // Scoped theme override, separate from ThemeProvider's own
+          // document-root write — CSS custom properties cascade from the
+          // nearest ancestor, so this wins for everything inside <main>
+          // without touching Rail/BottomTabBar/etc. outside it. Omitted
+          // (inherits the real theme normally) once a route is migrated —
+          // see lib/themeReadyRoutes.ts.
+          data-theme={isThemeReadyRoute(location.pathname) ? undefined : "dark"}
           className={cn(
             !isTransient && "lg:pl-[84px]",
             // Dashboard owns its own edge-to-edge padding and bottom

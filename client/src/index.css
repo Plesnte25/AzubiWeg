@@ -233,6 +233,182 @@
   --color-surface-dark-3: #20222f;
 }
 
+/* Nocturne v2 — light theme override (redesign prototype's warm cream/
+   coral/amber/green palette). This is a plain override block, not a second
+   @theme: Tailwind v4's @theme above already emitted every --color-* and
+   --shadow-* name as a real :root custom property, so utility classes like
+   bg-paper/text-ink-900 already reference var(--color-paper) etc. under the
+   hood. Re-declaring the SAME custom property names here, scoped under
+   [data-theme="light"], is enough to retheme every call site with no
+   @theme duplication and no per-component change (see client/src/lib/theme.tsx
+   for what sets data-theme on the html element).
+
+   Only ANCHOR tokens are listed below. --color-wortart-* and --color-state-*
+   are defined in @theme using var(--color-genus-der) etc. (live indirection,
+   not a static copy), so overriding their anchor here (genus-der, brand-500,
+   danger-600, ok-600...) re-themes them automatically — redeclaring them
+   here would be dead weight. --color-warn-* and --color-ink-400 and friends ARE
+   literal hex/rgba in @theme (not var()-aliased), so those DO need an
+   explicit light value below. --color-surface-dark-* is intentionally
+   skipped — those are the app's existing always-dark nested surfaces
+   (self-test runner, Sources hero) and the new prototype keeps that same
+   idea (e.g. its dashboard's solid-black Next-up card sits inside an
+   otherwise light page) — no change needed in either theme.
+
+   Brand hue diverges by theme on purpose: dark keeps Nocturne's single
+   mono purple accent; light adopts the prototype's own coral/orange as ITS
+   brand color (literal-fidelity to the light-mode source, same as how the
+   rest of this redesign follows the prototype exactly). --color-ok-* also
+   diverges: dark folds positive into the mono accent (no distinct green
+   in that system); light reintroduces a real green because the prototype
+   itself uses a distinct green for streaks/mastery/positive stats —
+   info-* still folds into brand in light, same fold dark uses.
+
+   [data-theme="dark"] mirrors the @theme defaults above verbatim. It looks
+   redundant (the bare :root default already IS dark) but it's required for
+   Layout.tsx's <main data-theme="dark"> scoping to actually work: without a
+   real [data-theme="dark"] rule to match, setting that attribute on <main>
+   has nothing to reassert dark values with, so a light [data-theme="light"]
+   set higher up (on <html>) would keep cascading straight through into a
+   nested "dark" subtree unopposed. Keep these two blocks' values in sync by
+   hand — there's no single source of truth to derive one from the other
+   across a plain override block and Tailwind's compiled @theme output. */
+[data-theme="dark"] {
+  --color-brand-50: #3f424d;
+  --color-brand-100: #423a6a;
+  --color-brand-200: #5d5294;
+  --color-brand-300: #5d5294;
+  --color-brand-400: #9184d9;
+  --color-brand-500: #9184d9;
+  --color-brand-600: #9184d9;
+  --color-brand-700: #b5abfc;
+  --color-brand-800: #d2cefd;
+  --color-brand-900: #d2cefd;
+  --color-brand-solid: #5d5294;
+  --color-brand-solid-light: #6e62a8;
+
+  --color-ink-900: #e9e9ed;
+  --color-ink-700: rgba(233, 233, 237, 0.85);
+  --color-ink-600: rgba(233, 233, 237, 0.62);
+  --color-ink-400: rgba(233, 233, 237, 0.4);
+  --color-ink-300: rgba(233, 233, 237, 0.3);
+  --color-ink-50: #20222f;
+  --color-paper: #161826;
+  --color-card: #1c1f2c;
+  --color-hairline: rgba(233, 233, 237, 0.16);
+  --color-hairline-soft: rgba(233, 233, 237, 0.08);
+
+  --color-danger-50: rgba(209, 155, 134, 0.14);
+  --color-danger-100: rgba(209, 155, 134, 0.14);
+  --color-danger-600: #d19b86;
+  --color-danger-700: #e4c4b6;
+  --color-danger-solid: #d19b86;
+  --color-warning-50: rgba(209, 155, 134, 0.14);
+  --color-warning-100: rgba(209, 155, 134, 0.14);
+  --color-warning-500: #d19b86;
+  --color-warning-600: #e4c4b6;
+
+  --color-ok-50: #3f424d;
+  --color-ok-100: #423a6a;
+  --color-ok-600: #9184d9;
+  --color-ok-700: #b5abfc;
+
+  --color-info-50: #3f424d;
+  --color-info-100: #423a6a;
+  --color-info-600: #9184d9;
+  --color-info-700: #b5abfc;
+
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 2px 6px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.4);
+  --shadow-brand: 0 8px 24px -8px rgba(145, 132, 217, 0.4);
+  --shadow-ring-raised: 0 0 0 1px #423a6a;
+
+  --color-genus-der: #d2cefd;
+  --color-genus-der-bg: rgba(145, 132, 217, 0.2);
+  --color-genus-die: #e6c3d5;
+  --color-genus-die-bg: rgba(199, 150, 180, 0.19);
+  --color-genus-das: #bcdde2;
+  --color-genus-das-bg: rgba(120, 170, 180, 0.18);
+
+  --color-state-learning: rgba(233, 233, 237, 0.25);
+
+  --color-warn-500: #d19b86;
+  --color-warn-tint-50: rgba(209, 155, 134, 0.14);
+  --color-warn-tint-100: rgba(209, 155, 134, 0.14);
+  --color-warn-tint-200: rgba(209, 155, 134, 0.14);
+  --color-warn-700: #e4c4b6;
+}
+
+[data-theme="light"] {
+  --color-brand-50: rgba(234, 88, 12, 0.08);
+  --color-brand-100: rgba(234, 88, 12, 0.14);
+  --color-brand-200: rgba(234, 88, 12, 0.18);
+  --color-brand-300: rgba(234, 88, 12, 0.18);
+  --color-brand-400: #ea580c;
+  --color-brand-500: #ea580c;
+  --color-brand-600: #ea580c;
+  --color-brand-700: #c2410c;
+  --color-brand-800: #9a3412;
+  --color-brand-900: #7c2d12;
+  --color-brand-solid: #c2410c;
+  --color-brand-solid-light: #ea580c;
+
+  --color-ink-900: #241c14;
+  --color-ink-700: rgba(36, 28, 20, 0.85);
+  --color-ink-600: rgba(36, 28, 20, 0.62);
+  --color-ink-400: rgba(36, 28, 20, 0.4);
+  --color-ink-300: rgba(36, 28, 20, 0.3);
+  --color-ink-50: #f3ecdf;
+  --color-paper: #fbf7f0;
+  --color-card: #ffffff;
+  --color-hairline: rgba(36, 28, 20, 0.12);
+  --color-hairline-soft: rgba(36, 28, 20, 0.06);
+
+  --color-danger-50: rgba(217, 119, 6, 0.12);
+  --color-danger-100: rgba(217, 119, 6, 0.12);
+  --color-danger-600: #d97706;
+  --color-danger-700: #b45309;
+  --color-danger-solid: #d97706;
+  --color-warning-50: rgba(217, 119, 6, 0.12);
+  --color-warning-100: rgba(217, 119, 6, 0.12);
+  --color-warning-500: #d97706;
+  --color-warning-600: #b45309;
+
+  --color-ok-50: rgba(101, 163, 13, 0.14);
+  --color-ok-100: rgba(101, 163, 13, 0.14);
+  --color-ok-600: #65a30d;
+  --color-ok-700: #4d7c0f;
+
+  --color-info-50: rgba(234, 88, 12, 0.08);
+  --color-info-100: rgba(234, 88, 12, 0.14);
+  --color-info-600: #ea580c;
+  --color-info-700: #c2410c;
+
+  --shadow-xs: 0 1px 3px rgba(60, 40, 20, 0.1);
+  --shadow-card: 0 2px 6px rgba(60, 40, 20, 0.08);
+  --shadow-md: 0 6px 16px rgba(60, 40, 20, 0.1);
+  --shadow-lg: 0 12px 28px rgba(60, 40, 20, 0.12);
+  --shadow-brand: 0 8px 24px -8px rgba(234, 88, 12, 0.35);
+  --shadow-ring-raised: 0 0 0 1px rgba(36, 28, 20, 0.14);
+
+  --color-genus-der: #6d5daf;
+  --color-genus-der-bg: rgba(109, 93, 175, 0.12);
+  --color-genus-die: #b54e82;
+  --color-genus-die-bg: rgba(181, 78, 130, 0.12);
+  --color-genus-das: #2a8a95;
+  --color-genus-das-bg: rgba(42, 138, 149, 0.12);
+
+  --color-state-learning: rgba(36, 28, 20, 0.2);
+
+  --color-warn-500: #d97706;
+  --color-warn-tint-50: rgba(217, 119, 6, 0.12);
+  --color-warn-tint-100: rgba(217, 119, 6, 0.12);
+  --color-warn-tint-200: rgba(217, 119, 6, 0.12);
+  --color-warn-700: #b45309;
+}
+
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -351,13 +527,18 @@ button:active:not(:disabled) {
    box-shadow (not outline) respects each element's own border-radius and
    layers cleanly over both bordered and borderless input styles without a
    DOM change. */
+/* var(--color-brand-500), not a literal hex — an attribute-selector rule
+   like [data-theme="light"] input:focus-visible would match by ANY
+   ancestor having that attribute, not the NEAREST one, so it can't respect
+   a <main data-theme="dark"> override nested inside a light <html> the way
+   a custom property naturally does. One rule, cascade does the theming. */
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 button:focus-visible,
 a:focus-visible,
 [role="button"]:focus-visible {
-  box-shadow: 0 0 0 2px #9184d9;
+  box-shadow: 0 0 0 2px var(--color-brand-500);
 }
 
 /* Depth: three surface levels (see components/ui/Card.tsx). @layer components

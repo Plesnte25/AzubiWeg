@@ -14,7 +14,7 @@ function ShortcutBadge({ letter }: { letter: string }) {
   return (
     <span
       className="ml-auto flex shrink-0 items-center gap-[3px] rounded px-[5px] py-[2px] font-mono text-micro font-semibold"
-      style={{ background: "rgba(233,233,237,.08)", color: "rgba(233,233,237,.62)" }}
+      style={{ background: "var(--color-hairline-soft)", color: "var(--color-ink-600)" }}
     >
       G {letter.toUpperCase()}
     </span>
@@ -23,7 +23,7 @@ function ShortcutBadge({ letter }: { letter: string }) {
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <div className="px-3 pt-2.5 pb-1 text-micro font-semibold tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
+    <div className="px-3 pt-2.5 pb-1 text-micro font-semibold tracking-[.1em] uppercase" style={{ color: "var(--color-ink-600)" }}>
       {children}
     </div>
   );
@@ -154,24 +154,24 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           if (e.target === e.currentTarget) onClose();
         }}
       >
-        <div className="w-full max-w-[520px] overflow-hidden rounded-[14px]" style={{ background: "#1c1f2c", boxShadow: "0 20px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(233,233,237,.1)" }}>
-          <div className="flex items-center gap-[10px] px-4 py-3.5" style={{ borderBottom: "1px solid rgba(233,233,237,.08)" }}>
-            <MagnifyingGlass size={16} weight="regular" style={{ color: "rgba(233,233,237,.45)" }} aria-hidden="true" />
+        <div className="w-full max-w-[520px] overflow-hidden rounded-[14px]" style={{ background: "var(--color-card)", boxShadow: "var(--shadow-lg), 0 0 0 1px var(--color-hairline)" }}>
+          <div className="flex items-center gap-[10px] px-4 py-3.5" style={{ borderBottom: "1px solid var(--color-hairline-soft)" }}>
+            <MagnifyingGlass size={16} weight="regular" style={{ color: "var(--color-ink-400)" }} aria-hidden="true" />
             <input
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search words, notes, or jump to a screen…"
               className="flex-1 border-0 bg-transparent text-[14.5px] outline-none"
-              style={{ color: "#e9e9ed" }}
+              style={{ color: "var(--color-ink-900)" }}
             />
-            <span className="rounded px-[5px] py-[2px] font-mono text-micro font-semibold" style={{ background: "rgba(233,233,237,.08)", color: "rgba(233,233,237,.62)" }}>
+            <span className="rounded px-[5px] py-[2px] font-mono text-micro font-semibold" style={{ background: "var(--color-hairline-soft)", color: "var(--color-ink-600)" }}>
               esc
             </span>
           </div>
           <div className="max-h-[420px] overflow-y-auto p-2">
             {!hasResults ? (
-              <p className="px-3 py-6 text-center text-[12.5px]" style={{ color: "rgba(233,233,237,.62)" }}>
+              <p className="px-3 py-6 text-center text-[12.5px]" style={{ color: "var(--color-ink-600)" }}>
                 No matches.
               </p>
             ) : (
@@ -185,18 +185,18 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                         type="button"
                         onClick={() => go(() => push(`/words/${w.id}`))}
                         className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
-                        style={{ color: "#e9e9ed" }}
+                        style={{ color: "var(--color-ink-900)" }}
                       >
                         <span
                           className="grid size-7 shrink-0 place-items-center rounded-[8px] text-micro font-medium"
-                          style={{ background: "rgba(233,233,237,.08)", color: chipColor(w) }}
+                          style={{ background: "var(--color-hairline-soft)", color: chipColor(w) }}
                         >
                           {chipLabel(w)}
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-[13.5px]">{w.headword}</span>
                           {w.meaning && (
-                            <span className="block truncate text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+                            <span className="block truncate text-[11px]" style={{ color: "var(--color-ink-400)" }}>
                               {w.meaning}
                             </span>
                           )}
@@ -215,9 +215,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                         type="button"
                         onClick={() => go(() => switchTab(l.to))}
                         className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
-                        style={{ color: "#e9e9ed" }}
+                        style={{ color: "var(--color-ink-900)" }}
                       >
-                        <l.icon size={16} weight="regular" style={{ color: "rgba(233,233,237,.5)", flexShrink: 0 }} aria-hidden="true" />
+                        <l.icon size={16} weight="regular" style={{ color: "var(--color-ink-400)", flexShrink: 0 }} aria-hidden="true" />
                         <span className="min-w-0 flex-1 truncate text-[13.5px]">{l.label}</span>
                         <ShortcutBadge letter={l.shortcut} />
                       </button>
@@ -227,9 +227,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                         type="button"
                         onClick={() => go(() => push("/plan/syllabus", { state: { openStationTheme: syllabusJump.theme } }))}
                         className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
-                        style={{ color: "#e9e9ed" }}
+                        style={{ color: "var(--color-ink-900)" }}
                       >
-                        <SyllabusIcon size={16} weight="regular" style={{ color: "rgba(233,233,237,.5)", flexShrink: 0 }} aria-hidden="true" />
+                        <SyllabusIcon size={16} weight="regular" style={{ color: "var(--color-ink-400)", flexShrink: 0 }} aria-hidden="true" />
                         <span className="min-w-0 flex-1 truncate text-[13.5px]">{syllabusJump.label}</span>
                         <ShortcutBadge letter="s" />
                       </button>
@@ -247,18 +247,18 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                         onClose();
                       }}
                       className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
-                      style={{ color: "#e9e9ed" }}
+                      style={{ color: "var(--color-ink-900)" }}
                     >
-                      <Plus size={16} weight="regular" style={{ color: "rgba(233,233,237,.5)", flexShrink: 0 }} aria-hidden="true" />
+                      <Plus size={16} weight="regular" style={{ color: "var(--color-ink-400)", flexShrink: 0 }} aria-hidden="true" />
                       <span className="min-w-0 flex-1 truncate text-[13.5px]">Add &ldquo;{query.trim()}&rdquo; as a new word</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => go(() => push("/plan/notes/edit/new", { state: { contextTag: query.trim() } }))}
                       className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
-                      style={{ color: "#e9e9ed" }}
+                      style={{ color: "var(--color-ink-900)" }}
                     >
-                      <NotePencil size={16} weight="regular" style={{ color: "rgba(233,233,237,.5)", flexShrink: 0 }} aria-hidden="true" />
+                      <NotePencil size={16} weight="regular" style={{ color: "var(--color-ink-400)", flexShrink: 0 }} aria-hidden="true" />
                       <span className="min-w-0 flex-1 truncate text-[13.5px]">New note tagged &ldquo;{query.trim()}&rdquo;</span>
                     </button>
                   </div>
@@ -273,12 +273,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                         type="button"
                         onClick={() => go(() => push(`/plan/notes/edit/${n.id}`))}
                         className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
-                        style={{ color: "#e9e9ed" }}
+                        style={{ color: "var(--color-ink-900)" }}
                       >
-                        <NotePencil size={16} weight="regular" style={{ color: "rgba(233,233,237,.5)", flexShrink: 0 }} aria-hidden="true" />
+                        <NotePencil size={16} weight="regular" style={{ color: "var(--color-ink-400)", flexShrink: 0 }} aria-hidden="true" />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-[13.5px]">{n.title?.trim() || "Untitled note"}</span>
-                          <span className="block truncate text-[11px]" style={{ color: "rgba(233,233,237,.45)" }}>
+                          <span className="block truncate text-[11px]" style={{ color: "var(--color-ink-400)" }}>
                             {stripHtml(n.body ?? "").slice(0, 60)}
                           </span>
                         </span>

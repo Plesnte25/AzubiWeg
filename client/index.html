@@ -11,11 +11,19 @@
     <title>AzubiWeg</title>
     <script>
       (function () {
+        // Pre-mount theme resolution, mirrored exactly from
+        // client/src/lib/theme.tsx's resolveInitialTheme() so there's no
+        // flash of the wrong theme before React hydrates. Sets data-theme
+        // (Nocturne v2's light/dark switch — see index.css), not the old
+        // pre-Nocturne .dark class, which no CSS reads any more.
         var stored = localStorage.getItem("azubiweg-theme");
-        var dark =
-          stored === "dark" ||
-          (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-        document.documentElement.classList.toggle("dark", dark);
+        var theme =
+          stored === "light" || stored === "dark"
+            ? stored
+            : window.matchMedia("(prefers-color-scheme: light)").matches
+              ? "light"
+              : "dark";
+        document.documentElement.dataset.theme = theme;
       })();
     </script>
     <script>

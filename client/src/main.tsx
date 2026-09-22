@@ -6,6 +6,7 @@ import "./index.css";
 import { api, getToken, setSession } from "./api/client";
 import Layout from "./components/Layout";
 import { Toaster } from "./components/ui/Toast";
+import { ThemeProvider } from "./lib/theme";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 
@@ -119,9 +120,11 @@ rootElement.__azubiwegRoot = root;
 
 root.render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-      <Toaster />
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+        <Toaster />
+      </QueryClientProvider>
+    </ThemeProvider>
   </StrictMode>,
 );

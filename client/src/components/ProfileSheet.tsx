@@ -50,16 +50,16 @@ export function ProfileSheet({
           className="grid size-[52px] shrink-0 place-items-center rounded-full text-[19px] font-medium"
           style={{
             letterSpacing: "-.01em",
-            color: "#d2cefd",
-            background: "linear-gradient(150deg,#3a3560,#272a45)",
-            border: "1px solid rgba(181,171,252,.4)",
+            color: "var(--color-brand-800)",
+            background: "linear-gradient(150deg,var(--color-brand-100),var(--color-ink-50))",
+            border: "1px solid color-mix(in srgb, var(--color-brand-700) 40%, transparent)",
           }}
         >
           {initials(name)}
         </div>
         <div className="min-w-0 flex-1">
           <div className="truncate text-[17px] font-medium">{name || "You"}</div>
-          <div className="mt-0.5 truncate text-[12px]" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="mt-0.5 truncate text-[12px]" style={{ color: "var(--color-ink-400)" }}>
             {email} · {LEVEL_LABELS[level] ?? level.toUpperCase()}
             {dayNumber !== null ? ` · day ${dayNumber}` : ""}
           </div>
@@ -67,23 +67,23 @@ export function ProfileSheet({
       </div>
 
       <div className="mt-4 flex gap-2">
-        <div className="flex-1 rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
+        <div className="flex-1 rounded-xl p-[11px]" style={{ background: "var(--color-card)" }}>
           <div className="text-[18px] font-medium">{wordsData?.words.length ?? "—"}</div>
-          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "var(--color-ink-400)" }}>
             words
           </div>
         </div>
-        <div className="flex-1 rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
-          <div className="text-[18px] font-medium" style={{ color: "#b5abfc" }}>
+        <div className="flex-1 rounded-xl p-[11px]" style={{ background: "var(--color-card)" }}>
+          <div className="text-[18px] font-medium" style={{ color: "var(--color-brand-700)" }}>
             {streak}
           </div>
-          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "var(--color-ink-400)" }}>
             day streak
           </div>
         </div>
-        <div className="flex-1 rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
+        <div className="flex-1 rounded-xl p-[11px]" style={{ background: "var(--color-card)" }}>
           <div className="text-[18px] font-medium">{notesData?.notes.length ?? "—"}</div>
-          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
+          <div className="text-micro" style={{ color: "var(--color-ink-400)" }}>
             notes
           </div>
         </div>
@@ -97,11 +97,11 @@ export function ProfileSheet({
             push("/settings");
           }}
           className="flex items-center gap-3 rounded-xl p-[13px] text-left text-[14.5px]"
-          style={{ background: "#20222f", color: "#e9e9ed" }}
+          style={{ background: "var(--color-ink-50)", color: "var(--color-ink-900)" }}
         >
-          <SlidersHorizontal size={18} weight="regular" style={{ color: "rgba(233,233,237,.6)" }} aria-hidden="true" />
+          <SlidersHorizontal size={18} weight="regular" style={{ color: "var(--color-ink-600)" }} aria-hidden="true" />
           <span className="flex-1">Settings</span>
-          <CaretRight size={14} weight="regular" style={{ color: "rgba(233,233,237,.3)" }} aria-hidden="true" />
+          <CaretRight size={14} weight="regular" style={{ color: "var(--color-ink-300)" }} aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -110,11 +110,11 @@ export function ProfileSheet({
             push("/plan/notes");
           }}
           className="flex items-center gap-3 rounded-xl p-[13px] text-left text-[14.5px]"
-          style={{ background: "#20222f", color: "#e9e9ed" }}
+          style={{ background: "var(--color-ink-50)", color: "var(--color-ink-900)" }}
         >
-          <NotePencil size={18} weight="regular" style={{ color: "rgba(233,233,237,.6)" }} aria-hidden="true" />
+          <NotePencil size={18} weight="regular" style={{ color: "var(--color-ink-600)" }} aria-hidden="true" />
           <span className="flex-1">All notes</span>
-          <CaretRight size={14} weight="regular" style={{ color: "rgba(233,233,237,.3)" }} aria-hidden="true" />
+          <CaretRight size={14} weight="regular" style={{ color: "var(--color-ink-300)" }} aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -124,7 +124,7 @@ export function ProfileSheet({
             navigate("/login");
           }}
           className="flex items-center gap-3 rounded-xl p-[13px] text-left text-[14.5px]"
-          style={{ background: "transparent", color: "#e4c4b6" }}
+          style={{ background: "transparent", color: "var(--color-danger-700)" }}
         >
           <LockSimple size={18} weight="regular" aria-hidden="true" />
           <span className="flex-1">Log out</span>

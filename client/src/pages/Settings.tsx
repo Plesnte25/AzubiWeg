@@ -5,12 +5,14 @@ import {
   CaretLeft,
   FlagPennant,
   LinkSimple,
+  Moon,
   PencilSimple,
   Tag,
 } from "@phosphor-icons/react";
 import { api } from "../api/client";
 import { toast } from "../components/ui/Toast";
 import { useNavStack } from "../lib/navStack";
+import { useTheme } from "../lib/theme";
 import { ExamSchedule } from "./plan/ExamSchedule";
 import { invalidateHub } from "./learning-hub/queryHelpers";
 
@@ -20,7 +22,7 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
       type="button"
       onClick={onClick}
       className="relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors"
-      style={{ background: on ? "#9184d9" : "#292b31" }}
+      style={{ background: on ? "var(--color-brand-500)" : "var(--color-ink-50)" }}
     >
       <span
         className="absolute top-[3px] size-[20px] rounded-full bg-white transition-[left] duration-200"
@@ -43,6 +45,7 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
  */
 export default function Settings() {
   const { goBack, backLabel } = useNavStack();
+  const { theme, toggleTheme } = useTheme();
   const queryClient = useQueryClient();
   const { data: status } = useQuery({ queryKey: ["vault-status"], queryFn: api.vaultStatus });
   const { data: syllabus } = useQuery({ queryKey: ["learning", "syllabus"], queryFn: api.learningSyllabus });
@@ -109,8 +112,26 @@ export default function Settings() {
         Settings
       </div>
 
+      {/* Appearance — theme toggle. Desktop also has one in Rail.tsx; this
+          is the durable, always-reachable home (no persistent mobile top
+          bar exists to put a second one in — see theme.tsx). */}
+      <div className="mt-[18px] rounded-xl p-[15px]" style={{ background: "var(--color-card)" }}>
+        <div className="flex items-center gap-[11px]">
+          <div className="grid size-[34px] shrink-0 place-items-center rounded-[10px]" style={{ background: "var(--color-brand-100)", color: "var(--color-brand-800)" }}>
+            <Moon size={17} weight="regular" aria-hidden="true" />
+          </div>
+          <div className="flex-1">
+            <div className="text-[15px] font-medium">Dark mode</div>
+            <div className="mt-0.5 text-[11px]" style={{ color: "var(--color-ink-400)" }}>
+              {theme === "dark" ? "On" : "Off — using the light theme"}
+            </div>
+          </div>
+          <Toggle on={theme === "dark"} onClick={toggleTheme} />
+        </div>
+      </div>
+
       {/* Obsidian vault sync */}
-      <div className="mt-[18px] rounded-xl p-[15px]" style={{ background: "#1c1f2c" }}>
+      <div className="mt-[11px] rounded-xl p-[15px]" style={{ background: "#1c1f2c" }}>
         <div className="flex items-center gap-[11px]">
           <div className="grid size-[34px] shrink-0 place-items-center rounded-[10px]" style={{ background: "rgba(145,132,217,.18)", color: "#d2cefd" }}>
             <LinkSimple size={17} weight="regular" aria-hidden="true" />

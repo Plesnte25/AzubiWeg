@@ -83,8 +83,10 @@ export function BottomSheet({
           className,
         )}
         style={{
-          background: "linear-gradient(180deg,#232532 0%,#1c1f2c 100%)",
-          boxShadow: isDesktop ? "0 20px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(233,233,237,.1)" : "0 0 0 1px #3f424d, 0 -18px 44px rgba(0,0,0,.5)",
+          background: "var(--color-card)",
+          boxShadow: isDesktop
+            ? "var(--shadow-lg), 0 0 0 1px var(--color-hairline)"
+            : "0 0 0 1px var(--color-hairline), var(--shadow-lg)",
           transform: isDesktop ? `scale(${open ? 1 : 0.96})` : `translateY(${open ? "0" : "104%"})`,
           opacity: isDesktop && !open ? 0 : 1,
           // Mobile's off-screen translateY naturally can't overlap anything
@@ -101,12 +103,12 @@ export function BottomSheet({
             onClick={onClose}
             aria-label="Close"
             className="absolute top-4 right-4"
-            style={{ color: "rgba(233,233,237,.5)" }}
+            style={{ color: "var(--color-ink-600)" }}
           >
             <X size={18} weight="regular" aria-hidden="true" />
           </button>
         ) : (
-          <div className="mx-auto mb-[15px] h-1 w-10 rounded-full" style={{ background: "rgba(233,233,237,.18)" }} />
+          <div className="mx-auto mb-[15px] h-1 w-10 rounded-full" style={{ background: "var(--color-hairline)" }} />
         )}
         {children}
       </div>
