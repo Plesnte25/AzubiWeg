@@ -74,7 +74,7 @@ export default function Layout() {
   const location = useLocation();
   const isDashboard = location.pathname === "/";
   const isWords = location.pathname === "/words";
-  const isNotes = location.pathname === "/plan/notes";
+  const isNotes = location.pathname === "/notes";
   const isSyllabusOrSources = location.pathname === "/plan/syllabus" || location.pathname === "/plan/sources";
   // Words, Notes, and Syllabus/Sources all have a desktop 3-column layout
   // with columns meant to scroll internally (word list / note list /

@@ -4,13 +4,23 @@ import { isActivePath, NAV_DESTINATIONS } from "../lib/navDestinations";
 import { useNavStack } from "../lib/navStack";
 
 /**
- * The 5-tab bottom bar, rendered at every breakpoint per the plan (desktop/
- * lg nav is deferred to Phase 18) — replaces the old FabNav (lg)/IconRail
- * (md)/BottomTabBar (sm) three-component split with one shared surface.
- * Styling ported exactly from the handoff's tabStyle()/tabBarStyle
- * (German Companion App.dc.html): flex-column icon-over-label, 21px
- * Phosphor icons, 8.5px uppercase-tracked labels, active = accent, inactive
- * = muted text, hairline-soft top border.
+ * The bottom bar, rendered at every breakpoint below lg (Rail replaces it at
+ * lg+) — replaces the old FabNav (lg)/IconRail (md)/BottomTabBar (sm)
+ * three-component split with one shared surface. Styling ported exactly
+ * from the handoff's tabStyle()/tabBarStyle (German Companion App.dc.html):
+ * flex-column icon-over-label, 21px Phosphor icons, 8.5px uppercase-tracked
+ * labels, active = accent, inactive = muted text, hairline-soft top border.
+ *
+ * Now 6 items (Nocturne v2: Notes promoted to a real top-level destination,
+ * see navDestinations.ts), not 5 — a deliberate, cited deviation from the
+ * ui-ux-pro-max skill's own `bottom-nav-limit` guidance (max 5 items).
+ * Re-measured (Playwright, 390px width) after the 6th item landed: each
+ * flex-1 button renders 64px wide (comfortably clear of the 44pt minimum)
+ * but only 36px tall with 0px gap between buttons — both under the
+ * 44x44pt/8px minimums. That's true at 5 items too (height/gap come from
+ * padding, not item count), so it isn't a regression from adding Notes,
+ * but it's now logged — see docs/KNOWN_ISSUES.md — rather than silently
+ * assumed fine.
  */
 export default function BottomTabBar() {
   const location = useLocation();

@@ -405,7 +405,7 @@ export default function Notes() {
         </div>
         <button
           type="button"
-          onClick={() => push("/plan/notes/edit/new")}
+          onClick={() => push("/notes/edit/new")}
           className="flex shrink-0 items-center gap-[6px] rounded-[10px] px-3 py-2.5 text-[13.5px] font-medium text-white"
           style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
         >
@@ -465,7 +465,7 @@ export default function Notes() {
                   isOpen={expanded === row.key}
                   onOpen={() => {
                     if (row.source === "journal") setOpenTask(row.item);
-                    else if (row.source === "note") push(`/plan/notes/edit/${row.item.id}`);
+                    else if (row.source === "note") push(`/notes/edit/${row.item.id}`);
                     else setExpanded(expanded === row.key ? null : row.key);
                   }}
                   onChanged={invalidate}

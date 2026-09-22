@@ -26,7 +26,7 @@ export default function CaptureFab() {
       type="button"
       title="Capture a note"
       aria-label="Capture a note"
-      onClick={() => push("/plan/notes/edit/new", { state: contextTag ? { contextTag } : undefined })}
+      onClick={() => push("/notes/edit/new", { state: contextTag ? { contextTag } : undefined })}
       className="fixed right-[18px] bottom-[calc(76px+env(safe-area-inset-bottom))] z-40 grid size-[46px] place-items-center rounded-full border lg:hidden"
       style={{
         background: "linear-gradient(160deg,#2f2b4a,#232532)",

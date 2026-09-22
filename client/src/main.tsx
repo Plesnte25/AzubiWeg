@@ -1,7 +1,7 @@
 import { lazy, StrictMode, Suspense, useEffect, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createBrowserRouter, Navigate, Outlet, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet, RouterProvider, useParams } from "react-router-dom";
 import "./index.css";
 import { api, getToken, setSession } from "./api/client";
 import Layout from "./components/Layout";
@@ -32,6 +32,15 @@ const ReviewSession = lazy(() => import("./pages/review/ReviewSession"));
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<p className="text-ink-600">Loading…</p>}>{children}</Suspense>;
+}
+
+// <Navigate to> doesn't interpolate the CURRENT route's params into its
+// target — a plain <Navigate to="/notes/edit/:id" /> would send everyone to
+// the literal string "/notes/edit/:id". A bookmarked/shared per-note editor
+// link should keep pointing at the same note, not just the notes list.
+function NotesEditRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/notes/edit/${id}`} replace />;
 }
 
 const queryClient = new QueryClient({
@@ -80,7 +89,7 @@ const router = createBrowserRouter([
       {
         element: <Layout />,
         children: [
-          // ── the 5 real tab destinations (Today/Words/Plan/Jobs/Stats) ──
+          // ── the 6 real tab destinations (Today/Words/Plan/Jobs/Stats/Notes) ──
           { path: "/", element: <Dashboard /> },
           { path: "/words", element: <Lazy><Vocabulary /></Lazy> },
           { path: "/words/:id", element: <Lazy><WordDetail /></Lazy> },
@@ -88,8 +97,11 @@ const router = createBrowserRouter([
           { path: "/plan", element: <Lazy><Plan /></Lazy> },
           { path: "/plan/syllabus", element: <Lazy><Syllabus /></Lazy> },
           { path: "/plan/sources", element: <Lazy><Sources /></Lazy> },
-          { path: "/plan/notes", element: <Lazy><Notes /></Lazy> },
-          { path: "/plan/notes/edit/:id", element: <Lazy><NoteEditor /></Lazy> },
+          // Notes' page files stay under pages/plan/ until Phase 7 (the
+          // Notes reskin) actually moves them to pages/notes/ — only the
+          // route path is promoted to top-level here.
+          { path: "/notes", element: <Lazy><Notes /></Lazy> },
+          { path: "/notes/edit/:id", element: <Lazy><NoteEditor /></Lazy> },
           { path: "/plan/self-tests", element: <Lazy><SelfTests /></Lazy> },
           { path: "/plan/self-tests/run", element: <Lazy><SelfTestRunner /></Lazy> },
           { path: "/plan/exam-gate", element: <Lazy><ExamGate /></Lazy> },
@@ -105,6 +117,8 @@ const router = createBrowserRouter([
           { path: "/cv", element: <Navigate to="/jobs" replace /> },
           { path: "/cv/:id", element: <Navigate to="/jobs" replace /> },
           { path: "/checklist", element: <Navigate to="/" replace /> },
+          { path: "/plan/notes", element: <Navigate to="/notes" replace /> },
+          { path: "/plan/notes/edit/:id", element: <NotesEditRedirect /> },
           { path: "/settings", element: <Lazy><Settings /></Lazy> },
         ],
       },

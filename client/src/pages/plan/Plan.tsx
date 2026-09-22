@@ -8,7 +8,6 @@ import {
   CaretRight,
   Check,
   ListChecks,
-  NotePencil,
   Path,
   Sparkle,
   Target,
@@ -323,15 +322,15 @@ function PlanSupportCards({
 
 // Sources dropped (redundant — it's the same combined page as Syllabus).
 // Tests stays, since it was added deliberately as the only discoverable
-// entry point into self-tests outside a finished review session. Notes is
-// "redundant with its own rail tab" only at lg — at md/sm there is no rail,
-// and the sm-only capture FAB only opens a blank new note, never the list —
-// so Notes is mobileOnly here, filling that real gap without duplicating
-// the lg sidebar's own entry.
+// entry point into self-tests outside a finished review session. Notes
+// dropped too (Nocturne v2): it used to fill a real gap on mobile, where
+// there was no rail and the capture FAB only opened a blank new note, never
+// the list — now that Notes is a real top-level tab on the bottom bar at
+// every breakpoint (see navDestinations.ts), keeping a second entry here
+// would just duplicate it everywhere, not just at lg.
 const SECTION_NAV_ITEMS = [
   { label: "Syllabus", icon: Path, to: "/plan/syllabus", mobileOnly: false },
   { label: "Tests", icon: ListChecks, to: "/plan/self-tests", mobileOnly: false },
-  { label: "Notes", icon: NotePencil, to: "/plan/notes", mobileOnly: true },
 ];
 
 /** Day view's title switches between "Today" and the picked date's own

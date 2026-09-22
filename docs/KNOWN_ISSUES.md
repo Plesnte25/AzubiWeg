@@ -9,6 +9,21 @@ re-deriving the investigation.
 
 ## Open — needs a fix
 
+- **2026-09-22, from the Nocturne v2 nav-model phase (6th tab added)** —
+  re-measuring `BottomTabBar.tsx` at 390px per the `ui-ux-pro-max` skill's
+  `bottom-nav-limit`/touch-target guidance (since Notes' promotion to a real
+  6th tab is itself a deliberate deviation from that skill's max-5
+  guidance) found each button renders **64px wide × 36px tall** with **0px
+  gap** between adjacent buttons (`justify-around` + `flex-1`, no explicit
+  gap class). Width is fine; height (36px) is under the 44×44pt minimum and
+  gap (0px) is under the 8px minimum. Pre-existing at 5 items too — item
+  count only affects width via `flex-1`, not height/gap — so not introduced
+  by this phase, but not previously measured/flagged either. Not fixed
+  here per this project's "log incidental bugs instead of fixing mid-phase"
+  convention; candidate fix is a small vertical padding increase on each
+  button plus an explicit `gap-1`/`gap-2` on the `<nav>` instead of relying
+  on `justify-around`.
+
 - **2026-09-20, from the Mastery Syllabus remediation pass** — two loose
   ends the fix pass (`0dba600`/`4130208`/`6ded832`/`4ab51d3`) didn't touch,
   per `docs/AUDIT_2026-09-20.md`'s post-remediation verification:

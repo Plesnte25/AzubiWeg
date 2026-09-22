@@ -131,7 +131,7 @@ export function SelfTestDone({
       <div className="mt-auto flex gap-[9px] pb-4 pt-6">
         <button
           type="button"
-          onClick={() => push("/plan/notes/edit/new", { state: { contextTag: "/Self-tests" } })}
+          onClick={() => push("/notes/edit/new", { state: { contextTag: "/Self-tests" } })}
           className="flex min-h-[48px] flex-1 items-center justify-center gap-[7px] rounded-[11px] text-[14px] font-medium"
           style={{ background: "#20222f" }}
         >

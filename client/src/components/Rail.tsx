@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { useState } from "react";
-import { BookOpen, Exam, FlagPennant, MagnifyingGlass, Moon, NotePencil, Sun } from "@phosphor-icons/react";
+import { BookOpen, Exam, FlagPennant, MagnifyingGlass, Moon, Sun } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
 import { api, getUser } from "../api/client";
 import { isActivePath, NAV_DESTINATIONS } from "../lib/navDestinations";
@@ -9,13 +9,6 @@ import { levelStates } from "../lib/levels";
 import { useNavStack } from "../lib/navStack";
 import { useTheme } from "../lib/theme";
 import { ProfileSheet } from "./ProfileSheet";
-
-// Desktop's unified rail carries a 6th destination (Notes) mobile's bottom
-// tab bar deliberately doesn't — see navDestinations.ts's own doc comment
-// on why the mobile 5-tab set is fixed. Kept local to this file rather than
-// exported from navDestinations.ts so it can't accidentally leak onto the
-// mobile tab bar.
-const RAIL_NAV_DESTINATIONS = [...NAV_DESTINATIONS, { to: "/plan/notes", label: "Notes", icon: NotePencil }];
 
 const LIBRARY_ITEMS: { to: string; label: string; icon: Icon }[] = [
   { to: "/plan/sources", label: "Sources", icon: BookOpen },
@@ -107,7 +100,7 @@ export function Rail({ onOpenPalette }: { onOpenPalette: () => void }) {
       <div className="my-1 h-px w-[44px]" style={{ background: "var(--color-hairline-soft)" }} />
 
       <div className="flex flex-col items-center gap-1">
-        {RAIL_NAV_DESTINATIONS.map((dest) => {
+        {NAV_DESTINATIONS.map((dest) => {
           const active = isActivePath(dest.to, dest.end, location.pathname);
           const Icon = dest.icon;
           const isWords = dest.to === "/words";

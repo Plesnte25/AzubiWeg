@@ -79,7 +79,7 @@ export function NoteEditorContent({
   // straight into edit mode.
   const [mode, setMode] = useState<"read" | "edit">(isNew ? "edit" : "read");
   // A contextTag prefill only ever comes from router state on a real
-  // push("/plan/notes/edit/new", {state}) navigation (CaptureFab, the
+  // push("/notes/edit/new", {state}) navigation (CaptureFab, the
   // command palette) — embedded new-notes are created directly from
   // Notes.tsx's own "+ New" (no navigation, no state to read).
   const [contextTag, setContextTag] = useState<string | null>(

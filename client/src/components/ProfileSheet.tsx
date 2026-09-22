@@ -107,7 +107,7 @@ export function ProfileSheet({
           type="button"
           onClick={() => {
             onClose();
-            push("/plan/notes");
+            push("/notes");
           }}
           className="flex items-center gap-3 rounded-xl p-[13px] text-left text-[14.5px]"
           style={{ background: "var(--color-ink-50)", color: "var(--color-ink-900)" }}

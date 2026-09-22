@@ -254,7 +254,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                     </button>
                     <button
                       type="button"
-                      onClick={() => go(() => push("/plan/notes/edit/new", { state: { contextTag: query.trim() } }))}
+                      onClick={() => go(() => push("/notes/edit/new", { state: { contextTag: query.trim() } }))}
                       className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
                       style={{ color: "var(--color-ink-900)" }}
                     >
@@ -271,7 +271,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                       <button
                         key={n.id}
                         type="button"
-                        onClick={() => go(() => push(`/plan/notes/edit/${n.id}`))}
+                        onClick={() => go(() => push(`/notes/edit/${n.id}`))}
                         className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
                         style={{ color: "var(--color-ink-900)" }}
                       >
