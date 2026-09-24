@@ -85,3 +85,17 @@ describe("checkpointStations", () => {
     expect(checkpointStations(stations, 3).map((s) => s.index)).toEqual([15, 16, 17, 18, 19, 20, 21]);
   });
 });
+
+describe("masteryForCompletion", () => {
+  it("passes exercise-less items on completion and reverts on un-completion", async () => {
+    const { masteryForCompletion } = await import("../src/services/learning/completion-sync.js");
+    expect(masteryForCompletion({ exerciseType: null, masteryState: "not_started" }, true)).toEqual({ masteryState: "passed" });
+    expect(masteryForCompletion({ exerciseType: null, masteryState: "passed" }, false)).toEqual({ masteryState: "not_started" });
+    expect(masteryForCompletion({ exerciseType: null, masteryState: "mastered" }, false)).toEqual({});
+  });
+
+  it("leaves items with an exercise to the exercise flow", async () => {
+    const { masteryForCompletion } = await import("../src/services/learning/completion-sync.js");
+    expect(masteryForCompletion({ exerciseType: "free_text", masteryState: "not_started" }, true)).toEqual({});
+  });
+});
