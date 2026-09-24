@@ -20,7 +20,7 @@ const SelfTestRunner = lazy(() => import("./pages/plan/tests/SelfTestRunner"));
 const GenderDrillPage = lazy(() => import("./pages/plan/tests/GenderDrill"));
 const ListenType = lazy(() => import("./pages/plan/tests/ListenType"));
 const ExamRunner = lazy(() => import("./pages/plan/tests/ExamRunner"));
-const Settings = lazy(() => import("./pages/Settings"));
+const Settings = lazy(() => import("./pages/settings/Settings"));
 const Stats = lazy(() => import("./pages/stats/Stats"));
 const Words = lazy(() => import("./pages/words/Words"));
 const Journey = lazy(() => import("./pages/plan/journey/Journey"));

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { CaretRight, LockSimple, NotePencil, SlidersHorizontal } from "@phosphor-icons/react";
@@ -14,12 +15,9 @@ function initials(name: string | undefined): string {
 }
 
 /**
- * The handoff's profile bottom sheet (behind Today's avatar) — replaces
- * the retired AccountSheet.tsx/long-press-the-tab-bar stopgap. Only ever
- * opened from Dashboard, which already has name/level/day/streak loaded —
- * passed in as props rather than refetched. Word count and notes count are
- * real, cheap, cache-shared with Words/Notes via the same query keys those
- * pages already use.
+ * Profile sheet behind the chrome's avatar (undesigned in Bento; Sticker style): avatar, three stat stickers, and
+ * Settings / All notes / Log out. Name/level/day/streak come in as props; word and note counts share Words' and the
+ * Notes wall's query caches.
  */
 export function ProfileSheet({
   open,
@@ -41,94 +39,85 @@ export function ProfileSheet({
   const navigate = useNavigate();
   const { push } = useNavStack();
   const { data: wordsData } = useQuery({ queryKey: ["words"], queryFn: api.words, enabled: open });
-  const { data: notesData } = useQuery({ queryKey: ["notes"], queryFn: () => api.notesFeed(), enabled: open });
+  const { data: notesData } = useQuery({ queryKey: ["notes", "wall"], queryFn: api.notesWall, enabled: open });
+
+  const stat = (n: number | string, l: string, bg: string, tilt: number) => (
+    <div
+      className="flex flex-1 flex-col"
+      style={{ padding: "10px 12px", border: "2.5px solid var(--line)", borderRadius: 16, background: bg, color: "var(--onTile)", boxShadow: "3px 3px 0 var(--shadow)", transform: `rotate(${tilt}deg)` }}
+    >
+      <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.04em", lineHeight: 1 }}>{n}</span>
+      <span style={{ fontSize: 12, fontWeight: 700 }}>{l}</span>
+    </div>
+  );
+  const row = (icon: ReactNode, label: string, onClick: () => void, danger = false) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex cursor-pointer items-center text-left"
+      style={{
+        gap: 12,
+        height: 50,
+        padding: "0 14px",
+        border: `2.5px ${danger ? "dashed" : "solid"} var(--line)`,
+        borderRadius: 999,
+        background: danger ? "transparent" : "var(--plain)",
+        color: danger ? "inherit" : "var(--plainText)",
+        fontSize: 15,
+        fontWeight: 700,
+      }}
+    >
+      {icon}
+      <span className="flex-1">{label}</span>
+      {!danger && <CaretRight size={14} weight="bold" aria-hidden="true" />}
+    </button>
+  );
 
   return (
     <BottomSheet open={open} onClose={onClose}>
-      <div className="flex items-center gap-[13px]">
-        <div
-          className="grid size-[52px] shrink-0 place-items-center rounded-full text-[19px] font-medium"
-          style={{
-            letterSpacing: "-.01em",
-            color: "var(--color-brand-800)",
-            background: "linear-gradient(150deg,var(--color-brand-100),var(--color-ink-50))",
-            border: "1px solid color-mix(in srgb, var(--color-brand-700) 40%, transparent)",
-          }}
+      <div className="flex items-center" style={{ gap: 13 }}>
+        <span
+          className="flex shrink-0 items-center justify-center"
+          style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--pink)", color: "var(--onTile)", border: "2.5px solid var(--line)", boxShadow: "3px 3px 0 var(--shadow)", fontWeight: 700, fontSize: 19, boxSizing: "border-box" }}
         >
           {initials(name)}
-        </div>
+        </span>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[17px] font-medium">{name || "You"}</div>
-          <div className="mt-0.5 truncate text-[12px]" style={{ color: "var(--color-ink-400)" }}>
+          <div className="truncate" style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.03em" }}>
+            {name || "You"}
+          </div>
+          <div className="truncate" style={{ fontSize: 13, fontWeight: 600, opacity: 0.8 }}>
             {email} · {LEVEL_LABELS[level] ?? level.toUpperCase()}
             {dayNumber !== null ? ` · day ${dayNumber}` : ""}
           </div>
         </div>
       </div>
 
-      <div className="mt-4 flex gap-2">
-        <div className="flex-1 rounded-xl p-[11px]" style={{ background: "var(--color-card)" }}>
-          <div className="text-[18px] font-medium">{wordsData?.words.length ?? "—"}</div>
-          <div className="text-micro" style={{ color: "var(--color-ink-400)" }}>
-            words
-          </div>
-        </div>
-        <div className="flex-1 rounded-xl p-[11px]" style={{ background: "var(--color-card)" }}>
-          <div className="text-[18px] font-medium" style={{ color: "var(--color-brand-700)" }}>
-            {streak}
-          </div>
-          <div className="text-micro" style={{ color: "var(--color-ink-400)" }}>
-            day streak
-          </div>
-        </div>
-        <div className="flex-1 rounded-xl p-[11px]" style={{ background: "var(--color-card)" }}>
-          <div className="text-[18px] font-medium">{notesData?.notes.length ?? "—"}</div>
-          <div className="text-micro" style={{ color: "var(--color-ink-400)" }}>
-            notes
-          </div>
-        </div>
+      <div className="mt-4 flex" style={{ gap: 10 }}>
+        {stat(wordsData?.words.length ?? "–", "words", "var(--lemon)", -1)}
+        {stat(streak, "day streak", "var(--tomato)", 0.8)}
+        {stat(notesData?.notes.length ?? "–", "notes", "var(--lilac)", -0.6)}
       </div>
 
-      <div className="mt-4 flex flex-col gap-[7px]">
-        <button
-          type="button"
-          onClick={() => {
-            onClose();
-            push("/settings");
-          }}
-          className="flex items-center gap-3 rounded-xl p-[13px] text-left text-[14.5px]"
-          style={{ background: "var(--color-ink-50)", color: "var(--color-ink-900)" }}
-        >
-          <SlidersHorizontal size={18} weight="regular" style={{ color: "var(--color-ink-600)" }} aria-hidden="true" />
-          <span className="flex-1">Settings</span>
-          <CaretRight size={14} weight="regular" style={{ color: "var(--color-ink-300)" }} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            onClose();
-            push("/notes");
-          }}
-          className="flex items-center gap-3 rounded-xl p-[13px] text-left text-[14.5px]"
-          style={{ background: "var(--color-ink-50)", color: "var(--color-ink-900)" }}
-        >
-          <NotePencil size={18} weight="regular" style={{ color: "var(--color-ink-600)" }} aria-hidden="true" />
-          <span className="flex-1">All notes</span>
-          <CaretRight size={14} weight="regular" style={{ color: "var(--color-ink-300)" }} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
+      <div className="mt-4 flex flex-col" style={{ gap: 8 }}>
+        {row(<SlidersHorizontal size={18} weight="fill" aria-hidden="true" />, "Settings", () => {
+          onClose();
+          push("/settings");
+        })}
+        {row(<NotePencil size={18} weight="fill" aria-hidden="true" />, "All notes", () => {
+          onClose();
+          push("/notes");
+        })}
+        {row(
+          <LockSimple size={18} weight="fill" aria-hidden="true" />,
+          "Log out",
+          () => {
             onClose();
             clearSession();
             navigate("/login");
-          }}
-          className="flex items-center gap-3 rounded-xl p-[13px] text-left text-[14.5px]"
-          style={{ background: "transparent", color: "var(--color-danger-700)" }}
-        >
-          <LockSimple size={18} weight="regular" aria-hidden="true" />
-          <span className="flex-1">Log out</span>
-        </button>
+          },
+          true,
+        )}
       </div>
     </BottomSheet>
   );

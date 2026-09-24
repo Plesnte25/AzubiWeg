@@ -22,7 +22,7 @@ import {
   sourceLabel,
   type BoardStage,
 } from "./model";
-import { eyebrow, fieldInput } from "./styles";
+import { eyebrow, fieldInput } from "../../components/ui/fields";
 
 /*
  * Application detail (AzubiJobs.dc.html detail modal; bg = company colour). Real-data deviations, per the plan:

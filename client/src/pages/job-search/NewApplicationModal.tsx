@@ -7,7 +7,7 @@ import { PillButton } from "../../components/ui/PillButton";
 import { toast } from "../../components/ui/Toast";
 import { Pickers } from "./DetailModal";
 import { STAGE_LABEL, type BoardStage } from "./model";
-import { eyebrow, fieldInput } from "./styles";
+import { eyebrow, fieldInput } from "../../components/ui/fields";
 
 /*
  * New application (AzubiJobs.dc.html, lemon). Fetch is best-effort (server fetchPreview): it fills whatever it can

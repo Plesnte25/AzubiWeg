@@ -58,6 +58,15 @@ const STATES = [
     },
   },
   {
+    name: "command-palette",
+    route: "/",
+    run: async (page) => {
+      await page.keyboard.press("Control+k");
+      await page.keyboard.type("haus");
+      await page.waitForTimeout(400);
+    },
+  },
+  {
     name: "add-stop",
     route: "/",
     run: async (page) => {
