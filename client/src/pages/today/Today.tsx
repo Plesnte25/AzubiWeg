@@ -253,7 +253,7 @@ export default function Today() {
           ) : undefined
         }
       />
-      <WeakTile spot={b.weakSpot} onDrill={() => push("/plan/self-tests")} />
+      <WeakTile spot={b.weakSpot} onDrill={() => push("/plan/self-tests/run")} />
       <WordsTile words={b.words} onOpen={() => push("/words")} />
       <StreakTile streak={dash.streak} best={b.bestStreak} calendar={b.streakCalendar} bp={bp} />
       <TimerTile

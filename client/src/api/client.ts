@@ -350,12 +350,23 @@ export const api = {
       `/api/learning/sources/activity${opts.cursor ? `?${new URLSearchParams({ cursor: opts.cursor })}` : ""}`,
     ),
 
-  startSelfTest: (opts: { size?: number } = {}) =>
-    request<{ questions: SessionQuestion[]; level: CefrLevel }>("/api/learning/quiz", {
+  /** checkpointIndex (1–3): a mixed test scoped to that checkpoint's stations at `level`. */
+  startSelfTest: (opts: { size?: number; checkpointIndex?: number; level?: CefrLevel } = {}) =>
+    request<{ questions: SessionQuestion[]; level: CefrLevel; checkpoint?: { index: number; stations: string[]; scopedQuestions: number } }>("/api/learning/quiz", {
       method: "POST",
       body: JSON.stringify(opts),
     }),
   quizResults: () => request<QuizResultsResponse>("/api/learning/quiz/results"),
+  genderDrill: (opts: { size?: number; wordId?: string; shakyOnly?: boolean } = {}) =>
+    request<{ words: { wordId: string; headword: string; meaning: string | null; article: "der" | "die" | "das" }[] }>("/api/learning/quiz/gender-drill", {
+      method: "POST",
+      body: JSON.stringify(opts),
+    }),
+  listenType: (size = 8) =>
+    request<{ words: { wordId: string; headword: string; meaning: string | null; audioUrl: string }[] }>("/api/learning/quiz/listen-type", {
+      method: "POST",
+      body: JSON.stringify({ size }),
+    }),
 
   examStatus: () => request<ExamStatus>("/api/learning/exam/status"),
   /** mode "mock": practice run with no 7-day lock that never counts as a pass. */
@@ -372,12 +383,15 @@ export const api = {
   submitQuizResult: (data: {
     score: number;
     total: number;
-    kind: "mixed";
+    kind: "mixed" | "checkpoint" | "gender_drill" | "listen_type";
     level?: CefrLevel | null;
+    checkpointIndex?: number | null;
     questionIds?: string[];
     breakdown?: TopicBreakdown[];
+    typeBreakdown?: { type: "mcq" | "fill_blank" | "true_false"; correct: number; total: number }[];
+    answers?: { wordId: string; article: "der" | "die" | "das"; picked: "der" | "die" | "das" }[];
   }) =>
-    request<{ result: SelfTestResult }>("/api/learning/quiz/results", {
+    request<{ result: SelfTestResult; flaggedShaky?: number }>("/api/learning/quiz/results", {
       method: "POST",
       body: JSON.stringify(data),
     }),

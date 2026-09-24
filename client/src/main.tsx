@@ -17,8 +17,10 @@ import Login from "./pages/Login";
 const JobSearch = lazy(() => import("./pages/job-search"));
 const Notes = lazy(() => import("./pages/plan/Notes"));
 const NoteEditor = lazy(() => import("./pages/plan/NoteEditor"));
-const SelfTestRunner = lazy(() => import("./pages/plan/SelfTestRunner"));
-const ExamRunner = lazy(() => import("./pages/plan/ExamRunner"));
+const SelfTestRunner = lazy(() => import("./pages/plan/tests/SelfTestRunner"));
+const GenderDrillPage = lazy(() => import("./pages/plan/tests/GenderDrill"));
+const ListenType = lazy(() => import("./pages/plan/tests/ListenType"));
+const ExamRunner = lazy(() => import("./pages/plan/tests/ExamRunner"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Stats = lazy(() => import("./pages/stats/Stats"));
 const Words = lazy(() => import("./pages/words/Words"));
@@ -99,6 +101,8 @@ const router = createBrowserRouter([
           { path: "/notes/edit/:id", element: <Lazy><NoteEditor /></Lazy> },
           { path: "/plan/self-tests", element: <Navigate to="/plan" replace /> },
           { path: "/plan/self-tests/run", element: <Lazy><SelfTestRunner /></Lazy> },
+          { path: "/plan/self-tests/gender", element: <Lazy><GenderDrillPage /></Lazy> },
+          { path: "/plan/self-tests/listen", element: <Lazy><ListenType /></Lazy> },
           { path: "/plan/exam-gate", element: <Navigate to="/plan" replace /> },
           { path: "/exam-take", element: <Lazy><ExamRunner /></Lazy> },
           { path: "/jobs", element: <Lazy><JobSearch /></Lazy> },

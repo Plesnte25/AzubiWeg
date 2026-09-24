@@ -62,6 +62,9 @@ export function levelPercent(items: SyllabusItem[], level: CefrLevel): number {
   return counted.length === 0 ? 0 : Math.round((counted.filter((i) => isPassed(i.masteryState)).length / counted.length) * 100);
 }
 
+/** Score bands (README §1.2): ≥ 80 % mint · 65–79 % lemon · < 65 % tomato. */
+export const band = (s: number) => (s >= 80 ? "var(--mint)" : s >= 65 ? "var(--lemon)" : "var(--tomato)");
+
 export function isItemDone(item: SyllabusItem): boolean {
   return isPassed(item.masteryState) || item.completedAt !== null;
 }

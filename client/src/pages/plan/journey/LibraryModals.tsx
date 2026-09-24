@@ -9,7 +9,7 @@ import { PillButton } from "../../../components/ui/PillButton";
 import { toast } from "../../../components/ui/Toast";
 import type { Breakpoint } from "../../../lib/useBreakpoint";
 import { SOURCE_COLOR, sourceKind, sourceProgress, type SourceKind, type Station } from "./model";
-import { SOURCE_ICON } from "./Stream";
+import { SOURCE_ICON } from "./sourceIcons";
 
 const eyebrow: CSSProperties = { fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase" };
 const field: CSSProperties = { height: 44, padding: "0 12px", border: "2.5px solid var(--line)", borderRadius: 12, background: "var(--plain)", color: "var(--plainText)", fontSize: 15, fontWeight: 600, boxSizing: "border-box", width: "100%" };

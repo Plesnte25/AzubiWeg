@@ -2,26 +2,20 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import {
   ArrowRight,
-  BookOpen,
   CaretLeft,
   CaretRight,
-  ChalkboardTeacher,
   Check,
   DotsThree,
   Exam,
   FlagPennant,
   HourglassMedium,
-  LinkSimple,
   ListChecks,
   LockSimple,
-  MicrophoneStage,
-  NotePencil,
   Play,
   Plus,
   SpeakerHigh,
   TextAa,
   Timer,
-  VideoCamera,
 } from "@phosphor-icons/react";
 import type { StudySource } from "../../../api/types";
 import { DuSticker, Starburst } from "../../../components/ui/Sticker";
@@ -29,7 +23,8 @@ import { Tile } from "../../../components/ui/Tile";
 import { SKILL_COLORS } from "../../../lib/skills";
 import { clock } from "../../../lib/tasks";
 import type { Breakpoint } from "../../../lib/useBreakpoint";
-import { isItemDone, SOURCE_COLOR, sourceKind, type SourceKind, type Station } from "./model";
+import { band, isItemDone, SOURCE_COLOR, sourceKind, type Station } from "./model";
+import { SOURCE_ICON } from "./sourceIcons";
 
 /*
  * The journey stream (AzubiPlanJourney.dc.html): behind-you toggle → today's ticket → (sm) Now card → you are here →
@@ -39,14 +34,6 @@ import { isItemDone, SOURCE_COLOR, sourceKind, type SourceKind, type Station } f
 
 const eyebrow: CSSProperties = { fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase" };
 
-export const SOURCE_ICON: Record<SourceKind, typeof VideoCamera> = {
-  video: VideoCamera,
-  audio: MicrophoneStage,
-  book: BookOpen,
-  course: ChalkboardTeacher,
-  article: NotePencil,
-  link: LinkSimple,
-};
 
 export function SourceChip({ source, onClick }: { source: StudySource; onClick: () => void }) {
   const k = sourceKind(source.type);
@@ -502,7 +489,6 @@ export interface CheckpointTest {
 }
 
 const TEST_ICON = { mcq: ListChecks, fill: TextAa, gender: Timer, listen: SpeakerHigh };
-export const band = (s: number) => (s >= 80 ? "var(--mint)" : s >= 65 ? "var(--lemon)" : "var(--tomato)");
 
 export function CheckpointTile({ label, tests, weak, bp, onOpen }: { label: string; tests: CheckpointTest[]; weak: string[]; bp: Breakpoint; onOpen: () => void }) {
   return (

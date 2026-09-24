@@ -9,8 +9,8 @@ import { toast } from "../../../components/ui/Toast";
 import { useNavStack } from "../../../lib/navStack";
 import { taskKind } from "../../../lib/tasks";
 import type { Breakpoint } from "../../../lib/useBreakpoint";
-import { isItemDone, type Station } from "./model";
-import { band, ScheduleGrid, SourceChip, type CheckpointTest, type ScheduleCard } from "./Stream";
+import { band, isItemDone, type Station } from "./model";
+import { ScheduleGrid, SourceChip, type CheckpointTest, type ScheduleCard } from "./Stream";
 
 const eyebrow: CSSProperties = { fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase" };
 const rowS: CSSProperties = { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 14, border: "2px solid var(--line)", background: "var(--plain)", color: "var(--plainText)", flexShrink: 0 };

@@ -8,7 +8,8 @@ import { clock } from "../../../lib/tasks";
 import { stripHtml } from "../../../lib/text";
 import type { Breakpoint } from "../../../lib/useBreakpoint";
 import { SOURCE_COLOR, sourceKind, sourceProgress } from "./model";
-import { RunButton, SOURCE_ICON } from "./Stream";
+import { RunButton } from "./Stream";
+import { SOURCE_ICON } from "./sourceIcons";
 
 const eyebrow: CSSProperties = { fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase" };
 

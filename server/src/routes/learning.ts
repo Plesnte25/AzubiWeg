@@ -1113,7 +1113,8 @@ learningRouter.post("/quiz/listen-type", async (req, res) => {
       wordId: w.id,
       headword: w.headword,
       meaning: w.meaning,
-      audioUrl: `/api/words/${w.id}/audio${w.audioPath ? "" : "?fallback=tts"}`,
+      // always with the TTS fallback: it also covers a recording whose file is missing on this machine
+      audioUrl: `/api/words/${w.id}/audio?fallback=tts`,
     })),
   });
 });

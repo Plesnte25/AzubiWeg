@@ -515,7 +515,7 @@ export interface TopicBreakdown {
 
 export interface SelfTestResult {
   id: string;
-  kind: "vocab" | "mixed";
+  kind: "vocab" | "mixed" | "gender_drill" | "listen_type" | "checkpoint";
   direction: QuizDirection;
   lesson: string | null;
   level: CefrLevel | null;
