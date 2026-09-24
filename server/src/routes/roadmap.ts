@@ -6,6 +6,7 @@ import { deleteStoredFile } from "./files.js";
 import { requireAuth } from "../middleware/auth.js";
 import { computeBestStreak, computeDayStreak, localDateKey } from "../services/learning/activity.js";
 import { setRoadmapTaskCompletion } from "../services/learning/completion-sync.js";
+import { applyTimerIntent, bankTimer, startsTimer } from "../services/learning/timer.js";
 import { levelProgress, levelStates } from "../services/learning/progress.js";
 import { aggregateReview, goetheReadiness, masteryDistribution, masteryTrend, skillPerformance, weakAreasFromBreakdowns } from "../services/learning/review.js";
 import { computeRoadmapPace } from "../services/learning/pace.js";
@@ -13,7 +14,7 @@ import { addDaysUTC, computeBacklog, dayStatus, diffReseed } from "../services/l
 import { DEFAULT_ROADMAP_DAYS, ROADMAP_VERSION, type DefaultRoadmapDay } from "../services/learning/roadmap-defaults.js";
 import { buildUserRoadmapPlan, type SyllabusRowForGeneration } from "../services/learning/roadmap-generator.js";
 import { ensureSyllabusSeeded } from "../services/learning/syllabus-seed.js";
-import { planDailyQueues, STUDY_CAPACITIES } from "../services/learning/daily-plan.js";
+import { planDailyQueues, STUDY_CAPACITIES, taskEstimateMinutes } from "../services/learning/daily-plan.js";
 import { blockedTopicIds } from "../services/learning/prerequisites.js";
 
 export const roadmapRouter = Router();
@@ -273,7 +274,7 @@ roadmapRouter.get("/today", async (req, res) => {
   const planned = planDailyQueues(
     (todayRow?.tasks ?? []).map((task) => ({
       id: task.id,
-      estimateMinutes: task.type === "study_source" ? 20 : task.type === "milestone_test" ? 15 : 10,
+      estimateMinutes: taskEstimateMinutes(task.type),
       completedAt: task.completedAt,
       blocked: task.syllabusItemId !== null && blockedIds.has(task.syllabusItemId),
     })),
@@ -486,15 +487,6 @@ const toggleSchema = z
     { message: "Nothing to update" },
   );
 
-/** Elapsed seconds right now — the stored total plus whatever's accrued
- * since it was last started, if it's currently running. The single source
- * of truth both the PATCH response and any read route should use, so the
- * client never has to (mis)trust its own clock across a stale tab/reopen. */
-function liveTimerSeconds(task: { timerSeconds: number; timerRunningSince: Date | null }): number {
-  if (!task.timerRunningSince) return task.timerSeconds;
-  return task.timerSeconds + Math.max(0, Math.floor((Date.now() - task.timerRunningSince.getTime()) / 1000));
-}
-
 /** Every dayOffset in [0, DEFAULT_ROADMAP_DAYS.length) always has a materialized
  * RoadmapDay row from activation onward — reschedule/custom-add targets never
  * need to create one, only look it up. */
@@ -539,31 +531,33 @@ roadmapRouter.patch("/tasks/:id", async (req, res) => {
     if (!targetDay) return res.status(400).json({ error: "No roadmap day at that offset" });
   }
 
-  // Timer fields are folded down to a single new (seconds, runningSince) pair
-  // before touching the DB — setSeconds is a correction to the base ("as of
-  // now, elapsed is exactly X"), applied before start/pause/reset so the two
-  // can combine predictably even though the client only ever sends one kind
-  // of intent at a time.
-  const timerTouched = parsed.data.setSeconds !== undefined || parsed.data.timerAction !== undefined;
-  let timerSeconds = existing.timerSeconds;
-  let timerRunningSince = existing.timerRunningSince;
-  if (parsed.data.setSeconds !== undefined) {
-    timerSeconds = parsed.data.setSeconds;
-    if (timerRunningSince) timerRunningSince = new Date();
-  }
-  if (parsed.data.timerAction === "start") {
-    if (!timerRunningSince) timerRunningSince = new Date();
-  } else if (parsed.data.timerAction === "pause") {
-    if (timerRunningSince) {
-      timerSeconds = liveTimerSeconds({ timerSeconds, timerRunningSince });
-      timerRunningSince = null;
-    }
-  } else if (parsed.data.timerAction === "reset") {
-    timerSeconds = 0;
-    timerRunningSince = null;
-  }
+  // Timer fields are folded down to a single new (seconds, runningSince) pair before touching the DB (see
+  // services/learning/timer.ts). Completing a running task also stops its timer.
+  const now = new Date();
+  const completing = parsed.data.completed === true && !!existing.timerRunningSince;
+  const timerTouched = parsed.data.setSeconds !== undefined || parsed.data.timerAction !== undefined || completing;
+  const { timerSeconds, timerRunningSince } = applyTimerIntent(
+    existing,
+    { setSeconds: parsed.data.setSeconds, action: parsed.data.timerAction, completing },
+    now,
+  );
+  const startsRunning = startsTimer(existing, { timerSeconds, timerRunningSince });
 
   const task = await prisma.$transaction(async (tx) => {
+    if (startsRunning) {
+      // One timer app-wide: bank whatever else this user has running before this one starts.
+      const others = await tx.roadmapTask.findMany({
+        where: { day: { userId: req.userId }, timerRunningSince: { not: null }, id: { not: existing.id } },
+        select: { id: true, timerSeconds: true, timerRunningSince: true },
+      });
+      for (const other of others) {
+        const banked = bankTimer(other, now);
+        await tx.roadmapTask.update({
+          where: { id: other.id },
+          data: { ...banked, minutesSpent: Math.round(banked.timerSeconds / 60) },
+        });
+      }
+    }
     if (parsed.data.completed !== undefined) {
       // also mirrors onto the linked SyllabusItem, if any (completion-sync.ts)
       await setRoadmapTaskCompletion(tx, req.userId, existing.id, parsed.data.completed);

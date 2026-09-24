@@ -138,3 +138,11 @@ describe("canAttemptExam", () => {
     expect(result.allowed).toBe(false);
   });
 });
+
+describe("suggestedMockDate", () => {
+  it("is two weeks before the exam date, or null without one", async () => {
+    const { suggestedMockDate } = await import("../src/services/learning/exam.js");
+    expect(suggestedMockDate(new Date("2027-01-09T00:00:00Z"))).toBe("2026-12-26");
+    expect(suggestedMockDate(null)).toBeNull();
+  });
+});

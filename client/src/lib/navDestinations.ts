@@ -51,3 +51,11 @@ export const QUICK_LINKS: QuickLink[] = [
   { to: "/stats", label: "Stats", icon: ChartLineUp, shortcut: "a" }, // 2nd letter — "s" taken by Syllabus
   { to: "/plan/self-tests", label: "Self-tests", icon: Exam, shortcut: "e" }, // 2nd letter — "s" taken by Syllabus
 ];
+
+/** Routes whose active time counts as Lernzeit (Bento: learning routes only — Words, Review, Plan incl. self-tests
+ * and the exam gate, and the exam runner). The activity heartbeat tags each ping with this. */
+const LEARNING_PATH_PREFIXES = ["/words", "/review", "/plan", "/exam-take"];
+
+export function isLearningPath(pathname: string): boolean {
+  return LEARNING_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}

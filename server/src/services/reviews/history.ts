@@ -1,4 +1,5 @@
 import type { Grade } from "@prisma/client";
+import { isShaky, strength, type Strength } from "../vocab/classify.js";
 
 export interface ReviewLogRow {
   wordId: string;
@@ -7,27 +8,62 @@ export interface ReviewLogRow {
   reviewedAt: Date;
 }
 
+export interface WeakWordCandidate {
+  wordId: string;
+  headword: string;
+  srInterval: number | null;
+  leech: boolean;
+}
+
 export interface WeakWord {
   wordId: string;
   headword: string;
-  lastGrade: Grade;
-  lastReviewedAt: Date;
+  strength: Strength;
+  /** Times graded hard, all-time — the "6×" on the Stats shakiest-words tile. */
+  hardCount: number;
+  lastGrade: Grade | null;
+  lastReviewedAt: Date | null;
 }
 
-/** Most recent grade per word, filtered to the last-graded-hard ones — the
- * only honest reading of "mistakes" ReviewLog's shape supports (there's no
- * vocab/grammar/pronunciation category to slice by). */
-export function computeWeakWords(logs: ReviewLogRow[], limit: number): WeakWord[] {
-  const latestByWord = new Map<string, ReviewLogRow>();
+/** Latest ReviewLog row per word. */
+export function latestLogByWord<T extends { wordId: string; reviewedAt: Date }>(logs: T[]): Map<string, T> {
+  const latest = new Map<string, T>();
   for (const log of logs) {
-    const existing = latestByWord.get(log.wordId);
-    if (!existing || log.reviewedAt > existing.reviewedAt) latestByWord.set(log.wordId, log);
+    const existing = latest.get(log.wordId);
+    if (!existing || log.reviewedAt > existing.reviewedAt) latest.set(log.wordId, log);
   }
-  return [...latestByWord.values()]
-    .filter((l) => l.grade === "hard")
-    .sort((a, b) => b.reviewedAt.getTime() - a.reviewedAt.getTime())
-    .slice(0, limit)
-    .map((l) => ({ wordId: l.wordId, headword: l.headword, lastGrade: l.grade, lastReviewedAt: l.reviewedAt }));
+  return latest;
+}
+
+/**
+ * The shaky words (strength 1–2, see `strength()` in services/vocab/classify.ts — the one app-wide definition),
+ * weakest first, then most-missed, then most recently reviewed.
+ */
+export function computeWeakWords(words: WeakWordCandidate[], logs: ReviewLogRow[], limit: number): WeakWord[] {
+  const latest = latestLogByWord(logs);
+  const hardCounts = new Map<string, number>();
+  for (const l of logs) if (l.grade === "hard") hardCounts.set(l.wordId, (hardCounts.get(l.wordId) ?? 0) + 1);
+
+  return words
+    .map((w) => {
+      const last = latest.get(w.wordId) ?? null;
+      return {
+        wordId: w.wordId,
+        headword: w.headword,
+        strength: strength(w, last?.grade ?? null),
+        hardCount: hardCounts.get(w.wordId) ?? 0,
+        lastGrade: last?.grade ?? null,
+        lastReviewedAt: last?.reviewedAt ?? null,
+      };
+    })
+    .filter((w) => isShaky(w.strength))
+    .sort(
+      (a, b) =>
+        a.strength - b.strength ||
+        b.hardCount - a.hardCount ||
+        (b.lastReviewedAt?.getTime() ?? 0) - (a.lastReviewedAt?.getTime() ?? 0),
+    )
+    .slice(0, limit);
 }
 
 export interface ReviewStats {

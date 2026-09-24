@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { localDateKey } from "../services/learning/activity.js";
-import { totalActiveMinutes } from "../services/activity/session.js";
+import { dayLernzeit, splitActiveMinutes, totalActiveMinutes } from "../services/activity/session.js";
 
 export const activityRouter = Router();
 activityRouter.use(requireAuth);
@@ -28,12 +28,12 @@ async function finalizePastDays(userId: string, now: Date): Promise<void> {
   });
   if (pastPings.length === 0) return;
 
-  const byDay = new Map<string, Date[]>();
+  const byDay = new Map<string, { pingedAt: Date; learning: boolean }[]>();
   const byDayHour = new Map<string, { date: string; hour: number; pings: Date[] }>();
   for (const p of pastPings) {
     const key = localDateKey(p.pingedAt);
     if (!byDay.has(key)) byDay.set(key, []);
-    byDay.get(key)!.push(p.pingedAt);
+    byDay.get(key)!.push(p);
 
     const hour = p.pingedAt.getHours();
     const hourKey = `${key}|${hour}`;
@@ -43,12 +43,12 @@ async function finalizePastDays(userId: string, now: Date): Promise<void> {
 
   await prisma.$transaction(async (tx) => {
     for (const [key, pings] of byDay) {
-      const minutes = totalActiveMinutes(pings);
+      const { minutes, learningMinutes } = splitActiveMinutes(pings);
       const date = utcDateFromLocalKey(key);
       await tx.dailyActiveMinutes.upsert({
         where: { userId_date: { userId, date } },
-        create: { userId, date, minutes },
-        update: { minutes },
+        create: { userId, date, minutes, learningMinutes },
+        update: { minutes, learningMinutes },
       });
     }
     for (const { date: key, hour, pings } of byDayHour.values()) {
@@ -64,9 +64,13 @@ async function finalizePastDays(userId: string, now: Date): Promise<void> {
   });
 }
 
+const PING_BODY = z.object({ learning: z.boolean().optional() }).optional();
+
 activityRouter.post("/ping", async (req, res) => {
+  const parsed = PING_BODY.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
   const now = new Date();
-  await prisma.activityPing.create({ data: { userId: req.userId, pingedAt: now } });
+  await prisma.activityPing.create({ data: { userId: req.userId, pingedAt: now, learning: parsed.data?.learning ?? false } });
   await finalizePastDays(req.userId, now);
   res.status(204).end();
 });
@@ -85,7 +89,8 @@ activityRouter.get("/summary", async (req, res) => {
     where: { userId: req.userId, pingedAt: { gte: startOfToday } },
     orderBy: { pingedAt: "asc" },
   });
-  const minutesToday = totalActiveMinutes(todaysPings.map((p) => p.pingedAt));
+  const today = splitActiveMinutes(todaysPings);
+  const minutesToday = today.minutes;
 
   const windowStart = new Date(now);
   windowStart.setDate(windowStart.getDate() - (days - 1)); // trailing `days`-day window including today
@@ -96,11 +101,19 @@ activityRouter.get("/summary", async (req, res) => {
     orderBy: { date: "asc" },
   });
   const minutesThisWeek = history.reduce((sum, d) => sum + d.minutes, 0) + minutesToday;
+  const lernzeitThisWeek = history.reduce((sum, d) => sum + dayLernzeit(d), 0) + today.learningMinutes;
 
   res.json({
     minutesToday,
     minutesThisWeek,
-    history: history.map((d) => ({ date: d.date.toISOString().slice(0, 10), minutes: d.minutes })),
+    // Bento Lernzeit: active minutes on learning routes only (older days can't be split; see dayLernzeit)
+    lernzeitToday: today.learningMinutes,
+    lernzeitThisWeek,
+    history: history.map((d) => ({
+      date: d.date.toISOString().slice(0, 10),
+      minutes: d.minutes,
+      lernzeit: dayLernzeit(d),
+    })),
   });
 });
 

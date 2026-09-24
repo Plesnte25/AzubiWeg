@@ -18,6 +18,7 @@ import {
   examSectionCounts,
   levelHasExamContent,
   scoreExam,
+  suggestedMockDate,
 } from "../services/learning/exam.js";
 import { weakAreasFromBreakdowns } from "../services/learning/review.js";
 import { ensureSyllabusSeeded } from "../services/learning/syllabus-seed.js";
@@ -32,6 +33,16 @@ import { buildCourseUnits, buildManualUnits, buildPlaylistUnits, resizeManualUni
 import { extractPlaylistId, fetchPlaylist } from "../services/learning/youtube.js";
 import { deleteStoredFile } from "./files.js";
 import { gradeSyllabusExercise } from "../services/learning/exercise-grading.js";
+import { checkpointStations, deriveStations, isStationKey } from "../services/learning/stations.js";
+import { checkpointBank } from "../services/learning/checkpoint.js";
+import {
+  articleAccuracy,
+  pickGenderDrill,
+  selfTestScores,
+  type DrillAnswer,
+} from "../services/learning/self-test-stats.js";
+import { deriveGenus, strength } from "../services/vocab/classify.js";
+import { lastGrades } from "./words.js";
 
 export const learningRouter = Router();
 learningRouter.use(requireAuth);
@@ -52,7 +63,7 @@ const CORE_SKILL = z.enum(["grammar", "vocab", "listening", "speaking", "writing
  * routes agree with what Syllabus shows as locked, instead of a
  * syllabus-only view of "active" that could point at a level the user can't
  * actually enter yet). */
-async function examGateForUser(userId: string) {
+export async function examGateForUser(userId: string) {
   const passedRows = await prisma.examAttempt.findMany({ where: { userId, passed: true }, select: { level: true } });
   const passedLevels = new Set(passedRows.map((r) => r.level));
   return (["a1", "a2", "b1"] as const).map((level) =>
@@ -529,6 +540,8 @@ learningRouter.get("/sources", async (req, res) => {
   res.json({ sources: sources.map(withPercent) });
 });
 
+const STATION_KEY = z.string().refine(isStationKey, "Invalid station key (expected level:theme)");
+
 const createSourceSchema = z.object({
   type: SOURCE_TYPE.default("link"),
   // may be blank on create when a playlist/course URL or a book/podcast
@@ -544,6 +557,8 @@ const createSourceSchema = z.object({
   completedUnits: z.int().min(0).max(10000).optional(),
   unitLabel: UNIT_LABEL.default("lessons"),
   notes: z.string().max(1000).nullish(),
+  // Plan journey station this source fuels ("level:theme"); Add-source's "Fuel for station" picker
+  stationKey: STATION_KEY.nullish(),
   // per-type real fetch engine (no API key needed for any of them): a
   // YouTube playlist URL scrapes its video list; a Nicos Weg course URL
   // fetches its real lesson list via DW's own GraphQL endpoint; a book/
@@ -648,6 +663,7 @@ learningRouter.post("/sources", async (req, res) => {
       coverImageUrl: scrapedCoverUrl,
       level: rest.level ?? null,
       notes: rest.notes ?? null,
+      stationKey: rest.stationKey ?? null,
       totalUnits: total,
       completedUnits: completed,
       units: { create: units },
@@ -674,6 +690,7 @@ const patchSourceSchema = z.object({
   completedUnits: z.int().min(0).max(10000).optional(),
   unitLabel: UNIT_LABEL.optional(),
   notes: z.string().max(1000).nullish(),
+  stationKey: STATION_KEY.nullish(),
   // set via a two-step flow: upload the image (kind: "source_cover",
   // studySourceId: this id) via the existing generic file-upload route,
   // then PATCH here with the new file's id. null clears the cover.
@@ -966,6 +983,10 @@ learningRouter.get("/sources/activity", async (req, res) => {
 
 const quizSchema = z.object({
   size: z.int().min(5).max(30).default(12),
+  // Plan journey checkpoint (1 = after station 7, 2 = 14, 3 = 21): a mixed test scoped to that checkpoint's seven
+  // stations (checkpoint.ts) at `level` (default: the active level). Never gates anything.
+  checkpointIndex: z.int().min(1).max(3).optional(),
+  level: LEVEL.optional(),
 });
 
 const RECENT_RESULTS_FOR_EXCLUSION = 5;
@@ -988,7 +1009,7 @@ learningRouter.post("/quiz", async (req, res) => {
     prisma.word.findMany({
       // meaning only — IPA/grammar metadata never reaches the quiz
       where: { userId: req.userId, meaning: { not: null } },
-      select: { id: true, headword: true, meaning: true, lesson: true },
+      select: { id: true, headword: true, meaning: true, lesson: true, level: true },
     }),
   ]);
 
@@ -1010,6 +1031,31 @@ learningRouter.post("/quiz", async (req, res) => {
     }
   }
 
+  if (parsed.data.checkpointIndex) {
+    const level = parsed.data.level ?? activeLevel;
+    const items = await prisma.syllabusItem.findMany({
+      where: { userId: req.userId, level },
+      select: { id: true, level: true, theme: true, sortOrder: true, masteryState: true, skippedAt: true },
+    });
+    const stations = checkpointStations(deriveStations(items, level), parsed.data.checkpointIndex as 1 | 2 | 3);
+    const size = parsed.data.size;
+    const bank = checkpointBank(QUESTION_BANK, stations, level, size - Math.round(size / 3));
+    const levelWords = words.filter((w) => w.level === level);
+    const questions = buildSession({
+      bank: bank.questions,
+      words: (levelWords.length >= 4 ? levelWords : words).map((w) => ({ ...w, meaning: w.meaning as string })),
+      activeLevel: level,
+      recentPercents: [],
+      excludeIds: new Set(),
+      size,
+    });
+    return res.json({
+      questions,
+      level,
+      checkpoint: { index: parsed.data.checkpointIndex, stations: stations.map((s) => s.theme), scopedQuestions: bank.scoped },
+    });
+  }
+
   const questions = buildSession({
     bank: QUESTION_BANK,
     words: words.map((w) => ({ ...w, meaning: w.meaning as string })),
@@ -1021,6 +1067,57 @@ learningRouter.post("/quiz", async (req, res) => {
   res.json({ questions, level: activeLevel });
 });
 
+const genderDrillSchema = z.object({
+  size: z.int().min(1).max(20).default(6),
+  // Words "Drill now": this word goes first (if it's a noun with a known article)
+  wordId: z.string().optional(),
+  // Stats "Drill the shaky ones": only strength 1–2
+  shakyOnly: z.boolean().default(false),
+});
+
+/** Gender drill words (Stats Drill modal / Words "Drill now"): nouns with a known article, weakest first. */
+learningRouter.post("/quiz/gender-drill", async (req, res) => {
+  const parsed = genderDrillSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+
+  const [rows, grades] = await Promise.all([
+    prisma.word.findMany({
+      where: { userId: req.userId, meaning: { not: null } },
+      select: { id: true, headword: true, meaning: true, grammar: true, srInterval: true, leech: true },
+    }),
+    lastGrades(req.userId),
+  ]);
+  const candidates = rows
+    .map((w) => ({ ...w, genus: deriveGenus(w.grammar), strength: strength(w, grades.get(w.id) ?? null) }))
+    .filter((w) => !parsed.data.shakyOnly || w.strength === 1 || w.strength === 2);
+  const first = parsed.data.wordId ? candidates.find((w) => w.id === parsed.data.wordId && w.genus) : undefined;
+  const rest = pickGenderDrill(candidates.filter((w) => w.id !== first?.id), parsed.data.size - (first ? 1 : 0));
+  res.json({
+    words: [...(first ? [first] : []), ...rest].map((w) => ({ wordId: w.id, headword: w.headword, meaning: w.meaning, article: w.genus })),
+  });
+});
+
+const listenTypeSchema = z.object({ size: z.int().min(1).max(20).default(8) });
+
+/** Listen & type: hear a word, type it. Words with a recording first; the rest play via the TTS fallback. */
+learningRouter.post("/quiz/listen-type", async (req, res) => {
+  const parsed = listenTypeSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+  const rows = await prisma.word.findMany({
+    where: { userId: req.userId, meaning: { not: null } },
+    select: { id: true, headword: true, meaning: true, audioPath: true },
+  });
+  const shuffled = rows.map((w) => ({ w, r: Math.random() })).sort((a, b) => Number(!!b.w.audioPath) - Number(!!a.w.audioPath) || a.r - b.r);
+  res.json({
+    words: shuffled.slice(0, parsed.data.size).map(({ w }) => ({
+      wordId: w.id,
+      headword: w.headword,
+      meaning: w.meaning,
+      audioUrl: `/api/words/${w.id}/audio${w.audioPath ? "" : "?fallback=tts"}`,
+    })),
+  });
+});
+
 learningRouter.get("/quiz/results", async (req, res) => {
   const [results, all] = await Promise.all([
     prisma.selfTestResult.findMany({
@@ -1030,7 +1127,8 @@ learningRouter.get("/quiz/results", async (req, res) => {
     }),
     prisma.selfTestResult.findMany({
       where: { userId: req.userId },
-      select: { score: true, total: true, breakdown: true },
+      orderBy: { takenAt: "asc" },
+      select: { kind: true, score: true, total: true, breakdown: true, typeBreakdown: true, answers: true, checkpointIndex: true, level: true, takenAt: true },
     }),
   ]);
   const percents = all.filter((r) => r.total > 0).map((r) => (r.score / r.total) * 100);
@@ -1049,6 +1147,18 @@ learningRouter.get("/quiz/results", async (req, res) => {
       ? Math.round(percents.reduce((a, b) => a + b, 0) / percents.length)
       : null,
     weakestTopics: weakestTopics.slice(0, 2),
+    // Checkpoint tiles: Multiple choice · Fill-in · Gender drill · Listen & type, over the last 20 tests
+    scores: selfTestScores(all.slice(-20)),
+    // Stats Articles tile / Words der·die·das tile, from every gender-drill answer
+    articles: articleAccuracy(all.flatMap((r) => (r.kind === "gender_drill" && Array.isArray(r.answers) ? (r.answers as unknown as DrillAnswer[]) : []))),
+    // latest score per (level, checkpoint) for the exam schedule cards
+    checkpoints: Object.values(
+      Object.fromEntries(
+        all
+          .filter((r) => r.kind === "checkpoint" && r.checkpointIndex !== null)
+          .map((r) => [`${r.level}:${r.checkpointIndex}`, { level: r.level, index: r.checkpointIndex, score: r.score, total: r.total, takenAt: r.takenAt }]),
+      ),
+    ),
   });
 });
 
@@ -1056,7 +1166,17 @@ const resultSchema = z
   .object({
     score: z.int().min(0).max(100),
     total: z.int().min(1).max(100),
-    kind: z.enum(["vocab", "mixed"]).default("mixed"),
+    kind: z.enum(["vocab", "mixed", "gender_drill", "listen_type", "checkpoint"]).default("mixed"),
+    checkpointIndex: z.int().min(1).max(3).nullish(),
+    typeBreakdown: z
+      .array(z.object({ type: z.enum(["mcq", "fill_blank", "true_false"]), correct: z.int().min(0).max(100), total: z.int().min(1).max(100) }))
+      .max(3)
+      .optional(),
+    // gender_drill: one row per word asked
+    answers: z
+      .array(z.object({ wordId: z.string().max(40), article: z.enum(["der", "die", "das"]), picked: z.enum(["der", "die", "das"]) }))
+      .max(20)
+      .optional(),
     level: LEVEL.nullish(),
     // asked question ids, excluded from the next few sessions (capped so a
     // hostile client can't bloat the Json column)
@@ -1076,24 +1196,34 @@ const resultSchema = z
     direction: DIRECTION.default("de_to_meaning"),
     lesson: z.string().min(1).nullish(),
   })
-  .refine((r) => r.score <= r.total, { message: "score cannot exceed total" });
+  .refine((r) => r.score <= r.total, { message: "score cannot exceed total" })
+  .refine((r) => (r.kind === "checkpoint") === (r.checkpointIndex != null), { message: "checkpointIndex goes with kind checkpoint" });
 
 learningRouter.post("/quiz/results", async (req, res) => {
   const parsed = resultSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
 
-  const { questionIds, breakdown, ...rest } = parsed.data;
+  const { questionIds, breakdown, typeBreakdown, answers, ...rest } = parsed.data;
   const result = await prisma.selfTestResult.create({
     data: {
       userId: req.userId,
       ...rest,
       level: rest.level ?? null,
       lesson: rest.lesson ?? null,
+      checkpointIndex: rest.checkpointIndex ?? null,
       questionIds: questionIds ?? undefined,
       breakdown: breakdown ?? undefined,
+      typeBreakdown: typeBreakdown ?? undefined,
+      answers: answers ?? undefined,
     },
   });
-  res.status(201).json({ result });
+  // A wrong article flags the word as shaky. (README: "N go back into tomorrow's review" — but self-tests never
+  // write SR fields, which live in the Obsidian vault, so the honest version is the app-only shaky flag.)
+  const missed = (answers ?? []).filter((a) => a.picked !== a.article).map((a) => a.wordId);
+  if (rest.kind === "gender_drill" && missed.length > 0) {
+    await prisma.word.updateMany({ where: { userId: req.userId, id: { in: missed } }, data: { leech: true } });
+  }
+  res.status(201).json({ result, flaggedShaky: missed.length });
 });
 
 // "Add to notebook" — a self-test question has no stored link to a syllabus
@@ -1186,15 +1316,22 @@ async function activeLevelFor(userId: string) {
 
 learningRouter.get("/exam/status", async (req, res) => {
   const activeLevel = await activeLevelFor(req.userId);
-  const attempts = await prisma.examAttempt.findMany({
-    where: { userId: req.userId, level: activeLevel },
-    orderBy: { startedAt: "desc" },
-  });
-  const gate = canAttemptExam(attempts.map((a) => ({ startedAt: a.startedAt, passed: a.passed })));
+  const [attempts, user] = await Promise.all([
+    prisma.examAttempt.findMany({
+      where: { userId: req.userId, level: activeLevel },
+      orderBy: { startedAt: "desc" },
+    }),
+    prisma.user.findUniqueOrThrow({ where: { id: req.userId }, select: { examTargetDate: true } }),
+  ]);
+  const real = attempts.filter((a) => a.mode === "real");
+  const gate = canAttemptExam(real.map((a) => ({ startedAt: a.startedAt, passed: a.passed })));
   res.json({
     level: activeLevel,
     ...gate,
-    lastAttempt: attempts[0] ?? null,
+    lastAttempt: real[0] ?? null,
+    lastMockAttempt: attempts.find((a) => a.mode === "mock") ?? null,
+    examTargetDate: user.examTargetDate ? user.examTargetDate.toISOString().slice(0, 10) : null,
+    suggestedMockDate: suggestedMockDate(user.examTargetDate),
     // full history (already fetched above for lastAttempt/gate) — Stats'
     // exam-attempt trend, most-recent first, same order as lastAttempt
     attempts,
@@ -1205,15 +1342,23 @@ learningRouter.get("/exam/status", async (req, res) => {
   });
 });
 
+const startSchema = z.object({ mode: z.enum(["real", "mock"]).default("real") });
+
 learningRouter.post("/exam/start", async (req, res) => {
+  const parsedStart = startSchema.safeParse(req.body ?? {});
+  if (!parsedStart.success) return res.status(400).json({ error: z.prettifyError(parsedStart.error) });
+  const mode = parsedStart.data.mode;
   const activeLevel = await activeLevelFor(req.userId);
-  const attempts = await prisma.examAttempt.findMany({
-    where: { userId: req.userId, level: activeLevel },
-    select: { startedAt: true, passed: true },
-  });
-  const gate = canAttemptExam(attempts);
-  if (!gate.allowed) {
-    return res.status(409).json({ error: `Cannot start exam: ${gate.reason}`, ...gate });
+  // A mock exam is practice: no 7-day lock, available even after passing.
+  if (mode === "real") {
+    const attempts = await prisma.examAttempt.findMany({
+      where: { userId: req.userId, level: activeLevel, mode: "real" },
+      select: { startedAt: true, passed: true },
+    });
+    const gate = canAttemptExam(attempts);
+    if (!gate.allowed) {
+      return res.status(409).json({ error: `Cannot start exam: ${gate.reason}`, ...gate });
+    }
   }
 
   const questions = buildExamSession(activeLevel);
@@ -1221,9 +1366,9 @@ learningRouter.post("/exam/start", async (req, res) => {
     return res.status(404).json({ error: `No exam content for level ${activeLevel} yet` });
   }
   const attempt = await prisma.examAttempt.create({
-    data: { userId: req.userId, level: activeLevel },
+    data: { userId: req.userId, level: activeLevel, mode },
   });
-  res.status(201).json({ attemptId: attempt.id, level: activeLevel, questions, timeLimitMinutes: EXAM_TIME_LIMIT_MINUTES });
+  res.status(201).json({ attemptId: attempt.id, level: activeLevel, mode, questions, timeLimitMinutes: EXAM_TIME_LIMIT_MINUTES });
 });
 
 const submitSchema = z.object({
@@ -1247,9 +1392,10 @@ learningRouter.post("/exam/:id/submit", async (req, res) => {
       submittedAt: new Date(),
       score: result.score,
       total: result.total,
-      passed: result.passed,
+      // a mock never counts as a pass (it can't unlock the next level); the score still says how it went
+      passed: attempt.mode === "mock" ? null : result.passed,
       sectionBreakdown: result.sectionBreakdown as unknown as Prisma.InputJsonValue,
     },
   });
-  res.json({ attempt: updated });
+  res.json({ attempt: updated, wouldHavePassed: result.passed });
 });

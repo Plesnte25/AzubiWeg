@@ -86,6 +86,8 @@ export interface Word {
   genus: Genus;
   state: SrsState;
   enrichmentStatus: EnrichmentStatus;
+  /** Present on GET /api/words and PATCH responses. */
+  strength?: Strength;
 }
 
 export type RoadmapDayStripStatus = "done" | "overdue" | "today" | "upcoming";
@@ -153,11 +155,17 @@ export interface ReviewHistoryEntry {
   intervalAfter: number;
 }
 
+/** Word strength (server services/vocab/classify.ts strength()): 0 = never reviewed, 1–5 pips; shaky = 1–2. */
+export type Strength = 0 | 1 | 2 | 3 | 4 | 5;
+
 export interface WeakWord {
   wordId: string;
   headword: string;
-  lastGrade: Grade;
-  lastReviewedAt: string;
+  strength: Strength;
+  /** Times graded hard, all-time. */
+  hardCount: number;
+  lastGrade: Grade | null;
+  lastReviewedAt: string | null;
 }
 
 export interface ReviewStats {
@@ -743,7 +751,10 @@ export interface Portal {
 export interface ActivitySummary {
   minutesToday: number;
   minutesThisWeek: number;
-  history: { date: string; minutes: number }[];
+  /** Bento Lernzeit: active minutes on learning routes only. */
+  lernzeitToday: number;
+  lernzeitThisWeek: number;
+  history: { date: string; minutes: number; lernzeit: number }[];
 }
 
 export interface ActivityFeedEntry {

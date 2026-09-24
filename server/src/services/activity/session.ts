@@ -55,3 +55,53 @@ export function totalActiveMinutes(
 ): number {
   return clusterPingsIntoSessions(pingedAts, gapMinutes, tailMinutes).reduce((sum, s) => sum + s.minutes, 0);
 }
+
+export interface ActivityPingRow {
+  pingedAt: Date;
+  /** Sent by the client heartbeat: true while on a learning route (Words, Review, Plan, Exam). */
+  learning: boolean;
+}
+
+/**
+ * Total active minutes plus the Lernzeit share (Bento "Lernzeit" = active minutes on learning routes only). Pings are
+ * clustered into sessions exactly as `totalActiveMinutes` does, and each session's minutes are credited to learning
+ * in proportion to its learning pings, so a session that wanders between Words and Jobs only counts the Words part.
+ * Proportional-per-session rather than clustering the learning pings alone: that would bridge a 9-minute detour to
+ * Jobs between two Words pings and count it as learning.
+ */
+export function splitActiveMinutes(
+  pings: ActivityPingRow[],
+  gapMinutes: number = SESSION_GAP_MINUTES,
+  tailMinutes: number = HEARTBEAT_INTERVAL_MINUTES,
+): { minutes: number; learningMinutes: number } {
+  if (pings.length === 0) return { minutes: 0, learningMinutes: 0 };
+  const sorted = [...pings].sort((a, b) => a.pingedAt.getTime() - b.pingedAt.getTime());
+
+  let minutes = 0;
+  let learningMinutes = 0;
+  let group: ActivityPingRow[] = [sorted[0]!];
+  const flush = () => {
+    const session = toSession(group[0]!.pingedAt, group[group.length - 1]!.pingedAt, tailMinutes);
+    const learningShare = group.filter((p) => p.learning).length / group.length;
+    minutes += session.minutes;
+    learningMinutes += Math.round(session.minutes * learningShare);
+  };
+  for (let i = 1; i < sorted.length; i++) {
+    const ping = sorted[i]!;
+    const gap = (ping.pingedAt.getTime() - group[group.length - 1]!.pingedAt.getTime()) / 60000;
+    if (gap <= gapMinutes) {
+      group.push(ping);
+    } else {
+      flush();
+      group = [ping];
+    }
+  }
+  flush();
+  return { minutes, learningMinutes };
+}
+
+/** Lernzeit for a finalized day: the split when it was recorded, else the pre-split total (history before the
+ * learning flag existed can't be split, so it keeps counting every page). */
+export function dayLernzeit(day: { minutes: number; learningMinutes: number | null }): number {
+  return day.learningMinutes ?? day.minutes;
+}

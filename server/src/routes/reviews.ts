@@ -39,23 +39,22 @@ reviewsRouter.get("/history", async (req, res) => {
 
 reviewsRouter.get("/weak-words", async (req, res) => {
   const limit = Math.min(Number(req.query.limit ?? 20), 100);
-  const logs = await prisma.reviewLog.findMany({
-    // meaning: { not: null } -- a word whose meaning has since gone blank
-    // (curation flipped to review/unresolved, or a manual edit cleared it)
-    // isn't reachable via the real review queue any more; surfacing it here
-    // as "weak, go review it" would point at a word that can't be reviewed
-    // right now. Same exclusion /queue already applies.
-    where: { word: { userId: req.userId, meaning: { not: null } } },
-    orderBy: { reviewedAt: "asc" },
-    include: { word: { select: { headword: true } } },
+  // meaning: { not: null } -- a word whose meaning has since gone blank (curation flipped to review/unresolved, or a
+  // manual edit cleared it) isn't reachable via the real review queue any more; surfacing it here as "weak, go
+  // review it" would point at a word that can't be reviewed right now. Same exclusion /queue already applies.
+  const where = { userId: req.userId, meaning: { not: null } };
+  const [words, logs] = await Promise.all([
+    prisma.word.findMany({ where, select: { id: true, headword: true, srInterval: true, leech: true } }),
+    prisma.reviewLog.findMany({ where: { word: where }, select: { wordId: true, grade: true, reviewedAt: true } }),
+  ]);
+  const headwords = new Map(words.map((w) => [w.id, w.headword]));
+  res.json({
+    words: computeWeakWords(
+      words.map((w) => ({ wordId: w.id, headword: w.headword, srInterval: w.srInterval, leech: w.leech })),
+      logs.map((l) => ({ ...l, headword: headwords.get(l.wordId) ?? "" })),
+      limit,
+    ),
   });
-  const rows = logs.map((l) => ({
-    wordId: l.wordId,
-    headword: l.word.headword,
-    grade: l.grade,
-    reviewedAt: l.reviewedAt,
-  }));
-  res.json({ words: computeWeakWords(rows, limit) });
 });
 
 reviewsRouter.get("/stats", async (req, res) => {

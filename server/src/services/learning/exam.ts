@@ -126,7 +126,18 @@ export function scoreExam(level: CefrLevel, answers: ExamAnswer[]): ExamScoreRes
   };
 }
 
-/** Rate-limit + "already passed" gate for starting a new attempt. */
+/** How long before the exam date the Plan gate suggests the mock exam (README exam schedule: "Mock exam"). */
+export const MOCK_EXAM_LEAD_DAYS = 14;
+
+/** Suggested mock-exam date: the exam date minus two weeks, as a YYYY-MM-DD calendar date; null with no exam date. */
+export function suggestedMockDate(examDate: Date | null): string | null {
+  if (!examDate) return null;
+  const d = new Date(examDate.getTime() - MOCK_EXAM_LEAD_DAYS * 86_400_000);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Rate-limit + "already passed" gate for starting a new REAL attempt (callers pass real attempts only: a mock
+ * exam has no cooldown and can never pass). */
 export function canAttemptExam(
   attempts: { startedAt: Date; passed: boolean | null }[],
 ): { allowed: boolean; reason: "already_passed" | "cooldown" | null; nextAvailableAt: Date | null } {

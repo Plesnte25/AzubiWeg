@@ -1,6 +1,11 @@
 export const STUDY_CAPACITIES = [5, 20, 45, 90, 180, 330] as const;
 export type StudyCapacity = (typeof STUDY_CAPACITIES)[number];
 
+/** Minutes a roadmap task is budgeted at (tickets and the Today route show "Kind · N min"). */
+export function taskEstimateMinutes(type: "generic" | "vocab" | "study_source" | "milestone_test"): number {
+  return type === "study_source" ? 20 : type === "milestone_test" ? 15 : 10;
+}
+
 export interface PlannedTask {
   id: string;
   estimateMinutes: number;

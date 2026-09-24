@@ -498,7 +498,8 @@ export const api = {
     request<{ portal: Portal }>(`/api/portals/${id}/checked`, { method: "POST" }),
   deletePortal: (id: string) => request<void>(`/api/portals/${id}`, { method: "DELETE" }),
 
-  activityPing: () => request<void>("/api/activity/ping", { method: "POST" }),
+  activityPing: (learning: boolean) =>
+    request<void>("/api/activity/ping", { method: "POST", body: JSON.stringify({ learning }) }),
   activitySummary: (days?: number) =>
     request<ActivitySummary>(`/api/activity/summary${days ? `?days=${days}` : ""}`),
   activityHourly: () => request<{ hours: { hour: number; minutes: number }[] }>("/api/activity/hourly"),

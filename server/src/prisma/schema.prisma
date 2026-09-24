@@ -53,6 +53,8 @@ model ActivityPing {
   userId   String
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   pingedAt DateTime @default(now())
+  // true while the client was on a learning route (Words, Review, Plan, Exam) — Bento's Lernzeit counts only these
+  learning Boolean  @default(false)
 
   @@index([userId, pingedAt])
 }
@@ -64,6 +66,9 @@ model DailyActiveMinutes {
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date    DateTime @db.Date
   minutes Int
+  // Lernzeit share of `minutes` (see splitActiveMinutes); null for days rolled up before the learning flag existed,
+  // which can't be split and fall back to `minutes`
+  learningMinutes Int?
 
   @@unique([userId, date])
 }
@@ -339,7 +344,11 @@ model Application {
   appliedAt   DateTime?          @db.Date
   cvId        String?
   cv          Cv?                @relation(fields: [cvId], references: [id], onDelete: SetNull)
+  // German level the posting asks for: detected on fetch (detectGermanLevel), manually overridable; null = unknown
+  germanLevel GermanLevel?
   events      ApplicationEvent[]
+  phrases     ApplicationPhrase[]
+  notes       Note[]
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
@@ -364,6 +373,27 @@ model ApplicationEvent {
   fromStatus    ApplicationStatus?
   toStatus      ApplicationStatus?
   occurredAt    DateTime             @default(now())
+}
+
+enum GermanLevel {
+  a1
+  a2
+  b1
+  b2
+  c1
+  c2
+}
+
+// The user's own interview/Probetag phrases for one application; the curated bank lives in code
+// (services/applications/phrases.ts)
+model ApplicationPhrase {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  text          String
+  createdAt     DateTime    @default(now())
+
+  @@index([applicationId])
 }
 
 enum ApplicationEventType {
@@ -485,6 +515,8 @@ model StudySource {
   // set) always wins for display — a user-uploaded cover overrides
   // whatever was auto-fetched.
   coverImageUrl  String?
+  // Plan journey station this source fuels, as "level:theme" (see services/learning/stations.ts); null = none
+  stationKey     String?
   logs           StudySourceLog[]
   units          StudySourceUnit[]
   files          UploadedFile[]
@@ -565,6 +597,12 @@ model SelfTestResult {
   questionIds Json?
   // [{ topic, level, correct, total }] for history display
   breakdown   Json?
+  // which checkpoint (1 = after station 7, 2 = 14, 3 = 21) a kind=checkpoint result belongs to
+  checkpointIndex Int?
+  // [{ type: "mcq"|"fill_blank"|"true_false", correct, total }] — per-question-type scores (Checkpoint tiles)
+  typeBreakdown Json?
+  // gender_drill only: [{ wordId, article: "der"|"die"|"das", picked }] — feeds article accuracy
+  answers       Json?
   score       Int
   total       Int
   takenAt     DateTime      @default(now())
@@ -589,6 +627,7 @@ model ExamAttempt {
   passed           Boolean?
   // [{ section: "vocabulary"|"grammar"|"gender_drill"|"listening", correct, total }]
   sectionBreakdown Json?
+  mode             ExamMode  @default(real)
 
   @@index([userId, level, startedAt])
 }
@@ -598,6 +637,18 @@ enum SelfTestKind {
   vocab
   // session-engine test: bank + vocab questions, mixed formats
   mixed
+  // der/die/das per word; per-word answers in breakdown feed article accuracy
+  gender_drill
+  // hear a word (Edge TTS), type it
+  listen_type
+  // scoped mixed test over a checkpoint's stations; recorded, never gates anything
+  checkpoint
+}
+
+enum ExamMode {
+  real
+  // practice run: no 7-day lock, never counts as a pass
+  mock
 }
 
 enum QuizDirection {
@@ -778,15 +829,34 @@ model Note {
   // list. Null for notes created by navigating to Notes directly rather
   // than via the FAB, or from the dashboard (no context to tag).
   contextTag     String?
+  // Bento sticky-wall category; `skill` above stays internal (and drives the initial mapping)
+  category       NoteCategory   @default(everyday)
+  pinned         Boolean        @default(false)
+  applicationId  String?
+  application    Application?   @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  // Plan journey station link ("level:theme"), for /station links and station-pinned task notes
+  stationKey     String?
+  // "Surfaced today" spaced resurfacing (services/notes/resurface.ts); null due = not in rotation
+  resurfaceDueAt DateTime?      @db.Date
+  resurfaceStep  Int            @default(0)
   files          UploadedFile[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
   @@index([userId, createdAt])
+  @@index([userId, resurfaceDueAt])
 }
 
 // quick links to application portals (GoAusbildung etc.) — links only, not
 // synced accounts: none of these platforms offer a public API today
+enum NoteCategory {
+  grammar
+  mistakes
+  everyday
+  jobs
+  listening
+}
+
 model ExternalAccount {
   id            String    @id @default(cuid())
   userId        String

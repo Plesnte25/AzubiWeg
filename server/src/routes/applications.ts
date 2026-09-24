@@ -5,12 +5,14 @@ import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { planMove, type Columns } from "../services/applications/order.js";
 import { fetchJobPreview } from "../services/applications/fetchPreview.js";
+import { phrasesForStage } from "../services/applications/phrases.js";
 import { computeStats } from "../services/applications/stats.js";
 
 export const applicationsRouter = Router();
 applicationsRouter.use(requireAuth);
 
 const STATUS = z.enum(["wishlist", "applied", "interview", "offer", "rejected"]);
+const GERMAN_LEVEL = z.enum(["a1", "a2", "b1", "b2", "c1", "c2"]);
 const toDate = (s: string) => new Date(s + "T00:00:00Z");
 const todayUtc = () => toDate(new Date().toISOString().slice(0, 10));
 
@@ -53,10 +55,12 @@ applicationsRouter.get("/:id", async (req, res) => {
     include: {
       events: { orderBy: { occurredAt: "desc" } },
       cv: { select: { id: true, title: true, file: { select: { id: true, originalName: true } } } },
+      phrases: { orderBy: { createdAt: "asc" } },
     },
   });
   if (!application) return res.status(404).json({ error: "Application not found" });
-  res.json({ application });
+  // curated phrases for the current stage, alongside the user's own (application.phrases)
+  res.json({ application, suggestedPhrases: phrasesForStage(application.status) });
 });
 
 const createSchema = z.object({
@@ -73,6 +77,8 @@ const createSchema = z.object({
   status: STATUS.default("wishlist"),
   appliedAt: z.iso.date().nullish(),
   cvId: z.string().nullish(),
+  // detected on fetch-preview, always overridable; null = unknown (no badge)
+  germanLevel: GERMAN_LEVEL.nullish(),
 });
 
 async function ownCvOr400(userId: string, cvId: string | null | undefined): Promise<boolean> {
@@ -242,6 +248,26 @@ applicationsRouter.delete("/:id/events/:eventId", async (req, res) => {
   });
   if (!event) return res.status(404).json({ error: "Event not found" });
   await prisma.applicationEvent.delete({ where: { id: event.id } });
+  res.status(204).end();
+});
+
+const phraseSchema = z.object({ text: z.string().trim().min(1).max(300) });
+
+applicationsRouter.post("/:id/phrases", async (req, res) => {
+  const parsed = phraseSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+  const app = await prisma.application.findFirst({ where: { id: req.params.id, userId: req.userId }, select: { id: true } });
+  if (!app) return res.status(404).json({ error: "Application not found" });
+  const phrase = await prisma.applicationPhrase.create({ data: { applicationId: app.id, text: parsed.data.text } });
+  res.status(201).json({ phrase });
+});
+
+applicationsRouter.delete("/:id/phrases/:phraseId", async (req, res) => {
+  const phrase = await prisma.applicationPhrase.findFirst({
+    where: { id: req.params.phraseId, applicationId: req.params.id, application: { userId: req.userId } },
+  });
+  if (!phrase) return res.status(404).json({ error: "Phrase not found" });
+  await prisma.applicationPhrase.delete({ where: { id: phrase.id } });
   res.status(204).end();
 });
 
