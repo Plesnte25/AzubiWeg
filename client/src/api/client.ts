@@ -3,6 +3,8 @@ import type {
   ActivitySummary,
   Application,
   ApplicationDetail,
+  ApplicationPhrase,
+  CuratedPhrase,
   ApplicationStats,
   ApplicationStatus,
   Cv,
@@ -211,7 +213,8 @@ export const api = {
 
   applications: () => request<{ applications: Application[] }>("/api/applications"),
   applicationStats: () => request<{ stats: ApplicationStats }>("/api/applications/stats"),
-  application: (id: string) => request<{ application: ApplicationDetail }>(`/api/applications/${id}`),
+  application: (id: string) =>
+    request<{ application: ApplicationDetail; suggestedPhrases: CuratedPhrase[] }>(`/api/applications/${id}`),
   fetchJobPreview: (url: string) =>
     request<{ fetched: boolean; data: JobPreview | null }>("/api/applications/fetch-preview", {
       method: "POST",
@@ -235,7 +238,7 @@ export const api = {
   deleteApplication: (id: string) => request<void>(`/api/applications/${id}`, { method: "DELETE" }),
   addApplicationEvent: (
     id: string,
-    data: { type: "note" | "interview" | "follow_up"; note?: string },
+    data: { type: "note" | "interview" | "follow_up"; note?: string; occurredAt?: string },
   ) =>
     request<{ event: ApplicationDetail["events"][number] }>(`/api/applications/${id}/events`, {
       method: "POST",
@@ -243,6 +246,10 @@ export const api = {
     }),
   deleteApplicationEvent: (id: string, eventId: string) =>
     request<void>(`/api/applications/${id}/events/${eventId}`, { method: "DELETE" }),
+  addApplicationPhrase: (id: string, text: string) =>
+    request<{ phrase: ApplicationPhrase }>(`/api/applications/${id}/phrases`, { method: "POST", body: JSON.stringify({ text }) }),
+  deleteApplicationPhrase: (id: string, phraseId: string) =>
+    request<void>(`/api/applications/${id}/phrases/${phraseId}`, { method: "DELETE" }),
 
   learningSyllabus: () => request<SyllabusResponse>("/api/learning/syllabus"),
   syllabusWorkspace: (id: string) => request<SyllabusWorkspace>(`/api/learning/syllabus/${id}/workspace`),

@@ -109,6 +109,22 @@ const STATES = [
     },
   })),
   {
+    name: "jobs-detail",
+    route: "/jobs",
+    run: async (page) => {
+      await page.getByRole("button", { name: /Open details$/ }).first().click();
+      await page.waitForTimeout(600);
+    },
+  },
+  {
+    name: "jobs-new",
+    route: "/jobs",
+    run: async (page) => {
+      await page.getByRole("button", { name: "New application" }).click();
+      await page.waitForTimeout(400);
+    },
+  },
+  {
     name: "stats-drill",
     route: "/stats",
     run: async (page) => {

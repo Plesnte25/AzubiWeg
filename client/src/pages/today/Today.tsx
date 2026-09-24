@@ -265,7 +265,7 @@ export default function Today() {
         onToggle={() => target && timer.mutate({ id: target.id, action: target.runningSince ? "pause" : "start" })}
         onReset={() => target && timer.mutate({ id: target.id, action: "reset" })}
       />
-      <JobsTile applications={dash.applications} nextInterview={b.nextInterview} onOpen={() => push("/jobs")} />
+      <JobsTile applications={dash.applications} nextInterview={b.nextInterview} onOpen={() => push("/jobs", b.nextInterview ? { state: { open: b.nextInterview.applicationId } } : undefined)} />
       {adding && <AddTaskModal onClose={() => setAdding(false)} saving={add.isPending} onAdd={(title, skill) => add.mutate({ title, skill })} />}
     </div>
   );

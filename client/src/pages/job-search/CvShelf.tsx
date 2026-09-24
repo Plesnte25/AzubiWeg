@@ -1,3 +1,4 @@
+// Phase 3.7: unmounted until the CV shelf moves into Settings (the Bento Jobs page cut it); restyle it there.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Plus } from "@phosphor-icons/react";

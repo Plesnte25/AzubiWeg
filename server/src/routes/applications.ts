@@ -18,6 +18,20 @@ const todayUtc = () => toDate(new Date().toISOString().slice(0, 10));
 
 const fetchPreviewSchema = z.object({ url: z.url() });
 
+/** The board list: every application plus its next upcoming interview (the Jobs card's date line). */
+async function listApplications(userId: string) {
+  const rows = await prisma.application.findMany({
+    where: { userId },
+    orderBy: [{ status: "asc" }, { sortOrder: "asc" }],
+    include: {
+      _count: { select: { events: true } },
+      cv: { select: { id: true, title: true, file: { select: { id: true, originalName: true } } } },
+      events: { where: { type: "interview", occurredAt: { gte: new Date() } }, orderBy: { occurredAt: "asc" }, take: 1, select: { occurredAt: true } },
+    },
+  });
+  return rows.map(({ events, ...a }) => ({ ...a, nextInterviewAt: events[0]?.occurredAt ?? null }));
+}
+
 applicationsRouter.post("/fetch-preview", async (req, res) => {
   const parsed = fetchPreviewSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
@@ -27,12 +41,7 @@ applicationsRouter.post("/fetch-preview", async (req, res) => {
 });
 
 applicationsRouter.get("/", async (req, res) => {
-  const applications = await prisma.application.findMany({
-    where: { userId: req.userId },
-    orderBy: [{ status: "asc" }, { sortOrder: "asc" }],
-    include: { _count: { select: { events: true } }, cv: { select: { id: true, title: true, file: { select: { id: true, originalName: true } } } } },
-  });
-  res.json({ applications });
+  res.json({ applications: await listApplications(req.userId) });
 });
 
 applicationsRouter.get("/stats", async (req, res) => {
@@ -208,12 +217,7 @@ applicationsRouter.patch("/:id/move", async (req, res) => {
     }
   });
 
-  const applications = await prisma.application.findMany({
-    where: { userId: req.userId },
-    orderBy: [{ status: "asc" }, { sortOrder: "asc" }],
-    include: { _count: { select: { events: true } }, cv: { select: { id: true, title: true, file: { select: { id: true, originalName: true } } } } },
-  });
-  res.json({ applications });
+  res.json({ applications: await listApplications(req.userId) });
 });
 
 const eventSchema = z.object({

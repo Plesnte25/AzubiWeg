@@ -259,8 +259,29 @@ export interface Application {
   appliedAt: string | null;
   cvId: string | null;
   cv: { id: string; title: string; file: { id: string; originalName: string } } | null;
+  /** Asked-for German level: detected on fetch, overridable; null = not stated. */
+  germanLevel: GermanLevel | null;
   createdAt: string;
   _count?: { events: number };
+  /** Next upcoming interview event (list responses only). */
+  nextInterviewAt?: string | null;
+}
+
+export type GermanLevel = "a1" | "a2" | "b1" | "b2" | "c1" | "c2";
+
+export interface ApplicationPhrase {
+  id: string;
+  text: string;
+  createdAt: string;
+}
+
+/** Curated interview/Probetag phrase (server services/applications/phrases.ts). */
+export interface CuratedPhrase {
+  id: string;
+  de: string;
+  en: string;
+  context: string;
+  stages: ApplicationStatus[];
 }
 
 /** Best-effort result of scraping a pasted job-posting URL; server/src/services/applications/fetchPreview.ts */
@@ -269,6 +290,7 @@ export interface JobPreview {
   role: string | null;
   location: string | null;
   portal: string | null;
+  germanLevel: GermanLevel | null;
 }
 
 export interface ApplicationEvent {
@@ -282,6 +304,7 @@ export interface ApplicationEvent {
 
 export interface ApplicationDetail extends Application {
   events: ApplicationEvent[];
+  phrases: ApplicationPhrase[];
 }
 
 export interface ApplicationStats {

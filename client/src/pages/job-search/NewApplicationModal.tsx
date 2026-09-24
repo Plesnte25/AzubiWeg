@@ -1,192 +1,150 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check } from "@phosphor-icons/react";
 import { api } from "../../api/client";
-import type { ApplicationStatus } from "../../api/types";
-import { Button } from "../../components/ui/Button";
+import type { Application, GermanLevel } from "../../api/types";
 import { Modal } from "../../components/ui/Modal";
-import { DebouncedInput, Field, inputCls } from "./shared";
+import { PillButton } from "../../components/ui/PillButton";
+import { toast } from "../../components/ui/Toast";
+import { Pickers } from "./DetailModal";
+import { STAGE_LABEL, type BoardStage } from "./model";
+import { eyebrow, fieldInput } from "./styles";
 
-const STAGES: { key: ApplicationStatus; label: string }[] = [
-  { key: "wishlist", label: "Wishlist" },
-  { key: "applied", label: "Applied" },
-  { key: "interview", label: "Interview" },
-  { key: "offer", label: "Offer" },
-  { key: "rejected", label: "Rejected" },
-];
+/*
+ * New application (AzubiJobs.dc.html, lemon). Fetch is best-effort (server fetchPreview): it fills whatever it can
+ * read, including the German level it detects, and every field stays editable. The level chips are the prototype's
+ * A2/B1/B2 plus "Not stated", and a detected level outside those (A1, C1, C2) gets its own chip. CV chips are your
+ * real CVs (managed in Settings).
+ */
 
-export default function NewApplicationModal({ onClose }: { onClose: () => void }) {
+const BASE_LEVELS: GermanLevel[] = ["a2", "b1", "b2"];
+const NEW_STAGES: BoardStage[] = ["wishlist", "applied", "interview"];
+
+export default function NewApplicationModal({ onClose, onAdded }: { onClose: () => void; onAdded: (app: Application) => void }) {
   const queryClient = useQueryClient();
-  const { data: cvsData } = useQuery({ queryKey: ["cvs"], queryFn: api.cvs });
-
+  const { data: cvs } = useQuery({ queryKey: ["cvs"], queryFn: api.cvs });
   const [url, setUrl] = useState("");
-  const [company, setCompany] = useState("");
-  const [role, setRole] = useState("");
-  const [location, setLocation] = useState("");
-  const [portal, setPortal] = useState("");
-  const [jobProfile, setJobProfile] = useState("");
-  const [description, setDescription] = useState("");
-  const [cvId, setCvId] = useState("");
-  const [stage, setStage] = useState<ApplicationStatus>("wishlist");
-  const [fetchedFrom, setFetchedFrom] = useState<string | null>(null);
-
-  const cvs = cvsData?.cvs ?? [];
+  const [f, setF] = useState({ company: "", role: "", location: "" });
+  const [portal, setPortal] = useState<string | null>(null);
+  const [level, setLevel] = useState<GermanLevel | null>(null);
+  const [cvId, setCvId] = useState<string | null>(null);
+  const [stage, setStage] = useState<BoardStage>("wishlist");
+  const [fetched, setFetched] = useState(false);
+  const valid = !!(f.company.trim() && f.role.trim());
 
   const fetchPreview = useMutation({
     mutationFn: () => api.fetchJobPreview(url.trim()),
-    onSuccess: ({ fetched, data }) => {
-      if (!fetched || !data) {
-        setFetchedFrom(null);
+    onSuccess: ({ fetched: ok, data }) => {
+      if (!ok || !data) {
+        toast.info("Couldn't read that page · type the fields");
         return;
       }
-      setFetchedFrom(data.portal ?? "the posting");
-      if (data.company) setCompany(data.company);
-      if (data.role) setRole(data.role);
-      if (data.location) setLocation(data.location);
+      setF((x) => ({ company: data.company ?? x.company, role: data.role ?? x.role, location: data.location ?? x.location }));
       if (data.portal) setPortal(data.portal);
+      if (data.germanLevel) setLevel(data.germanLevel);
+      setFetched(true);
+      toast.success("Filled from the posting · check it");
     },
+    onError: () => toast.error("Couldn't fetch that link"),
   });
 
   const add = useMutation({
     mutationFn: () =>
       api.addApplication({
-        company: company.trim(),
-        role: role.trim(),
-        location: location.trim() || null,
+        company: f.company.trim(),
+        role: f.role.trim(),
+        location: f.location.trim() || null,
         url: url.trim() || null,
-        portal: portal.trim() || null,
-        jobProfile: jobProfile.trim() || null,
-        description: description.trim() || null,
-        cvId: cvId || null,
+        portal,
+        germanLevel: level,
+        cvId,
         status: stage,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["applications"] });
-      queryClient.invalidateQueries({ queryKey: ["applications", "stats"] });
-      onClose();
+    onSuccess: ({ application }) => {
+      void queryClient.invalidateQueries({ queryKey: ["applications"] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success(`${application.company} added · ${STAGE_LABEL[stage]}`);
+      onAdded(application);
     },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't add it"),
   });
 
+  const levels = level && !BASE_LEVELS.includes(level) ? [...BASE_LEVELS, level] : BASE_LEVELS;
+  const field = (label: string, key: keyof typeof f, ph: string) => (
+    <label className="flex min-w-0 flex-col" style={{ gap: 6 }}>
+      <span style={eyebrow}>{label}</span>
+      <input value={f[key]} onChange={(e) => setF({ ...f, [key]: e.target.value })} placeholder={ph} style={fieldInput} />
+    </label>
+  );
+
   return (
-    <Modal title="New application" onClose={onClose} size="md" sheetOnSm>
-      <p className="-mt-3 mb-4 text-body text-ink-600">Paste the job posting link and we'll try to fill in the rest</p>
-      <form
-        className="space-y-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (company.trim() && role.trim()) add.mutate();
-        }}
-      >
-        <div className="flex gap-2">
+    <Modal
+      tag="Jobs · new"
+      title="New application"
+      subtitle="Company and role are enough to start."
+      bg="var(--lemon)"
+      width={580}
+      onClose={onClose}
+      footer={
+        <>
+          <PillButton variant="secondary" style={{ minWidth: 110 }} onClick={onClose}>
+            Cancel
+          </PillButton>
+          <PillButton className="flex-1" disabled={!valid || add.isPending} onClick={() => add.mutate()}>
+            Add application
+          </PillButton>
+        </>
+      }
+    >
+      <div className="flex shrink-0 flex-col" style={{ gap: 6 }}>
+        <span style={eyebrow}>Job posting link</span>
+        <form
+          className="flex"
+          style={{ gap: 8 }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!url.trim()) toast.info("Paste a link first");
+            else fetchPreview.mutate();
+          }}
+        >
           <input
-            autoFocus
-            className={inputCls}
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://…"
+            onChange={(e) => {
+              setUrl(e.target.value);
+              setFetched(false);
+            }}
+            placeholder="Paste the link, we'll try to fill the rest"
+            aria-label="Job posting link"
+            style={{ ...fieldInput, flex: 1, fontSize: 14 }}
           />
           <button
-            type="button"
-            disabled={!url.trim() || fetchPreview.isPending}
-            onClick={() => fetchPreview.mutate()}
-            className="h-9 shrink-0 rounded-md bg-ink-900 px-4 text-body font-medium text-white hover:bg-ink-700 disabled:cursor-not-allowed disabled:opacity-50"
+            type="submit"
+            disabled={fetchPreview.isPending}
+            className="shrink-0 cursor-pointer"
+            style={{ height: 44, padding: "0 16px", border: "2.5px solid var(--line)", borderRadius: 12, background: "var(--btn)", color: "var(--btnText)", fontWeight: 700, fontSize: 14 }}
           >
-            {fetchPreview.isPending ? "Fetching…" : "Fetch"}
+            {fetchPreview.isPending ? "Fetching…" : fetched ? "Fetched ✓" : "Fetch"}
           </button>
-        </div>
-
-        {fetchedFrom && (
-          <div className="rounded-lg border border-ok-100 bg-ok-50 px-4 py-3.5">
-            <p className="flex items-center gap-1 text-body font-medium text-ok-700">
-              <Check weight="bold" className="size-3.5" aria-hidden="true" /> Fetched from {fetchedFrom}
-            </p>
-            <div className="mt-2 grid grid-cols-1 gap-2 text-caption md:grid-cols-2">
-              <MiniField label="Company" value={company} />
-              <MiniField label="Role" value={role} />
-              <MiniField label="Location" value={location} />
-              <MiniField label="Portal" value={portal} />
-            </div>
-            <p className="mt-2 text-micro text-ink-600">These fields stay editable below.</p>
-          </div>
-        )}
-        {fetchPreview.isSuccess && !fetchedFrom && (
-          <p className="text-caption text-ink-600">
-            Couldn't auto-fill from that link — no problem, just fill in the fields below.
-          </p>
-        )}
-
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Field label="Company *">
-            <input className={inputCls} value={company} onChange={(e) => setCompany(e.target.value)} />
-          </Field>
-          <Field label="Role *">
-            <input
-              className={inputCls}
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              placeholder="e.g. Ausbildung Fachinformatiker"
-            />
-          </Field>
-          <Field label="Job profile">
-            <input
-              className={inputCls}
-              value={jobProfile}
-              onChange={(e) => setJobProfile(e.target.value)}
-              placeholder="e.g. Fachinformatiker Systemintegration"
-            />
-          </Field>
-          <Field label="Location">
-            <input className={inputCls} value={location} onChange={(e) => setLocation(e.target.value)} />
-          </Field>
-        </div>
-
-        <Field label="Description">
-          <DebouncedInput textarea value={description} onCommit={setDescription} placeholder="Paste the job posting text (optional)" />
-        </Field>
-
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Field label="CV to use">
-            <select className={inputCls} value={cvId} onChange={(e) => setCvId(e.target.value)}>
-              <option value="">—</option>
-              {cvs.map((cv) => (
-                <option key={cv.id} value={cv.id}>
-                  {cv.title}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Stage">
-            <select className={inputCls} value={stage} onChange={(e) => setStage(e.target.value as ApplicationStatus)}>
-              {STAGES.map((s) => (
-                <option key={s.key} value={s.key}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-
-        <p className="text-micro text-ink-600">Fetch is best-effort — never required to add an application.</p>
-
-        {add.isError && <p className="text-body text-danger-600">{(add.error as Error).message}</p>}
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button loading={add.isPending} disabled={!company.trim() || !role.trim()}>
-            Add application
-          </Button>
-        </div>
-      </form>
+        </form>
+        <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.75 }}>Fetching is best-effort. You can always type the fields.</span>
+      </div>
+      <div className="grid shrink-0 grid-cols-1 md:grid-cols-2" style={{ gap: 12 }}>
+        {field("Company *", "company", "e.g. Porsche")}
+        {field("Role *", "role", "e.g. Azubi Kfz-Mechatroniker/in")}
+        {field("Location", "location", "e.g. Leipzig")}
+      </div>
+      <Pickers
+        label="German asked for"
+        options={[...levels.map((l) => [l, l.toUpperCase()] as const), [null, "Not stated"] as const]}
+        value={level}
+        onPick={setLevel}
+      />
+      <Pickers
+        label="CV to use"
+        options={[...(cvs?.cvs ?? []).map((c) => [c.id, c.title] as const), [null, "None"] as const]}
+        value={cvId}
+        onPick={setCvId}
+      />
+      <Pickers label="Stage" options={NEW_STAGES.map((s) => [s, STAGE_LABEL[s]] as const)} value={stage} onPick={setStage} />
     </Modal>
-  );
-}
-
-function MiniField({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-micro text-ink-600">{label}</p>
-      <p className="text-body font-semibold">{value || "—"}</p>
-    </div>
   );
 }
