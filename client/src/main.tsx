@@ -15,18 +15,14 @@ import Login from "./pages/Login";
 // its own chunk, loaded on navigation, so signing in doesn't pull in the CV
 // editor/kanban/quiz code up front
 const JobSearch = lazy(() => import("./pages/job-search"));
-const Plan = lazy(() => import("./pages/plan/Plan"));
-const Syllabus = lazy(() => import("./pages/plan/Syllabus"));
-const Sources = lazy(() => import("./pages/plan/Sources"));
 const Notes = lazy(() => import("./pages/plan/Notes"));
 const NoteEditor = lazy(() => import("./pages/plan/NoteEditor"));
-const SelfTests = lazy(() => import("./pages/plan/SelfTests"));
 const SelfTestRunner = lazy(() => import("./pages/plan/SelfTestRunner"));
-const ExamGate = lazy(() => import("./pages/plan/ExamGate"));
 const ExamRunner = lazy(() => import("./pages/plan/ExamRunner"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Stats = lazy(() => import("./pages/stats/Stats"));
 const Words = lazy(() => import("./pages/words/Words"));
+const Journey = lazy(() => import("./pages/plan/journey/Journey"));
 const ReviewSession = lazy(() => import("./pages/review/ReviewSession"));
 
 function Lazy({ children }: { children: React.ReactNode }) {
@@ -93,17 +89,17 @@ const router = createBrowserRouter([
           { path: "/words", element: <Lazy><Words /></Lazy> },
           { path: "/words/:id", element: <Lazy><Words /></Lazy> },
           { path: "/review", element: <Lazy><ReviewSession /></Lazy> },
-          { path: "/plan", element: <Lazy><Plan /></Lazy> },
-          { path: "/plan/syllabus", element: <Lazy><Syllabus /></Lazy> },
-          { path: "/plan/sources", element: <Lazy><Sources /></Lazy> },
+          { path: "/plan", element: <Lazy><Journey /></Lazy> },
+          { path: "/plan/syllabus", element: <Navigate to="/plan" replace /> },
+          { path: "/plan/sources", element: <Navigate to="/plan" replace /> },
           // Notes' page files stay under pages/plan/ until Phase 7 (the
           // Notes reskin) actually moves them to pages/notes/ — only the
           // route path is promoted to top-level here.
           { path: "/notes", element: <Lazy><Notes /></Lazy> },
           { path: "/notes/edit/:id", element: <Lazy><NoteEditor /></Lazy> },
-          { path: "/plan/self-tests", element: <Lazy><SelfTests /></Lazy> },
+          { path: "/plan/self-tests", element: <Navigate to="/plan" replace /> },
           { path: "/plan/self-tests/run", element: <Lazy><SelfTestRunner /></Lazy> },
-          { path: "/plan/exam-gate", element: <Lazy><ExamGate /></Lazy> },
+          { path: "/plan/exam-gate", element: <Navigate to="/plan" replace /> },
           { path: "/exam-take", element: <Lazy><ExamRunner /></Lazy> },
           { path: "/jobs", element: <Lazy><JobSearch /></Lazy> },
           { path: "/stats", element: <Lazy><Stats /></Lazy> },

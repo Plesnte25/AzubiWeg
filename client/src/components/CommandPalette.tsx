@@ -7,7 +7,7 @@ import type { Themenfeld } from "../api/types";
 import { stripHtml } from "../lib/text";
 import { chipColor, chipLabel } from "../lib/wordDisplay";
 import { useNavStack } from "../lib/navStack";
-import { bestMatchingStation, deriveStations } from "../pages/plan/stations";
+import { bestMatchingStation, deriveStations } from "../pages/plan/journey/model";
 import { AddWordSheet } from "../pages/words/AddWordSheet";
 
 function ShortcutBadge({ letter }: { letter: string }) {
@@ -120,12 +120,11 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     const themenfeld = topWord?.themenfeld[0];
     if (!themenfeld || !syllabusData) return null;
     const activeLevel = syllabusData.levels.find((l) => l.percent < 100)?.level ?? syllabusData.levels[syllabusData.levels.length - 1]?.level;
-    const levelItems = syllabusData.items.filter((i) => i.level === activeLevel);
-    const stations = deriveStations(levelItems);
+    if (!activeLevel) return null;
+    const stations = deriveStations(syllabusData.items, activeLevel);
     const station = bestMatchingStation(stations, THEMENFELD_PROBE[themenfeld]);
     if (!station) return null;
-    const index = stations.indexOf(station);
-    return { label: `Syllabus — Chapter ${index + 1}: ${station.theme}`, theme: station.theme };
+    return { label: `Plan — Station ${station.index}: ${station.theme}`, theme: station.theme };
   }, [wordMatches, syllabusData]);
 
   // Actions always render once there's a query (even with zero word/link/
@@ -225,7 +224,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                     {syllabusJump && (
                       <button
                         type="button"
-                        onClick={() => go(() => push("/plan/syllabus", { state: { openStationTheme: syllabusJump.theme } }))}
+                        onClick={() => go(() => push("/plan"))}
                         className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
                         style={{ color: "var(--color-ink-900)" }}
                       >

@@ -43,7 +43,7 @@ export default function ExamRunner() {
     onError: (e) => setStartError(e instanceof Error ? e.message : "Couldn't start the exam"),
   });
   useEffect(() => {
-    start.mutate();
+    start.mutate("real");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

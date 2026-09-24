@@ -439,6 +439,8 @@ export interface StudySource {
   // always wins for display over coverImageUrl's auto-fetched thumbnail
   coverFileId: string | null;
   coverImageUrl: string | null;
+  /** Plan journey station this source fuels ("level:theme"), or null. */
+  stationKey: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -482,6 +484,8 @@ export interface ExamAttempt {
   total: number | null;
   passed: boolean | null;
   sectionBreakdown: ExamSectionBreakdown[] | null;
+  /** mock = practice run: no 7-day lock, never passes. */
+  mode: "real" | "mock";
 }
 
 export interface ExamStatus {
@@ -495,6 +499,10 @@ export interface ExamStatus {
   cooldownDays: number;
   passThreshold: number;
   sectionCounts: Record<ExamSection, number>;
+  lastMockAttempt: ExamAttempt | null;
+  examTargetDate: string | null;
+  /** Exam date minus 14 days (YYYY-MM-DD), or null without an exam date. */
+  suggestedMockDate: string | null;
 }
 
 export interface TopicBreakdown {
@@ -572,6 +580,7 @@ export interface RoadmapTask {
   files: UploadedFileMeta[];
   // set when this task's content is derived from a syllabus topic — the
   // same fact as that SyllabusItem's completion, kept in sync
+  syllabusItemId: string | null;
   syllabusItem: { level: CefrLevel; theme: string | null; description: string | null } | null;
 }
 
@@ -593,10 +602,20 @@ export interface Note {
   // tapped (e.g. "/Jobs"), shown as a removable chip
   wordId: string | null;
   contextTag: string | null;
+  /** Bento sticky-wall category, pin, and the /job and /station links. */
+  category: NoteCategory;
+  pinned: boolean;
+  applicationId: string | null;
+  stationKey: string | null;
+  /** "Surfaced today" rotation (grammar/mistakes notes); null = not in rotation. */
+  resurfaceDueAt: string | null;
+  resurfaceStep: number;
   files: UploadedFileMeta[];
   createdAt: string;
   updatedAt: string;
 }
+
+export type NoteCategory = "grammar" | "mistakes" | "everyday" | "jobs" | "listening";
 
 /** SyllabusItem's Grammar Notebook (examples/exceptions/commonMistakes),
  * merged into one `body` string server-side — see notes.ts's

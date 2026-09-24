@@ -1,6 +1,6 @@
 import { Star, Warning } from "@phosphor-icons/react";
 import type { CefrLevel, Themenfeld, Word } from "../../api/types";
-import { LEVEL_LABELS } from "../plan/Syllabus";
+const LEVEL_LABELS: Record<string, string> = { a1: "A1", a2: "A2", b1: "B1" };
 import { THEMENFELD_LABELS } from "../../lib/vocab";
 
 const LEVELS: CefrLevel[] = ["a1", "a2", "b1"];

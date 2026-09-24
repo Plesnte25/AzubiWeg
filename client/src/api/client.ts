@@ -58,8 +58,7 @@ import type {
   WeakWord,
   Themenfeld,
   Word,
-  WordFamilyMember,
-} from "./types";
+  WordFamilyMember, NoteCategory } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -301,6 +300,7 @@ export const api = {
     unitLabel?: StudySourceUnitLabel;
     notes?: string | null;
     autoFetch?: boolean;
+    stationKey?: string | null;
   }) =>
     request<{ source: StudySource; fetch: PlaylistFetchOutcome }>("/api/learning/sources", {
       method: "POST",
@@ -331,6 +331,7 @@ export const api = {
       // set via the two-step flow: upload (kind: "source_cover") then PATCH
       // with the new file's id; null clears the cover
       coverFileId: string | null;
+      stationKey: string | null;
     }>,
   ) =>
     request<{ source: StudySource }>(`/api/learning/sources/${id}`, {
@@ -357,13 +358,14 @@ export const api = {
   quizResults: () => request<QuizResultsResponse>("/api/learning/quiz/results"),
 
   examStatus: () => request<ExamStatus>("/api/learning/exam/status"),
-  startExam: () =>
-    request<{ attemptId: string; level: CefrLevel; questions: ExamQuestionPublic[]; timeLimitMinutes: number }>(
+  /** mode "mock": practice run with no 7-day lock that never counts as a pass. */
+  startExam: (mode: "real" | "mock" = "real") =>
+    request<{ attemptId: string; level: CefrLevel; mode: "real" | "mock"; questions: ExamQuestionPublic[]; timeLimitMinutes: number }>(
       "/api/learning/exam/start",
-      { method: "POST" },
+      { method: "POST", body: JSON.stringify({ mode }) },
     ),
   submitExam: (attemptId: string, answers: { qid: string; answer: string | number | boolean }[]) =>
-    request<{ attempt: ExamAttempt }>(`/api/learning/exam/${attemptId}/submit`, {
+    request<{ attempt: ExamAttempt; wouldHavePassed: boolean }>(`/api/learning/exam/${attemptId}/submit`, {
       method: "POST",
       body: JSON.stringify({ answers }),
     }),
@@ -464,7 +466,13 @@ export const api = {
     roadmapTaskId?: string | null;
     wordId?: string | null;
     contextTag?: string | null;
+    category?: NoteCategory;
+    pinned?: boolean;
+    applicationId?: string | null;
+    stationKey?: string | null;
   }) => request<{ note: Note }>("/api/notes", { method: "POST", body: JSON.stringify(data) }),
+  stationNotes: (stationKey: string) =>
+    request<{ notes: Note[] }>(`/api/notes?stationKey=${encodeURIComponent(stationKey)}`),
   updateNote: (
     id: string,
     data: Partial<{

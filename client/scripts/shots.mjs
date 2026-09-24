@@ -93,6 +93,21 @@ const STATES = [
       await page.waitForTimeout(450);
     },
   },
+  ...[
+    ["plan-task", async (page) => page.getByRole("button", { name: /^Review: |^Grammar|^Vocabulary|^Reading|^Listening|^Speaking|^Writing/ }).first().click()],
+    ["plan-station", async (page) => page.getByRole("button", { name: "Station overview" }).click()],
+    ["plan-gate", async (page) => page.getByRole("button", { name: "See the gate" }).click()],
+    ["plan-week", async (page) => page.getByRole("button", { name: "Open this week" }).click()],
+    ["plan-library", async (page) => page.getByRole("button", { name: "See all" }).click()],
+    ["plan-add-source", async (page) => page.getByRole("button", { name: "+ Add" }).click()],
+  ].map(([name, open]) => ({
+    name,
+    route: "/plan",
+    run: async (page) => {
+      await open(page);
+      await page.waitForTimeout(500);
+    },
+  })),
 ];
 
 const pick = (value, all) => (value ? value.split(",").filter((v) => all.includes(v)) : all);
