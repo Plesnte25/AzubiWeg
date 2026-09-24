@@ -520,6 +520,7 @@ model StudySource {
   logs           StudySourceLog[]
   units          StudySourceUnit[]
   files          UploadedFile[]
+  linkedNotes    Note[]
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 }
@@ -836,6 +837,9 @@ model Note {
   application    Application?   @relation(fields: [applicationId], references: [id], onDelete: SetNull)
   // Plan journey station link ("level:theme"), for /station links and station-pinned task notes
   stationKey     String?
+  // /source link (Notes sticky wall)
+  studySourceId  String?
+  studySource    StudySource?   @relation(fields: [studySourceId], references: [id], onDelete: SetNull)
   // "Surfaced today" spaced resurfacing (services/notes/resurface.ts); null due = not in rotation
   resurfaceDueAt DateTime?      @db.Date
   resurfaceStep  Int            @default(0)

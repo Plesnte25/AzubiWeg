@@ -21,6 +21,24 @@ function mergedNotebookBody(item: { examples: string | null; exceptions: string 
   return [item.examples, item.exceptions, item.commonMistakes].filter(Boolean).join("\n\n");
 }
 
+/** What a sticky-wall note shows for its link chip: the linked word/application/source's name. */
+const WALL_INCLUDE = {
+  files: true,
+  word: { select: { id: true, headword: true } },
+  application: { select: { id: true, company: true } },
+  studySource: { select: { id: true, title: true } },
+} as const;
+
+/** The Notes sticky wall: real notes only (journals were migrated in; notebook and unit notes stay where they live). */
+notesRouter.get("/wall", async (req, res) => {
+  const notes = await prisma.note.findMany({
+    where: { userId: req.userId },
+    include: WALL_INCLUDE,
+    orderBy: [{ pinned: "desc" }, { updatedAt: "desc" }],
+  });
+  res.json({ notes });
+});
+
 notesRouter.get("/", async (req, res) => {
   const q = typeof req.query.q === "string" && req.query.q.trim() ? req.query.q.trim() : undefined;
   const roadmapTaskId = typeof req.query.roadmapTaskId === "string" ? req.query.roadmapTaskId : undefined;
@@ -144,6 +162,7 @@ const noteSchema = z.object({
   pinned: z.boolean().optional(),
   applicationId: z.string().nullish(),
   stationKey: STATION_KEY.nullish(),
+  studySourceId: z.string().nullish(),
 });
 
 async function validateLinks(
@@ -152,7 +171,12 @@ async function validateLinks(
   roadmapTaskId: string | null | undefined,
   wordId: string | null | undefined,
   applicationId?: string | null,
+  studySourceId?: string | null,
 ) {
+  if (studySourceId) {
+    const source = await prisma.studySource.findFirst({ where: { id: studySourceId, userId } });
+    if (!source) return "Source not found";
+  }
   if (applicationId) {
     const app = await prisma.application.findFirst({ where: { id: applicationId, userId } });
     if (!app) return "Application not found";
@@ -177,10 +201,10 @@ notesRouter.post("/", async (req, res) => {
     .refine((d) => Boolean(d.title?.trim() || d.body?.trim()), { message: "Note needs a title or some text" })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
-  const { title, body, skill, syllabusItemId, roadmapTaskId, wordId, contextTag, category, pinned, applicationId, stationKey } =
+  const { title, body, skill, syllabusItemId, roadmapTaskId, wordId, contextTag, category, pinned, applicationId, stationKey, studySourceId } =
     parsed.data;
 
-  const linkError = await validateLinks(req.userId, syllabusItemId, roadmapTaskId, wordId, applicationId);
+  const linkError = await validateLinks(req.userId, syllabusItemId, roadmapTaskId, wordId, applicationId, studySourceId);
   if (linkError) return res.status(404).json({ error: linkError });
 
   const finalCategory =
@@ -199,6 +223,7 @@ notesRouter.post("/", async (req, res) => {
       pinned: pinned ?? false,
       applicationId: applicationId ?? null,
       stationKey: stationKey ?? null,
+      studySourceId: studySourceId ?? null,
       ...resurfaceForCategory(finalCategory, { resurfaceDueAt: null, resurfaceStep: 0 }),
     },
     include: { files: true },
@@ -218,7 +243,8 @@ const patchSchema = noteSchema.refine(
     d.category !== undefined ||
     d.pinned !== undefined ||
     d.applicationId !== undefined ||
-    d.stationKey !== undefined,
+    d.stationKey !== undefined ||
+    d.studySourceId !== undefined,
   { message: "Nothing to update" },
 );
 
@@ -229,9 +255,9 @@ notesRouter.patch("/:id", async (req, res) => {
   const existing = await prisma.note.findFirst({ where: { id: req.params.id, userId: req.userId } });
   if (!existing) return res.status(404).json({ error: "Note not found" });
 
-  const { title, body, skill, syllabusItemId, roadmapTaskId, wordId, contextTag, category, pinned, applicationId, stationKey } =
+  const { title, body, skill, syllabusItemId, roadmapTaskId, wordId, contextTag, category, pinned, applicationId, stationKey, studySourceId } =
     parsed.data;
-  const linkError = await validateLinks(req.userId, syllabusItemId, roadmapTaskId, wordId, applicationId);
+  const linkError = await validateLinks(req.userId, syllabusItemId, roadmapTaskId, wordId, applicationId, studySourceId);
   if (linkError) return res.status(404).json({ error: linkError });
 
   const note = await prisma.note.update({
@@ -248,6 +274,7 @@ notesRouter.patch("/:id", async (req, res) => {
       ...(pinned !== undefined ? { pinned } : {}),
       ...(applicationId !== undefined ? { applicationId: applicationId ?? null } : {}),
       ...(stationKey !== undefined ? { stationKey: stationKey ?? null } : {}),
+      ...(studySourceId !== undefined ? { studySourceId: studySourceId ?? null } : {}),
     },
     include: { files: true },
   });

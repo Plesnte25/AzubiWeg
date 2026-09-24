@@ -15,8 +15,7 @@ import Login from "./pages/Login";
 // its own chunk, loaded on navigation, so signing in doesn't pull in the CV
 // editor/kanban/quiz code up front
 const JobSearch = lazy(() => import("./pages/job-search"));
-const Notes = lazy(() => import("./pages/plan/Notes"));
-const NoteEditor = lazy(() => import("./pages/plan/NoteEditor"));
+const Notes = lazy(() => import("./pages/notes/Notes"));
 const SelfTestRunner = lazy(() => import("./pages/plan/tests/SelfTestRunner"));
 const GenderDrillPage = lazy(() => import("./pages/plan/tests/GenderDrill"));
 const ListenType = lazy(() => import("./pages/plan/tests/ListenType"));
@@ -31,13 +30,10 @@ function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<p className="text-ink-600">Loading…</p>}>{children}</Suspense>;
 }
 
-// <Navigate to> doesn't interpolate the CURRENT route's params into its
-// target — a plain <Navigate to="/notes/edit/:id" /> would send everyone to
-// the literal string "/notes/edit/:id". A bookmarked/shared per-note editor
-// link should keep pointing at the same note, not just the notes list.
+// Old per-note editor URLs (/notes/edit/:id, /plan/notes/edit/:id) open that note's editor modal on the wall.
 function NotesEditRedirect() {
   const { id } = useParams();
-  return <Navigate to={`/notes/edit/${id}`} replace />;
+  return <Navigate to="/notes" replace state={id && id !== "new" ? { open: id } : undefined} />;
 }
 
 const queryClient = new QueryClient({
@@ -94,11 +90,8 @@ const router = createBrowserRouter([
           { path: "/plan", element: <Lazy><Journey /></Lazy> },
           { path: "/plan/syllabus", element: <Navigate to="/plan" replace /> },
           { path: "/plan/sources", element: <Navigate to="/plan" replace /> },
-          // Notes' page files stay under pages/plan/ until Phase 7 (the
-          // Notes reskin) actually moves them to pages/notes/ — only the
-          // route path is promoted to top-level here.
           { path: "/notes", element: <Lazy><Notes /></Lazy> },
-          { path: "/notes/edit/:id", element: <Lazy><NoteEditor /></Lazy> },
+          { path: "/notes/edit/:id", element: <NotesEditRedirect /> },
           { path: "/plan/self-tests", element: <Navigate to="/plan" replace /> },
           { path: "/plan/self-tests/run", element: <Lazy><SelfTestRunner /></Lazy> },
           { path: "/plan/self-tests/gender", element: <Lazy><GenderDrillPage /></Lazy> },

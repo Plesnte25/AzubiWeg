@@ -29,9 +29,9 @@ function FileChip({ file, onChanged }: { file: UploadedFileMeta; onChanged: () =
 
   if (isAudio) {
     return (
-      <span className="flex items-center gap-1.5 rounded-full border border-hairline bg-paper px-2 py-1 text-caption">
+      <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-line bg-plain px-2.5 py-1 text-[12px] font-bold text-plain-text">
         {preview && <audio controls src={preview} className="h-7 max-w-56" />}
-        <button className="text-ink-400 hover:text-danger-600" title="Remove recording" onClick={() => removeFile.mutate(file.id)}>
+        <button className="cursor-pointer px-0.5 opacity-60 hover:opacity-100" aria-label="Remove recording" title="Remove recording" onClick={() => removeFile.mutate(file.id)}>
           ×
         </button>
       </span>
@@ -39,16 +39,16 @@ function FileChip({ file, onChanged }: { file: UploadedFileMeta; onChanged: () =
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-paper px-2 py-0.5 text-caption">
-      {isImage && preview && <img src={preview} alt="" className="size-8 rounded object-cover" />}
+    <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-line bg-plain px-2.5 py-1 text-[12px] font-bold text-plain-text">
+      {isImage && preview && <img src={preview} alt="" className="size-8 rounded-md border-2 border-line object-cover" />}
       <button
-        className="max-w-48 truncate hover:text-brand-700 hover:underline"
+        className="max-w-48 cursor-pointer truncate hover:underline"
         title={`Download ${file.originalName}`}
         onClick={() => downloadFile(file.id, file.originalName)}
       >
         {file.originalName}
       </button>
-      <button className="text-ink-400 hover:text-danger-600" title="Remove file" onClick={() => removeFile.mutate(file.id)}>
+      <button className="cursor-pointer px-0.5 opacity-60 hover:opacity-100" aria-label="Remove file" title="Remove file" onClick={() => removeFile.mutate(file.id)}>
         ×
       </button>
     </span>
@@ -95,7 +95,7 @@ export function Attachments({
   }
 
   return (
-    <div className="flex flex-wrap items-start gap-2">
+    <div className="flex flex-wrap items-center gap-1.5">
       {files.map((f) => (
         <FileChip key={f.id} file={f} onChanged={onChanged} />
       ))}
@@ -114,7 +114,7 @@ export function Attachments({
         renderTrigger({ onClick: () => fileInput.current?.click(), uploading })
       ) : (
         <button
-          className="rounded border border-hairline px-2 py-0.5 text-caption text-ink-600 hover:bg-paper"
+          className="cursor-pointer rounded-full border-2 border-dashed border-line px-2.5 py-1 text-[12px] font-bold"
           disabled={uploading}
           onClick={() => fileInput.current?.click()}
           title="Attach notes (PDF, photo, or .txt)"
@@ -122,7 +122,7 @@ export function Attachments({
           {uploading ? "Uploading…" : "+ notes"}
         </button>
       )}
-      {error && <span className="text-caption text-danger-600">{error}</span>}
+      {error && <span className="text-[12px] font-bold">{error}</span>}
     </div>
   );
 }

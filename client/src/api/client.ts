@@ -4,6 +4,7 @@ import type {
   Application,
   ApplicationDetail,
   ApplicationPhrase,
+  WallNote,
   CuratedPhrase,
   ApplicationStats,
   ApplicationStatus,
@@ -491,7 +492,12 @@ export const api = {
     pinned?: boolean;
     applicationId?: string | null;
     stationKey?: string | null;
+    studySourceId?: string | null;
   }) => request<{ note: Note }>("/api/notes", { method: "POST", body: JSON.stringify(data) }),
+  notesWall: () => request<{ notes: WallNote[] }>("/api/notes/wall"),
+  surfacedNotes: () => request<{ notes: Note[] }>("/api/notes/surfaced"),
+  resurfaceNote: (id: string, outcome: "again" | "known") =>
+    request<{ note: Note }>(`/api/notes/${id}/resurface`, { method: "POST", body: JSON.stringify({ outcome }) }),
   stationNotes: (stationKey: string) =>
     request<{ notes: Note[] }>(`/api/notes?stationKey=${encodeURIComponent(stationKey)}`),
   updateNote: (
@@ -504,6 +510,11 @@ export const api = {
       roadmapTaskId: string | null;
       wordId: string | null;
       contextTag: string | null;
+      category: NoteCategory;
+      pinned: boolean;
+      applicationId: string | null;
+      stationKey: string | null;
+      studySourceId: string | null;
     }>,
   ) => request<{ note: Note }>(`/api/notes/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteNote: (id: string) => request<void>(`/api/notes/${id}`, { method: "DELETE" }),

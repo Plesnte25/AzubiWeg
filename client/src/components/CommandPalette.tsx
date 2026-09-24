@@ -70,7 +70,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const [query, setQuery] = useState("");
   const [addingWord, setAddingWord] = useState(false);
   const { data: wordsData } = useQuery({ queryKey: ["words"], queryFn: api.words, enabled: open });
-  const { data: notesData } = useQuery({ queryKey: ["notes"], queryFn: () => api.notesFeed(), enabled: open });
+  const { data: notesData } = useQuery({ queryKey: ["notes", "wall"], queryFn: api.notesWall, enabled: open });
   const { data: syllabusData } = useQuery({ queryKey: ["learning", "syllabus"], queryFn: api.learningSyllabus, enabled: open });
 
   useEffect(() => {
@@ -253,12 +253,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                     </button>
                     <button
                       type="button"
-                      onClick={() => go(() => push("/notes/edit/new", { state: { contextTag: query.trim() } }))}
+                      onClick={() => go(() => push("/notes", { state: { draft: query.trim() } }))}
                       className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
                       style={{ color: "var(--color-ink-900)" }}
                     >
                       <NotePencil size={16} weight="regular" style={{ color: "var(--color-ink-400)", flexShrink: 0 }} aria-hidden="true" />
-                      <span className="min-w-0 flex-1 truncate text-[13.5px]">New note tagged &ldquo;{query.trim()}&rdquo;</span>
+                      <span className="min-w-0 flex-1 truncate text-[13.5px]">New note: &ldquo;{query.trim()}&rdquo;</span>
                     </button>
                   </div>
                 )}
@@ -270,7 +270,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                       <button
                         key={n.id}
                         type="button"
-                        onClick={() => go(() => push(`/notes/edit/${n.id}`))}
+                        onClick={() => go(() => push("/notes", { state: { open: n.id } }))}
                         className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
                         style={{ color: "var(--color-ink-900)" }}
                       >

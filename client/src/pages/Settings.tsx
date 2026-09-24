@@ -14,7 +14,7 @@ import { toast } from "../components/ui/Toast";
 import { useNavStack } from "../lib/navStack";
 import { useTheme } from "../lib/theme";
 import { ExamSchedule } from "./plan/ExamSchedule";
-import { invalidateHub } from "./learning-hub/queryHelpers";
+import { invalidateHub } from "../lib/queryHelpers";
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return (

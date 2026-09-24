@@ -99,10 +99,12 @@ export default function Journey() {
 
   const { data: notesData } = useQuery({ queryKey: ["notes", "station", current?.key], queryFn: () => api.stationNotes(current!.key), enabled: !!current });
 
-  // a deep link from Today (push("/plan", {state:{openTaskId}})) opens that task
+  // deep links: a task from Today (push("/plan", {state:{openTaskId}})), a station or source from a note's link chip
   useEffect(() => {
-    const id = (location.state as { openTaskId?: string } | null)?.openTaskId;
-    if (id) setModal({ k: "task", taskId: id, origin: "Today's ticket" });
+    const st = (location.state as { openTaskId?: string; openStationKey?: string; openSourceId?: string } | null) ?? {};
+    if (st.openTaskId) setModal({ k: "task", taskId: st.openTaskId, origin: "Today's ticket" });
+    else if (st.openStationKey) setModal({ k: "station", key: st.openStationKey });
+    else if (st.openSourceId) setModal({ k: "source", id: st.openSourceId });
   }, [location.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = () => {

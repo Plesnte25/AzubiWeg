@@ -24,6 +24,11 @@ interface ModalProps {
   size?: "sm" | "md" | "lg" | "xl";
   /** Legacy: render only at Tailwind lg+ because an sm/md replacement lives elsewhere (ApplicationDetailModal). */
   desktopOnly?: boolean;
+  /** Replaces the tag/title/subtitle column (Notes editor: category chips). The close button stays. */
+  header?: ReactNode;
+  /** Sticky-note shape (Notes editor): its radius, a fixed md+ height and md+ tilt, and on sm a tall sheet from
+   * `top: 70px`. */
+  sticky?: { radius: string; height: number; tilt: number };
   /** Legacy no-op: every Bento modal is a bottom sheet below md. */
   sheetOnSm?: boolean;
   children: ReactNode;
@@ -50,6 +55,8 @@ export function Modal({
   ariaLabel,
   size = "md",
   desktopOnly,
+  header,
+  sticky,
   children,
 }: ModalProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -104,56 +111,61 @@ export function Modal({
         tabIndex={-1}
         className={cn(
           "absolute flex flex-col outline-none",
-          "inset-x-1.5 bottom-1.5 max-h-[88%] gap-3.5 p-4 shadow-[5px_5px_0_var(--shadow)]",
+          "inset-x-1.5 bottom-1.5 gap-3.5 p-4 shadow-[5px_5px_0_var(--shadow)]",
+          sticky ? "top-[70px] md:h-[var(--h)]" : "max-h-[88%]",
           "md:inset-x-auto md:bottom-auto md:top-1/2 md:left-1/2 md:max-h-[calc(100%-80px)] md:w-[var(--w)] md:max-w-[calc(100%-32px)] md:gap-4 md:p-6",
-          "md:shadow-[9px_9px_0_var(--shadow)] md:[transform:translate(-50%,-50%)_rotate(-0.6deg)]",
+          "md:shadow-[9px_9px_0_var(--shadow)] md:[transform:translate(-50%,-50%)_rotate(var(--tilt))]",
         )}
         style={
           {
             "--w": `${width ?? SIZE_WIDTH[size]}px`,
+            "--tilt": `${sticky?.tilt ?? -0.6}deg`,
+            ...(sticky ? { "--h": `${sticky.height}px` } : {}),
             background: bg,
             color: isPlain ? "var(--plainText)" : "var(--onTile)",
             border: "2.5px solid var(--line)",
-            borderRadius: 28,
+            borderRadius: sticky?.radius ?? 28,
             boxSizing: "border-box",
           } as React.CSSProperties
         }
       >
         <Tape left="40%" width={86} />
         <div className={cn("flex shrink-0 justify-between gap-3", title ? "items-start" : "items-center")}>
-          <div className="flex min-w-0 flex-col gap-1.5">
-            {tag && (
-              <span
-                className="self-start"
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  background: "var(--plain)",
-                  color: "var(--plainText)",
-                  border: "2px solid var(--line)",
-                  borderRadius: 8,
-                  padding: "2px 9px",
-                  transform: "rotate(-3deg)",
-                }}
-              >
-                {tag}
-              </span>
-            )}
-            {title && (
-              <h2
-                style={{
-                  fontSize: "calc(var(--k, 1) * 30px)",
-                  fontWeight: 700,
-                  letterSpacing: "-.04em",
-                  lineHeight: 1,
-                  margin: 0,
-                }}
-              >
-                {title}
-              </h2>
-            )}
-            {subtitle && <span style={{ fontSize: 14, fontWeight: 600 }}>{subtitle}</span>}
-          </div>
+          {header ?? (
+            <div className="flex min-w-0 flex-col gap-1.5">
+              {tag && (
+                <span
+                  className="self-start"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    background: "var(--plain)",
+                    color: "var(--plainText)",
+                    border: "2px solid var(--line)",
+                    borderRadius: 8,
+                    padding: "2px 9px",
+                    transform: "rotate(-3deg)",
+                  }}
+                >
+                  {tag}
+                </span>
+              )}
+              {title && (
+                <h2
+                  style={{
+                    fontSize: "calc(var(--k, 1) * 30px)",
+                    fontWeight: 700,
+                    letterSpacing: "-.04em",
+                    lineHeight: 1,
+                    margin: 0,
+                  }}
+                >
+                  {title}
+                </h2>
+              )}
+              {subtitle && <span style={{ fontSize: 14, fontWeight: 600 }}>{subtitle}</span>}
+            </div>
+          )}
           <button
             type="button"
             onClick={onClose}

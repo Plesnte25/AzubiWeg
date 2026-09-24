@@ -637,6 +637,8 @@ export interface Note {
   pinned: boolean;
   applicationId: string | null;
   stationKey: string | null;
+  /** /source link (sticky wall). */
+  studySourceId: string | null;
   /** "Surfaced today" rotation (grammar/mistakes notes); null = not in rotation. */
   resurfaceDueAt: string | null;
   resurfaceStep: number;
@@ -646,6 +648,13 @@ export interface Note {
 }
 
 export type NoteCategory = "grammar" | "mistakes" | "everyday" | "jobs" | "listening";
+
+/** GET /api/notes/wall: a note plus the names its link chip shows. */
+export interface WallNote extends Note {
+  word: { id: string; headword: string } | null;
+  application: { id: string; company: string } | null;
+  studySource: { id: string; title: string } | null;
+}
 
 /** SyllabusItem's Grammar Notebook (examples/exceptions/commonMistakes),
  * merged into one `body` string server-side — see notes.ts's

@@ -125,6 +125,14 @@ const STATES = [
     },
   },
   {
+    name: "notes-editor",
+    route: "/notes",
+    run: async (page) => {
+      await page.getByRole("button", { name: /· / }).filter({ hasText: /Grammar|Mistakes|Everyday|Jobs|Listening/ }).first().click();
+      await page.waitForTimeout(600);
+    },
+  },
+  {
     name: "stats-drill",
     route: "/stats",
     run: async (page) => {
