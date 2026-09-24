@@ -8,7 +8,7 @@ import { Skeleton } from "../../components/ui/Skeleton";
 import { chipColor, fullArtLabel } from "../../lib/wordDisplay";
 import { THEMENFELD_LABELS } from "../../lib/vocab";
 import { useNavStack } from "../../lib/navStack";
-import { WordDetailContent } from "../words/WordDetailContent";
+import { ReviewWordPane } from "./ReviewWordPane";
 import { ReviewNotesPane } from "./ReviewNotesPane";
 import { ReviewQueuePane } from "./ReviewQueuePane";
 import { SessionDone } from "./SessionDone";
@@ -474,7 +474,7 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
           </div>
 
           <div className="min-w-0 flex-1 border-r" style={{ borderColor: "var(--color-hairline-soft)" }}>
-            <WordDetailContent key={current.id} id={current.id} embedded />
+            <ReviewWordPane key={current.id} wordId={current.id} />
           </div>
 
           <div className="w-[300px] shrink-0">

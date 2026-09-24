@@ -65,6 +65,34 @@ const STATES = [
       await page.waitForTimeout(300);
     },
   },
+  {
+    name: "word-selected",
+    route: "/words",
+    run: async (page) => {
+      // on sm this opens the bottom sheet; lg/md just move the selection
+      await page.getByRole("option").nth(1).click();
+      await page.waitForTimeout(450);
+    },
+  },
+  {
+    name: "word-details",
+    route: "/words",
+    run: async (page) => {
+      await page.getByRole("option").first().click();
+      await page.waitForTimeout(300);
+      await page.getByRole("button", { name: "Word details" }).locator("visible=true").first().click();
+      await page.waitForTimeout(350);
+    },
+  },
+  {
+    name: "add-word",
+    route: "/words",
+    run: async (page) => {
+      await page.getByRole("button", { name: "Word", exact: true }).click();
+      await page.getByPlaceholder(/Werkstatt/).locator("visible=true").fill("Genehmigung");
+      await page.waitForTimeout(450);
+    },
+  },
 ];
 
 const pick = (value, all) => (value ? value.split(",").filter((v) => all.includes(v)) : all);

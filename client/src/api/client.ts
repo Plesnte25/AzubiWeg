@@ -161,7 +161,7 @@ export const api = {
   words: () => request<{ words: Word[] }>("/api/words"),
   wordsMeta: () => request<{ lessons: { lesson: string; count: number }[] }>("/api/words/meta"),
   addWords: (words: string[], lesson?: string, classification?: { themenfeld?: Themenfeld[]; level?: CefrLevel }) =>
-    request<{ words: Word[] }>("/api/words", {
+    request<{ words: Word[]; rejected: { word: string; reason: "loanword" | "not-german" }[] }>("/api/words", {
       method: "POST",
       body: JSON.stringify({ words, ...(lesson ? { lesson } : {}), ...classification }),
     }),
@@ -565,9 +565,10 @@ export async function downloadFile(fileId: string, name: string): Promise<void> 
 }
 
 /** Fetches word audio with auth and plays it (audio tags can't send headers). */
+/** Plays a word's recording; words without one fall back to the server's cached Edge TTS of the headword. */
 export async function playWordAudio(wordId: string): Promise<void> {
   const token = getToken();
-  const res = await fetch(`/api/words/${wordId}/audio`, {
+  const res = await fetch(`/api/words/${wordId}/audio?fallback=tts`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) throw new ApiError(res.status, "Audio not available");

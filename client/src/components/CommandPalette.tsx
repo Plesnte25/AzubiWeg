@@ -8,7 +8,7 @@ import { stripHtml } from "../lib/text";
 import { chipColor, chipLabel } from "../lib/wordDisplay";
 import { useNavStack } from "../lib/navStack";
 import { bestMatchingStation, deriveStations } from "../pages/plan/stations";
-import { AddWordsDialog } from "../pages/vocabulary/AddWordsDialog";
+import { AddWordSheet } from "../pages/words/AddWordSheet";
 
 function ShortcutBadge({ letter }: { letter: string }) {
   return (
@@ -140,12 +140,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   return (
     <>
-      {/* AddWordsDialog must stay mounted even when the palette itself
+      {/* AddWordSheet must stay mounted even when the palette itself
           closes (its own BottomSheet handles open/close transitions) —
           "Add as new word" closes the palette (onClose below) while
           opening this, so this can't be gated on `open` too, or it would
           unmount in the same tick it's meant to appear. */}
-      <AddWordsDialog open={addingWord} onClose={() => setAddingWord(false)} initialWord={query.trim()} />
+      <AddWordSheet open={addingWord} onClose={() => setAddingWord(false)} initialWord={query.trim()} />
       {open && (
       <div
         className="fixed inset-0 z-[60] flex items-start justify-center pt-[14vh]"

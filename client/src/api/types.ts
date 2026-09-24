@@ -517,12 +517,30 @@ export interface SelfTestResult {
   takenAt: string;
 }
 
+export interface SelfTestScore {
+  percent: number | null;
+  count: number;
+}
+
+export type Article = "der" | "die" | "das";
+
+export interface ArticleAccuracy {
+  byArticle: Record<Article, { correct: number; total: number; percent: number | null }>;
+  mostMissed: Article | null;
+  recentWrong: { wrong: number; of: number } | null;
+}
+
 export interface QuizResultsResponse {
   results: SelfTestResult[];
   testsTaken: number;
   best: number | null;
   avg: number | null;
   weakestTopics: RoadmapTopicWeakness[];
+  /** Checkpoint tiles, over the last 20 tests. */
+  scores: { multipleChoice: SelfTestScore; fillIn: SelfTestScore; genderDrill: SelfTestScore; listenType: SelfTestScore };
+  /** From every gender-drill answer. */
+  articles: ArticleAccuracy;
+  checkpoints: { level: CefrLevel | null; index: number; score: number; total: number; takenAt: string }[];
 }
 
 export type RoadmapTaskType = "generic" | "vocab" | "study_source" | "milestone_test";

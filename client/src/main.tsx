@@ -26,8 +26,7 @@ const ExamGate = lazy(() => import("./pages/plan/ExamGate"));
 const ExamRunner = lazy(() => import("./pages/plan/ExamRunner"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Stats = lazy(() => import("./pages/stats/Stats"));
-const Vocabulary = lazy(() => import("./pages/Vocabulary"));
-const WordDetail = lazy(() => import("./pages/words/WordDetail"));
+const Words = lazy(() => import("./pages/words/Words"));
 const ReviewSession = lazy(() => import("./pages/review/ReviewSession"));
 
 function Lazy({ children }: { children: React.ReactNode }) {
@@ -91,8 +90,8 @@ const router = createBrowserRouter([
         children: [
           // ── the 6 real tab destinations (Today/Words/Plan/Jobs/Stats/Notes) ──
           { path: "/", element: <Today /> },
-          { path: "/words", element: <Lazy><Vocabulary /></Lazy> },
-          { path: "/words/:id", element: <Lazy><WordDetail /></Lazy> },
+          { path: "/words", element: <Lazy><Words /></Lazy> },
+          { path: "/words/:id", element: <Lazy><Words /></Lazy> },
           { path: "/review", element: <Lazy><ReviewSession /></Lazy> },
           { path: "/plan", element: <Lazy><Plan /></Lazy> },
           { path: "/plan/syllabus", element: <Lazy><Syllabus /></Lazy> },
