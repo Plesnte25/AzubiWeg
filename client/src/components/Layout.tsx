@@ -1,15 +1,11 @@
 import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useActivityHeartbeat } from "../hooks/useActivityHeartbeat";
-import { cn } from "../lib/cn";
 import { isTransientPath, NavStackProvider, useNavStack } from "../lib/navStack";
 import { QUICK_LINKS } from "../lib/navDestinations";
-import { isThemeReadyRoute } from "../lib/themeReadyRoutes";
-import BottomTabBar from "./BottomTabBar";
-import CaptureFab from "./CaptureFab";
+import { SmBottomNav, SmTopBar, TopNav } from "./chrome/Chrome";
 import { CommandPalette } from "./CommandPalette";
 import DemoBanner from "./DemoBanner";
-import { Rail } from "./Rail";
 
 /**
  * Gmail/Superhuman-style "G then a letter" quick-nav, active app-wide
@@ -70,30 +66,19 @@ function GlobalShortcuts({ armed }: { armed: boolean }) {
   return null;
 }
 
+/**
+ * The Bento shell (handoff README §1.1, §1.5). Page padding lg 24 / md 22 / sm 14, with the chrome and the page
+ * stacked in a column:
+ * - lg (>= 1200px) and tall enough (>= 820px, the `lgfill` variant): the shell is exactly the viewport and nothing
+ *   page-scrolls. <main> gets the remaining height, so a page's grid fills it with `flex-1 min-h-0` (or `h-full`)
+ *   and only inner lists scroll.
+ * - Shorter lg viewports, md and sm: the document scrolls. Pages give their rows explicit heights/min-heights.
+ * - sm: SmTopBar and SmBottomNav are sticky, and content scrolls between them.
+ * Transient screens (the review session) own the whole viewport with no chrome, for a distraction-free session.
+ * Each page sets its own `--k` display scale on its root (index.css has the fallback).
+ */
 export default function Layout() {
   const location = useLocation();
-  const isDashboard = location.pathname === "/";
-  const isWords = location.pathname === "/words";
-  const isNotes = location.pathname === "/notes";
-  const isSyllabusOrSources = location.pathname === "/plan/syllabus" || location.pathname === "/plan/sources";
-  // Words, Notes, and Syllabus/Sources all have a desktop 3-column layout
-  // with columns meant to scroll internally (word list / note list /
-  // station list) — that only works if some ancestor actually bounds
-  // main's height, same as Dashboard's own lg:h-dvh below.
-  const needsBoundedHeight = isDashboard || isWords || isNotes || isSyllabusOrSources;
-  // Words', Notes', and Syllabus/Sources' master-detail layouts read as
-  // power pages like Dashboard — they want the same edge-to-edge treatment
-  // (list column flush against the Rail), not the centered max-w-6xl
-  // reading-width box every other route gets. (Notes.tsx has its own
-  // lg:mx-auto max-w-[1040px] wrapper too — that has to come off in the
-  // same change, or the page stays double-boxed even with this flag
-  // flipped.)
-  const isEdgeToEdge = isDashboard || isWords || isNotes || isSyllabusOrSources;
-  // Transient screens (the review session so far) own the whole viewport
-  // distraction-free, same as the handoff — no tab bar/FAB/rail to tap
-  // away through mid-session, and no reserved padding for chrome that
-  // isn't there. Every other route gets the same unified Rail (see
-  // Rail.tsx) — no more per-route chrome decision.
   const isTransient = isTransientPath(location.pathname);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -112,60 +97,28 @@ export default function Layout() {
 
   return (
     <NavStackProvider>
-      <div className="min-h-screen">
-        {/* the dashboard needs the full content width (and a fixed-height grid
-            at lg+) to fit proportionally without scrolling; every other page
-            keeps the centered reading-width layout — carried over as-is from
-            the pre-Nocturne layout. pb clears the 5-tab bottom bar (mobile);
-            at lg the bottom bar is replaced by Rail (fixed, 84px), so main
-            gets left padding to clear it instead. */}
+      {/* Outer column so the demo banner shares the viewport height with the shell instead of adding to it. */}
+      <div className="flex min-h-dvh flex-col lgfill:h-dvh">
         <DemoBanner />
-
-        {!isTransient && <Rail onOpenPalette={() => setPaletteOpen(true)} />}
-
-        <main
-          // Scoped theme override, separate from ThemeProvider's own
-          // document-root write — CSS custom properties cascade from the
-          // nearest ancestor, so this wins for everything inside <main>
-          // without touching Rail/BottomTabBar/etc. outside it. Omitted
-          // (inherits the real theme normally) once a route is migrated —
-          // see lib/themeReadyRoutes.ts.
-          data-theme={isThemeReadyRoute(location.pathname) ? undefined : "dark"}
-          className={cn(
-            !isTransient && "lg:pl-[84px]",
-            // Dashboard owns its own edge-to-edge padding and bottom
-            // clearance (see Dashboard.tsx) instead of main reserving it,
-            // so the two don't fight over the same padding box — every
-            // other route still gets its clearance from here.
-            !isTransient && !isDashboard && "pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0",
-            // Transient screens (see the comment above) own the whole
-            // viewport themselves, full-bleed — they must not also be
-            // capped at max-w-6xl here, or a real full-width desktop
-            // layout (e.g. ReviewSession's lg: 4-pane layout) can never
-            // use more than main's own capped width.
-            // lg:pr-4 (not lg:px-4) — px would reset the padding-left that
-            // lg:pl-[84px] above already set for rail clearance, since
-            // tailwind-merge treats them as the same conflicting group and
-            // keeps whichever is later in this list.
-            !isTransient && (isEdgeToEdge ? "lg:h-dvh lg:min-h-[760px] lg:pr-4 lg:py-3" : "mx-auto max-w-6xl px-4 py-6"),
-            !isTransient && !isEdgeToEdge && needsBoundedHeight && "lg:h-dvh lg:min-h-[760px]",
-          )}
-        >
-          <Outlet />
-        </main>
-
-        {!isTransient && (
-          <>
-            <div className="lg:hidden">
-              <BottomTabBar />
-            </div>
-            <CaptureFab />
-          </>
+        {isTransient ? (
+          <main className="flex-1">
+            <Outlet />
+          </main>
+        ) : (
+          <div className="flex flex-1 flex-col gap-4 p-3.5 md:gap-5 md:p-[22px] blg:gap-[22px] blg:p-6 lgfill:min-h-0 lgfill:overflow-hidden">
+            <SmTopBar />
+            <TopNav />
+            <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <Outlet />
+            </main>
+            {/* A direct child of the shell on purpose: sticky only works within its parent's full height. */}
+            <SmBottomNav />
+          </div>
         )}
-
-        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-        <GlobalShortcuts armed={!paletteOpen} />
       </div>
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <GlobalShortcuts armed={!paletteOpen} />
     </NavStackProvider>
   );
 }

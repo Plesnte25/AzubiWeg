@@ -9,16 +9,9 @@ export interface NavDestination {
   icon: Icon;
 }
 
-// The 6 top-level destinations. Originally 5 (confirmed against the
-// Nocturne handoff's main interactive prototype — German Companion
-// App.dc.html's goHome/goVocab/goRoadmap/goJobs/goProgress handlers +
-// JOBS/ph-briefcase tab), Notes promoted to a real 6th here for the
-// Nocturne v2 redesign (see the readdy.cc prototype, which surfaces Notes
-// as a top-level tab on both its mobile bar and desktop rail). This is a
-// deliberate, acknowledged deviation from the ui-ux-pro-max skill's own
-// bottom-nav-limit guidance (max 5 items) — see BottomTabBar.tsx for the
-// re-validated touch-target/spacing check at 6. Shared by every nav surface
-// so they can't drift out of sync.
+// The six top-level destinations, in Bento nav order (handoff README §1.5: Today house · Words cards · Plan path ·
+// Jobs briefcase · Stats chart-line-up · Notes note-pencil). Shared by TopNav and SmBottomNav (components/chrome)
+// so the two can't drift out of sync.
 export const NAV_DESTINATIONS: NavDestination[] = [
   { to: "/", label: "Today", end: true, icon: House },
   { to: "/words", label: "Words", icon: Cards },

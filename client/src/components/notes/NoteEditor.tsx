@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import type { Editor } from "@tiptap/react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash } from "@phosphor-icons/react";
 import { api } from "../../api/client";
 import type { Note } from "../../api/types";
 import { stripHtml } from "../../lib/text";
@@ -41,7 +41,7 @@ export function NoteEditor({ note, onChanged }: { note: Note; onChanged: () => v
           onChanged={onChanged}
           renderTrigger={({ onClick, uploading }) => (
             <CircleIconButton
-              icon={<Plus className="size-3.5" aria-hidden="true" />}
+              icon={<Plus weight="bold" className="size-3.5" aria-hidden="true" />}
               title="Attach a photo or file"
               onClick={onClick}
               disabled={uploading}
@@ -55,7 +55,7 @@ export function NoteEditor({ note, onChanged }: { note: Note; onChanged: () => v
             if (confirm("Delete this note? This can't be undone.")) remove.mutate();
           }}
         >
-          <Trash2 className="size-3.5" aria-hidden="true" />
+          <Trash weight="fill" className="size-3.5" aria-hidden="true" />
         </button>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check } from "lucide-react";
+import { Check } from "@phosphor-icons/react";
 import { api } from "../../api/client";
 import type { ApplicationStatus } from "../../api/types";
 import { Button } from "../../components/ui/Button";
@@ -98,7 +98,7 @@ export default function NewApplicationModal({ onClose }: { onClose: () => void }
         {fetchedFrom && (
           <div className="rounded-lg border border-ok-100 bg-ok-50 px-4 py-3.5">
             <p className="flex items-center gap-1 text-body font-medium text-ok-700">
-              <Check className="size-3.5" aria-hidden="true" /> Fetched from {fetchedFrom}
+              <Check weight="bold" className="size-3.5" aria-hidden="true" /> Fetched from {fetchedFrom}
             </p>
             <div className="mt-2 grid grid-cols-1 gap-2 text-caption md:grid-cols-2">
               <MiniField label="Company" value={company} />

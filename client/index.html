@@ -12,17 +12,19 @@
     <script>
       (function () {
         // Pre-mount theme resolution, mirrored exactly from
-        // client/src/lib/theme.tsx's resolveInitialTheme() so there's no
-        // flash of the wrong theme before React hydrates. Sets data-theme
-        // (Nocturne v2's light/dark switch — see index.css), not the old
-        // pre-Nocturne .dark class, which no CSS reads any more.
-        var stored = localStorage.getItem("azubiweg-theme");
+        // client/src/lib/theme.tsx (explicit localStorage override, else the
+        // OS preference) so there's no flash of the wrong theme before React
+        // mounts. Sets data-theme, which index.css's Bento tokens key off.
+        var stored = null;
+        try {
+          stored = localStorage.getItem("azubiweg-theme");
+        } catch (e) {}
         var theme =
           stored === "light" || stored === "dark"
             ? stored
-            : window.matchMedia("(prefers-color-scheme: light)").matches
-              ? "light"
-              : "dark";
+            : window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
         document.documentElement.dataset.theme = theme;
       })();
     </script>

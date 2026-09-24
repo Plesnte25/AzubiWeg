@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { Loader2 } from "lucide-react";
+import { CircleNotch } from "@phosphor-icons/react";
 import { cn } from "../../lib/cn";
 
 type Variant = "primary" | "secondary" | "outline" | "ghost" | "danger";
@@ -73,7 +73,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button className={buttonVariants({ variant, size, shape, className })} disabled={disabled || loading} {...props}>
-      {loading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : leftIcon}
+      {loading ? <CircleNotch weight="bold" className="size-4 animate-spin" aria-hidden="true" /> : leftIcon}
       {children}
       {!loading && rightIcon}
     </button>

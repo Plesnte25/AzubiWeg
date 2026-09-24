@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Info, XCircle } from "lucide-react";
-import { cn } from "../../lib/cn";
+import { CheckCircle, Info, WarningCircle } from "@phosphor-icons/react";
 
 type ToastTone = "success" | "error" | "info";
 interface ToastItem {
@@ -9,26 +8,27 @@ interface ToastItem {
   tone: ToastTone;
 }
 
-// module-level pub-sub, not a Context provider — `toast.error(...)` needs to
-// be callable from anywhere (a mutation's onError, a plain event handler)
-// without every caller needing to be inside a provider tree or hold a hook
-// reference. <Toaster/> (mounted once, see main.tsx) is the only subscriber.
-let items: ToastItem[] = [];
-let listeners: ((items: ToastItem[]) => void)[] = [];
+// Module-level pub-sub, not a Context provider — `toast.error(...)` needs to be callable from anywhere (a mutation's
+// onError, a plain event handler) without every caller being inside a provider tree. <Toaster/> (mounted once, see
+// main.tsx) is the only subscriber. Bento shows ONE toast at a time for 2200ms (README §1.6): a new toast replaces
+// the current one and restarts the timer.
+let current: ToastItem | null = null;
+let listeners: ((item: ToastItem | null) => void)[] = [];
 let nextId = 0;
+let timer: ReturnType<typeof setTimeout> | null = null;
 
 function emit() {
-  for (const l of listeners) l(items);
+  for (const l of listeners) l(current);
 }
 
 function push(message: string, tone: ToastTone) {
-  const id = nextId++;
-  items = [...items, { id, message, tone }];
+  current = { id: nextId++, message, tone };
   emit();
-  setTimeout(() => {
-    items = items.filter((i) => i.id !== id);
+  if (timer) clearTimeout(timer);
+  timer = setTimeout(() => {
+    current = null;
     emit();
-  }, 4000);
+  }, 2200);
 }
 
 export const toast = {
@@ -37,46 +37,55 @@ export const toast = {
   info: (message: string) => push(message, "info"),
 };
 
-const TONE_ICON: Record<ToastTone, typeof CheckCircle2> = {
-  success: CheckCircle2,
-  error: XCircle,
-  info: Info,
-};
-const TONE_CLASS: Record<ToastTone, string> = {
-  success: "text-ok-600",
-  error: "text-danger-600",
-  info: "text-info-600",
-};
+const TONE_ICON = { success: CheckCircle, error: WarningCircle, info: Info };
 
-/** Mount once near the app root (see main.tsx). Bottom-right on lg, top on
- * mobile (bottom-right on a small screen sits under a thumb / the FAB dock). */
+/**
+ * Bento toast: bottom-centre `--btn` pill, 14/700, 4px shadow, rotated −1°. Below md it sits at `bottom: 90px` to
+ * clear the sm bottom nav, else 28px. Errors use a warning icon on a tomato pill so they aren't mistaken for success.
+ */
 export function Toaster() {
-  const [list, setList] = useState<ToastItem[]>(items);
+  const [item, setItem] = useState<ToastItem | null>(current);
 
   useEffect(() => {
-    listeners.push(setList);
+    listeners.push(setItem);
     return () => {
-      listeners = listeners.filter((l) => l !== setList);
+      listeners = listeners.filter((l) => l !== setItem);
     };
   }, []);
 
-  if (list.length === 0) return null;
-
   return (
-    <div className="pointer-events-none fixed inset-x-4 top-4 z-[100] flex flex-col items-center gap-2 lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-auto lg:items-end">
-      {list.map((t) => {
-        const Icon = TONE_ICON[t.tone];
-        return (
-          <div
-            key={t.id}
-            role="status"
-            className="animate-slide-up pointer-events-auto flex items-center gap-2 rounded-lg bg-card px-3.5 py-2.5 text-body shadow-lg"
-          >
-            <Icon className={cn("size-4 shrink-0", TONE_CLASS[t.tone])} aria-hidden="true" />
-            <span>{t.message}</span>
-          </div>
-        );
-      })}
+    <div
+      aria-live="polite"
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(90px+env(safe-area-inset-bottom))] z-[100] flex justify-center px-4 md:bottom-7"
+    >
+      {item &&
+        (() => {
+          const Icon = TONE_ICON[item.tone];
+          const isError = item.tone === "error";
+          return (
+            // The slide-up animation owns `transform` (fill-mode both), so the −1° tilt lives on an inner element.
+            <div key={item.id} className="animate-slide-up max-w-full">
+              <div
+                role={isError ? "alert" : "status"}
+                className="flex items-center gap-2"
+                style={{
+                  padding: "10px 16px",
+                  background: isError ? "var(--tomato)" : "var(--btn)",
+                  color: isError ? "var(--onTile)" : "var(--btnText)",
+                  border: "2.5px solid var(--line)",
+                  borderRadius: 999,
+                  fontWeight: 700,
+                  fontSize: 14,
+                  boxShadow: "4px 4px 0 var(--shadow)",
+                  transform: "rotate(-1deg)",
+                }}
+              >
+                <Icon size={16} weight="fill" className="shrink-0" aria-hidden="true" />
+                <span className="min-w-0">{item.message}</span>
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 }

@@ -1,61 +1,79 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 /**
- * Light/dark theme switching — reintroduces the mechanism Nocturne removed
- * on purpose when it went dark-only (see index.css's [data-theme="light"]
- * block for the actual color values). Modeled on navStack.tsx's
- * context/provider shape.
+ * Bento light/dark theme (handoff README §1.5): the default follows the OS `prefers-color-scheme` and updates live
+ * when it changes; the toggle sets an explicit override that persists in localStorage.
  *
- * Resolution order on first load: localStorage["azubiweg-theme"] -> OS
- * prefers-color-scheme -> "dark" (keeps today's look for anyone with no
- * stored preference and no OS signal). client/index.html has a matching
- * inline bootstrap script that reads the same key before React mounts, so
- * there's no flash of the wrong theme. The key itself predates this file —
- * index.html already had a (dead, pre-Nocturne) "azubiweg-theme"/.dark-class
- * mechanism; reused the same key rather than adding a second one.
+ * `preference` is what the user chose ("system" unless they've toggled); `theme` is what's actually showing. Only
+ * the resolved theme is ever written to <html data-theme>, which index.css's Bento token blocks key off.
+ * client/index.html has a matching inline bootstrap script that resolves the same key before React mounts, so
+ * there's no flash of the wrong theme. The key predates Bento and is reused; an absent key means "system".
  */
 
 export type Theme = "light" | "dark";
+export type ThemePreference = Theme | "system";
 
 const STORAGE_KEY = "azubiweg-theme";
+const DARK_QUERY = "(prefers-color-scheme: dark)";
 
-function systemPrefersLight(): boolean {
-  return window.matchMedia?.("(prefers-color-scheme: light)").matches ?? false;
+function readPreference(): ThemePreference {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored === "light" || stored === "dark") return stored;
+  } catch {
+    // storage blocked (private mode, sandboxed preview): fall back to the OS
+  }
+  return "system";
 }
 
-export function resolveInitialTheme(): Theme {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored === "light" || stored === "dark") return stored;
-  return systemPrefersLight() ? "light" : "dark";
+function systemTheme(): Theme {
+  return window.matchMedia?.(DARK_QUERY).matches ? "dark" : "light";
 }
 
 interface ThemeContextValue {
   theme: Theme;
-  setTheme: (theme: Theme) => void;
+  preference: ThemePreference;
+  setPreference: (preference: ThemePreference) => void;
+  /** Flips the showing theme and pins it as an explicit override. */
   toggleTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-/** Always writes the real preference to <html> — global chrome (Rail,
- * BottomTabBar, CommandPalette, ...) lives outside <main> and stays fully
- * theme-reactive everywhere. Page content forced-dark for not-yet-migrated
- * routes is a SEPARATE, narrower override scoped to <main> itself (see
- * Layout.tsx's own data-theme attribute) — CSS custom properties cascade
- * from the nearest ancestor, so that inner attribute wins for page content
- * without this one needing any route awareness at all. */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => resolveInitialTheme());
+  const [preference, setPreferenceState] = useState<ThemePreference>(readPreference);
+  const [system, setSystem] = useState<Theme>(systemTheme);
+  const theme = preference === "system" ? system : preference;
+
+  // Live OS listener: always subscribed, so switching back to "system" picks up the current OS value immediately.
+  useEffect(() => {
+    const mq = window.matchMedia?.(DARK_QUERY);
+    if (!mq) return;
+    const onChange = () => setSystem(mq.matches ? "dark" : "light");
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem(STORAGE_KEY, theme);
   }, [theme]);
 
-  const setTheme = useCallback((next: Theme) => setThemeState(next), []);
-  const toggleTheme = useCallback(() => setThemeState((t) => (t === "dark" ? "light" : "dark")), []);
+  const setPreference = useCallback((next: ThemePreference) => {
+    setPreferenceState(next);
+    try {
+      if (next === "system") localStorage.removeItem(STORAGE_KEY);
+      else localStorage.setItem(STORAGE_KEY, next);
+    } catch {
+      // not persisted; still applies for this session
+    }
+  }, []);
 
-  const value = useMemo(() => ({ theme, setTheme, toggleTheme }), [theme, setTheme, toggleTheme]);
+  const toggleTheme = useCallback(() => setPreference(theme === "dark" ? "light" : "dark"), [setPreference, theme]);
+
+  const value = useMemo(
+    () => ({ theme, preference, setPreference, toggleTheme }),
+    [theme, preference, setPreference, toggleTheme],
+  );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

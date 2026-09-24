@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { UploadCloud } from "lucide-react";
+import { CloudArrowUp } from "@phosphor-icons/react";
 import { api, uploadFile } from "../../api/client";
 import type { CvCategory } from "../../api/types";
 import { Button } from "../../components/ui/Button";
@@ -96,7 +96,7 @@ export default function AddCvModal({ onClose }: { onClose: () => void }) {
             }
           }}
         >
-          <UploadCloud className="size-5 text-ink-400" aria-hidden="true" />
+          <CloudArrowUp weight="fill" className="size-5 text-ink-400" aria-hidden="true" />
           {file ? (
             <span className="font-medium text-ink-900">{file.name}</span>
           ) : (

@@ -1,29 +1,159 @@
 @import "tailwindcss";
 
-/* self-hosted Inter for UI body text (no Google Fonts CDN round-trip) —
-   WOFF2, imported from src/assets so Vite content-hashes the filename and
-   it's cacheable forever via Caddy's @hashed /assets/* rule. */
+/* Space Grotesk, self-hosted (GDPR: no Google Fonts CDN). Variable font, weights 300-700, latin + latin-ext subsets
+   copied from @fontsource-variable/space-grotesk (OFL, see assets/fonts/SpaceGrotesk-OFL.txt). Imported from src/assets
+   so Vite content-hashes the filenames and Caddy's @hashed /assets/* rule caches them forever. */
 @font-face {
-  font-family: "Inter";
-  src: url("./assets/fonts/Inter-Regular.woff2") format("woff2");
-  font-weight: 400;
+  font-family: "Space Grotesk";
+  font-style: normal;
   font-display: swap;
+  font-weight: 300 700;
+  src: url("./assets/fonts/space-grotesk-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
-  font-family: "Inter";
-  src: url("./assets/fonts/Inter-Medium.woff2") format("woff2");
-  font-weight: 500;
+  font-family: "Space Grotesk";
+  font-style: normal;
   font-display: swap;
-}
-@font-face {
-  font-family: "Inter";
-  src: url("./assets/fonts/Inter-Bold.woff2") format("woff2");
-  font-weight: 600 700;
-  font-display: swap;
+  font-weight: 300 700;
+  src: url("./assets/fonts/space-grotesk-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+/* ── Bento "Sticker Club" tokens: literal values from the handoff README §1.2. Every Bento surface reads these as
+   plain CSS variables (inline style={{ background: "var(--tomato)" }}) or through the Tailwind aliases in the
+   @theme inline block below (bg-tomato, border-line, ...). html[data-theme] is always set to the RESOLVED theme
+   (light|dark), by index.html's pre-mount script and then lib/theme.tsx. */
+:root,
+[data-theme="light"] {
+  --bg: #f3ede0;
+  --dots: rgba(27, 27, 31, 0.13);
+  --text: #1b1b1f;
+  --line: #1b1b1f;
+  --shadow: #1b1b1f;
+  --onTile: #1b1b1f;
+  --plain: #fffbf3;
+  --plain2: #f1eadb;
+  --plainText: #1b1b1f;
+  --plainMuted: rgba(27, 27, 31, 0.62);
+  --dash: rgba(27, 27, 31, 0.14);
+  --tomato: #ff7a59;
+  --lemon: #ffd93d;
+  --sky: #8fd0ff;
+  --lilac: #c4b2ff;
+  --mint: #8ee6b8;
+  --pink: #ffb0d0;
+  --orange: #ffb46b;
+  --tape: rgba(255, 255, 255, 0.62);
+  --btn: #1b1b1f;
+  --btnText: #fffbf3;
+  --navActive: #1b1b1f;
+  --navActiveText: #fffbf3;
+  --sel: #1b1b1f;
+  --selText: #fffbf3;
+  --scrim: rgba(27, 27, 31, 0.45);
+  --hl: rgba(255, 217, 61, 0.38);
+  /* README gives no light value for --pipOff; --dash is the light idle-border tone it pairs with. */
+  --pipOff: rgba(27, 27, 31, 0.14);
+  --h0: #eae2d1;
+  --cork: #e3d3b6;
+  --rule: rgba(27, 27, 31, 0.1);
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --bg: #1a1822;
+  --dots: rgba(243, 237, 224, 0.09);
+  --text: #f3ede0;
+  --line: #0b0a0f;
+  --shadow: #050408;
+  --onTile: #1b1b1f;
+  --plain: #2b2835;
+  --plain2: #35313f;
+  --plainText: #f3ede0;
+  --plainMuted: rgba(243, 237, 224, 0.64);
+  --dash: rgba(243, 237, 224, 0.16);
+  --tomato: #f06c4c;
+  --lemon: #f2c937;
+  --sky: #72b9ee;
+  --lilac: #a897f2;
+  --mint: #6fd3a1;
+  --pink: #ef96bc;
+  --orange: #f0a259;
+  --tape: rgba(243, 237, 224, 0.28);
+  --btn: #1b1b1f;
+  --btnText: #f3ede0;
+  --navActive: #f2c937;
+  --navActiveText: #1b1b1f;
+  --sel: #f3ede0;
+  --selText: #1b1b1f;
+  --scrim: rgba(8, 7, 12, 0.6);
+  --hl: rgba(242, 201, 55, 0.16);
+  --pipOff: rgba(243, 237, 224, 0.16);
+  --h0: #35313f;
+  --cork: #2f2a24;
+  --rule: rgba(243, 237, 224, 0.1);
+  color-scheme: dark;
+}
+
+/* Display-type scale --k (README §1.1): lg 1, md 0.86–0.92, sm 0.72–0.8. Each page root overrides it with its own
+   README value; this default covers anything outside a page, e.g. modals portalled to <body>. */
+:root {
+  --k: 0.74;
+}
+@media (min-width: 768px) {
+  :root {
+    --k: 0.9;
+  }
+}
+@media (min-width: 1200px) {
+  :root {
+    --k: 1;
+  }
+}
+
+/* Tailwind aliases for the Bento tokens. `inline` makes utilities emit var(--tomato) itself, so they follow the
+   [data-theme] swap above instead of freezing the light value at build time. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-text: var(--text);
+  --color-line: var(--line);
+  --color-on-tile: var(--onTile);
+  --color-plain: var(--plain);
+  --color-plain2: var(--plain2);
+  --color-plain-text: var(--plainText);
+  --color-plain-muted: var(--plainMuted);
+  --color-dash: var(--dash);
+  --color-tomato: var(--tomato);
+  --color-lemon: var(--lemon);
+  --color-sky: var(--sky);
+  --color-lilac: var(--lilac);
+  --color-mint: var(--mint);
+  --color-pink: var(--pink);
+  --color-orange: var(--orange);
+  --color-btn: var(--btn);
+  --color-btn-text: var(--btnText);
+  --color-sel: var(--sel);
+  --color-sel-text: var(--selText);
+  --color-scrim: var(--scrim);
+}
+
+/* Bento breakpoints (README §1.1): sm < 768 <= md < 1200 <= lg. Tailwind's own `md` is already 768px, so it's used
+   as-is; Tailwind's `lg` (1024) is NOT redefined, because legacy Nocturne pages still depend on it until Phase 3
+   replaces them. Bento code uses `blg:` for the 1200px step. `lgfill:` is lg AND tall enough (>= 820px) for the
+   no-page-scroll viewport-filling grid; shorter lg viewports fall back to page scroll with tile min-heights. */
 @theme {
-  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --breakpoint-blg: 1200px;
+}
+@custom-variant lgfill (@media (min-width: 1200px) and (min-height: 820px));
+
+/* ── Legacy Nocturne tokens, kept only so not-yet-rebuilt pages stay usable on the `bento` branch. Each Phase 3
+   page rebuild stops using them; delete this @theme block, the [data-theme] Nocturne blocks below and the
+   Nocturne keyframes once nothing references them (Phase 5 dead-code grep). */
+@theme {
+  --font-sans: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, Menlo, monospace;
 
   /* radius — Nocturne: 12-14px cards, 9-11px buttons/inputs, pills use
      rounded-full directly (not a --radius-* step). sm/md serve the
@@ -473,14 +603,11 @@
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
 }
-/* Nocturne: Inter 400/500 weights only — headings use 500 ("weight 500 for
-   headings/emphasis"), not a bolder weight. Per-page font-bold/font-semibold
-   utility usage still exists in unmigrated pages and gets cleaned up as each
-   page is rebuilt (Phases 7-17), but this global default is safe to fix now. */
+/* Bento: almost everything is 700/600 (README §1.3). */
 h1,
 h2,
 h3 {
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 
@@ -510,17 +637,27 @@ body {
   backface-visibility: hidden;
 }
 
+/* <html> carries the plain ground colour with no transition, so first paint is already the right colour; body's
+   animated background-color then starts from (and sits over) the same colour instead of fading in from blank. */
+html {
+  background-color: var(--bg);
+}
+
+/* Bento page ground: cream/ink with an 18px dot grid (README §1.2). The theme switch animates the colour. */
 body {
   margin: 0;
-  background-color: var(--color-paper);
-  color: var(--color-ink-900);
+  background-color: var(--bg);
+  background-image: radial-gradient(var(--dots) 1.3px, transparent 1.6px);
+  background-size: 18px 18px;
+  color: var(--text);
+  transition: background-color 0.3s;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 ::selection {
-  background-color: var(--color-brand-100);
+  background-color: var(--hl);
 }
 
 /* buttons and links feel alive without per-page classes */
@@ -533,29 +670,23 @@ a {
     box-shadow 150ms ease,
     transform 100ms ease;
 }
-button:active:not(:disabled) {
-  transform: scale(0.98);
-}
+/* No global :active transform: Bento tiles/chips carry a static rotate() that a blanket transform would wipe out.
+   Pressed states live on the primitives (.press, below). */
 
 /* Every Nocturne input/select/textarea sets outline-none (Tailwind's
    "outline: 2px solid transparent", not a true removal) with only a static
    border and no replacement -- no visual feedback for keyboard focus
-   anywhere in the app. One rule here instead of ~20 per-file fixes;
-   box-shadow (not outline) respects each element's own border-radius and
-   layers cleanly over both bordered and borderless input styles without a
-   DOM change. */
-/* var(--color-brand-500), not a literal hex — an attribute-selector rule
-   like [data-theme="light"] input:focus-visible would match by ANY
-   ancestor having that attribute, not the NEAREST one, so it can't respect
-   a <main data-theme="dark"> override nested inside a light <html> the way
-   a custom property naturally does. One rule, cascade does the theming. */
+   anywhere in the app. One rule here instead of ~20 per-file fixes. */
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 button:focus-visible,
 a:focus-visible,
 [role="button"]:focus-visible {
-  box-shadow: 0 0 0 2px var(--color-brand-500);
+  /* Outline, not box-shadow: Bento surfaces already use box-shadow for their hard offset shadow, which a focus
+     box-shadow would replace. A dashed ink outline reads as part of the Sticker style in both themes. */
+  outline: 2.5px dashed var(--line);
+  outline-offset: 3px;
 }
 
 /* Depth: three surface levels (see components/ui/Card.tsx). @layer components
@@ -637,5 +768,47 @@ details summary::-webkit-details-marker {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Bento interaction helpers (README §1.4, §10). Rotation is static and decorative; only the hover lift and the
+   pressed nudge move, and prefers-reduced-motion removes both (the tilt stays). Classes, not inline style, because
+   inline style can't express :hover/:active. Tiles set --tilt and --lift (shadow size on hover) inline. */
+@layer components {
+  .tilt {
+    transform: rotate(var(--tilt, 0deg));
+  }
+  .lift {
+    transform: rotate(var(--tilt, 0deg));
+    transition:
+      transform 0.18s,
+      box-shadow 0.18s;
+  }
+  .lift:hover {
+    transform: rotate(0deg) translate(-2px, -2px);
+    box-shadow: var(--lift, 9px) var(--lift, 9px) 0 var(--shadow) !important;
+  }
+  .press:active:not(:disabled) {
+    transform: translate(2px, 2px) rotate(var(--tilt, 0deg));
+    box-shadow: 0 0 0 var(--shadow) !important;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lift,
+  .lift:hover {
+    transform: rotate(var(--tilt, 0deg));
+    transition: none;
+  }
+  .press:active:not(:disabled) {
+    transform: rotate(var(--tilt, 0deg));
+  }
+  body {
+    transition: none;
   }
 }
