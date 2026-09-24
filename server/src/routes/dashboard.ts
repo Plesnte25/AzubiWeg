@@ -8,7 +8,7 @@ import { summarizeMistakes } from "../services/learning/mistakes.js";
 import { levelStatesWithExamGate } from "../services/learning/progress.js";
 import { addDaysUTC, dayStatus } from "../services/learning/roadmap.js";
 import { skillPerformance } from "../services/learning/review.js";
-import { levelMastery } from "../services/learning/stations.js";
+import { levelMastery, skillMastery } from "../services/learning/stations.js";
 import { pickWeakSpot } from "../services/learning/weak-spot.js";
 import { addDaysKey, mondayKey, weeklyGoal } from "../services/learning/weekly-goal.js";
 import { isShaky, strength } from "../services/vocab/classify.js";
@@ -346,6 +346,7 @@ dashboardRouter.get("/", async (req, res) => {
           : null,
         levels: masteries.map((m, i) => ({ level: m.level, percent: m.percent, state: masteryStates[i] })),
       },
+      skillMastery: skillMastery(syllabusRows, activeMastery.level),
       weeklyGoal: weeklyGoal(user.studyCapacityMinutes, lernzeitByDay, todayKey),
       lernzeitToday: lernzeitByDay.get(todayKey) ?? 0,
       words: {

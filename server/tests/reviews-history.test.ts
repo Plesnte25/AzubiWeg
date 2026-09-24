@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeReviewStats, computeWeakWords } from "../src/services/reviews/history.js";
+import { computeRetention, computeReviewAccuracy, computeReviewStats, computeWeakWords } from "../src/services/reviews/history.js";
 import type { ReviewLogRow } from "../src/services/reviews/history.js";
 
 const log = (overrides: Partial<ReviewLogRow> & Pick<ReviewLogRow, "wordId" | "grade" | "reviewedAt">): ReviewLogRow => ({
@@ -66,5 +66,37 @@ describe("computeReviewStats", () => {
     const stats = computeReviewStats([], new Date());
     expect(stats.totalReviews).toBe(0);
     expect(stats.avgIntervalAfter).toBeNull();
+  });
+});
+
+describe("computeReviewAccuracy", () => {
+  it("scores good/easy share per trailing window", () => {
+    const now = new Date("2026-09-24T12:00:00Z");
+    const ago = (d: number) => new Date(now.getTime() - d * 86_400_000);
+    const logs = [
+      { grade: "good" as const, reviewedAt: ago(1) },
+      { grade: "hard" as const, reviewedAt: ago(2) },
+      { grade: "easy" as const, reviewedAt: ago(20) },
+      { grade: "hard" as const, reviewedAt: ago(200) },
+    ];
+    expect(computeReviewAccuracy(logs, now)).toEqual({ "7d": 50, "30d": 67, "1y": 50 });
+    expect(computeReviewAccuracy([], now)).toEqual({ "7d": null, "30d": null, "1y": null });
+  });
+});
+
+describe("computeRetention", () => {
+  it("buckets by the real gap since the word's previous review", () => {
+    const t = (d: number) => new Date(Date.UTC(2026, 0, 1) + d * 86_400_000);
+    const logs = [
+      { wordId: "a", grade: "good" as const, reviewedAt: t(0) },
+      { wordId: "a", grade: "good" as const, reviewedAt: t(1) }, // 1-day gap, recalled
+      { wordId: "a", grade: "hard" as const, reviewedAt: t(31) }, // 30-day gap, missed
+      { wordId: "b", grade: "good" as const, reviewedAt: t(5) },
+      { wordId: "b", grade: "easy" as const, reviewedAt: t(35) }, // 30-day gap, recalled
+    ];
+    expect(computeRetention(logs)).toEqual([
+      { day: 1, percent: 100, samples: 1 },
+      { day: 30, percent: 50, samples: 2 },
+    ]);
   });
 });

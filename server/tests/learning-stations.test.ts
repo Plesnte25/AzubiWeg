@@ -3,6 +3,7 @@ import {
   checkpointStations,
   deriveStations,
   levelMastery,
+  skillMastery,
   parseStationKey,
   stationKey,
   type StationItem,
@@ -97,5 +98,29 @@ describe("masteryForCompletion", () => {
   it("leaves items with an exercise to the exercise flow", async () => {
     const { masteryForCompletion } = await import("../src/services/learning/completion-sync.js");
     expect(masteryForCompletion({ exerciseType: "free_text", masteryState: "not_started" }, true)).toEqual({});
+  });
+});
+
+describe("skillMastery", () => {
+  const item = (id: string, skill: string | null, masteryState: "not_started" | "passed", skippedAt: Date | null = null) => ({
+    id,
+    level: "a2" as const,
+    theme: "T",
+    sortOrder: Number(id),
+    masteryState,
+    skippedAt,
+    skill,
+  });
+
+  it("splits the level's passed share by skill, null where a skill has no items", () => {
+    const rows = skillMastery(
+      [item("1", "reading", "passed"), item("2", "reading", "not_started"), item("3", "grammar", "passed"), item("4", "grammar", "not_started", new Date())],
+      "a2",
+    );
+    expect(rows.find((r) => r.skill === "reading")).toMatchObject({ passed: 1, counted: 2, percent: 50 });
+    // a skipped, unpassed item doesn't count, same as levelMastery
+    expect(rows.find((r) => r.skill === "grammar")).toMatchObject({ passed: 1, counted: 1, percent: 100 });
+    expect(rows.find((r) => r.skill === "speaking")).toMatchObject({ counted: 0, percent: null });
+    expect(rows.map((r) => r.skill)).toEqual(["reading", "listening", "grammar", "writing", "speaking"]);
   });
 });

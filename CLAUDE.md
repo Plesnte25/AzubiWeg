@@ -210,13 +210,11 @@ for `Phase ` before assuming a screen is unfinished or a stopgap is permanent.
   utilities resolve "last one wins," so overriding a component default
   through `className` is safe.
 - **Skill colors are global** (`client/src/lib/skills.ts`,
-  `SKILL_COLORS`/`SKILL_LABELS`), reused everywhere a skill is shown.
-  Bento redefines the map (Vocab tomato · Grammar lilac · Listening sky ·
-  Speaking pink · Writing mint · Reading orange · Self-test/Jobs lemon);
-  switch `SKILL_COLORS` to those tokens when the first Bento page uses it.
-  `displaySkill()` merges listening into speaking for display purposes only
-  — the raw 9-skill truth stays intact for anything showing a single real
-  task.
+  `SKILL_COLORS`/`SKILL_LABELS`), reused everywhere a skill is shown, with the
+  Bento map (Vocab tomato · Grammar lilac · Listening sky · Speaking pink ·
+  Writing mint · Reading orange · Self-test/Jobs lemon). Listening and
+  speaking are shown as separate skills (the Nocturne-era display merge is
+  gone).
 
 ## Claude Design handoffs
 

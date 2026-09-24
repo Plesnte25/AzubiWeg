@@ -6,7 +6,8 @@ import { lockRoot } from "../../lib/inertRoot";
 import { Tape } from "./Tile";
 
 interface ModalProps {
-  title: ReactNode;
+  /** Omitted for header-less dialogs (Stats drill: tag + close only) — pass `ariaLabel` then. */
+  title?: ReactNode;
   onClose: () => void;
   /** Small rotated chip above the title ("Station 8 · Grammar"). */
   tag?: ReactNode;
@@ -119,7 +120,7 @@ export function Modal({
         }
       >
         <Tape left="40%" width={86} />
-        <div className="flex shrink-0 items-start justify-between gap-3">
+        <div className={cn("flex shrink-0 justify-between gap-3", title ? "items-start" : "items-center")}>
           <div className="flex min-w-0 flex-col gap-1.5">
             {tag && (
               <span
@@ -138,17 +139,19 @@ export function Modal({
                 {tag}
               </span>
             )}
-            <h2
-              style={{
-                fontSize: "calc(var(--k, 1) * 30px)",
-                fontWeight: 700,
-                letterSpacing: "-.04em",
-                lineHeight: 1,
-                margin: 0,
-              }}
-            >
-              {title}
-            </h2>
+            {title && (
+              <h2
+                style={{
+                  fontSize: "calc(var(--k, 1) * 30px)",
+                  fontWeight: 700,
+                  letterSpacing: "-.04em",
+                  lineHeight: 1,
+                  margin: 0,
+                }}
+              >
+                {title}
+              </h2>
+            )}
             {subtitle && <span style={{ fontSize: 14, fontWeight: 600 }}>{subtitle}</span>}
           </div>
           <button

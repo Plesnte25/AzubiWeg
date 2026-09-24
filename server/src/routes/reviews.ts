@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
-import { computeReviewStats, computeWeakWords } from "../services/reviews/history.js";
+import { computeRetention, computeReviewAccuracy, computeReviewStats, computeWeakWords } from "../services/reviews/history.js";
 import { schedule } from "../services/srs.js";
 import { withComputedFields } from "../services/vocab/classify.js";
 import { formatSrLine, parseSrLine } from "../services/vault/format.js";
@@ -60,9 +60,10 @@ reviewsRouter.get("/weak-words", async (req, res) => {
 reviewsRouter.get("/stats", async (req, res) => {
   const logs = await prisma.reviewLog.findMany({
     where: { word: { userId: req.userId } },
-    select: { grade: true, reviewedAt: true, intervalAfter: true },
+    select: { wordId: true, grade: true, reviewedAt: true, intervalAfter: true },
   });
-  res.json(computeReviewStats(logs, new Date()));
+  const now = new Date();
+  res.json({ ...computeReviewStats(logs, now), accuracy: computeReviewAccuracy(logs, now), retention: computeRetention(logs) });
 });
 
 reviewsRouter.get("/queue", async (req, res) => {

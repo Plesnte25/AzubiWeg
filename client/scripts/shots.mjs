@@ -108,6 +108,14 @@ const STATES = [
       await page.waitForTimeout(500);
     },
   })),
+  {
+    name: "stats-drill",
+    route: "/stats",
+    run: async (page) => {
+      await page.getByRole("button", { name: "Drill the shaky ones" }).click();
+      await page.waitForTimeout(500);
+    },
+  },
 ];
 
 const pick = (value, all) => (value ? value.split(",").filter((v) => all.includes(v)) : all);

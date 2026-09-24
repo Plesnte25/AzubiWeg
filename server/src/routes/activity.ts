@@ -8,7 +8,7 @@ import { dayLernzeit, splitActiveMinutes, totalActiveMinutes } from "../services
 export const activityRouter = Router();
 activityRouter.use(requireAuth);
 
-const DAYS_QUERY = z.coerce.number().int().min(1).max(90).default(7);
+const DAYS_QUERY = z.coerce.number().int().min(1).max(366).default(7);
 
 function utcDateFromLocalKey(key: string): Date {
   const [y, m, d] = key.split("-").map(Number);

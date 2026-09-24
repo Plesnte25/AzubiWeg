@@ -131,3 +131,30 @@ export function checkpointStations(stations: Station[], checkpointIndex: 1 | 2 |
   const last = CHECKPOINT_AFTER[checkpointIndex - 1]!;
   return stations.filter((s) => s.index > last - 7 && s.index <= last);
 }
+
+/** The five skills the Stats "Mastery by skill" tile lists, in the handoff's order. */
+export const MASTERY_SKILLS = ["reading", "listening", "grammar", "writing", "speaking"] as const;
+export type MasterySkill = (typeof MASTERY_SKILLS)[number];
+
+export interface SkillMastery {
+  skill: MasterySkill;
+  passed: number;
+  counted: number;
+  /** null when the level has no counted items for this skill. */
+  percent: number | null;
+}
+
+/** Level % split by skill — same counting rule as levelMastery (skipped items only count once passed). */
+export function skillMastery(items: (StationItem & { skill: string | null })[], level: StationLevel): SkillMastery[] {
+  const counted = items.filter((i) => i.level === level && (i.skippedAt === null || isPassed(i.masteryState)));
+  return MASTERY_SKILLS.map((skill) => {
+    const inSkill = counted.filter((i) => i.skill === skill);
+    const passed = inSkill.filter((i) => isPassed(i.masteryState)).length;
+    return {
+      skill,
+      passed,
+      counted: inSkill.length,
+      percent: inSkill.length === 0 ? null : Math.round((passed / inSkill.length) * 100),
+    };
+  });
+}

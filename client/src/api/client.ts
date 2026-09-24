@@ -524,7 +524,6 @@ export const api = {
     request<void>("/api/activity/ping", { method: "POST", body: JSON.stringify({ learning }) }),
   activitySummary: (days?: number) =>
     request<ActivitySummary>(`/api/activity/summary${days ? `?days=${days}` : ""}`),
-  activityHourly: () => request<{ hours: { hour: number; minutes: number }[] }>("/api/activity/hourly"),
 };
 
 /**

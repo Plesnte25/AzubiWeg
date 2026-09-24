@@ -102,3 +102,57 @@ export function computeReviewStats(
     avgIntervalAfter: logs.length === 0 ? null : Math.round(intervalSum / logs.length),
   };
 }
+
+/** Stats hero accuracy: share of reviews graded good/easy in each trailing window (null with no reviews in it). */
+export function computeReviewAccuracy(
+  logs: { grade: Grade; reviewedAt: Date }[],
+  now: Date,
+): Record<"7d" | "30d" | "1y", number | null> {
+  const windowPercent = (days: number) => {
+    const since = now.getTime() - days * 86_400_000;
+    const inWindow = logs.filter((l) => l.reviewedAt.getTime() >= since);
+    if (inWindow.length === 0) return null;
+    return Math.round((inWindow.filter((l) => l.grade !== "hard").length / inWindow.length) * 100);
+  };
+  return { "7d": windowPercent(7), "30d": windowPercent(30), "1y": windowPercent(365) };
+}
+
+/** Retention buckets on the Stats curve's x axis (day 1 · 7 · 14 · 30 · 60), by the real gap since the previous review. */
+export const RETENTION_BUCKETS = [
+  { day: 1, maxDays: 3 },
+  { day: 7, maxDays: 10 },
+  { day: 14, maxDays: 21 },
+  { day: 30, maxDays: 45 },
+  { day: 60, maxDays: Infinity },
+] as const;
+
+/**
+ * Retention vs elapsed time: ReviewLog only stores the interval a grade produced, not the time since the word's
+ * previous review, so each word's reviews are sorted and consecutive timestamps diffed; a review counts as recalled
+ * unless graded hard. Buckets with no samples are left out.
+ */
+export function computeRetention(
+  logs: { wordId: string; grade: Grade; reviewedAt: Date }[],
+): { day: number; percent: number; samples: number }[] {
+  const byWord = new Map<string, { grade: Grade; reviewedAt: Date }[]>();
+  for (const l of logs) {
+    const list = byWord.get(l.wordId) ?? [];
+    list.push(l);
+    byWord.set(l.wordId, list);
+  }
+  const buckets = RETENTION_BUCKETS.map(() => ({ recalled: 0, total: 0 }));
+  for (const list of byWord.values()) {
+    list.sort((a, b) => a.reviewedAt.getTime() - b.reviewedAt.getTime());
+    for (let i = 1; i < list.length; i++) {
+      const gapDays = (list[i]!.reviewedAt.getTime() - list[i - 1]!.reviewedAt.getTime()) / 86_400_000;
+      const b = buckets[RETENTION_BUCKETS.findIndex((x) => gapDays <= x.maxDays)]!;
+      b.total++;
+      if (list[i]!.grade !== "hard") b.recalled++;
+    }
+  }
+  return RETENTION_BUCKETS.map((x, i) => ({
+    day: x.day,
+    percent: buckets[i]!.total === 0 ? 0 : Math.round((buckets[i]!.recalled / buckets[i]!.total) * 100),
+    samples: buckets[i]!.total,
+  })).filter((b) => b.samples > 0);
+}

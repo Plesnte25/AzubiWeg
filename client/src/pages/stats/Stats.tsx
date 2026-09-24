@@ -1,632 +1,139 @@
-import { useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarCheck, Fire, Target, Timer, TrendUp } from "@phosphor-icons/react";
 import { api } from "../../api/client";
-import type { ProgressPeriod, SrsState } from "../../api/types";
-import { useNavStack } from "../../lib/navStack";
-import { heatmapColor } from "../../lib/heatmapColor";
-import { fullArtLabel } from "../../lib/wordDisplay";
-import type { SkillProgressDatum } from "../../lib/skills";
-import { ActivationGate } from "../learning-hub/ActivationGate";
-import { ActivityHeatmap } from "./ActivityHeatmap";
-import { Constellation } from "./Constellation";
-import { ExamTrendCard } from "./ExamTrendCard";
-import { HourOfDayChart } from "./HourOfDayChart";
-import { RetentionCurve } from "./RetentionCurve";
-import { SkillProgressGauges } from "./SkillProgressGauges";
-import { SourcesRollupCard } from "./SourcesRollupCard";
-import { MasteryInsightsCard } from "./MasteryInsightsCard";
-import { GoalFeasibilityCard } from "./GoalFeasibilityCard";
-import { VocabBreakdownCard } from "./VocabBreakdownCard";
-import { WeakAreasCard } from "./WeakAreasCard";
+import { Modal } from "../../components/ui/Modal";
+import { localDateKey } from "../../lib/tasks";
+import { useBreakpoint, type Breakpoint } from "../../lib/useBreakpoint";
+import { GenderDrillBody } from "../plan/tests/GenderDrill";
+import {
+  ArticlesTile,
+  HeatTile,
+  HeroTile,
+  JobsTile,
+  ProjectionTile,
+  RetentionTile,
+  RingTile,
+  ShakyTile,
+  SkillsTile,
+  TimeTile,
+} from "./StatsTiles";
+import { lernzeitSeries, type Range } from "./series";
 
-const PERIODS: { key: ProgressPeriod; label: string }[] = [
-  { key: "7d", label: "7d" },
-  { key: "30d", label: "30d" },
-  { key: "90d", label: "90d" },
-  { key: "all", label: "all" },
-];
-const PERIOD_DAYS: Partial<Record<ProgressPeriod, number>> = { "7d": 7, "30d": 30, "90d": 90 };
+/*
+ * Stats (Bento README §6, AzubiStats.dc.html). Ten tiles plus the shaky-words Drill modal. Grid areas are the
+ * prototype's layout table minus its nav row (Layout.tsx renders the chrome). Where each number comes from:
+ *   hero        GET /words (strength per word) + /reviews/stats accuracy per range
+ *   Lernzeit    /activity/summary?days=366 (learning-route minutes), goal from the weekly goal ÷ 6 study days
+ *   ring        dashboard bento.weeklyGoal
+ *   projection  /learning/pace (active level), /roadmap/readiness (recent test average), /exam/status
+ *   retention   /reviews/stats retention (real gaps between reviews)
+ *   skills      dashboard bento.skillMastery (Level % split by skill)
+ *   articles    /learning/quiz/results articles (gender-drill answers)
+ *   heatmap     dashboard bento.streakCalendar
+ *   shaky       /reviews/weak-words (strength 1–2, hard count)
+ *   jobs        /applications/stats funnel + bento.nextInterview
+ */
 
-/** "B1 Feb"-shaped short label for a projected finish date — the base
- * Nocturne Stats mock (turn 2f) shows exactly this, restored here alongside
- * (not replacing) avg-interval; real data via computeRoutePace(), not the
- * mock's hardcoded copy. */
-function formatProjected(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: "short", year: "numeric" });
+const LAYOUT = {
+  lg: '"hero hero time time time ring" "ret ret skills skills art proj" "heat heat heat shaky shaky jobs"',
+  md: ['"hero hero proj ring" "time time time time" "ret ret skills skills" "heat heat heat heat" "art shaky shaky jobs"', "250px 230px 290px 270px 300px"],
+  sm: ['"hero hero" "proj ring" "time time" "skills skills" "ret ret" "heat heat" "art jobs" "shaky shaky"', "250px 230px 210px 300px 240px 220px 250px 330px"],
+} as const;
+
+function gridStyle(bp: Breakpoint, fill: boolean): CSSProperties {
+  if (bp === "lg") {
+    return {
+      gridTemplateColumns: "repeat(6,minmax(0,1fr))",
+      // lgfill: the three rows share the viewport; shorter lg screens page-scroll with fixed row floors
+      gridTemplateRows: fill ? "repeat(3,minmax(0,1fr))" : "260px 260px 250px",
+      gridTemplateAreas: LAYOUT.lg,
+      gap: 20,
+      height: fill ? "100%" : undefined,
+      "--k": 1,
+    } as CSSProperties;
+  }
+  if (bp === "md") {
+    return { gridTemplateColumns: "repeat(4,minmax(0,1fr))", gridTemplateRows: LAYOUT.md[1], gridTemplateAreas: LAYOUT.md[0], gap: 20, "--k": 0.92 } as CSSProperties;
+  }
+  return { gridTemplateColumns: "repeat(2,minmax(0,1fr))", gridTemplateRows: LAYOUT.sm[1], gridTemplateAreas: LAYOUT.sm[0], gap: 16, "--k": 0.8 } as CSSProperties;
 }
 
-const STATE_ORDER: SrsState[] = ["mastered", "learning", "due", "new"];
-const STATE_LABEL: Record<SrsState, string> = { mastered: "mastered", learning: "learning", due: "due", new: "new" };
-const STATE_COLOR: Record<SrsState, string> = { mastered: "#9184d9", learning: "#796cbf", due: "#5d5294", new: "#3f424d" };
+/** "Drill the shaky ones": the gender drill on shaky nouns, in the prototype's tomato dialog. */
+function DrillModal({ onClose }: { onClose: () => void }) {
+  const [progress, setProgress] = useState({ i: 0, total: 0 });
+  const done = progress.total > 0 && progress.i >= progress.total;
+  return (
+    <Modal
+      ariaLabel="Shaky drill"
+      tag={`Shaky drill${progress.total ? ` · ${done ? "done" : `${progress.i + 1} of ${progress.total}`}` : ""}`}
+      bg="var(--tomato)"
+      width={480}
+      onClose={onClose}
+    >
+      {progress.total > 0 && (
+        <div className="flex shrink-0" style={{ gap: 5 }} aria-hidden="true">
+          {Array.from({ length: progress.total }, (_, i) => (
+            <span
+              key={i}
+              style={{
+                flex: 1,
+                height: 8,
+                borderRadius: 999,
+                border: "2px solid var(--line)",
+                background: i < progress.i ? "var(--mint)" : i === progress.i ? "var(--plain)" : "transparent",
+                boxSizing: "border-box",
+              }}
+            />
+          ))}
+        </div>
+      )}
+      <GenderDrillBody shakyOnly onClose={onClose} onProgress={(i, total) => setProgress({ i, total })} />
+    </Modal>
+  );
+}
 
-/**
- * Real Stats tab — Nocturne rebuild of the pre-Nocturne ProgressPage (still
- * used by nothing else after this). The handoff's sProgress screen (word
- * constellation, SRS-state bar, mastery-by-skill, retention curve, "the
- * shaky ones") is the primary structure here; the old page's task/roadmap-
- * centric KPIs, streak grid, and Goethe-readiness card are real and not
- * redundant with anything above, so they're kept as a condensed "Activity"
- * section below rather than dropped — the old page's minutes-per-day chart
- * and completion-by-skill bars ARE redundant with the new mastery-by-skill
- * list and are dropped.
- */
 export default function Stats() {
-  const { goBack, backLabel, push } = useNavStack();
-  const [period, setPeriod] = useState<ProgressPeriod>("30d");
+  const { bp, fill } = useBreakpoint();
+  const [range, setRange] = useState<Range>("30d");
+  const [drill, setDrill] = useState(false);
 
-  const { data: roadmapStatus, isLoading: roadmapLoading } = useQuery({ queryKey: ["roadmap", "status"], queryFn: api.roadmapStatus });
-  const { data: wordsData, isLoading: wordsLoading } = useQuery({ queryKey: ["words"], queryFn: api.words });
-  const { data: historyData } = useQuery({ queryKey: ["reviews", "history", "sparkline"], queryFn: () => api.reviewHistory(200) });
+  const { data: dash } = useQuery({ queryKey: ["dashboard"], queryFn: api.dashboard });
+  const { data: wordsData } = useQuery({ queryKey: ["words"], queryFn: api.words });
   const { data: reviewStats } = useQuery({ queryKey: ["reviews", "stats"], queryFn: api.reviewStats });
-  const { data: weakWordsData } = useQuery({ queryKey: ["reviews", "weakWords"], queryFn: () => api.reviewWeakWords(6) });
-  const { data: examStatus } = useQuery({ queryKey: ["learning", "exam", "status"], queryFn: api.examStatus });
-  const { data: progress } = useQuery({ queryKey: ["learning", "progress", period], queryFn: () => api.learningProgress(period) });
-  // Same query keys Dashboard.tsx/Sources.tsx already fetch under, so
-  // visiting either this session means Stats gets these for free from the
-  // shared react-query cache instead of firing a fresh request.
-  const { data: dashboardData } = useQuery({ queryKey: ["dashboard"], queryFn: api.dashboard });
-  const { data: sourcesData } = useQuery({ queryKey: ["learning", "sources"], queryFn: api.learningSources });
-  const { data: hourly } = useQuery({ queryKey: ["activity", "hourly"], queryFn: api.activityHourly });
+  const { data: weak } = useQuery({ queryKey: ["reviews", "weakWords", 6], queryFn: () => api.reviewWeakWords(6) });
+  const { data: activity } = useQuery({ queryKey: ["activity", "summary", 366], queryFn: () => api.activitySummary(366) });
+  const { data: quiz } = useQuery({ queryKey: ["learning", "quizResults"], queryFn: api.quizResults });
   const { data: pace } = useQuery({ queryKey: ["learning", "pace"], queryFn: api.learningPace });
+  const { data: readiness } = useQuery({ queryKey: ["learning", "readiness"], queryFn: api.goetheReadiness });
+  const { data: exam } = useQuery({ queryKey: ["learning", "exam", "status"], queryFn: api.examStatus });
+  const { data: appStats } = useQuery({ queryKey: ["applications", "stats"], queryFn: api.applicationStats });
 
-  if (roadmapLoading || wordsLoading || !wordsData) {
-    return <div className="-mx-4 -my-4 min-h-[calc(100dvh-40px)]" style={{ background: "#161826" }} />;
-  }
-  if (!roadmapStatus?.activated) {
-    return (
-      <div className="-mx-4 -my-4 min-h-[calc(100dvh-40px)] px-4 py-6" style={{ background: "#161826" }}>
-        <ActivationGate />
-      </div>
-    );
-  }
+  const words = useMemo(() => wordsData?.words ?? [], [wordsData]);
+  const wordsById = useMemo(() => new Map(words.map((w) => [w.id, w])), [words]);
+  const lernzeitByDay = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const d of activity?.history ?? []) m.set(d.date, d.lernzeit);
+    if (activity) m.set(localDateKey(), activity.lernzeitToday);
+    return m;
+  }, [activity]);
 
-  const words = wordsData.words;
-  const periodDays = PERIOD_DAYS[period];
-  const addedInPeriod = periodDays ? words.filter((w) => Date.now() - new Date(w.createdAt).getTime() <= periodDays * 86_400_000).length : null;
-
-  const stateCounts: Record<SrsState, number> = { new: 0, due: 0, learning: 0, mastered: 0 };
-  for (const w of words) stateCounts[w.state]++;
-
-  const lastReviewed = historyData?.entries[0]?.wordId ?? null;
-
-  // Mastery gauges use self-test accuracy (skillPerformance), not
-  // bySkill's plan-completion rate — "weakest skill" means "worst
-  // accuracy," and this is the same metric Dashboard's weakest-skill strip
-  // reads, so both screens agree on the same underlying numbers.
-  const bySkill: SkillProgressDatum[] = (progress?.skillPerformance ?? []).map((s) => ({
-    skill: s.skill,
-    total: s.total,
-    done: s.correct,
-    percent: s.percent,
-  }));
-
-  const accuracy = reviewStats
-    ? (() => {
-        const { hard, good, easy } = reviewStats.gradeBreakdown;
-        const total = hard + good + easy;
-        return total === 0 ? null : Math.round(((good + easy) / total) * 100);
-      })()
-    : null;
-
-  const weakWords = weakWordsData?.words ?? [];
-  const historyByWord = new Map<string, number>();
-  for (const e of historyData?.entries ?? []) {
-    if (e.grade === "hard") historyByWord.set(e.wordId, (historyByWord.get(e.wordId) ?? 0) + 1);
-  }
-  const maxWeakCount = Math.max(1, ...weakWords.map((w) => historyByWord.get(w.wordId) ?? 1));
+  if (!dash) return <div className="min-h-[60vh]" aria-busy="true" />;
+  const b = dash.bento;
+  const series = lernzeitSeries(lernzeitByDay, range, b.weeklyGoal.goalMinutes);
 
   return (
-    <>
-    <div
-      className="animate-fade-in-screen -mx-4 -my-4 flex min-h-[calc(100dvh-40px)] flex-col overflow-y-auto px-[18px] pt-[calc(env(safe-area-inset-top)+18px)] pb-[calc(env(safe-area-inset-bottom)+90px)] lg:hidden"
-      style={{ background: "radial-gradient(90% 34% at 50% 30%, #2b2741 0%, #161826 72%)" }}
-    >
-      <div className="flex items-baseline justify-between">
-        <div>
-          <button type="button" onClick={goBack} className="flex items-center gap-[3px] text-[13px]" style={{ color: "rgba(233,233,237,.55)" }}>
-            {backLabel}
-          </button>
-          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
-            Where you stand
-          </div>
-          <div className="mt-0.5 text-[26px] leading-tight font-medium" style={{ letterSpacing: "-.025em" }}>
-            Stats
-          </div>
-        </div>
-        <div className="flex gap-1 rounded-full p-1" style={{ background: "#20222f" }}>
-          {PERIODS.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              onClick={() => setPeriod(p.key)}
-              className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-              style={{ background: period === p.key ? "#9184d9" : "transparent", color: period === p.key ? "#161826" : "rgba(233,233,237,.6)" }}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-3.5 flex items-end gap-2.5">
-        <div className="text-[48px] leading-[.95] font-medium" style={{ letterSpacing: "-.04em" }}>
-          {words.length}
-        </div>
-        <div className="pb-1.5 text-[12px]" style={{ color: "rgba(233,233,237,.5)" }}>
-          words that are
-          <br />
-          yours{addedInPeriod !== null ? ` · +${addedInPeriod} / ${period}` : ""}
-        </div>
-      </div>
-
-      <Constellation words={words} highlightWordId={lastReviewed} />
-
-      <div className="mt-2">
-        <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-[5px]">
-          {STATE_ORDER.map((s) => (
-            <div key={s} style={{ flex: stateCounts[s] || 0.0001, background: STATE_COLOR[s] }} />
-          ))}
-        </div>
-        <div className="mt-1.5 flex justify-between text-micro" style={{ color: "rgba(233,233,237,.45)" }}>
-          {STATE_ORDER.map((s) => (
-            <span key={s}>
-              {STATE_LABEL[s]} {stateCounts[s]}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {bySkill.length > 0 && (
-        <div className="mt-[22px]">
-          <SkillProgressGauges
-            bySkill={bySkill}
-            benchmarkPercent={examStatus ? Math.round(examStatus.passThreshold * 100) : 70}
-            benchmarkLevel={examStatus ? examStatus.level.toUpperCase() : ""}
-          />
-        </div>
-      )}
-
-      <div className="mt-5 grid grid-cols-2 gap-2">
-        <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
-          <div className="text-[20px] font-medium">{accuracy === null ? "—" : `${accuracy}%`}</div>
-          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
-            accuracy
-          </div>
-        </div>
-        <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
-          <div className="text-[20px] font-medium" style={{ color: "#b5abfc" }}>
-            {reviewStats?.avgIntervalAfter ?? "—"}
-            {reviewStats?.avgIntervalAfter !== null && reviewStats?.avgIntervalAfter !== undefined ? "d" : ""}
-          </div>
-          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
-            avg interval
-          </div>
-        </div>
-        <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
-          <div className="text-[20px] font-medium">{reviewStats?.reviewsThisWeek ?? "—"}</div>
-          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
-            reviews this week
-          </div>
-        </div>
-        <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
-          <div className="text-[20px] font-medium" style={{ color: "#b5abfc" }}>
-            {formatProjected(pace?.projectedFinishDate ?? null)}
-          </div>
-          <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
-            projected {pace?.examTargetDate ? "vs. exam date" : "finish"}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-[18px]">
-        <RetentionCurve entries={historyData?.entries ?? []} />
-      </div>
-
-      {weakWords.length > 0 && (
-        <div className="mt-[18px]">
-          <div className="mb-2 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
-            The shaky ones
-          </div>
-          <div className="flex flex-col gap-1.5">
-            {weakWords.map((w) => {
-              const word = words.find((x) => x.id === w.wordId);
-              const count = historyByWord.get(w.wordId) ?? 1;
-              return (
-                <div key={w.wordId} className="flex items-center gap-2.5 text-[13.5px]">
-                  <span
-                    className="w-14 shrink-0 truncate text-micro"
-                    title={word ? fullArtLabel(word) : undefined}
-                    style={{ color: word?.genus ? "#d2cefd" : "rgba(233,233,237,.5)" }}
-                  >
-                    {word ? fullArtLabel(word) : ""}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{w.headword}</span>
-                  <div className="h-[5px] w-[66px] overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
-                    <div className="h-full" style={{ width: `${Math.round((count / maxWeakCount) * 100)}%`, background: "#b5abfc" }} />
-                  </div>
-                  <span className="w-6 shrink-0 text-right text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
-                    {count}×
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {progress && (progress.weakAreas.length > 0 || progress.improvedMost.length > 0) && (
-        <div className="mt-[18px] rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-          <WeakAreasCard weakAreas={progress.weakAreas} improvedMost={progress.improvedMost} />
-        </div>
-      )}
-
-      {progress && examStatus && (
-        <div className="mt-[18px] rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-          <ExamTrendCard testAvg={progress.kpis.testAvg} readiness={progress.readiness} attempts={examStatus.attempts} />
-        </div>
-      )}
-
-      {progress && (
-        <div className="mt-[18px] rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-          <MasteryInsightsCard distribution={progress.masteryDistribution} trend={progress.masteryTrend} />
-        </div>
-      )}
-
-      {dashboardData && (
-        <div className="mt-[18px] rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-          <ActivityHeatmap cells={dashboardData.heatmap} />
-        </div>
-      )}
-
-      {hourly && (
-        <div className="mt-[18px] rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-          <HourOfDayChart hours={hourly.hours} />
-        </div>
-      )}
-
-      <div className="mt-[18px] rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-        <VocabBreakdownCard words={words} />
-      </div>
-
-      {sourcesData && (
-        <div className="mt-[18px] rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-          <SourcesRollupCard sources={sourcesData.sources} />
-        </div>
-      )}
-
-      {progress && (
-        <div className="mt-6">
-          <div className="mb-2 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
-            Activity
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
-              <Target size={14} weight="regular" style={{ color: "#9184d9" }} aria-hidden="true" />
-              <div className="mt-1 text-[16px] font-medium">
-                {progress.kpis.tasksKept.value}/{progress.kpis.tasksKept.total}
-              </div>
-              <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
-                tasks kept
-              </div>
-            </div>
-            <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
-              <Timer size={14} weight="regular" style={{ color: "#9184d9" }} aria-hidden="true" />
-              <div className="mt-1 text-[16px] font-medium">{progress.kpis.minutes.value}</div>
-              <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
-                minutes
-              </div>
-            </div>
-            <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
-              <Fire size={14} weight="regular" style={{ color: "#e4c4b6" }} aria-hidden="true" />
-              <div className="mt-1 text-[16px] font-medium">{progress.kpis.streak.current}d</div>
-              <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
-                streak · best {progress.kpis.streak.best}d
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-3 rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-            <div className="flex items-center gap-2 text-micro tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
-              <CalendarCheck size={12} weight="regular" aria-hidden="true" />
-              Study streak
-            </div>
-            <div className="mt-2 grid grid-cols-7 gap-1">
-              {progress.streakGrid.map((cell, i) => {
-                const isToday = i === progress.streakGrid.length - 1;
-                return (
-                  <div
-                    key={cell.date}
-                    title={`${cell.date}: ${cell.minutes} min`}
-                    className="size-4 rounded-sm"
-                    style={{ background: isToday ? "#b5abfc" : heatmapColor(cell.minutes) }}
-                  />
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mt-3 rounded-xl p-3.5" style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a" }}>
-            <div className="flex items-center gap-1.5 text-micro tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
-              <TrendUp size={12} weight="regular" aria-hidden="true" />
-              Goethe {progress.readiness.level.toUpperCase()}
-            </div>
-            <p className="mt-1 text-[14px] font-medium capitalize">{progress.readiness.readinessLabel}</p>
-            <div className="mt-2 h-[5px] overflow-hidden rounded-full" style={{ background: "#292b31" }}>
-              <div className="h-full rounded-full" style={{ width: `${progress.readiness.syllabusPercent}%`, background: "#9184d9" }} />
-            </div>
-          </div>
-
-          {pace && (
-            <div className="mt-3">
-              <GoalFeasibilityCard feasibility={pace.goalFeasibility} />
-            </div>
-          )}
-        </div>
-      )}
-
+    <div className="grid" style={gridStyle(bp, fill)}>
+      <HeroTile words={words} range={range} onRange={setRange} accuracy={reviewStats?.accuracy[range] ?? null} />
+      <TimeTile series={series} range={range} bp={bp} />
+      <RingTile goal={b.weeklyGoal} />
+      <ProjectionTile level={b.level.level} pace={pace} readiness={readiness} exam={exam} />
+      <RetentionTile points={reviewStats?.retention ?? []} />
+      <SkillsTile rows={b.skillMastery} level={b.level.level} bp={bp} />
+      <ArticlesTile articles={quiz?.articles} />
+      <HeatTile calendar={b.streakCalendar} streak={dash.streak} best={b.bestStreak} bp={bp} />
+      <ShakyTile weak={weak?.words ?? []} wordsById={wordsById} bp={bp} onDrill={() => setDrill(true)} />
+      <JobsTile stats={appStats?.stats} interview={b.nextInterview} />
+      {drill && <DrillModal onClose={() => setDrill(false)} />}
     </div>
-
-    {/* Desktop (lg+) — German Companion Desktop.dc.html id="2f": icon rail
-        + a 3-column grid (totals/strength/accuracy | constellation +
-        retention curve | mastery-by-skill + shaky ones). The "Strength" bar
-        reuses the real SRS state (mastered/learning/due/new) breakdown
-        rather than the handoff's fabricated solid/stable/learning/shaky
-        tiering, which has no backing data anywhere in this app — see the
-        implementation plan for the full reasoning. */}
-    <div className="hidden lg:flex lg:h-full lg:flex-col">
-      <div className="flex items-baseline justify-between">
-        <div>
-          <div className="text-micro tracking-[.12em] uppercase" style={{ color: "#9184d9" }}>
-            Where you stand
-          </div>
-          <div className="mt-0.5 text-[27px] leading-tight font-medium" style={{ letterSpacing: "-.02em" }}>
-            Stats
-          </div>
-        </div>
-        <div className="flex gap-1 rounded-full p-1" style={{ background: "#20222f" }}>
-          {PERIODS.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              onClick={() => setPeriod(p.key)}
-              className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-              style={{ background: period === p.key ? "#9184d9" : "transparent", color: period === p.key ? "#161826" : "rgba(233,233,237,.6)" }}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-[18px] grid flex-1 gap-5" style={{ gridTemplateColumns: "1fr 1.15fr 1fr" }}>
-        <div className="flex flex-col gap-3.5 overflow-y-auto">
-          <div className="rounded-xl p-4 text-center" style={{ background: "#1c1f2c" }}>
-            <div className="text-[34px] leading-none font-medium" style={{ letterSpacing: "-.03em" }}>
-              {words.length}
-            </div>
-            <div className="mt-1 text-[11px]" style={{ color: "rgba(233,233,237,.5)" }}>
-              words that are yours
-            </div>
-            {addedInPeriod !== null && (
-              <div className="mt-1 text-[11px]" style={{ color: "#b5abfc" }}>
-                +{addedInPeriod} / {period}
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-            <div className="text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
-              Strength
-            </div>
-            <div className="mt-2 flex h-2.5 gap-0.5 overflow-hidden rounded-[5px]">
-              {STATE_ORDER.map((s) => (
-                <div key={s} style={{ flex: stateCounts[s] || 0.0001, background: STATE_COLOR[s] }} />
-              ))}
-            </div>
-            <div className="mt-1.5 flex justify-between text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
-              {STATE_ORDER.map((s) => (
-                <span key={s}>
-                  {STATE_LABEL[s]} {stateCounts[s]}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
-              <div className="text-[19px] font-medium">{accuracy === null ? "—" : `${accuracy}%`}</div>
-              <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
-                accuracy
-              </div>
-            </div>
-            <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
-              <div className="text-[19px] font-medium" style={{ color: "#b5abfc" }}>
-                {reviewStats?.avgIntervalAfter ?? "—"}
-                {reviewStats?.avgIntervalAfter !== null && reviewStats?.avgIntervalAfter !== undefined ? "d" : ""}
-              </div>
-              <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
-                avg interval
-              </div>
-            </div>
-            <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
-              <div className="text-[19px] font-medium">{reviewStats?.reviewsThisWeek ?? "—"}</div>
-              <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
-                reviews this week
-              </div>
-            </div>
-            <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
-              <div className="text-[19px] font-medium" style={{ color: "#b5abfc" }}>
-                {formatProjected(pace?.projectedFinishDate ?? null)}
-              </div>
-              <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
-                projected finish
-              </div>
-            </div>
-          </div>
-
-          <VocabBreakdownCard words={words} />
-
-          {/* Desktop previously dropped this whole section (mobile-only) —
-              real parity gap, not a deliberate density difference like the
-              handoff's other desktop-only tiles, so it's included here now. */}
-          {progress && (
-            <>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
-                  <Target size={13} weight="regular" style={{ color: "#9184d9" }} aria-hidden="true" />
-                  <div className="mt-1 text-[15px] font-medium">
-                    {progress.kpis.tasksKept.value}/{progress.kpis.tasksKept.total}
-                  </div>
-                  <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
-                    tasks kept
-                  </div>
-                </div>
-                <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
-                  <Timer size={13} weight="regular" style={{ color: "#9184d9" }} aria-hidden="true" />
-                  <div className="mt-1 text-[15px] font-medium">{progress.kpis.minutes.value}</div>
-                  <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
-                    minutes
-                  </div>
-                </div>
-                <div className="rounded-xl p-[11px]" style={{ background: "#1c1f2c" }}>
-                  <Fire size={13} weight="regular" style={{ color: "#e4c4b6" }} aria-hidden="true" />
-                  <div className="mt-1 text-[15px] font-medium">{progress.kpis.streak.current}d</div>
-                  <div className="text-micro" style={{ color: "rgba(233,233,237,.5)" }}>
-                    streak · best {progress.kpis.streak.best}d
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-                <div className="flex items-center gap-2 text-micro tracking-[.1em] uppercase" style={{ color: "rgba(233,233,237,.62)" }}>
-                  <CalendarCheck size={12} weight="regular" aria-hidden="true" />
-                  Study streak
-                </div>
-                <div className="mt-2 grid grid-cols-7 gap-1">
-                  {progress.streakGrid.map((cell, i) => {
-                    const isToday = i === progress.streakGrid.length - 1;
-                    return (
-                      <div
-                        key={cell.date}
-                        title={`${cell.date}: ${cell.minutes} min`}
-                        className="size-3.5 rounded-sm"
-                        style={{ background: isToday ? "#b5abfc" : heatmapColor(cell.minutes) }}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="rounded-xl p-3.5" style={{ background: "linear-gradient(160deg,#2b2741,#232532)", boxShadow: "0 0 0 1px #423a6a" }}>
-                <div className="flex items-center gap-1.5 text-micro tracking-[.1em] uppercase" style={{ color: "#b5abfc" }}>
-                  <TrendUp size={12} weight="regular" aria-hidden="true" />
-                  Goethe {progress.readiness.level.toUpperCase()}
-                </div>
-                <p className="mt-1 text-[13px] font-medium capitalize">{progress.readiness.readinessLabel}</p>
-                <div className="mt-2 h-[5px] overflow-hidden rounded-full" style={{ background: "#292b31" }}>
-                  <div className="h-full rounded-full" style={{ width: `${progress.readiness.syllabusPercent}%`, background: "#9184d9" }} />
-                </div>
-              </div>
-
-              {pace && <GoalFeasibilityCard feasibility={pace.goalFeasibility} />}
-            </>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-3.5 overflow-y-auto">
-          <div className="flex flex-1 items-center justify-center rounded-xl p-4" style={{ background: "#1c1f2c" }}>
-            <Constellation words={words} highlightWordId={lastReviewed} />
-          </div>
-          <RetentionCurve entries={historyData?.entries ?? []} />
-          {dashboardData && (
-            <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-              <ActivityHeatmap cells={dashboardData.heatmap} />
-            </div>
-          )}
-          {hourly && (
-            <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-              <HourOfDayChart hours={hourly.hours} />
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-3.5 overflow-y-auto">
-          {bySkill.length > 0 && (
-            <SkillProgressGauges
-              bySkill={bySkill}
-              benchmarkPercent={examStatus ? Math.round(examStatus.passThreshold * 100) : 70}
-              benchmarkLevel={examStatus ? examStatus.level.toUpperCase() : ""}
-            />
-          )}
-
-          {weakWords.length > 0 && (
-            <div>
-              <div className="mb-2 text-micro tracking-[.12em] uppercase" style={{ color: "rgba(233,233,237,.45)" }}>
-                The shaky ones
-              </div>
-              <div className="flex flex-col gap-1.5">
-                {weakWords.map((w) => {
-                  const word = words.find((x) => x.id === w.wordId);
-                  const count = historyByWord.get(w.wordId) ?? 1;
-                  return (
-                    <div key={w.wordId} className="flex items-center gap-2.5 text-[13.5px]">
-                      <span
-                        className="w-14 shrink-0 truncate text-micro"
-                        title={word ? fullArtLabel(word) : undefined}
-                        style={{ color: word?.genus ? "#d2cefd" : "rgba(233,233,237,.5)" }}
-                      >
-                        {word ? fullArtLabel(word) : ""}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate">{w.headword}</span>
-                      <div className="h-[5px] w-[66px] overflow-hidden rounded-[3px]" style={{ background: "#292b31" }}>
-                        <div className="h-full" style={{ width: `${Math.round((count / maxWeakCount) * 100)}%`, background: "#b5abfc" }} />
-                      </div>
-                      <span className="w-6 shrink-0 text-right text-[11px]" style={{ color: "rgba(233,233,237,.62)" }}>
-                        {count}×
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              <button
-                type="button"
-                onClick={() => push("/review", { state: { words: words.filter((w) => weakWords.some((ww) => ww.wordId === w.id)) } })}
-                className="mt-3 min-h-[38px] w-full rounded-[10px] text-[13px] font-medium text-white"
-                style={{ background: "linear-gradient(160deg,var(--color-brand-solid-light),var(--color-brand-solid))" }}
-              >
-                Drill the shaky ones
-              </button>
-            </div>
-          )}
-
-          {progress && (progress.weakAreas.length > 0 || progress.improvedMost.length > 0) && (
-            <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-              <WeakAreasCard weakAreas={progress.weakAreas} improvedMost={progress.improvedMost} />
-            </div>
-          )}
-
-          {progress && examStatus && (
-            <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-              <ExamTrendCard testAvg={progress.kpis.testAvg} readiness={progress.readiness} attempts={examStatus.attempts} />
-            </div>
-          )}
-
-          {progress && (
-            <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-              <MasteryInsightsCard distribution={progress.masteryDistribution} trend={progress.masteryTrend} />
-            </div>
-          )}
-
-          {sourcesData && (
-            <div className="rounded-xl p-3.5" style={{ background: "#1c1f2c" }}>
-              <SourcesRollupCard sources={sourcesData.sources} />
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-    </>
   );
 }

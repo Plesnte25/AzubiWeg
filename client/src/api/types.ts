@@ -117,6 +117,8 @@ export interface BentoDashboard {
     percent: number;
     days: { date: string; minutes: number; status: "past" | "today" | "future" }[];
   };
+  /** Active level's Level % split by skill (null percent = no items for that skill). */
+  skillMastery: { skill: "reading" | "listening" | "grammar" | "writing" | "speaking"; passed: number; counted: number; percent: number | null }[];
   lernzeitToday: number;
   words: { total: number; shaky: number; newThisWeek: number };
   weakSpot:
@@ -205,6 +207,10 @@ export interface ReviewStats {
   reviewsThisWeek: number;
   gradeBreakdown: Record<Grade, number>;
   avgIntervalAfter: number | null;
+  /** Share graded good/easy per trailing window. */
+  accuracy: Record<"7d" | "30d" | "1y", number | null>;
+  /** Recalled % by gap since the previous review (buckets without samples omitted). */
+  retention: { day: number; percent: number; samples: number }[];
 }
 
 export interface UploadedFileMeta {
@@ -282,6 +288,7 @@ export interface ApplicationStats {
   total: number;
   active: number;
   byStatus: Record<ApplicationStatus, number>;
+  funnel: { sent: number; replies: number; interviews: number };
   responseRate: number | null;
   interviewRate: number | null;
   offers: number;
