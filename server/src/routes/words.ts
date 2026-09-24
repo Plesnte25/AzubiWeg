@@ -394,24 +394,26 @@ wordsRouter.delete("/:id", async (req, res) => {
 
 wordsRouter.get("/:id/audio", async (req, res) => {
   const word = await prisma.word.findFirst({ where: { id: req.params.id, userId: req.userId } });
-  // ?fallback=tts (listen & type): words without a recording get the same cached Edge TTS the listening lessons use
-  if (word && !word.audioPath && req.query.fallback === "tts") {
+  if (!word) return res.status(404).json({ error: "Word not found" });
+
+  let recording: string | null = null;
+  if (word.audioPath) {
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
+    const baseDir = user.vaultPath ? path.join(vaultFiles(user.vaultPath).audioDir, "..") : path.join(appAudioDir(user.id), "..");
+    const resolved = path.resolve(baseDir, word.audioPath);
+    // audioPath comes from vault markdown — never let it escape the audio root
+    if (resolved.startsWith(path.resolve(baseDir) + path.sep) && existsSync(resolved)) recording = resolved;
+  }
+  if (recording) return res.sendFile(recording);
+
+  // ?fallback=tts: a word with no recording (or whose file is missing, e.g. a vault not synced to this machine) gets
+  // the same cached Edge TTS the listening lessons use
+  if (req.query.fallback === "tts") {
     const spoken = await listeningAudioFor(word.headword);
     if (!spoken) return res.status(503).json({ error: "Audio could not be generated. Please try again shortly." });
     return res.type("audio/mpeg").setHeader("Cache-Control", "private, max-age=31536000, immutable").sendFile(spoken);
   }
-  if (!word?.audioPath) return res.status(404).json({ error: "No audio for this word" });
-
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
-  const baseDir = user.vaultPath
-    ? path.join(vaultFiles(user.vaultPath).audioDir, "..")
-    : path.join(appAudioDir(user.id), "..");
-  const resolved = path.resolve(baseDir, word.audioPath);
-  // audioPath comes from vault markdown — never let it escape the audio root
-  if (!resolved.startsWith(path.resolve(baseDir) + path.sep) || !existsSync(resolved)) {
-    return res.status(404).json({ error: "Audio file not found" });
-  }
-  res.sendFile(resolved);
+  res.status(404).json({ error: word.audioPath ? "Audio file not found" : "No audio for this word" });
 });
 
 // DErivBase's probability score tiers into two bands for display — "closely

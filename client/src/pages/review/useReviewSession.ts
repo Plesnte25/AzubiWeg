@@ -79,7 +79,7 @@ export function useReviewSession({ words }: { words?: Word[] }) {
       setRevealed(false);
       queryClient.invalidateQueries({ queryKey: ["words"] });
       queryClient.invalidateQueries({ queryKey: ["reviews", "history"] });
-      queryClient.invalidateQueries({ queryKey: ["reviews", "weak-words"] });
+      queryClient.invalidateQueries({ queryKey: ["reviews", "weakWords"] });
       queryClient.invalidateQueries({ queryKey: ["reviews", "stats"] });
     },
   });

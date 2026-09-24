@@ -9,13 +9,12 @@ re-deriving the investigation.
 
 ## Open — needs a fix
 
-- **2026-09-24, from Bento Phase 2 (backend)** — the review session's
-  `useReviewSession.ts` invalidates `["reviews", "weak-words"]` after a grade,
-  but Stats caches the list under `["reviews", "weakWords"]`, so Stats'
-  shakiest-words list stays stale until a reload. Fix when Stats is rebuilt in
-  Bento Phase 3 (use one query key for both).
+_(none right now)_
 
 ## Resolved during the redesign (for reference — no action needed)
+
+- **2026-09-24 (Bento Phase 3.2)** — the review session invalidated `["reviews", "weak-words"]` while Stats cached
+  the shakiest-words list under `["reviews", "weakWords"]`; fixed in `useReviewSession.ts` (one key).
 
 - **2026-09-24 (Bento Phases 1–2)** — three earlier open entries closed:
   `BottomTabBar.tsx`'s 36px touch targets (component deleted in Bento Phase 1;
