@@ -57,6 +57,14 @@ const STATES = [
       await page.waitForTimeout(450);
     },
   },
+  {
+    name: "add-stop",
+    route: "/",
+    run: async (page) => {
+      await page.getByRole("button", { name: "Add task" }).click();
+      await page.waitForTimeout(300);
+    },
+  },
 ];
 
 const pick = (value, all) => (value ? value.split(",").filter((v) => all.includes(v)) : all);

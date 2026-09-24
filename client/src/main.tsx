@@ -7,10 +7,10 @@ import { api, getToken, setSession } from "./api/client";
 import Layout from "./components/Layout";
 import { Toaster } from "./components/ui/Toast";
 import { ThemeProvider } from "./lib/theme";
-import Dashboard from "./pages/Dashboard";
+import Today from "./pages/today/Today";
 import Login from "./pages/Login";
 
-// only Login (unauthenticated) and Dashboard (the first authenticated view,
+// only Login (unauthenticated) and Today (the first authenticated view,
 // mounted at Today's "/") are needed for first paint — every other route is
 // its own chunk, loaded on navigation, so signing in doesn't pull in the CV
 // editor/kanban/quiz code up front
@@ -90,7 +90,7 @@ const router = createBrowserRouter([
         element: <Layout />,
         children: [
           // ── the 6 real tab destinations (Today/Words/Plan/Jobs/Stats/Notes) ──
-          { path: "/", element: <Dashboard /> },
+          { path: "/", element: <Today /> },
           { path: "/words", element: <Lazy><Vocabulary /></Lazy> },
           { path: "/words/:id", element: <Lazy><WordDetail /></Lazy> },
           { path: "/review", element: <Lazy><ReviewSession /></Lazy> },

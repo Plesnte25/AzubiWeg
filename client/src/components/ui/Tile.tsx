@@ -38,6 +38,8 @@ export function Tape({
 
 type TileProps = Omit<HTMLAttributes<HTMLElement>, "children"> & {
   as?: ElementType;
+  /** When rendered `as="button"`. */
+  type?: "button" | "submit";
   children?: ReactNode;
   /** CSS colour for the tile body; default `var(--plain)`. Text colour follows: `--plainText` on plain/plain2,
    * `--onTile` on every coloured tile (README §1.2 contrast rule). */

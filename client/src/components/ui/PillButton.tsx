@@ -34,7 +34,7 @@ export function PillButton({
   const byVariant: Record<string, CSSProperties> = {
     primary: { background: "var(--btn)", color: "var(--btnText)", boxShadow: "3px 3px 0 var(--shadow)" },
     secondary: { background: "var(--plain)", color: "var(--plainText)" },
-    dashed: { background: "transparent", color: "inherit", borderStyle: "dashed", opacity: 0.7 },
+    dashed: { background: "transparent", color: "inherit", border: "2.5px dashed var(--line)", opacity: 0.7 },
   };
   return (
     <button

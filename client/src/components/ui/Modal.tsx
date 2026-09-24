@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "@phosphor-icons/react";
 import { cn } from "../../lib/cn";
+import { lockRoot } from "../../lib/inertRoot";
 import { Tape } from "./Tile";
 
 interface ModalProps {
@@ -58,6 +59,7 @@ export function Modal({
     const trigger = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const unlock = lockRoot();
     ref.current?.focus();
 
     function onKeyDown(e: KeyboardEvent) {
@@ -83,6 +85,7 @@ export function Modal({
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKeyDown);
+      unlock();
       trigger?.focus?.();
     };
   }, []);

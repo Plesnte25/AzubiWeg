@@ -1,25 +1,19 @@
 import type { RoadmapSkill } from "../api/types";
 
-// Every RoadmapSkill gets its own dedicated color so the day's tasks read as
-// distinct sections at a glance, not just a plain list. Nocturne is a
-// mono-accent-plus-warm system (no info/ok/multi-hue palette to draw 9
-// distinct colors from), so this reuses the 3 genus hues (der/die/das —
-// lavender/rose/teal, the only non-accent, non-amber hues the spec defines)
-// alongside the accent and amber families rather than inventing new colors.
-// With only ~4 real hue families for 9 categories, a few pairs (writing/
-// speaking, grammar/milestone) are necessarily close — acceptable since
-// most UI shows the 5-skill DISPLAY_SKILLS set, not all 9, and skill is
-// always paired with a text label, never color alone.
+// Bento semantic map (handoff README §1.2 "Skill / task kind"): Vocab tomato · Grammar lilac · Listening sky ·
+// Speaking pink · Writing mint · Reading orange · Self-test lemon · Jobs lemon. The three non-skill roadmap tags map
+// onto the nearest kind: milestone tests are self-tests, bureaucracy ("Deutschland context") sits with Jobs, and
+// reflection is neutral. Keep identical across pages.
 export const SKILL_COLORS: Record<RoadmapSkill, string> = {
-  reading: "var(--color-genus-das)",
-  listening: "var(--color-genus-die)",
-  writing: "var(--color-brand-500)",
-  speaking: "var(--color-brand-700)",
-  grammar: "var(--color-warning-500)",
-  vocab: "var(--color-genus-der)",
-  bureaucracy: "var(--color-ink-400)",
-  milestone: "var(--color-warning-600)",
-  reflection: "var(--color-ink-300)",
+  vocab: "var(--tomato)",
+  grammar: "var(--lilac)",
+  listening: "var(--sky)",
+  speaking: "var(--pink)",
+  writing: "var(--mint)",
+  reading: "var(--orange)",
+  milestone: "var(--lemon)",
+  bureaucracy: "var(--lemon)",
+  reflection: "var(--plain2)",
 };
 
 export const SKILL_LABELS: Record<RoadmapSkill, string> = {

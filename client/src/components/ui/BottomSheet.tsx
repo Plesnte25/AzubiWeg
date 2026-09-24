@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "@phosphor-icons/react";
 import { cn } from "../../lib/cn";
+import { lockRoot } from "../../lib/inertRoot";
 
 /** True at md+ (768px) — the breakpoint BottomSheet switches from a
  * slide-up mobile sheet to a centered desktop dialog at. A plain
@@ -52,6 +53,7 @@ export function BottomSheet({
     const trigger = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const unlock = lockRoot();
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
@@ -59,6 +61,7 @@ export function BottomSheet({
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKeyDown);
+      unlock();
       trigger?.focus?.();
     };
   }, [open, onClose]);

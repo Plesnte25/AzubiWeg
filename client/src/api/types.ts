@@ -100,7 +100,38 @@ export interface DashboardNextTask {
   description: string | null;
 }
 
+export interface BentoDashboard {
+  level: {
+    level: CefrLevel;
+    percent: number;
+    passedItems: number;
+    countedItems: number;
+    closedStations: number;
+    totalStations: number;
+    currentStation: { key: string; index: number; theme: string } | null;
+    levels: { level: CefrLevel; percent: number; state: LevelState }[];
+  };
+  weeklyGoal: {
+    goalMinutes: number;
+    minutes: number;
+    percent: number;
+    days: { date: string; minutes: number; status: "past" | "today" | "future" }[];
+  };
+  lernzeitToday: number;
+  words: { total: number; shaky: number; newThisWeek: number };
+  weakSpot:
+    | { source: "self_test"; label: string; topic: string; level: string | null; percent: number; answered: number }
+    | { source: "mistakes"; label: string; category: string; count: number; topics: string[] }
+    | null;
+  nextInterview: { at: string; note: string | null; applicationId: string; company: string; role: string; location: string | null } | null;
+  runningTask: { id: string; title: string; skill: RoadmapSkill | null; timerSeconds: number; timerRunningSince: string } | null;
+  bestStreak: number;
+  streakCalendar: { date: string; activity: number; lernzeit: number; future: boolean }[];
+}
+
 export interface DashboardData {
+  /** Bento Today/Stats blocks (server routes/dashboard.ts `bento`). */
+  bento: BentoDashboard;
   totalWords: number;
   dueToday: number;
   newWords: number;
