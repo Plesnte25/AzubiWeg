@@ -124,7 +124,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     const stations = deriveStations(syllabusData.items, activeLevel);
     const station = bestMatchingStation(stations, THEMENFELD_PROBE[themenfeld]);
     if (!station) return null;
-    return { label: `Plan — Station ${station.index}: ${station.theme}`, theme: station.theme };
+    return { label: `Plan — Station ${station.index}: ${station.theme}`, key: station.key };
   }, [wordMatches, syllabusData]);
 
   // Actions always render once there's a query (even with zero word/link/
@@ -232,13 +232,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                     {syllabusJump && (
                       <button
                         type="button"
-                        onClick={() => go(() => push("/plan"))}
+                        onClick={() => go(() => push("/plan", { state: { openStationKey: syllabusJump.key } }))}
                         className="flex w-full cursor-pointer items-center gap-[11px] rounded-[12px] px-3 py-2.5 text-left font-semibold hover:bg-[var(--plain2)]"
                         style={{ color: "inherit" }}
                       >
                         <SyllabusIcon size={16} weight="fill" style={{ flexShrink: 0 }} aria-hidden="true" />
                         <span className="min-w-0 flex-1 truncate text-[14px] font-bold">{syllabusJump.label}</span>
-                        <ShortcutBadge letter="s" />
                       </button>
                     )}
                   </div>

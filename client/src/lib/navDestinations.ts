@@ -1,4 +1,4 @@
-import { BookOpen, Briefcase, Cards, ChartLineUp, Exam, House, NotePencil, Path } from "@phosphor-icons/react";
+import { Briefcase, Cards, ChartLineUp, House, NotePencil, Path } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
 
 export interface NavDestination {
@@ -27,29 +27,21 @@ export function isActivePath(to: string, end: boolean | undefined, pathname: str
 }
 
 export interface QuickLink extends NavDestination {
-  /** Single-letter "G <shortcut>" chord (Gmail/Superhuman-style, see
-   * Layout.tsx's global listener) — first letter of the label where it's
-   * unique, otherwise a real subsequent letter from the label (documented
-   * per entry below) so every shortcut is still traceable to its name
-   * rather than an arbitrary pick. "s" is reserved for Syllabus (matching
-   * the reference design) since Stats/Sources/Self-tests all also start
-   * with S. */
+  /** Single-letter "G <shortcut>" chord (Gmail/Superhuman-style, see Layout.tsx's global listener): the first letter
+   * of each tab's name. */
   shortcut: string;
 }
 
-// The command palette's "Jump to" set — NAV_DESTINATIONS' 6 tabs plus 3
-// deeper routes worth a direct shortcut. Shared with Layout.tsx's global
-// G-chord listener so the two can never drift out of sync.
+// The command palette's "Jump to" set — the six tabs. Shared with Layout.tsx's global G-chord listener so the two
+// can never drift out of sync. (Syllabus, Sources and Self-tests were separate pages before the Plan journey; they
+// now live inside Plan, so they have no jump targets of their own.)
 export const QUICK_LINKS: QuickLink[] = [
   { to: "/", label: "Today", icon: House, shortcut: "t" },
   { to: "/words", label: "Words", icon: Cards, shortcut: "w" },
   { to: "/plan", label: "Plan", icon: Path, shortcut: "p" },
   { to: "/jobs", label: "Jobs", icon: Briefcase, shortcut: "j" },
+  { to: "/stats", label: "Stats", icon: ChartLineUp, shortcut: "s" },
   { to: "/notes", label: "Notes", icon: NotePencil, shortcut: "n" },
-  { to: "/plan/syllabus", label: "Syllabus", icon: Path, shortcut: "s" },
-  { to: "/plan/sources", label: "Sources", icon: BookOpen, shortcut: "o" }, // 2nd letter — "s" taken by Syllabus
-  { to: "/stats", label: "Stats", icon: ChartLineUp, shortcut: "a" }, // 2nd letter — "s" taken by Syllabus
-  { to: "/plan/self-tests", label: "Self-tests", icon: Exam, shortcut: "e" }, // 2nd letter — "s" taken by Syllabus
 ];
 
 /** Routes whose active time counts as Lernzeit (Bento: learning routes only — Words, Review, Plan incl. self-tests

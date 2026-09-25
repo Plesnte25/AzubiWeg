@@ -17,7 +17,7 @@ activation, add word, review + grade, timer, exercise submit, G-chords, theme pe
    date, browse words / take a self-test). Repro: fresh account → `/review`.
 2. ✅ **Fixed** — **Today hero before the roadmap is started** (medium). A fresh account's hero says "0 stops left on today's route.
    Keep rolling." while the route tile says to start the roadmap. The hero should say the same (and point at it).
-3. **Stale "Jump to" destinations** (low). `QUICK_LINKS` (`lib/navDestinations.ts`) still lists Syllabus (G S),
+3. ✅ **Fixed** — **Stale "Jump to" destinations** (low). Jump to is the six tabs (Stats is now G S); the station jump opens that station. `QUICK_LINKS` (`lib/navDestinations.ts`) still lists Syllabus (G S),
    Sources (G O) and Self-tests (G E); all three routes now just redirect to `/plan`. Remove them (or point them at
    the Plan modals) in the ⌘K palette and the G-chord set.
 4. **"Plural —" on non-nouns** (low). Words detail tile shows a Plural box with "—" for function words, adverbs,
