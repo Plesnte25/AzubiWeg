@@ -258,7 +258,24 @@ export default function Words() {
               >
                 <MagnifyingGlass size={24} weight="bold" aria-hidden="true" />
               </div>
-              <span style={{ fontSize: 16, fontWeight: 700 }}>{q ? `Nothing matches “${q}”.` : "No words in this filter yet."}</span>
+              <span style={{ fontSize: 16, fontWeight: 700 }}>
+                {q ? `Nothing matches “${q}”.` : words.length === 0 ? "No words yet." : "No words in this filter yet."}
+              </span>
+              {!q && words.length === 0 && (
+                <>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--plainMuted)", maxWidth: 260 }}>
+                    Type a German word and its meaning, gender and plural are looked up for you.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => openAdd("")}
+                    className="cursor-pointer"
+                    style={{ height: 40, padding: "0 16px", background: "var(--btn)", color: "var(--btnText)", border: "2.5px solid var(--line)", borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+                  >
+                    Add your first word
+                  </button>
+                </>
+              )}
               {q && (
                 <button
                   type="button"

@@ -22,7 +22,7 @@ activation, add word, review + grade, timer, exercise submit, G-chords, theme pe
    the Plan modals) in the ⌘K palette and the G-chord set.
 4. ✅ **Fixed** — **"Plural —" on non-nouns** (low). Words detail tile shows a Plural box with "—" for function words, adverbs,
    phrases (e.g. "am Main"). Show plural for nouns, the Perfekt for verbs, otherwise omit the box.
-5. **Empty word list copy** (low). With 0 words the list says "No words in this filter yet." on the All filter; it
+5. ✅ **Fixed** — **Empty word list copy** (low). With 0 words the list says "No words in this filter yet." on the All filter; it
    should be a first-word prompt.
 6. **Jobs md card names truncate hard** (low). At 834px the four columns cut company names to ~6 characters
    ("Nordwi…", "Muster …"). Let names wrap to two lines at md.
