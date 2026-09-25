@@ -19,9 +19,102 @@ type VaultNote = Pick<Note, "id" | "title" | "body" | "category" | "skill" | "pi
 
 const idTail = (id: string) => id.slice(-6);
 
+const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", apos: "'", nbsp: " " };
+const decode = (t: string) => t.replace(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (_, e: string) => ENTITIES[e]!);
+
+/**
+ * Note bodies are the Notes editor's HTML (TipTap StarterKit, no headings); older notes are plain text. This turns
+ * that tag set into Obsidian markdown: paragraphs, bold/italic/strike/code, links, (nested) lists, quotes, code blocks
+ * and rules. Anything else is dropped to its text.
+ */
+export function htmlToMarkdown(html: string): string {
+  if (!/<[a-z][^>]*>/i.test(html)) return html.trim();
+  let out = "";
+  const lists: { ordered: boolean; n: number }[] = [];
+  const hrefs: string[] = [];
+  const quotes: number[] = [];
+  let inPre = false;
+  for (const token of html.split(/(<[^>]+>)/)) {
+    const tag = /^<(\/?)([a-z0-9]+)([^>]*)>$/i.exec(token);
+    if (!tag) {
+      if (token) out += inPre ? decode(token) : decode(token).replace(/\s+/g, " ");
+      continue;
+    }
+    const [, close, rawName, attrs] = tag;
+    const name = rawName!.toLowerCase();
+    const open = !close;
+    switch (name) {
+      case "p":
+        if (!open && lists.length === 0) out += "\n\n";
+        break;
+      case "br":
+        out += "\n";
+        break;
+      case "strong":
+      case "b":
+        out += "**";
+        break;
+      case "em":
+      case "i":
+        out += "*";
+        break;
+      case "s":
+      case "del":
+      case "strike":
+        out += "~~";
+        break;
+      case "code":
+        if (!inPre) out += "`";
+        break;
+      case "a":
+        if (open) {
+          hrefs.push(decode(/href="([^"]*)"/i.exec(attrs ?? "")?.[1] ?? ""));
+          out += "[";
+        } else out += `](${hrefs.pop() ?? ""})`;
+        break;
+      case "ul":
+      case "ol":
+        if (open) lists.push({ ordered: name === "ol", n: 0 });
+        else {
+          lists.pop();
+          if (lists.length === 0) out += "\n\n";
+        }
+        break;
+      case "li":
+        if (open) {
+          const list = lists[lists.length - 1];
+          const marker = list?.ordered ? `${++list.n}. ` : "- ";
+          out = out.replace(/[ \t]+$/, "");
+          out += `${out && !out.endsWith("\n") ? "\n" : ""}${"  ".repeat(Math.max(0, lists.length - 1))}${marker}`;
+        }
+        break;
+      case "blockquote":
+        if (open) quotes.push(out.length);
+        else {
+          const start = quotes.pop() ?? 0;
+          const body = out.slice(start).trim();
+          out = `${out.slice(0, start)}${body
+            .split("\n")
+            .map((l) => (l ? `> ${l}` : ">"))
+            .join("\n")}\n\n`;
+        }
+        break;
+      case "pre":
+        inPre = open;
+        out += open ? "```\n" : "\n```\n\n";
+        break;
+      case "hr":
+        out += "\n---\n\n";
+        break;
+    }
+  }
+  return out.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 /** "Dativ nach mit" → "Dativ nach mit (a1b2c3).md"; untitled notes take their first line. Safe on every OS. */
 export function noteFileName(note: Pick<VaultNote, "id" | "title" | "body">): string {
-  const base = (note.title?.trim() || note.body?.trim().split("\n")[0] || "Untitled note")
+  const firstLine = htmlToMarkdown(note.body ?? "").split("\n")[0]?.replace(/[*_`~>[\]]|^(?:- |\d+\. )/g, "") ?? "";
+  const base = (note.title?.trim() || firstLine.trim() || "Untitled note")
     .replace(/[\\/:*?"<>|#^[\]]/g, " ")
     .replace(/\s+/g, " ")
     .trim()
@@ -45,7 +138,7 @@ export function renderNote(note: VaultNote): string {
     "",
   ];
   const title = note.title?.trim();
-  return [...front, ...(title ? [`# ${title}`, ""] : []), note.body?.trim() ?? "", ""].join("\n");
+  return [...front, ...(title ? [`# ${title}`, ""] : []), htmlToMarkdown(note.body ?? ""), ""].join("\n");
 }
 
 /** This app's files in the folder, by note id (read from the frontmatter, never guessed from the name). */
