@@ -219,7 +219,9 @@ export default function Today() {
   const firstName = (getUser()?.name ?? "").trim().split(/\s+/)[0] || "du";
   const examDays = dash.examTargetDate ? daysUntil(new Date(`${dash.examTargetDate}T00:00:00`)) : null;
   const heroLine =
-    openStops === 0 && rows.length > 0
+    status && !activated
+      ? "Start your roadmap and you'll get a short route here every day."
+      : openStops === 0 && rows.length > 0
       ? "Route cleared for today. Ruh dich aus."
       : `${openStops} stop${openStops === 1 ? "" : "s"} left on today's route.${
           examDays !== null && examDays >= 0 ? ` Your ${b.level.level.toUpperCase()} exam is ${examDays} days away — keep rolling.` : " Keep rolling."

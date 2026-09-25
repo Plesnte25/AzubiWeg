@@ -15,7 +15,7 @@ activation, add word, review + grade, timer, exercise submit, G-chords, theme pe
 1. ✅ **Fixed** — **Review with nothing due shows Session Done** (medium). Now a "Nothing due." state with the next due date. `/review` with an empty queue jumps straight to "Stack
    cleared. 0 cards in 0:01 · 0% first try" with a 0-card stats row. Should be a "nothing due" state (next due
    date, browse words / take a self-test). Repro: fresh account → `/review`.
-2. **Today hero before the roadmap is started** (medium). A fresh account's hero says "0 stops left on today's route.
+2. ✅ **Fixed** — **Today hero before the roadmap is started** (medium). A fresh account's hero says "0 stops left on today's route.
    Keep rolling." while the route tile says to start the roadmap. The hero should say the same (and point at it).
 3. **Stale "Jump to" destinations** (low). `QUICK_LINKS` (`lib/navDestinations.ts`) still lists Syllabus (G S),
    Sources (G O) and Self-tests (G E); all three routes now just redirect to `/plan`. Remove them (or point them at
