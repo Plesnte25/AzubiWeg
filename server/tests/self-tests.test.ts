@@ -86,3 +86,18 @@ describe("pickGenderDrill", () => {
     expect(pickGenderDrill(words, 1, 1).map((w) => w.id)).toEqual(["shaky"]);
   });
 });
+
+describe("exam-prep syllabus items", () => {
+  it("are self_check activities with their own three checks", async () => {
+    const { DEFAULT_SYLLABUS_ITEMS: items, syllabusItemSeed: seed } = await import("../src/services/learning/syllabus-defaults.js");
+    const prep = items.filter((i) => i.theme === "Exam prep");
+    expect(prep).toHaveLength(6);
+    for (const item of prep) {
+      const s = seed(item);
+      expect(s.exerciseType).toBe("self_check");
+      expect(s.exerciseOptions && "checks" in s.exerciseOptions ? s.exerciseOptions.checks : []).toHaveLength(3);
+    }
+    // everything else keeps its own exercise type (no stray self-checks)
+    expect(items.filter((i) => i.theme !== "Exam prep").every((i) => seed(i).exerciseType !== "self_check")).toBe(true);
+  });
+});

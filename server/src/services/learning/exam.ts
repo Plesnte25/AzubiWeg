@@ -11,15 +11,51 @@ export const EXAM_TIME_LIMIT_MINUTES = 20;
 export const EXAM_ATTEMPT_COOLDOWN_DAYS = 7;
 
 /** What the client sees before answering — never the correct answer. */
+/** What the client sees before answering — never the correct answer. `audio` = has a listening clip (fetched per
+ * attempt from GET /exam/:id/audio/:qid), never the transcript itself. */
 export type ExamQuestionPublic =
-  | { qid: string; section: ExamSection; type: "mcq"; prompt: string; choices: string[] }
-  | { qid: string; section: ExamSection; type: "fill_blank"; prompt: string }
-  | { qid: string; section: ExamSection; type: "true_false"; prompt: string };
+  | { qid: string; section: ExamSection; type: "mcq"; prompt: string; choices: string[]; audio: boolean }
+  | { qid: string; section: ExamSection; type: "fill_blank"; prompt: string; audio: boolean }
+  | { qid: string; section: ExamSection; type: "true_false"; prompt: string; audio: boolean };
 
-function toPublic(q: ExamQuestion): ExamQuestionPublic {
-  if (q.type === "mcq") return { qid: q.id, section: q.section, type: "mcq", prompt: q.prompt, choices: q.choices };
-  if (q.type === "fill_blank") return { qid: q.id, section: q.section, type: "fill_blank", prompt: q.prompt };
-  return { qid: q.id, section: q.section, type: "true_false", prompt: q.prompt };
+/** Deterministic PRNG (mulberry32 over an FNV-1a hash) so a choice order can be rebuilt at scoring time. */
+function seededRng(seed: string): () => number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  let a = h >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * The order an attempt shows an MCQ's choices in: `order[shown] = authored index`. Seeded by the attempt's
+ * choiceSeed + question id, so the bank can author the right answer first without the exam leaking it, and scoring
+ * can map the submitted (shown) index back. A null seed (attempts from before per-attempt shuffling) keeps the
+ * authored order.
+ */
+export function choiceOrder(q: { id: string; choices: string[] }, seed: string | null): number[] {
+  const identity = q.choices.map((_, i) => i);
+  return seed ? shuffle(identity, seededRng(`${seed}:${q.id}`)) : identity;
+}
+
+function toPublic(q: ExamQuestion, seed: string | null): ExamQuestionPublic {
+  const audio = !!q.audio;
+  if (q.type === "mcq") {
+    const choices = choiceOrder(q, seed).map((i) => q.choices[i]!);
+    return { qid: q.id, section: q.section, type: "mcq", prompt: q.prompt, choices, audio };
+  }
+  if (q.type === "fill_blank") return { qid: q.id, section: q.section, type: "fill_blank", prompt: q.prompt, audio };
+  return { qid: q.id, section: q.section, type: "true_false", prompt: q.prompt, audio };
+}
+
+/** A listening question's transcript, for the audio route (and the "read it instead" fallback). */
+export function examAudioTranscript(level: CefrLevel, qid: string): string | null {
+  return EXAM_QUESTION_BANK.find((q) => q.level === level && q.id === qid)?.audio ?? null;
 }
 
 function shuffle<T>(arr: T[], rng: () => number): T[] {
@@ -44,24 +80,19 @@ export function examSectionCounts(level: CefrLevel): Record<ExamSection, number>
   return counts;
 }
 
-/** Whether any exam questions exist yet for this level — a level with none
- * can never be exam-gated (see levelStatesWithExamGate() in
- * services/learning/progress.ts), or completing its syllabus would
- * permanently lock the user out with no exam to ever pass. Only A1 has
- * content as of this writing. */
+/** Whether any exam questions exist for this level — a level with none can never be exam-gated (see
+ * levelStatesWithExamGate() in services/learning/progress.ts), or completing its syllabus would permanently lock the
+ * user out with no exam to ever pass. */
 export function levelHasExamContent(level: CefrLevel): boolean {
   return EXAM_QUESTION_BANK.some((q) => q.level === level);
 }
 
-/** All of a level's exam questions, shuffled — the whole bank, not a
- * sampled subset (20 questions at the A1 starter size is already a
- * reasonable exam length; sampling matters more once each level's bank
- * grows past that). */
-export function buildExamSession(level: CefrLevel, rng: () => number = Math.random): ExamQuestionPublic[] {
+/** All of a level's exam questions (20), in shuffled order, each MCQ's choices shuffled by the attempt's seed. */
+export function buildExamSession(level: CefrLevel, seed: string | null, rng: () => number = Math.random): ExamQuestionPublic[] {
   return shuffle(
     EXAM_QUESTION_BANK.filter((q) => q.level === level),
     rng,
-  ).map(toPublic);
+  ).map((q) => toPublic(q, seed));
 }
 
 export interface ExamAnswer {
@@ -90,7 +121,7 @@ export interface ExamScoreResult {
  * non-goal there). This is the one result that actually gates progress, so
  * it doesn't get that same trust model.
  */
-export function scoreExam(level: CefrLevel, answers: ExamAnswer[]): ExamScoreResult {
+export function scoreExam(level: CefrLevel, answers: ExamAnswer[], seed: string | null): ExamScoreResult {
   const bank = new Map(EXAM_QUESTION_BANK.filter((q) => q.level === level).map((q) => [q.id, q]));
   const bySection = new Map<ExamSection, { correct: number; total: number }>();
 
@@ -106,7 +137,7 @@ export function scoreExam(level: CefrLevel, answers: ExamAnswer[]): ExamScoreRes
 
     const correct =
       q.type === "mcq"
-        ? typeof a.answer === "number" && a.answer === q.answerIndex
+        ? typeof a.answer === "number" && choiceOrder(q, seed)[a.answer] === q.answerIndex
         : q.type === "true_false"
           ? typeof a.answer === "boolean" && a.answer === q.answer
           : typeof a.answer === "string" && isAnswerAccepted(a.answer, q.accepted);

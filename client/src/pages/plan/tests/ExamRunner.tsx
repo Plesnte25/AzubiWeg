@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { SpeakerHigh } from "@phosphor-icons/react";
 import { useLocation } from "react-router-dom";
 import { api } from "../../../api/client";
 import type { ExamAnswerValue, ExamAttempt, ExamQuestionPublic } from "../../../api/types";
 import { Modal } from "../../../components/ui/Modal";
 import { PillButton } from "../../../components/ui/PillButton";
 import { useNavStack } from "../../../lib/navStack";
+import { playAuthedAudio } from "../../../lib/playAudio";
 import { OptionButton, ResultTile, TestShell } from "./kit";
 import { questionCard } from "./styles";
 import { band } from "../journey/model";
@@ -23,6 +25,54 @@ const SECTION: Record<string, string> = {
   listening: "Listening",
 };
 const NEXT: Record<string, string | null> = { a1: "A2", a2: "B1", b1: null };
+/**
+ * A listening question's clip: plays on arrival and on tap. If it can't play (no sound, TTS outage), the transcript
+ * can be read instead, so the question stays answerable.
+ */
+function ListeningClip({ attemptId, qid }: { attemptId: string; qid: string }) {
+  const [failed, setFailed] = useState(false);
+  const [transcript, setTranscript] = useState<string | null>(null);
+  const play = () => {
+    setFailed(false);
+    playAuthedAudio(api.examAudioUrl(attemptId, qid)).catch(() => setFailed(true));
+  };
+  useEffect(() => {
+    setTranscript(null);
+    play();
+  }, [qid]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="flex flex-col items-center" style={{ gap: 8 }}>
+      <button
+        type="button"
+        onClick={play}
+        aria-label="Play the recording"
+        className="press flex cursor-pointer items-center justify-center"
+        style={{ width: 72, height: 72, borderRadius: "50%", border: "2.5px solid var(--line)", background: "var(--sky)", color: "var(--onTile)", boxShadow: "4px 4px 0 var(--shadow)" }}
+      >
+        <SpeakerHigh size={30} weight="fill" aria-hidden="true" />
+      </button>
+      {failed && !transcript && (
+        <div className="flex flex-wrap items-center justify-center" style={{ gap: 8, fontSize: 13, fontWeight: 700 }}>
+          <span>Couldn't play the recording.</span>
+          <button
+            type="button"
+            onClick={() => api.examTranscript(attemptId, qid).then((r) => setTranscript(r.transcript)).catch(() => undefined)}
+            className="cursor-pointer"
+            style={{ height: 30, padding: "0 11px", border: "2px dashed var(--line)", borderRadius: 999, background: "transparent", color: "inherit", fontSize: 12, fontWeight: 700 }}
+          >
+            Read it instead
+          </button>
+        </div>
+      )}
+      {transcript && (
+        <p lang="de" style={{ margin: 0, padding: "10px 12px", border: "2px solid var(--line)", borderRadius: 12, background: "var(--plain2)", fontSize: 15, fontWeight: 600, lineHeight: 1.4 }}>
+          {transcript}
+        </p>
+      )}
+    </div>
+  );
+}
+
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
 export default function ExamRunner() {
@@ -184,6 +234,7 @@ export default function ExamRunner() {
           {mode === "mock" ? "Mock · " : ""}
           {SECTION[q.section] ?? q.section}
         </span>
+        {q.audio && <ListeningClip attemptId={session.attemptId} qid={q.qid} />}
         <span
           lang="de"
           style={{ fontSize: "calc(var(--k) * 24px)", fontWeight: 700, letterSpacing: "-.02em", lineHeight: 1.25 }}

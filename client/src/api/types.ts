@@ -348,7 +348,8 @@ export interface SyllabusItem {
   exerciseType: "free_text" | "self_check" | "multiple_choice" | "correction" | "listening_audio" | "speaking_audio" | null;
   exercisePrompt: string | null;
   exerciseAnswer: string | null;
-  exerciseOptions: { options: string[]; correctIndex: number } | null;
+  /** multiple_choice: options + correctIndex; self_check: the three confirmations (`checks`). */
+  exerciseOptions: { options: string[]; correctIndex: number } | { checks: string[] } | null;
   masteryState: "not_started" | "learning" | "passed" | "mastered";
   reviewDueAt: string | null;
   successfulAttempts: number;
@@ -495,9 +496,9 @@ export type ExamAnswerValue = string | number | boolean;
 
 // mirrors server's ExamQuestionPublic — server/src/services/learning/exam.ts
 export type ExamQuestionPublic =
-  | { qid: string; section: ExamSection; type: "mcq"; prompt: string; choices: string[] }
-  | { qid: string; section: ExamSection; type: "fill_blank"; prompt: string }
-  | { qid: string; section: ExamSection; type: "true_false"; prompt: string };
+  | { qid: string; section: ExamSection; type: "mcq"; prompt: string; choices: string[]; audio: boolean }
+  | { qid: string; section: ExamSection; type: "fill_blank"; prompt: string; audio: boolean }
+  | { qid: string; section: ExamSection; type: "true_false"; prompt: string; audio: boolean };
 
 export interface ExamSectionBreakdown {
   section: ExamSection;

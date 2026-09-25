@@ -121,7 +121,7 @@ describe("buildUserRoadmapPlan", () => {
         expect(seeded.learningOutcome).toBeTruthy();
         expect(seeded.resourceBody).toBeTruthy();
         expect(seeded.guidedPractice).toBeTruthy();
-        expect(["free_text", "multiple_choice", "correction", "listening_audio", "speaking_audio"]).toContain(seeded.exerciseType);
+        expect(["free_text", "self_check", "multiple_choice", "correction", "listening_audio", "speaking_audio"]).toContain(seeded.exerciseType);
         expect(seeded.exercisePrompt).toBeTruthy();
       }
     });

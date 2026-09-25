@@ -629,6 +629,8 @@ model ExamAttempt {
   // [{ section: "vocabulary"|"grammar"|"gender_drill"|"listening", correct, total }]
   sectionBreakdown Json?
   mode             ExamMode  @default(real)
+  // seeds this attempt's MCQ choice order (services/learning/exam.ts choiceOrder); null = pre-shuffle attempts
+  choiceSeed       String?
 
   @@index([userId, level, startedAt])
 }

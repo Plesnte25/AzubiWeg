@@ -42,6 +42,19 @@ function Section({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+type RubricKey = "taskFulfilled" | "grammarChecked" | "understandable";
+
+/** A self_check item's three confirmations: its authored `checks` (exam prep), else the generic concept check. */
+function selfChecks(options: SyllabusItem["exerciseOptions"]): [RubricKey, string][] {
+  const checks = options && "checks" in options && options.checks.length === 3 ? options.checks : null;
+  const labels = checks ?? ["I can explain the target concept.", "I can produce a correct example.", "I know what to review if I am unsure."];
+  return [
+    ["taskFulfilled", labels[0]!],
+    ["grammarChecked", labels[1]!],
+    ["understandable", labels[2]!],
+  ];
+}
+
 function mergedNotebook(item: SyllabusItem): string {
   return [item.examples, item.exceptions, item.commonMistakes].filter(Boolean).join("\n\n");
 }
@@ -138,11 +151,7 @@ export function TopicWorkspace({ itemId, onCompleted }: { itemId: string; onComp
           ["understandable", "My message is understandable without reading the prompt."],
         ]
       : item.exerciseType === "self_check"
-        ? [
-            ["taskFulfilled", "I can explain the target concept."],
-            ["grammarChecked", "I can produce a correct example."],
-            ["understandable", "I know what to review if I am unsure."],
-          ]
+        ? selfChecks(item.exerciseOptions)
         : [
             ["taskFulfilled", "I answered every part of the prompt."],
             ["grammarChecked", "I checked verb forms, articles and word order."],
@@ -205,7 +214,7 @@ export function TopicWorkspace({ itemId, onCompleted }: { itemId: string; onComp
       {item.exercisePrompt && (
         <Section label="Exercise">
           <span lang="de">{item.exercisePrompt}</span>
-          {item.exerciseType === "multiple_choice" && item.exerciseOptions?.options?.length ? (
+          {item.exerciseType === "multiple_choice" && item.exerciseOptions && "options" in item.exerciseOptions && item.exerciseOptions.options.length ? (
             <div role="radiogroup" aria-label="Answer" className="flex flex-col gap-1.5">
               {item.exerciseOptions.options.map((option, index) => {
                 const on = answer === String(index);

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
@@ -15,6 +16,7 @@ import {
   EXAM_TIME_LIMIT_MINUTES,
   buildExamSession,
   canAttemptExam,
+  examAudioTranscript,
   examSectionCounts,
   levelHasExamContent,
   scoreExam,
@@ -1362,14 +1364,35 @@ learningRouter.post("/exam/start", async (req, res) => {
     }
   }
 
-  const questions = buildExamSession(activeLevel);
-  if (!questions.length) {
+  if (!levelHasExamContent(activeLevel)) {
     return res.status(404).json({ error: `No exam content for level ${activeLevel} yet` });
   }
+  const choiceSeed = randomUUID();
   const attempt = await prisma.examAttempt.create({
-    data: { userId: req.userId, level: activeLevel, mode },
+    data: { userId: req.userId, level: activeLevel, mode, choiceSeed },
   });
+  const questions = buildExamSession(activeLevel, choiceSeed);
   res.status(201).json({ attemptId: attempt.id, level: activeLevel, mode, questions, timeLimitMinutes: EXAM_TIME_LIMIT_MINUTES });
+});
+
+/** A listening question's clip for an attempt: the transcript through the cached Edge TTS path. */
+learningRouter.get("/exam/:id/audio/:qid", async (req, res) => {
+  const attempt = await prisma.examAttempt.findFirst({ where: { id: req.params.id, userId: req.userId }, select: { level: true } });
+  if (!attempt) return res.status(404).json({ error: "Exam attempt not found" });
+  const transcript = examAudioTranscript(attempt.level, req.params.qid);
+  if (!transcript) return res.status(404).json({ error: "This question has no audio" });
+  const audioPath = await listeningAudioFor(transcript);
+  if (!audioPath) return res.status(503).json({ error: "The recording could not be generated. Please try again shortly." });
+  res.type("audio/mpeg").setHeader("Cache-Control", "private, max-age=31536000, immutable").sendFile(audioPath);
+});
+
+/** Fallback when the clip can't be played (no sound, TTS outage): the transcript as text. */
+learningRouter.get("/exam/:id/transcript/:qid", async (req, res) => {
+  const attempt = await prisma.examAttempt.findFirst({ where: { id: req.params.id, userId: req.userId }, select: { level: true } });
+  if (!attempt) return res.status(404).json({ error: "Exam attempt not found" });
+  const transcript = examAudioTranscript(attempt.level, req.params.qid);
+  if (!transcript) return res.status(404).json({ error: "This question has no audio" });
+  res.json({ transcript });
 });
 
 const submitSchema = z.object({
@@ -1386,7 +1409,7 @@ learningRouter.post("/exam/:id/submit", async (req, res) => {
   if (!attempt) return res.status(404).json({ error: "Exam attempt not found" });
   if (attempt.submittedAt) return res.status(409).json({ error: "This attempt was already submitted" });
 
-  const result = scoreExam(attempt.level, parsed.data.answers);
+  const result = scoreExam(attempt.level, parsed.data.answers, attempt.choiceSeed);
   const updated = await prisma.examAttempt.update({
     where: { id: attempt.id },
     data: {

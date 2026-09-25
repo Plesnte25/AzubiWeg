@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { SpeakerHigh } from "@phosphor-icons/react";
-import { api, getToken } from "../../../api/client";
+import { api } from "../../../api/client";
+import { playAuthedAudio } from "../../../lib/playAudio";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { PillButton } from "../../../components/ui/PillButton";
 import { isAnswerAccepted } from "../../../lib/quiz";
@@ -15,16 +16,6 @@ import { questionCard } from "./styles";
  * rest play the server's cached TTS. Umlaut spellings (ae/oe/ue, ss) are accepted, like the other fill-ins. The
  * score is saved as a listen_type self-test (the Checkpoint tile's fourth drill).
  */
-
-async function playUrl(url: string): Promise<void> {
-  const token = getToken();
-  const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-  if (!res.ok) throw new Error("Audio not available");
-  const blobUrl = URL.createObjectURL(await res.blob());
-  const audio = new Audio(blobUrl);
-  audio.addEventListener("ended", () => URL.revokeObjectURL(blobUrl));
-  await audio.play();
-}
 
 export default function ListenType() {
   const { goBack } = useNavStack();
@@ -47,7 +38,7 @@ export default function ListenType() {
   const play = () => {
     if (!w) return;
     setAudioError(false);
-    playUrl(w.audioUrl).catch(() => setAudioError(true));
+    playAuthedAudio(w.audioUrl).catch(() => setAudioError(true));
   };
   useEffect(() => {
     if (!w) return;

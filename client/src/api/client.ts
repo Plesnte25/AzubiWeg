@@ -378,6 +378,10 @@ export const api = {
 
   examStatus: () => request<ExamStatus>("/api/learning/exam/status"),
   /** mode "mock": practice run with no 7-day lock that never counts as a pass. */
+  /** A listening question's clip for an attempt (auth'd fetch; play it as a blob). */
+  examAudioUrl: (attemptId: string, qid: string) => `/api/learning/exam/${attemptId}/audio/${encodeURIComponent(qid)}`,
+  examTranscript: (attemptId: string, qid: string) =>
+    request<{ transcript: string }>(`/api/learning/exam/${attemptId}/transcript/${encodeURIComponent(qid)}`),
   startExam: (mode: "real" | "mock" = "real") =>
     request<{ attemptId: string; level: CefrLevel; mode: "real" | "mock"; questions: ExamQuestionPublic[]; timeLimitMinutes: number }>(
       "/api/learning/exam/start",

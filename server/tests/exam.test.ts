@@ -4,102 +4,165 @@ import {
   EXAM_PASS_THRESHOLD,
   buildExamSession,
   canAttemptExam,
+  choiceOrder,
+  examAudioTranscript,
   examSectionCounts,
   levelHasExamContent,
   scoreExam,
 } from "../src/services/learning/exam.js";
 import { EXAM_QUESTION_BANK } from "../src/services/learning/exam-question-bank.js";
 
-describe("levelHasExamContent", () => {
-  it("is true for a1, which has an authored bank", () => {
-    expect(levelHasExamContent("a1")).toBe(true);
+const LEVELS = ["a1", "a2", "b1"] as const;
+const bankFor = (level: (typeof LEVELS)[number]) => EXAM_QUESTION_BANK.filter((q) => q.level === level);
+
+describe("exam question bank", () => {
+  it("has 5 questions per section at every level", () => {
+    for (const level of LEVELS) expect(examSectionCounts(level)).toEqual({ vocabulary: 5, grammar: 5, gender_drill: 5, listening: 5 });
   });
 
-  it("is false for a level with no questions yet", () => {
-    expect(levelHasExamContent("a2")).toBe(false);
-    expect(levelHasExamContent("b1")).toBe(false);
+  it("has unique ids and well-formed questions", () => {
+    const ids = EXAM_QUESTION_BANK.map((q) => q.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const q of EXAM_QUESTION_BANK) {
+      expect(q.id.startsWith(`exam-${q.level}-`)).toBe(true);
+      if (q.type === "mcq") {
+        expect(q.answerIndex).toBeGreaterThanOrEqual(0);
+        expect(q.answerIndex).toBeLessThan(q.choices.length);
+        expect(new Set(q.choices).size).toBe(q.choices.length);
+      }
+      if (q.type === "fill_blank") expect(q.accepted.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("gives every listening question an audio transcript, and only listening questions", () => {
+    for (const q of EXAM_QUESTION_BANK) expect(Boolean(q.audio)).toBe(q.section === "listening");
+  });
+
+  it("mixes true and false statements at every level", () => {
+    for (const level of LEVELS) {
+      const tf = bankFor(level).filter((q) => q.type === "true_false").map((q) => (q.type === "true_false" ? q.answer : null));
+      expect(tf).toContain(true);
+      expect(tf).toContain(false);
+    }
   });
 });
 
-describe("examSectionCounts", () => {
-  it("counts a1's real per-section bank size, summing to the whole bank", () => {
-    const counts = examSectionCounts("a1");
-    const total = Object.values(counts).reduce((a, b) => a + b, 0);
-    expect(total).toBe(EXAM_QUESTION_BANK.filter((q) => q.level === "a1").length);
-    expect(counts.vocabulary).toBeGreaterThan(0);
+describe("levelHasExamContent", () => {
+  it("is true for every level with an authored bank", () => {
+    for (const level of LEVELS) expect(levelHasExamContent(level)).toBe(true);
+  });
+});
+
+describe("choiceOrder", () => {
+  const q = { id: "exam-x-01", choices: ["a", "b", "c", "d"] };
+
+  it("is a stable permutation for the same seed", () => {
+    const order = choiceOrder(q, "seed-1");
+    expect([...order].sort()).toEqual([0, 1, 2, 3]);
+    expect(choiceOrder(q, "seed-1")).toEqual(order);
   });
 
-  it("is all zero for a level with no content", () => {
-    expect(examSectionCounts("a2")).toEqual({ vocabulary: 0, grammar: 0, gender_drill: 0, listening: 0 });
+  it("keeps the authored order without a seed (attempts from before shuffling)", () => {
+    expect(choiceOrder(q, null)).toEqual([0, 1, 2, 3]);
+  });
+
+  it("doesn't leave the right answer first across attempts", () => {
+    const firsts = new Set(Array.from({ length: 40 }, (_, i) => choiceOrder(q, `s${i}`)[0]));
+    expect(firsts.size).toBeGreaterThan(1);
   });
 });
 
 describe("buildExamSession", () => {
-  it("returns every A1 question, shuffled, with no answer data exposed", () => {
-    const session = buildExamSession("a1", () => 0.5);
-    const a1Count = EXAM_QUESTION_BANK.filter((q) => q.level === "a1").length;
-    expect(session).toHaveLength(a1Count);
-    for (const q of session) {
-      expect(q).not.toHaveProperty("answerIndex");
-      expect(q).not.toHaveProperty("accepted");
-      expect(q).not.toHaveProperty("answer");
+  it("returns every question of the level, with no answer data or transcript exposed", () => {
+    for (const level of LEVELS) {
+      const session = buildExamSession(level, "seed", () => 0.5);
+      expect(session).toHaveLength(bankFor(level).length);
+      for (const q of session) {
+        expect(q).not.toHaveProperty("answerIndex");
+        expect(q).not.toHaveProperty("accepted");
+        expect(q).not.toHaveProperty("answer");
+        expect(typeof q.audio).toBe("boolean");
+        expect(JSON.stringify(q)).not.toContain("Personalabteilung"); // a B1 transcript phrase
+      }
     }
   });
 
-  it("returns an empty session for a level with no authored content yet", () => {
-    expect(buildExamSession("b1")).toEqual([]);
+  it("shows each MCQ's choices in the attempt's seeded order", () => {
+    const session = buildExamSession("a2", "seed-x");
+    const q = bankFor("a2").find((x) => x.type === "mcq")!;
+    const shown = session.find((s) => s.qid === q.id)!;
+    if (q.type !== "mcq" || shown.type !== "mcq") throw new Error("expected an mcq");
+    expect(shown.choices).toEqual(choiceOrder(q, "seed-x").map((i) => q.choices[i]));
+  });
+});
+
+describe("examAudioTranscript", () => {
+  it("returns a listening question's transcript for its own level only", () => {
+    const lis = bankFor("b1").find((q) => q.section === "listening")!;
+    expect(examAudioTranscript("b1", lis.id)).toBe(lis.audio);
+    expect(examAudioTranscript("a1", lis.id)).toBeNull();
+    expect(examAudioTranscript("b1", bankFor("b1").find((q) => q.section === "grammar")!.id)).toBeNull();
   });
 });
 
 describe("scoreExam", () => {
-  const allCorrectAnswers = EXAM_QUESTION_BANK.filter((q) => q.level === "a1").map((q) => ({
-    qid: q.id,
-    answer: q.type === "mcq" ? q.answerIndex : q.type === "true_false" ? q.answer : q.accepted[0]!,
-  }));
+  const SEED = "attempt-seed";
+  /** The right answer as the client would submit it: for an MCQ, the shown index of the authored answer. */
+  const correctAnswers = (level: (typeof LEVELS)[number], seed: string | null) =>
+    bankFor(level).map((q) => ({
+      qid: q.id,
+      answer: q.type === "mcq" ? choiceOrder(q, seed).indexOf(q.answerIndex) : q.type === "true_false" ? q.answer : q.accepted[0]!,
+    }));
 
-  it("scores a perfect run as a pass, with a full section breakdown", () => {
-    const result = scoreExam("a1", allCorrectAnswers);
+  it("scores a perfect run as a pass at every level, with a full section breakdown", () => {
+    for (const level of LEVELS) {
+      const result = scoreExam(level, correctAnswers(level, SEED), SEED);
+      expect(result.score).toBe(result.total);
+      expect(result.passed).toBe(true);
+      expect(new Set(result.sectionBreakdown.map((s) => s.section))).toEqual(new Set(["vocabulary", "grammar", "gender_drill", "listening"]));
+    }
+  });
+
+  it("doesn't pass by always picking the first choice", () => {
+    const firsts = bankFor("a2").map((q) => ({ qid: q.id, answer: q.type === "mcq" ? 0 : q.type === "true_false" ? q.answer : q.accepted[0]! }));
+    const mcqCount = bankFor("a2").filter((q) => q.type === "mcq").length;
+    const result = scoreExam("a2", firsts, SEED);
+    expect(result.score).toBeLessThan(result.total);
+    expect(result.total - result.score).toBeLessThanOrEqual(mcqCount);
+  });
+
+  it("scores pre-shuffle attempts (null seed) against the authored order", () => {
+    const result = scoreExam("a1", correctAnswers("a1", null), null);
     expect(result.score).toBe(result.total);
-    expect(result.passed).toBe(true);
-    const sections = new Set(result.sectionBreakdown.map((s) => s.section));
-    expect(sections).toEqual(new Set(["vocabulary", "grammar", "gender_drill", "listening"]));
-    for (const s of result.sectionBreakdown) expect(s.correct).toBe(s.total);
   });
 
   it("never trusts a client-submitted answer beyond the bank's own correct value", () => {
-    // wrong answers throughout -- even if a hostile client claims a high
-    // score in some other field, scoreExam only ever recomputes from qid
-    const wrong = EXAM_QUESTION_BANK.filter((q) => q.level === "a1").map((q) => ({
+    const wrong = bankFor("a1").map((q) => ({
       qid: q.id,
       answer: q.type === "mcq" ? 999 : q.type === "true_false" ? !q.answer : "not-a-real-answer",
     }));
-    const result = scoreExam("a1", wrong);
+    const result = scoreExam("a1", wrong, SEED);
     expect(result.score).toBe(0);
     expect(result.passed).toBe(false);
   });
 
   it(`fails a run below the ${EXAM_PASS_THRESHOLD * 100}% pass threshold`, () => {
-    const total = EXAM_QUESTION_BANK.filter((q) => q.level === "a1").length;
-    const passingCount = Math.ceil(total * EXAM_PASS_THRESHOLD);
-    const belowThreshold = allCorrectAnswers.map((a, i) => (i < passingCount - 1 ? a : { ...a, answer: "wrong" }));
-    const result = scoreExam("a1", belowThreshold);
-    expect(result.passed).toBe(false);
+    const all = correctAnswers("b1", SEED);
+    const passingCount = Math.ceil(all.length * EXAM_PASS_THRESHOLD);
+    const below = all.map((a, i) => (i < passingCount - 1 ? a : { ...a, answer: "wrong" }));
+    expect(scoreExam("b1", below, SEED).passed).toBe(false);
   });
 
   it("ignores unknown or duplicate question ids rather than crashing", () => {
-    const result = scoreExam("a1", [
-      { qid: "not-a-real-id", answer: 0 },
-      ...allCorrectAnswers,
-      { qid: allCorrectAnswers[0]!.qid, answer: allCorrectAnswers[0]!.answer }, // duplicate
-    ]);
-    expect(result.score).toBe(result.total); // duplicate didn't double-count
+    const all = correctAnswers("a1", SEED);
+    const result = scoreExam("a1", [{ qid: "not-a-real-id", answer: 0 }, ...all, all[0]!], SEED);
+    expect(result.score).toBe(result.total);
   });
 
-  it("isAnswerAccepted-style tolerance applies to fill_blank answers (umlaut spelling)", () => {
-    const fillBlank = EXAM_QUESTION_BANK.find((q) => q.type === "fill_blank" && q.level === "a1")!;
-    const result = scoreExam("a1", [{ qid: fillBlank.id, answer: (fillBlank as { accepted: string[] }).accepted[0]!.toUpperCase() }]);
-    const section = result.sectionBreakdown.find((s) => s.section === fillBlank.section)!;
-    expect(section.correct).toBe(1);
+  it("accepts fill-blank answers with umlaut transliteration and any case", () => {
+    const q = bankFor("b1").find((x) => x.id === "exam-b1-lis-05")!;
+    const result = scoreExam("b1", [{ qid: q.id, answer: "DREIHUNDERTFUENFZIG" }], SEED);
+    expect(result.sectionBreakdown.find((s) => s.section === "listening")!.correct).toBe(1);
   });
 });
 

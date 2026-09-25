@@ -30,13 +30,14 @@ export const CURATED_PHRASES: CuratedPhrase[] = [
   { id: "call-open", context: "call", stages: EARLY, de: "Ist die Stelle noch frei?", en: "Is the position still open?" },
   { id: "call-arrived", context: "call", stages: ["applied"], de: "Ich habe meine Bewerbung am … geschickt und wollte nachfragen, ob sie angekommen ist.", en: "I sent my application on … and wanted to check whether it arrived." },
   { id: "call-when", context: "call", stages: ["applied"], de: "Wann kann ich mit einer Rückmeldung rechnen?", en: "When can I expect to hear back?" },
+  { id: "call-status", context: "call", stages: ["applied"], de: "Ich möchte mich nach dem Stand meiner Bewerbung erkundigen.", en: "I'd like to ask about the status of my application." },
   { id: "call-contact", context: "call", stages: EARLY, de: "Könnten Sie mir bitte den Namen der Ansprechperson nennen?", en: "Could you tell me the name of the contact person, please?" },
   { id: "call-bye", context: "call", stages: EARLY, de: "Vielen Dank für Ihre Zeit. Auf Wiederhören!", en: "Thank you for your time. Goodbye! (on the phone)" },
 
   // introducing yourself
   { id: "intro-thanks", context: "intro", stages: INTERVIEW, de: "Vielen Dank für die Einladung zum Vorstellungsgespräch.", en: "Thank you for inviting me to the interview." },
   { id: "intro-origin", context: "intro", stages: INTERVIEW, de: "Ich komme aus … und lebe seit … in Deutschland.", en: "I come from … and have lived in Germany since …" },
-  { id: "intro-level", context: "intro", stages: INTERVIEW, de: "Zurzeit lerne ich Deutsch und habe das Niveau A2.", en: "I'm currently learning German and I'm at A2 level." },
+  { id: "intro-level", context: "intro", stages: INTERVIEW, de: "Zurzeit lerne ich Deutsch und habe das Niveau …", en: "I'm currently learning German and I'm at level …" },
   { id: "intro-plan", context: "intro", stages: INTERVIEW, de: "Ich lerne jeden Tag, damit ich bis … das Niveau B1 erreiche.", en: "I study every day so that I reach B1 by …" },
   { id: "intro-work", context: "intro", stages: INTERVIEW, de: "In meinem Heimatland habe ich als … gearbeitet.", en: "In my home country I worked as …" },
 
@@ -54,7 +55,7 @@ export const CURATED_PHRASES: CuratedPhrase[] = [
 
   // questions to ask
   { id: "q-day", context: "questions", stages: INTERVIEW, de: "Wie sieht ein typischer Arbeitstag für Auszubildende aus?", en: "What does a typical working day look like for apprentices?" },
-  { id: "q-school", context: "questions", stages: INTERVIEW, de: "Wo ist die Berufsschule, und an welchen Tagen findet sie statt?", en: "Where is the vocational school, and on which days does it take place?" },
+  { id: "q-school", context: "questions", stages: INTERVIEW, de: "Wo ist die Berufsschule, und an welchen Tagen habe ich Unterricht?", en: "Where is the vocational school, and on which days do I have classes?" },
   { id: "q-mentor", context: "questions", stages: INTERVIEW, de: "Wer ist während der Ausbildung mein Ansprechpartner?", en: "Who is my contact person during the apprenticeship?" },
   { id: "q-keep", context: "questions", stages: INTERVIEW, de: "Gibt es die Möglichkeit, nach der Ausbildung übernommen zu werden?", en: "Is there a chance of being kept on after the apprenticeship?" },
   { id: "q-next", context: "questions", stages: INTERVIEW, de: "Wie geht es nach dem Gespräch weiter?", en: "What are the next steps after the interview?" },
@@ -69,6 +70,7 @@ export const CURATED_PHRASES: CuratedPhrase[] = [
   // closing and the offer
   { id: "close-thanks", context: "closing", stages: INTERVIEW, de: "Vielen Dank für das Gespräch. Ich freue mich auf Ihre Rückmeldung.", en: "Thank you for the conversation. I look forward to hearing from you." },
   { id: "offer-accept", context: "offer", stages: ["offer"], de: "Ich nehme das Angebot sehr gern an.", en: "I'm very happy to accept the offer." },
+  { id: "offer-read", context: "offer", stages: ["offer"], de: "Kann ich den Ausbildungsvertrag zu Hause in Ruhe lesen?", en: "Can I read the training contract at home first?" },
   { id: "offer-start", context: "offer", stages: ["offer"], de: "Wann beginnt die Ausbildung, und welche Unterlagen brauchen Sie noch von mir?", en: "When does the apprenticeship start, and which documents do you still need from me?" },
 ];
 
