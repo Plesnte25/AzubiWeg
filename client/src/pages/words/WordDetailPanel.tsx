@@ -213,6 +213,7 @@ export function WordDetailPanel({
   const plural = word.declension?.nom?.pl;
   const past = [word.conjugation?.past, word.conjugation?.perfect].filter(Boolean).join(" · ");
   const form = isVerb ? past : plural ? `die ${plural}` : null;
+  const hasForms = isVerb || word.wortart === "Nomen" || !!word.genus;
   const strength = word.strength ?? 0;
   const meaning = stripLeadingPosTag(word.meaning ?? "");
   const badge =
@@ -279,13 +280,16 @@ export function WordDetailPanel({
       </div>
 
       {!compact && (
-        <div className="grid grid-cols-2 gap-2.5">
-          <div style={plainBox}>
-            <div style={eyebrow}>{isVerb ? "Past · Perfekt" : "Plural"}</div>
-            <div lang="de" style={{ fontSize: 15, fontWeight: 700, marginTop: 2, overflowWrap: "anywhere" }}>
-              {form || "—"}
+        <div className={hasForms ? "grid grid-cols-2 gap-2.5" : "grid grid-cols-1 gap-2.5"}>
+          {/* plural for nouns, past/Perfekt for verbs; other word types have no form to show */}
+          {hasForms && (
+            <div style={plainBox}>
+              <div style={eyebrow}>{isVerb ? "Past · Perfekt" : "Plural"}</div>
+              <div lang="de" style={{ fontSize: 15, fontWeight: 700, marginTop: 2, overflowWrap: "anywhere" }}>
+                {form || "—"}
+              </div>
             </div>
-          </div>
+          )}
           <div style={plainBox}>
             <div style={eyebrow}>Next review</div>
             <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2 }}>{nextReviewLabel(word.srDue)}</div>

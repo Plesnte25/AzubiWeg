@@ -20,7 +20,7 @@ activation, add word, review + grade, timer, exercise submit, G-chords, theme pe
 3. ✅ **Fixed** — **Stale "Jump to" destinations** (low). Jump to is the six tabs (Stats is now G S); the station jump opens that station. `QUICK_LINKS` (`lib/navDestinations.ts`) still lists Syllabus (G S),
    Sources (G O) and Self-tests (G E); all three routes now just redirect to `/plan`. Remove them (or point them at
    the Plan modals) in the ⌘K palette and the G-chord set.
-4. **"Plural —" on non-nouns** (low). Words detail tile shows a Plural box with "—" for function words, adverbs,
+4. ✅ **Fixed** — **"Plural —" on non-nouns** (low). Words detail tile shows a Plural box with "—" for function words, adverbs,
    phrases (e.g. "am Main"). Show plural for nouns, the Perfekt for verbs, otherwise omit the box.
 5. **Empty word list copy** (low). With 0 words the list says "No words in this filter yet." on the All filter; it
    should be a first-word prompt.
