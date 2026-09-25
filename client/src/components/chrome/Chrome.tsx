@@ -1,4 +1,5 @@
 import { useState, type MouseEvent } from "react";
+import { SlidersHorizontal } from "@phosphor-icons/react";
 import { useLocation } from "react-router-dom";
 import { cn } from "../../lib/cn";
 import { isActivePath, NAV_DESTINATIONS } from "../../lib/navDestinations";
@@ -50,20 +51,32 @@ function Logo({ small = false }: { small?: boolean }) {
   );
 }
 
-/** Pink initials avatar that opens ProfileSheet (Settings / Logout). */
-function AvatarButton({ small = false, withName = false }: { small?: boolean; withName?: boolean }) {
+/** Pink initials avatar that opens ProfileSheet (Settings / Logout). On /settings at lg/md (`active`) it becomes the
+ * active nav pill: `--navActive`, 3px shadow, −1.5°, the sliders icon, "Settings" and a 34px avatar (addendum §1.1). */
+function AvatarButton({ small = false, withName = false, active = false }: { small?: boolean; withName?: boolean; active?: boolean }) {
   const profile = useProfileSummary();
   const [open, setOpen] = useState(false);
-  const size = small ? 36 : 38;
+  const size = active ? 34 : small ? 36 : 38;
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label={`Profile — ${profile.name ?? "you"}`}
+        aria-current={active ? "page" : undefined}
         className="flex shrink-0 cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left"
-        style={{ color: "inherit" }}
+        style={
+          active
+            ? { height: 48, padding: "0 5px 0 14px", border: "2.5px solid var(--line)", borderRadius: 999, background: "var(--navActive)", color: "var(--navActiveText)", boxShadow: "3px 3px 0 var(--shadow)", transform: "rotate(-1.5deg)", fontWeight: 700, fontSize: 15, boxSizing: "border-box" }
+            : { color: "inherit" }
+        }
       >
+        {active && (
+          <>
+            <SlidersHorizontal size={18} weight="fill" aria-hidden="true" />
+            Settings
+          </>
+        )}
         <span
           className="flex items-center justify-center"
           style={{
@@ -74,7 +87,7 @@ function AvatarButton({ small = false, withName = false }: { small?: boolean; wi
             color: "var(--onTile)",
             border: "2.5px solid var(--line)",
             fontWeight: 700,
-            fontSize: small ? 13 : 14,
+            fontSize: small || active ? 13 : 14,
             boxSizing: "border-box",
           }}
         >
@@ -169,7 +182,7 @@ export function TopNav() {
       <div className="flex shrink-0 items-center gap-2.5">
         <ThemeToggle />
         {/* README: the dashboard at lg adds the name / "A2 · Day N" next to the avatar (hidden below lg). */}
-        <AvatarButton withName={pathname === "/"} />
+        <AvatarButton withName={pathname === "/"} active={pathname === "/settings"} />
       </div>
     </nav>
   );

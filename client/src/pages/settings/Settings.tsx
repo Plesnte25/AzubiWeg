@@ -1,438 +1,446 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowCounterClockwise, FileText, FlagPennant, LinkSimple, Palette, Plus, Tag, Timer, Trash } from "@phosphor-icons/react";
-import { api, downloadFile } from "../../api/client";
-import type { Cv, RoadmapStatus } from "../../api/types";
-import { Chip } from "../../components/ui/Chip";
-import { eyebrow, fieldInput } from "../../components/ui/fields";
-import { PillButton } from "../../components/ui/PillButton";
-import { Segmented } from "../../components/ui/Segmented";
-import { Eyebrow, Tile } from "../../components/ui/Tile";
+import { ArrowCounterClockwise, Check, FlagPennant, HandTap, HourglassMedium } from "@phosphor-icons/react";
+import { api } from "../../api/client";
+import type { CapacityUpdate, NewWordsPerDay, RoadmapStatus } from "../../api/types";
+import { Tape, Tile } from "../../components/ui/Tile";
 import { toast } from "../../components/ui/Toast";
 import { invalidateHub } from "../../lib/queryHelpers";
 import { localDateKey } from "../../lib/tasks";
-import { useTheme, type ThemePreference } from "../../lib/theme";
-import { useBreakpoint } from "../../lib/useBreakpoint";
-import AddCvModal from "./AddCvModal";
+import { useBreakpoint, type Breakpoint } from "../../lib/useBreakpoint";
+import { CvShelf } from "./CvShelf";
+import { ObsidianTile } from "./ObsidianTile";
+import { Kicker } from "./Kicker";
+import { chip, fmtDay, k, label } from "./ui";
 
 /*
- * Settings — undesigned in the handoff, so it's built from the Sticker primitives (README "restyle undesigned
- * screens"): a title tile, then one coloured tile per concern. Study time moved here from the old planner, the exam
- * date replaces the ExamSchedule sheet, and the CV shelf moved here from Jobs (the Bento Jobs page has none).
- * Vocabulary tagging keeps only its one real action (fill in missing tags); there are no tagging "modes" to pick.
+ * Settings (handoff addendum §1, AzubiSettings.dc.html). lg: a no-scroll 3 × 2 grid (Capacity · Exam · Obsidian /
+ * Reset · CV shelf); md two columns and sm one, both scrolling. Every change saves to the account straight away.
+ * Honest deviations: the exam's name/location and the "Next sessions" Goethe dates have no data source, so the
+ * sub-line shows the level being worked on and the session chips are left out; readiness uses the plan's real hours
+ * left in that level (GET /learning/pace `hoursLeft`).
  */
 
-const k = (px: number) => `calc(var(--k) * ${px}px)`;
-const title: CSSProperties = { fontSize: 20, fontWeight: 700, letterSpacing: "-.02em" };
-const body: CSSProperties = { fontSize: 13, fontWeight: 600, lineHeight: 1.4 };
+type Capacity = { mins: number; days: boolean[]; newW: NewWordsPerDay };
 
-function Head({ icon, children, sub }: { icon: ReactNode; children: ReactNode; sub?: ReactNode }) {
-  return (
-    <div className="flex items-start" style={{ gap: 10 }}>
-      <span
-        className="flex shrink-0 items-center justify-center"
-        style={{ width: 34, height: 34, borderRadius: 10, border: "2.5px solid var(--line)", background: "var(--plain)", color: "var(--plainText)", transform: "rotate(-6deg)", boxSizing: "border-box" }}
-      >
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <div style={title}>{children}</div>
-        {sub && <div style={{ ...body, opacity: 0.8 }}>{sub}</div>}
-      </div>
-    </div>
-  );
-}
+const DAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+const PRESETS = [20, 30, 45, 60, 90];
+const NEW_WORDS: NewWordsPerDay[] = [5, 10, 15, 20];
+const clampMins = (m: number) => Math.max(10, Math.min(180, m));
 
-// ── appearance ───────────────────────────────────────────────────────────────
-
-const THEMES = [
-  ["system", "System"],
-  ["light", "Light"],
-  ["dark", "Dark"],
-] as const;
-
-function Appearance() {
-  const { preference, setPreference, theme } = useTheme();
-  return (
-    <Tile tilt={-0.4} className="flex flex-col" style={{ padding: 18, gap: 12 }}>
-      <Head icon={<Palette size={17} weight="fill" aria-hidden="true" />} sub={preference === "system" ? `Following your device · ${theme} now` : `Always ${theme}`}>
-        Appearance
-      </Head>
-      <div className="self-start">
-        <Segmented label="Theme" options={THEMES} value={preference} onChange={(v) => setPreference(v as ThemePreference)} />
-      </div>
-    </Tile>
-  );
-}
-
-// ── study time ───────────────────────────────────────────────────────────────
-
-const CAPACITIES: { v: number; l: string }[] = [
-  { v: 10, l: "10 min" },
-  { v: 20, l: "20 min" },
-  { v: 45, l: "45 min" },
-  { v: 90, l: "1½ h" },
-  { v: 180, l: "3 h" },
-];
-
-const hours = (m: number) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}` : ""}`);
-
-function StudyTime({ status }: { status: RoadmapStatus | undefined }) {
+/** Local capacity state that saves itself (debounced, so stepping 45 → 60 is one request). */
+function useCapacity(status: RoadmapStatus | undefined) {
   const queryClient = useQueryClient();
+  const [cap, setCap] = useState<Capacity | null>(null);
+  useEffect(() => {
+    if (status && !cap) setCap({ mins: status.studyCapacityMinutes, days: status.studyDays, newW: status.newWordsPerDay });
+  }, [status, cap]);
+
+  const pending = useRef<CapacityUpdate>({});
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const save = useMutation({
-    mutationFn: (minutes: number) => api.updateStudyCapacity({ minutes }),
+    mutationFn: api.updateStudyCapacity,
     onSuccess: (d) => {
+      queryClient.setQueryData<RoadmapStatus>(["roadmap", "status"], (s) => (s ? { ...s, ...d } : s));
       invalidateHub(queryClient);
-      void queryClient.invalidateQueries({ queryKey: ["roadmap", "status"] });
-      toast.success(`${hours(d.studyCapacityMinutes)} a day · weekly goal ${hours(d.studyCapacityMinutes * 6)}`);
     },
-    onError: () => toast.error("Couldn't save that"),
+    onError: () => {
+      toast.error("Couldn't save that");
+      setCap(null);
+      void queryClient.invalidateQueries({ queryKey: ["roadmap", "status"] });
+    },
   });
-  const cur = status?.studyCapacityMinutes;
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const update = (next: Capacity, change: CapacityUpdate) => {
+    setCap(next);
+    pending.current = { ...pending.current, ...change };
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      save.mutate(pending.current);
+      pending.current = {};
+    }, 450);
+  };
+  return {
+    cap,
+    setMins: (m: number) => cap && update({ ...cap, mins: clampMins(m) }, { minutes: clampMins(m) }),
+    toggleDay: (i: number) => {
+      if (!cap) return;
+      const days = cap.days.map((d, j) => (j === i ? !d : d));
+      update({ ...cap, days }, { studyDays: days });
+    },
+    setNewW: (n: NewWordsPerDay) => cap && update({ ...cap, newW: n }, { newWordsPerDay: n }),
+  };
+}
+
+function weekLabel(mins: number, days: number): string {
+  if (!days) return "No study days";
+  const wk = mins * days;
+  return `${Math.floor(wk / 60)} h${wk % 60 ? ` ${wk % 60} min` : ""} a week`;
+}
+
+const tileBox = (bp: Breakpoint): CSSProperties => ({ padding: bp === "sm" ? 16 : 20, gap: bp === "lg" ? 12 : 14 });
+
+// ── capacity ─────────────────────────────────────────────────────────────────
+
+function CapacityTile({ bp, c, style }: { bp: Breakpoint; c: ReturnType<typeof useCapacity>; style: CSSProperties }) {
+  const cap = c.cap;
+  const nDays = cap?.days.filter(Boolean).length ?? 0;
+  const round = (primary: boolean): CSSProperties => ({
+    width: 48,
+    height: 48,
+    borderRadius: "50%",
+    border: "2.5px solid var(--line)",
+    background: primary ? "var(--btn)" : "var(--plain)",
+    color: primary ? "var(--btnText)" : "var(--plainText)",
+    fontSize: 24,
+    fontWeight: 700,
+    cursor: "pointer",
+    boxShadow: "3px 3px 0 var(--shadow)",
+    padding: 0,
+    flexShrink: 0,
+  });
+  const dz = bp === "sm" ? 38 : 42;
   return (
-    <Tile bg="var(--lilac)" tilt={0.5} className="flex flex-col" style={{ padding: 18, gap: 12 }}>
-      <Head icon={<Timer size={17} weight="fill" aria-hidden="true" />} sub="How much time a day you can give German. It sizes today's ticket; the weekly goal is 6 study days of it.">
-        Study time
-      </Head>
-      <div className="flex flex-wrap" style={{ gap: 6 }} role="group" aria-label="Minutes a day">
-        {CAPACITIES.map((c) => (
-          <Chip key={c.v} selected={cur === c.v} selectedTilt={-1.5} style={{ border: "2px solid var(--line)", fontSize: 13 }} disabled={save.isPending} onClick={() => cur !== c.v && save.mutate(c.v)}>
-            {c.l}
-          </Chip>
+    <Tile bg="var(--lemon)" tilt={-0.5} className="flex flex-col" style={{ ...tileBox(bp), ...style }}>
+      <Tape left={36} width={84} />
+      <div className="flex items-center justify-between" style={{ gap: 8 }}>
+        <Kicker icon={<HourglassMedium size={16} weight="fill" aria-hidden="true" />}>Capacity</Kicker>
+        <span style={{ padding: "4px 11px", border: "2.5px solid var(--line)", borderRadius: 999, background: "var(--plain)", color: "var(--plainText)", fontSize: 13, fontWeight: 700, boxShadow: "2px 2px 0 var(--shadow)", transform: "rotate(2deg)" }}>
+          {cap ? weekLabel(cap.mins, nDays) : "…"}
+        </span>
+      </div>
+      <span style={{ fontSize: k(26), fontWeight: 700, letterSpacing: "-.03em", lineHeight: 1.05 }}>How much time can you give a day?</span>
+      <div className="flex items-center" style={{ gap: 14 }}>
+        <button type="button" aria-label="Less time" disabled={!cap || cap.mins <= 10} onClick={() => cap && c.setMins(cap.mins - 5)} style={round(false)}>
+          −
+        </button>
+        <div className="flex flex-1 items-baseline justify-center" style={{ gap: 6 }} aria-live="polite">
+          <span style={{ fontSize: k(76), fontWeight: 700, letterSpacing: "-.06em", lineHeight: 0.9 }}>{cap?.mins ?? "–"}</span>
+          <span style={{ fontSize: 20, fontWeight: 700 }}>min</span>
+        </div>
+        <button type="button" aria-label="More time" disabled={!cap || cap.mins >= 180} onClick={() => cap && c.setMins(cap.mins + 5)} style={round(true)}>
+          +
+        </button>
+      </div>
+      <div className="flex flex-wrap justify-center" style={{ gap: 6 }}>
+        {PRESETS.map((m) => (
+          <button key={m} type="button" aria-pressed={cap?.mins === m} onClick={() => c.setMins(m)} style={chip(cap?.mins === m, { height: 32, padding: "0 11px", fontSize: 12 })}>
+            {m} min
+          </button>
         ))}
       </div>
-      {cur && (
-        <span style={{ ...body, fontWeight: 700 }}>
-          Weekly goal: {hours(cur * 6)}
-        </span>
-      )}
+      <div className="flex flex-col" style={{ gap: 6 }}>
+        <span style={label}>Study days</span>
+        <div className="flex" style={{ gap: 6 }} role="group" aria-label="Study days">
+          {DAY_LABELS.map((l, i) => {
+            const on = cap?.days[i] ?? false;
+            return (
+              <button
+                key={l}
+                type="button"
+                aria-pressed={on}
+                onClick={() => c.toggleDay(i)}
+                style={{
+                  width: dz,
+                  height: dz,
+                  flex: bp === "sm" ? 1 : "none",
+                  borderRadius: "50%",
+                  border: "2.5px solid var(--line)",
+                  background: on ? "var(--sel)" : "var(--plain)",
+                  color: on ? "var(--selText)" : "var(--plainText)",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  padding: 0,
+                  boxShadow: on ? "2px 2px 0 var(--shadow)" : "none",
+                  transform: on ? `rotate(${i % 2 ? 4 : -4}deg)` : "none",
+                  opacity: on ? 1 : 0.75,
+                  boxSizing: "border-box",
+                }}
+              >
+                {l}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="flex flex-col" style={{ gap: 6 }}>
+        <span style={label}>New words a day</span>
+        <div className="flex flex-wrap items-center" style={{ gap: 6 }}>
+          {NEW_WORDS.map((n) => (
+            <button key={n} type="button" aria-pressed={cap?.newW === n} onClick={() => c.setNewW(n)} style={chip(cap?.newW === n, { height: 34, minWidth: 44, justifyContent: "center", padding: "0 12px" })}>
+              {n}
+            </button>
+          ))}
+          <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.75 }}>≈ {(cap?.newW ?? 10) * 6} reviews a day</span>
+        </div>
+      </div>
     </Tile>
   );
 }
 
-// ── exam date ────────────────────────────────────────────────────────────────
+// ── exam date + readiness ────────────────────────────────────────────────────
 
-const PRESETS = [182, 200, 240];
+const DAY_MS = 86_400_000;
+const fromKey = (key: string) => new Date(`${key}T00:00:00`);
 
-function addDays(key: string, n: number): string {
-  const d = new Date(`${key}T00:00:00`);
-  d.setDate(d.getDate() + n);
-  return localDateKey(d);
-}
-const daysBetween = (a: string, b: string) => Math.round((new Date(`${b}T00:00:00`).getTime() - new Date(`${a}T00:00:00`).getTime()) / 86_400_000);
-const fmtDate = (key: string) => new Date(`${key}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-
-function ExamDate({ suggest }: { suggest: number | null }) {
+function ExamTile({ bp, c, style }: { bp: Breakpoint; c: ReturnType<typeof useCapacity>; style: CSSProperties }) {
   const queryClient = useQueryClient();
-  const { data: syllabus } = useQuery({ queryKey: ["learning", "syllabus"], queryFn: api.learningSyllabus });
-  const today = localDateKey();
-  const current = syllabus?.routePace.examTargetDate ?? null;
-  const [picked, setPicked] = useState(current ?? "");
-  useEffect(() => setPicked(current ?? ""), [current]);
-  // after a plan reset the old date is stale: pre-fill a fresh one (the user still confirms it)
-  useEffect(() => {
-    if (suggest) setPicked(addDays(today, suggest));
-  }, [suggest]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  const { data: pace } = useQuery({ queryKey: ["learning", "pace"], queryFn: api.learningPace });
+  const current = pace?.examTargetDate ?? null;
+  const [picked, setPicked] = useState<string | null>(null);
+  const exam = picked ?? current;
   const save = useMutation({
-    mutationFn: (date: string | null) => api.setExamTarget(date),
+    mutationFn: (date: string) => api.setExamTarget(date),
     onSuccess: (_d, date) => {
       void queryClient.invalidateQueries({ queryKey: ["learning"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      toast.success(date ? `Exam set for ${fmtDate(date)} · plan re-paced` : "Exam date cleared");
+      toast.success(`Exam set for ${fmtDay(fromKey(date), true)} · plan re-paced`);
     },
-    onError: () => toast.error("Couldn't save that date"),
+    onError: () => {
+      setPicked(null);
+      toast.error("Couldn't save that date");
+    },
   });
 
-  const days = picked ? daysBetween(today, picked) : 0;
-  const projected = syllabus?.routePace.projectedFinishDate ?? null;
-  const projectedDays = projected ? daysBetween(today, projected) : null;
-  const note =
-    !picked || days < 1
-      ? "Pick a date after today."
-      : projectedDays === null
-        ? `${days} days out. Close a few topics to see a pace projection.`
-        : days >= projectedDays
-          ? `${days} days out. At your pace you'd finish the level in ~${projectedDays} days. Comfortable.`
-          : `${days} days out. Your pace projects ~${projectedDays} days, so this is tighter than your rate so far.`;
-  const dirty = picked !== (current ?? "");
+  const today = fromKey(localDateKey());
+  const tomorrow = localDateKey(new Date(today.getTime() + DAY_MS));
+  const ex = exam ? fromKey(exam) : null;
+  const examDays = ex ? Math.max(0, Math.round((ex.getTime() - today.getTime()) / DAY_MS)) : 0;
+
+  // readiness (handoff §1.4), live from the capacity being edited
+  const cap = c.cap;
+  const nDays = cap?.days.filter(Boolean).length ?? 0;
+  const level = (pace?.level ?? "b1").toUpperCase();
+  const hoursLeft = pace?.hoursLeft ?? 0;
+  const weeklyH = cap ? (cap.mins * nDays) / 60 : 0;
+  const needDays = weeklyH > 0 ? (hoursLeft / weeklyH) * 7 : Infinity;
+  const slackW = (examDays - needDays) / 7;
+  const readyD = new Date(today.getTime() + (Number.isFinite(needDays) ? needDays : 0) * DAY_MS);
+  const st = !ex || hoursLeft === 0 ? "ok" : !Number.isFinite(needDays) ? "late" : slackW >= 2 ? "ok" : slackW >= 0 ? "tight" : "late";
+  const needMins = nDays && examDays ? Math.ceil((hoursLeft * 60) / (examDays / 7) / nDays / 5) * 5 : 0;
+  const late = !!ex && st === "late" && needMins > 0 && needMins <= 180;
+  const statusL = !pace || !cap
+    ? "Working it out…"
+    : !ex
+      ? `Pick an exam date to see if your time gets you to ${level}.`
+      : !nDays
+        ? "Pick at least one study day."
+        : hoursLeft === 0
+          ? `Nothing left to study in ${level}. Book the exam whenever you like.`
+          : st === "ok"
+            ? `On track. Ready for ${level} around ${fmtDay(readyD)}, about ${Math.floor(slackW)} weeks early. Mock exam lands two weeks before.`
+            : st === "tight"
+              ? `Just in time. You'd finish around ${fmtDay(readyD)}, with no room for a mock exam.`
+              : `Too tight. At ${cap.mins} min on ${nDays} days you'd be ready ${fmtDay(readyD, true)}. Add time or move the exam.`;
+  const dot = !ex || !pace ? "var(--plain2)" : { ok: "var(--mint)", tight: "var(--lemon)", late: "var(--tomato)" }[st];
 
   return (
-    <Tile bg="var(--orange)" tilt={-0.6} className="flex flex-col" style={{ padding: 18, gap: 12 }}>
-      <Head icon={<FlagPennant size={17} weight="fill" aria-hidden="true" />} sub={current ? `Booked for ${fmtDate(current)}` : "No exam date yet"}>
-        Exam date
-      </Head>
+    <Tile bg="var(--sky)" tilt={0.7} className="flex flex-col" style={{ ...tileBox(bp), ...style }}>
+      <div className="flex items-center justify-between" style={{ gap: 8 }}>
+        <Kicker icon={<FlagPennant size={16} weight="fill" aria-hidden="true" />}>Exam date</Kicker>
+        {ex && (
+          <span style={{ padding: "5px 12px", border: "2.5px solid var(--line)", borderRadius: 10, background: "var(--tomato)", color: "var(--onTile)", fontSize: 14, fontWeight: 700, boxShadow: "2px 2px 0 var(--shadow)", transform: "rotate(-3deg)" }}>
+            {examDays} day{examDays === 1 ? "" : "s"}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-col" style={{ gap: 2 }}>
+        <span style={{ fontSize: k(34), fontWeight: 700, letterSpacing: "-.04em", lineHeight: 1 }}>{ex ? fmtDay(ex, true) : "Pick a date"}</span>
+        <span style={{ fontSize: 14, fontWeight: 600 }}>
+          Goethe-Zertifikat {level}
+          {hoursLeft > 0 ? ` · about ${Math.round(hoursLeft)} h of study left` : ""}
+        </span>
+      </div>
       <input
         type="date"
-        value={picked}
-        min={addDays(today, 1)}
-        onChange={(e) => setPicked(e.target.value)}
+        value={exam ?? ""}
+        min={tomorrow}
         aria-label="Exam date"
-        style={{ ...fieldInput, width: "100%" }}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (!v || v < tomorrow) return;
+          setPicked(v);
+          save.mutate(v);
+        }}
+        style={{ height: 44, padding: "0 12px", border: "2.5px solid var(--line)", borderRadius: 14, background: "var(--plain)", color: "var(--plainText)", fontSize: 15, fontWeight: 700, outline: "none", boxSizing: "border-box" }}
       />
-      <div className="flex flex-wrap" style={{ gap: 6 }}>
-        {PRESETS.map((n) => (
-          <Chip key={n} size="sm" selected={picked === addDays(today, n)} selectedTilt={-1.5} style={{ border: "2px solid var(--line)" }} onClick={() => setPicked(addDays(today, n))}>
-            in {n} days
-          </Chip>
-        ))}
-      </div>
-      <span style={body}>{note}</span>
-      <div className="flex" style={{ gap: 8 }}>
-        {current && (
-          <PillButton variant="secondary" height={40} onClick={() => save.mutate(null)} disabled={save.isPending}>
-            Clear
-          </PillButton>
-        )}
-        <PillButton className="flex-1" height={40} disabled={!dirty || !picked || days < 1 || save.isPending} onClick={() => save.mutate(picked)}>
-          {current ? "Update date" : "Set date"}
-        </PillButton>
-      </div>
-    </Tile>
-  );
-}
-
-// ── CVs ──────────────────────────────────────────────────────────────────────
-
-const CV_KIND: Record<Cv["kind"], string> = { cv: "CV", letter: "Letter", certificates: "Certificates" };
-
-function Cvs() {
-  const queryClient = useQueryClient();
-  const { data } = useQuery({ queryKey: ["cvs"], queryFn: api.cvs });
-  const [adding, setAdding] = useState(false);
-  const [confirm, setConfirm] = useState<string | null>(null);
-  const remove = useMutation({
-    mutationFn: (id: string) => api.deleteCv(id),
-    onSuccess: () => {
-      setConfirm(null);
-      void queryClient.invalidateQueries({ queryKey: ["cvs"] });
-      toast.info("CV deleted");
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't delete it"),
-  });
-  const cvs = data?.cvs ?? [];
-  return (
-    <Tile bg="var(--mint)" tilt={0.4} className="flex flex-col" style={{ padding: 18, gap: 12 }}>
-      <Head icon={<FileText size={17} weight="fill" aria-hidden="true" />} sub="The files your applications point at. Pick one per application in Jobs.">
-        CVs
-      </Head>
-      <div className="flex flex-col" style={{ gap: 6 }}>
-        {cvs.map((cv) => (
-          <div
-            key={cv.id}
-            className="flex items-center"
-            style={{ gap: 8, padding: "8px 10px", border: "2px solid var(--line)", borderRadius: 12, background: "var(--plain)", color: "var(--plainText)" }}
-          >
-            <button type="button" onClick={() => cv.file && downloadFile(cv.file.id, cv.file.originalName)} className="min-w-0 flex-1 cursor-pointer text-left" title={cv.file ? `Download ${cv.file.originalName}` : undefined} style={{ border: "none", background: "transparent", color: "inherit", padding: 0 }}>
-              <span className="block truncate" style={{ fontSize: 14, fontWeight: 700 }}>
-                {cv.title}
-              </span>
-              <span className="block" style={{ fontSize: 12, fontWeight: 600, color: "var(--plainMuted)" }}>
-                {CV_KIND[cv.kind]} · {cv.usedIn === 0 ? "not used yet" : `used by ${cv.usedIn} application${cv.usedIn === 1 ? "" : "s"}`}
-              </span>
-            </button>
+      <div className="flex items-start" style={{ gap: 10, padding: 12, border: "2.5px solid var(--line)", borderRadius: 16, background: "var(--plain)", color: "var(--plainText)", marginTop: bp === "lg" ? "auto" : 0 }}>
+        <span aria-hidden="true" style={{ width: 16, height: 16, marginTop: 1, borderRadius: "50%", border: "2.5px solid var(--line)", background: dot, flexShrink: 0, boxSizing: "border-box" }} />
+        <div className="flex min-w-0 flex-1 flex-col" style={{ gap: 6 }}>
+          <span role="status" style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.3 }}>
+            {statusL}
+          </span>
+          {late && (
             <button
               type="button"
-              aria-label={confirm === cv.id ? `Really delete ${cv.title}` : `Delete ${cv.title}`}
-              onClick={() => (confirm === cv.id ? remove.mutate(cv.id) : setConfirm(cv.id))}
-              className="flex shrink-0 cursor-pointer items-center"
-              style={{ height: 30, gap: 4, padding: confirm === cv.id ? "0 10px" : "0 8px", border: "2px dashed var(--line)", borderRadius: 999, background: "transparent", color: "inherit", fontSize: 12, fontWeight: 700 }}
+              onClick={() => {
+                c.setMins(needMins);
+                toast.success(`Capacity set to ${needMins} min a day`);
+              }}
+              className="cursor-pointer self-start"
+              style={{ height: 34, padding: "0 13px", border: "2.5px solid var(--line)", borderRadius: 999, background: "var(--btn)", color: "var(--btnText)", fontWeight: 700, fontSize: 13 }}
             >
-              <Trash size={12} weight="fill" aria-hidden="true" />
-              {confirm === cv.id && "Sure?"}
+              Set {needMins} min a day
             </button>
-          </div>
-        ))}
-        {cvs.length === 0 && (
-          <div style={{ ...body, padding: 12, border: "2.5px dashed var(--line)", borderRadius: 12, textAlign: "center" }}>No CVs yet.</div>
-        )}
+          )}
+        </div>
       </div>
-      <PillButton variant="secondary" height={40} icon={<Plus size={14} weight="bold" aria-hidden="true" />} className="self-start" onClick={() => setAdding(true)}>
-        Add a CV
-      </PillButton>
-      {adding && <AddCvModal onClose={() => setAdding(false)} />}
-    </Tile>
-  );
-}
-
-// ── Obsidian ─────────────────────────────────────────────────────────────────
-
-function Obsidian() {
-  const queryClient = useQueryClient();
-  const { data: status } = useQuery({ queryKey: ["vault-status"], queryFn: api.vaultStatus });
-  const [path, setPath] = useState("");
-  const [confirmUnlink, setConfirmUnlink] = useState(false);
-  const refresh = () => {
-    void queryClient.invalidateQueries({ queryKey: ["vault-status"] });
-    void queryClient.invalidateQueries({ queryKey: ["words"] });
-    void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-  };
-  const link = useMutation({
-    mutationFn: () => api.vaultLink(path.trim()),
-    onSuccess: (d) => {
-      refresh();
-      setPath("");
-      toast.success(`Linked · imported ${d.wordCount} words`);
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't link that folder"),
-  });
-  const unlink = useMutation({
-    mutationFn: api.vaultUnlink,
-    onSuccess: () => {
-      setConfirmUnlink(false);
-      refresh();
-      toast.info("Vault unlinked · your files are untouched");
-    },
-  });
-  const sync = useMutation({ mutationFn: api.vaultSyncNow, onSuccess: () => (refresh(), toast.success("Synced")), onError: () => toast.error("Couldn't sync · try again") });
-  const linked = !!status?.vaultPath;
-  const row = (l: string, v: ReactNode) => (
-    <div className="flex items-center justify-between" style={{ gap: 10, fontSize: 13, fontWeight: 600 }}>
-      <span style={{ opacity: 0.8 }}>{l}</span>
-      <span className="min-w-0 truncate" style={{ fontWeight: 700 }}>
-        {v}
-      </span>
-    </div>
-  );
-  return (
-    <Tile bg="var(--sky)" tilt={-0.3} className="flex flex-col" style={{ padding: 18, gap: 12 }}>
-      <Head
-        icon={<LinkSimple size={17} weight="bold" aria-hidden="true" />}
-        sub={linked ? `${status!.wordCount} words · ${status!.watching ? "watching for changes" : "watcher stopped"}` : "Not linked"}
-      >
-        Obsidian vault
-      </Head>
-      {linked ? (
-        <>
-          <div className="flex flex-col" style={{ gap: 6, padding: "10px 12px", border: "2px solid var(--line)", borderRadius: 12, background: "var(--plain)", color: "var(--plainText)" }}>
-            {row("Folder", <span style={{ fontFamily: "var(--font-mono)", fontSize: 12 }}>{status!.vaultPath}</span>)}
-            {row("Last sync", status!.lastSyncAt ? new Date(status!.lastSyncAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "never")}
-          </div>
-          <div className="flex" style={{ gap: 8 }}>
-            <PillButton variant="secondary" height={40} onClick={() => (confirmUnlink ? unlink.mutate() : setConfirmUnlink(true))}>
-              {confirmUnlink ? "Really unlink?" : "Unlink"}
-            </PillButton>
-            <PillButton className="flex-1" height={40} disabled={sync.isPending} icon={<ArrowCounterClockwise size={14} weight="bold" aria-hidden="true" />} onClick={() => sync.mutate()}>
-              {sync.isPending ? "Syncing…" : "Sync now"}
-            </PillButton>
-          </div>
-        </>
-      ) : (
-        <form
-          className="flex flex-col"
-          style={{ gap: 8 }}
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (path.trim()) link.mutate();
-          }}
-        >
-          <label className="flex flex-col" style={{ gap: 6 }}>
-            <span style={eyebrow}>Vault folder on the server</span>
-            <input value={path} onChange={(e) => setPath(e.target.value)} placeholder="/home/you/Documents/Ausbildung 27/German" style={{ ...fieldInput, fontSize: 13 }} />
-          </label>
-          <PillButton type="submit" height={40} disabled={!path.trim() || link.isPending}>
-            {link.isPending ? "Importing…" : "Link vault"}
-          </PillButton>
-        </form>
-      )}
-    </Tile>
-  );
-}
-
-// ── vocabulary tagging ───────────────────────────────────────────────────────
-
-function Tagging() {
-  const queryClient = useQueryClient();
-  const reclassify = useMutation({
-    mutationFn: api.reclassifyWords,
-    onSuccess: (d) => {
-      void queryClient.invalidateQueries({ queryKey: ["words"] });
-      toast.success(d.updated === 0 ? `Checked ${d.total} words · nothing was missing` : `Classified ${d.updated} of ${d.total} words`);
-    },
-    onError: () => toast.error("Couldn't run it · try again"),
-  });
-  return (
-    <Tile tilt={0.3} className="flex flex-col" style={{ padding: 18, gap: 12 }}>
-      <Head icon={<Tag size={17} weight="fill" aria-hidden="true" />} sub="Level and theme are filed in automatically when you add a word.">
-        Vocabulary tagging
-      </Head>
-      <span style={{ ...body, color: "var(--plainMuted)" }}>
-        Older words may still miss one. This fills in whatever's missing and never touches what you set yourself.
-      </span>
-      <PillButton variant="secondary" height={40} className="self-start" disabled={reclassify.isPending} onClick={() => reclassify.mutate()}>
-        {reclassify.isPending ? "Classifying…" : "Fill in missing tags"}
-      </PillButton>
     </Tile>
   );
 }
 
 // ── reset plan ───────────────────────────────────────────────────────────────
 
-function ResetPlan({ onReset }: { onReset: () => void }) {
+const KEEPS = [
+  ["keepWords", "Keep words & review history"],
+  ["keepNotes", "Keep notes"],
+  ["keepApplications", "Keep applications"],
+] as const;
+type KeepKey = (typeof KEEPS)[number][0];
+const HOLD_MS = 1500;
+
+function ResetTile({ bp, style }: { bp: Breakpoint; style: CSSProperties }) {
   const queryClient = useQueryClient();
-  const [confirming, setConfirming] = useState(false);
+  const { data: pace } = useQuery({ queryKey: ["learning", "pace"], queryFn: api.learningPace });
+  const { data: vault } = useQuery({ queryKey: ["vault-status"], queryFn: api.vaultStatus });
+  const vaultLinked = !!vault?.vaultPath;
+  const [keep, setKeep] = useState<Record<KeepKey, boolean>>({ keepWords: true, keepNotes: true, keepApplications: true });
+  const [hold, setHold] = useState(0);
+  const [done, setDone] = useState(false);
+  const raf = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(raf.current), []);
+
   const reset = useMutation({
-    mutationFn: () => api.resetRoadmap(),
+    mutationFn: () => api.resetRoadmap({ ...keep, keepWords: keep.keepWords || vaultLinked }),
     onSuccess: () => {
-      setConfirming(false);
-      invalidateHub(queryClient);
-      toast.success("Plan reset from today · check the exam date");
-      onReset();
+      void queryClient.invalidateQueries();
+      setDone(true);
+      const lost = KEEPS.filter(([key]) => !keep[key] && !(key === "keepWords" && vaultLinked)).length;
+      toast.success(lost ? `Fresh route · Day 1 · ${lost} thing${lost > 1 ? "s" : ""} cleared` : "Fresh route · Day 1 · everything kept");
     },
-    onError: () => toast.error("Couldn't reset the plan · try again"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't reset the plan · try again"),
   });
+
+  const start = () => {
+    if (reset.isPending) return;
+    cancelAnimationFrame(raf.current);
+    const t0 = performance.now();
+    const tick = () => {
+      const pr = Math.min(1, (performance.now() - t0) / HOLD_MS);
+      setHold(pr);
+      if (pr >= 1) {
+        setHold(0);
+        reset.mutate();
+      } else raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+  };
+  const end = () => {
+    cancelAnimationFrame(raf.current);
+    setHold((h) => (h < 1 ? 0 : h));
+  };
+
+  const examKey = pace?.examTargetDate ?? null;
+  const holdL = reset.isPending ? "Resetting…" : hold > 0 ? "Keep holding…" : done ? "Route restarted · hold to redo" : "Hold to reset";
   return (
-    <Tile bg="var(--tomato)" tilt={-0.5} className="flex flex-col" style={{ padding: 18, gap: 12 }}>
-      <Head icon={<ArrowCounterClockwise size={17} weight="bold" aria-hidden="true" />} sub="Start a fresh 182-day plan from today.">
-        Reset plan
-      </Head>
-      <span style={body}>Clears due dates and daily tasks, then lays out 182 days from today. Words, notes, syllabus progress and test history stay.</span>
-      {confirming ? (
-        <div className="flex" style={{ gap: 8 }}>
-          <PillButton variant="secondary" height={40} onClick={() => setConfirming(false)}>
-            Keep it
-          </PillButton>
-          <PillButton className="flex-1" height={40} disabled={reset.isPending} onClick={() => reset.mutate()}>
-            {reset.isPending ? "Resetting…" : "Yes, reset"}
-          </PillButton>
-        </div>
-      ) : (
-        <PillButton variant="dashed" height={40} className="self-start" style={{ opacity: 1 }} onClick={() => setConfirming(true)}>
-          Reset plan
-        </PillButton>
-      )}
+    <Tile tilt={0.5} className="flex flex-col" style={{ ...tileBox(bp), ...style }}>
+      <div className="flex flex-col" style={{ gap: 4 }}>
+        <Kicker icon={<ArrowCounterClockwise size={16} weight="bold" aria-hidden="true" />}>Reset plan</Kicker>
+        <span style={{ fontSize: k(24), fontWeight: 700, letterSpacing: "-.03em", lineHeight: 1.05 }}>Start the route again</span>
+        <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.35, color: "var(--plainMuted)" }}>
+          Builds a new route from today{examKey ? ` to ${fmtDay(fromKey(examKey))}` : ""} using your capacity. Your streak goes back to 0.
+        </span>
+      </div>
+      <div className="flex flex-col" style={{ gap: 6 }}>
+        {KEEPS.map(([key, l]) => {
+          const locked = key === "keepWords" && vaultLinked;
+          const on = keep[key] || locked;
+          return (
+            <button
+              key={key}
+              type="button"
+              role="checkbox"
+              aria-checked={on}
+              disabled={locked}
+              title={locked ? "Your words live in the Obsidian vault. Switch sync off to clear them here." : undefined}
+              onClick={() => setKeep((s) => ({ ...s, [key]: !s[key] }))}
+              className="flex items-center text-left"
+              style={{ gap: 10, padding: 0, border: "none", background: "transparent", color: "inherit", cursor: locked ? "default" : "pointer", fontSize: 14, fontWeight: 700 }}
+            >
+              <span
+                className="flex shrink-0 items-center justify-center"
+                style={{ width: 24, height: 24, borderRadius: 7, border: "2.5px solid var(--line)", background: on ? "var(--mint)" : "var(--plain)", color: "var(--onTile)", boxSizing: "border-box" }}
+              >
+                {on && <Check size={13} weight="bold" aria-hidden="true" />}
+              </span>
+              {l}
+              {locked && <span style={{ fontSize: 12, fontWeight: 600, color: "var(--plainMuted)" }}>· in your vault</span>}
+            </button>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        onPointerDown={(e) => e.button === 0 && start()}
+        onPointerUp={end}
+        onPointerLeave={end}
+        onPointerCancel={end}
+        onKeyDown={(e) => (e.key === " " || e.key === "Enter") && !e.repeat && (e.preventDefault(), start())}
+        onKeyUp={(e) => (e.key === " " || e.key === "Enter") && end()}
+        onContextMenu={(e) => e.preventDefault()}
+        aria-label="Hold to reset the plan"
+        className="relative cursor-pointer overflow-hidden select-none"
+        style={{ marginTop: "auto", height: 52, flexShrink: 0, border: "2.5px solid var(--line)", borderRadius: 999, background: "var(--plain2)", color: "var(--plainText)", fontWeight: 700, fontSize: 15, boxShadow: "3px 3px 0 var(--shadow)", padding: 0, touchAction: "none" }}
+      >
+        <span aria-hidden="true" className="absolute top-0 bottom-0 left-0" style={{ width: `${hold * 100}%`, background: "var(--tomato)", borderRight: hold > 0 ? "2.5px solid var(--line)" : "none" }} />
+        <span className="relative flex items-center justify-center" style={{ gap: 8 }}>
+          <HandTap size={15} weight="fill" aria-hidden="true" />
+          {holdL}
+        </span>
+      </button>
     </Tile>
   );
 }
 
+// ── page ─────────────────────────────────────────────────────────────────────
+
+function gridStyle(bp: Breakpoint, fill: boolean): CSSProperties {
+  if (bp === "lg")
+    return {
+      gridTemplateColumns: "minmax(0,1.12fr) minmax(0,1fr) minmax(0,1fr)",
+      gridTemplateRows: fill ? "minmax(0,1.1fr) minmax(0,1fr)" : "auto auto",
+      gap: 22,
+      height: fill ? "100%" : undefined,
+    };
+  return { gridTemplateColumns: bp === "md" ? "repeat(2,minmax(0,1fr))" : "minmax(0,1fr)", gap: bp === "sm" ? 18 : 22, paddingBottom: bp === "sm" ? 4 : 0 };
+}
+
+/** Grid placement per tile: lg [column, row], md column span + order, sm order. */
+function at(bp: Breakpoint, lg: [string | number, number], md: string, order: number, smOrder = order): CSSProperties {
+  return bp === "lg" ? { gridColumn: lg[0], gridRow: lg[1] } : bp === "md" ? { gridColumn: md, order } : { order: smOrder };
+}
+
 export default function Settings() {
-  const { bp } = useBreakpoint();
+  const { bp, fill } = useBreakpoint();
   const { data: status } = useQuery({ queryKey: ["roadmap", "status"], queryFn: api.roadmapStatus });
-  const [suggestExam, setSuggestExam] = useState<number | null>(null);
-  const cols = bp === "lg" ? 3 : bp === "md" ? 2 : 1;
-  const tiles = [
-    <Appearance key="a" />,
-    <StudyTime key="s" status={status} />,
-    <ExamDate key="e" suggest={suggestExam} />,
-    <Cvs key="c" />,
-    <Obsidian key="o" />,
-    <Tagging key="t" />,
-    <ResetPlan key="r" onReset={() => setSuggestExam(200)} />,
-  ];
-  // masonry-ish: deal tiles into columns so uneven heights don't leave grid holes
-  const columns = Array.from({ length: cols }, (_, c) => tiles.filter((_, i) => i % cols === c));
+  const capacity = useCapacity(status);
   return (
-    <div className="flex flex-col" style={{ gap: bp === "sm" ? 16 : 20, "--k": bp === "lg" ? 1 : bp === "md" ? 0.9 : 0.78 } as CSSProperties}>
-      <Tile bg="var(--lemon)" tilt={-0.5} tape={{ left: 34, width: 84 }} className="flex flex-col" style={{ padding: bp === "sm" ? 16 : 18, gap: 6 }}>
-        <Eyebrow>You &amp; the app</Eyebrow>
-        <span style={{ fontSize: k(34), fontWeight: 700, letterSpacing: "-.04em", lineHeight: 1 }}>Settings</span>
-      </Tile>
-      <div className="grid items-start" style={{ gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, gap: bp === "sm" ? 16 : 20 }}>
-        {columns.map((col, c) => (
-          <div key={c} className="flex min-w-0 flex-col" style={{ gap: bp === "sm" ? 16 : 20 }}>
-            {col}
-          </div>
-        ))}
+    <div className="flex min-h-0 flex-1 flex-col" style={{ gap: 16, "--k": bp === "lg" ? 1 : bp === "md" ? 0.92 : 0.8 } as CSSProperties}>
+      {bp === "sm" && (
+        <div className="flex items-baseline justify-between" style={{ gap: 8, padding: "4px 4px 0" }}>
+          <h1 style={{ fontSize: 34, fontWeight: 700, letterSpacing: "-.04em", margin: 0 }}>Settings</h1>
+          <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.7 }}>Saved to your account</span>
+        </div>
+      )}
+      <div className="grid min-h-0 flex-1" style={gridStyle(bp, fill)}>
+        {bp !== "sm" && <h1 className="sr-only">Settings</h1>}
+        <CapacityTile bp={bp} c={capacity} style={at(bp, [1, 1], "1 / 3", 1)} />
+        <ExamTile bp={bp} c={capacity} style={at(bp, [2, 1], "auto", 2)} />
+        <ObsidianTile bp={bp} style={at(bp, [3, 1], "auto", 3, 4)} />
+        <ResetTile bp={bp} style={at(bp, [1, 2], "1 / 3", 5)} />
+        <CvShelf bp={bp} style={at(bp, ["2 / 4", 2], "1 / 3", 4, 3)} />
       </div>
     </div>
   );

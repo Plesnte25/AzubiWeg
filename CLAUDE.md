@@ -53,7 +53,7 @@ version instead. Cases already settled (the plan has the full list):
 - **One source of truth per metric.** The demo contradicts itself (hero "A2 · 64%" by words against 34% by stations;
   14 applied against 12 sent). Level % = passed+mastered syllabus items ÷ items in the active level, everywhere.
   Strength pips are derived from SRS interval bands; "shaky" = strength ≤ 2 everywhere. Lernzeit = heartbeat minutes
-  on learning routes. Weekly goal = `studyCapacityMinutes` × 6. "New" = added in the last 7 days.
+  on learning routes. Weekly goal = `studyCapacityMinutes` × study days (Settings → Capacity). "New" = added in the last 7 days.
 - **Real rules over demo copy.** The exam gate shows the real rules (20 questions / 20 min / 70%), not the demo's
   40/45/80. The review session has Again/Hard/Good/Easy: Again is this app's
   addition to the Obsidian-plugin scheduler (`server/src/services/srs.ts`, a lapse to 1 day; the vault SR line format
