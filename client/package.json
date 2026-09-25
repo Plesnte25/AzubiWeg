@@ -19,7 +19,6 @@
     "@tiptap/extension-placeholder": "^3.30.4",
     "@tiptap/react": "^3.30.4",
     "@tiptap/starter-kit": "^3.30.4",
-    "lucide-react": "^1.26.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1",
@@ -32,6 +31,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
     "oxlint": "^1.71.0",
+    "playwright-core": "^1.62.1",
     "typescript": "~6.0.2",
     "vite": "^8.1.1"
   }

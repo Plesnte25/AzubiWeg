@@ -12,6 +12,10 @@ model User {
   passwordHash        String
   name                String
   vaultPath           String?
+  // the last vault linked, kept after unlinking so Settings' switch can turn sync back on
+  lastVaultPath       String?
+  // Settings → Obsidian sync → "Notes": write notes to <vault>/Notizen as markdown (services/vault/notes.ts)
+  vaultWriteNotes     Boolean               @default(true)
   // same idea for the CEFR syllabus (learning hub)
   learningSeededAt    DateTime?
   // which revision of DEFAULT_SYLLABUS_ITEMS this user has; a bump triggers a
@@ -35,7 +39,14 @@ model User {
   // user-set Goethe exam date; drives the Learning Hub's pace/readiness math
   // (weeks-behind-pace, route-pace projections) — null = no target set yet
   examTargetDate      DateTime?             @db.Date
+  // minutes a day for German, 10–180 in steps of 5 (Settings → Capacity); sizes the daily ticket
   studyCapacityMinutes Int                  @default(45)
+  // Monday → Sunday; a day off gets no new ticket (its tasks carry over) and doesn't count toward the weekly goal
+  studyDays            Boolean[]            @default([true, true, true, true, true, false, true])
+  // cap on never-reviewed words a review session introduces per day
+  newWordsPerDay       Int                  @default(10)
+  // Settings → Reset plan sets this: the current streak only counts activity from here on (best streak keeps history)
+  streakResetAt        DateTime?
   lastLoginAt         DateTime?
   activityPings       ActivityPing[]
   dailyActiveMinutes  DailyActiveMinutes[]
@@ -53,6 +64,8 @@ model ActivityPing {
   userId   String
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   pingedAt DateTime @default(now())
+  // true while the client was on a learning route (Words, Review, Plan, Exam) — Bento's Lernzeit counts only these
+  learning Boolean  @default(false)
 
   @@index([userId, pingedAt])
 }
@@ -64,6 +77,9 @@ model DailyActiveMinutes {
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date    DateTime @db.Date
   minutes Int
+  // Lernzeit share of `minutes` (see splitActiveMinutes); null for days rolled up before the learning flag existed,
+  // which can't be split and fall back to `minutes`
+  learningMinutes Int?
 
   @@unique([userId, date])
 }
@@ -176,9 +192,14 @@ model ReviewLog {
   grade         Grade
   reviewedAt    DateTime @default(now())
   intervalAfter Int
+  // the word's schedule before this grade, so Undo in the review session can restore it; all null = it was new
+  prevDue       DateTime? @db.Date
+  prevInterval  Int?
+  prevEase      Int?
 }
 
 enum Grade {
+  again
   hard
   good
   easy
@@ -271,9 +292,10 @@ model UploadedFile {
   coveringSource StudySource?  @relation("StudySourceCover")
   roadmapTaskId  String?
   roadmapTask    RoadmapTask?  @relation(fields: [roadmapTaskId], references: [id], onDelete: Cascade)
-  // a CV is just an uploaded file with metadata (see Cv below) — one file per CV
-  cvId           String?       @unique
+  // a shelf document is uploaded files with metadata (see Cv below): one file per version, the highest is current
+  cvId           String?
   cv             Cv?           @relation(fields: [cvId], references: [id], onDelete: Cascade)
+  cvVersion      Int?
   noteId         String?
   note           Note?         @relation(fields: [noteId], references: [id], onDelete: Cascade)
   kind           FileKind      @default(document)
@@ -304,18 +326,23 @@ model Cv {
   userId       String
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   title        String
-  category     CvCategory    @default(lebenslauf)
-  // the CV IS this file — a PDF/Word doc the user already has, nothing
-  // rendered or edited in-app; see UploadedFile.cvId for the other side
-  file         UploadedFile?
+  kind         CvKind        @default(cv)
+  // the document IS its files — PDFs/Word docs the user already has, nothing rendered or edited in-app. "New version"
+  // uploads another file (UploadedFile.cvVersion); older versions stay. `version` is the current one.
+  files        UploadedFile[]
+  version      Int           @default(1)
+  // at most one per user, and only a CV: Jobs preselects it and it can't be removed while it's the default
+  isDefault    Boolean       @default(false)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   applications Application[]
 }
 
-enum CvCategory {
-  lebenslauf
-  ats
+// Settings → CV shelf
+enum CvKind {
+  cv
+  letter
+  certificates
 }
 
 model Application {
@@ -339,7 +366,13 @@ model Application {
   appliedAt   DateTime?          @db.Date
   cvId        String?
   cv          Cv?                @relation(fields: [cvId], references: [id], onDelete: SetNull)
+  // the shelf version the application went out with
+  cvVersion   Int?
+  // German level the posting asks for: detected on fetch (detectGermanLevel), manually overridable; null = unknown
+  germanLevel GermanLevel?
   events      ApplicationEvent[]
+  phrases     ApplicationPhrase[]
+  notes       Note[]
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
@@ -364,6 +397,27 @@ model ApplicationEvent {
   fromStatus    ApplicationStatus?
   toStatus      ApplicationStatus?
   occurredAt    DateTime             @default(now())
+}
+
+enum GermanLevel {
+  a1
+  a2
+  b1
+  b2
+  c1
+  c2
+}
+
+// The user's own interview/Probetag phrases for one application; the curated bank lives in code
+// (services/applications/phrases.ts)
+model ApplicationPhrase {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  text          String
+  createdAt     DateTime    @default(now())
+
+  @@index([applicationId])
 }
 
 enum ApplicationEventType {
@@ -485,9 +539,12 @@ model StudySource {
   // set) always wins for display — a user-uploaded cover overrides
   // whatever was auto-fetched.
   coverImageUrl  String?
+  // Plan journey station this source fuels, as "level:theme" (see services/learning/stations.ts); null = none
+  stationKey     String?
   logs           StudySourceLog[]
   units          StudySourceUnit[]
   files          UploadedFile[]
+  linkedNotes    Note[]
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 }
@@ -565,6 +622,12 @@ model SelfTestResult {
   questionIds Json?
   // [{ topic, level, correct, total }] for history display
   breakdown   Json?
+  // which checkpoint (1 = after station 7, 2 = 14, 3 = 21) a kind=checkpoint result belongs to
+  checkpointIndex Int?
+  // [{ type: "mcq"|"fill_blank"|"true_false", correct, total }] — per-question-type scores (Checkpoint tiles)
+  typeBreakdown Json?
+  // gender_drill only: [{ wordId, article: "der"|"die"|"das", picked }] — feeds article accuracy
+  answers       Json?
   score       Int
   total       Int
   takenAt     DateTime      @default(now())
@@ -589,6 +652,9 @@ model ExamAttempt {
   passed           Boolean?
   // [{ section: "vocabulary"|"grammar"|"gender_drill"|"listening", correct, total }]
   sectionBreakdown Json?
+  mode             ExamMode  @default(real)
+  // seeds this attempt's MCQ choice order (services/learning/exam.ts choiceOrder); null = pre-shuffle attempts
+  choiceSeed       String?
 
   @@index([userId, level, startedAt])
 }
@@ -598,6 +664,18 @@ enum SelfTestKind {
   vocab
   // session-engine test: bank + vocab questions, mixed formats
   mixed
+  // der/die/das per word; per-word answers in breakdown feed article accuracy
+  gender_drill
+  // hear a word (Edge TTS), type it
+  listen_type
+  // scoped mixed test over a checkpoint's stations; recorded, never gates anything
+  checkpoint
+}
+
+enum ExamMode {
+  real
+  // practice run: no 7-day lock, never counts as a pass
+  mock
 }
 
 enum QuizDirection {
@@ -778,15 +856,37 @@ model Note {
   // list. Null for notes created by navigating to Notes directly rather
   // than via the FAB, or from the dashboard (no context to tag).
   contextTag     String?
+  // Bento sticky-wall category; `skill` above stays internal (and drives the initial mapping)
+  category       NoteCategory   @default(everyday)
+  pinned         Boolean        @default(false)
+  applicationId  String?
+  application    Application?   @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  // Plan journey station link ("level:theme"), for /station links and station-pinned task notes
+  stationKey     String?
+  // /source link (Notes sticky wall)
+  studySourceId  String?
+  studySource    StudySource?   @relation(fields: [studySourceId], references: [id], onDelete: SetNull)
+  // "Surfaced today" spaced resurfacing (services/notes/resurface.ts); null due = not in rotation
+  resurfaceDueAt DateTime?      @db.Date
+  resurfaceStep  Int            @default(0)
   files          UploadedFile[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
   @@index([userId, createdAt])
+  @@index([userId, resurfaceDueAt])
 }
 
 // quick links to application portals (GoAusbildung etc.) — links only, not
 // synced accounts: none of these platforms offer a public API today
+enum NoteCategory {
+  grammar
+  mistakes
+  everyday
+  jobs
+  listening
+}
+
 model ExternalAccount {
   id            String    @id @default(cuid())
   userId        String

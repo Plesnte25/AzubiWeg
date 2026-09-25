@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "@phosphor-icons/react";
 import { cn } from "../../lib/cn";
+import { lockRoot } from "../../lib/inertRoot";
 
 /** True at md+ (768px) — the breakpoint BottomSheet switches from a
  * slide-up mobile sheet to a centered desktop dialog at. A plain
@@ -12,7 +13,9 @@ import { cn } from "../../lib/cn";
  * differences — would mount two independent copies fighting over the same
  * ref. One wrapper, styled differently per breakpoint, avoids that. */
 function useIsDesktop(): boolean {
-  const [isDesktop, setIsDesktop] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches);
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches,
+  );
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
     const onChange = () => setIsDesktop(mq.matches);
@@ -23,33 +26,34 @@ function useIsDesktop(): boolean {
 }
 
 /**
- * Bottom sheet below md (drag-handle bar, scrim, slide-up transform —
- * styling ported exactly from the handoff's taskScrim/taskSheet, German
- * Companion App.dc.html); a centered dialog at md+, where a slide-up-from-
- * the-bottom sheet is a phone pattern, not a desktop one — distinct from
- * `Modal`'s own centered-dialog/sheet-on-sm split, this is the dedicated
- * primitive used across most of the handoff's screens (task detail, exam
- * schedule, profile, add-word, ...) at every breakpoint.
+ * Bento sheet/dialog (handoff README §1.6). Below md: a bottom sheet at `left/right/bottom: 6px`, radius 28,
+ * padding 16, 5px hard shadow, no rotation, slides up. md+: a centred dialog in the Bento modal style (radius 28,
+ * padding 24, 9px shadow, −0.6° tilt, scales in). Unlike `Modal`, this stays permanently mounted with an `open`
+ * prop so its close transition plays and callers can reset form state on reopen (see AddWordsDialog.tsx). Content
+ * brings its own header; the md+ close button sits top-right. Body colour defaults to `var(--plain)`.
  */
 export function BottomSheet({
   open,
   onClose,
   children,
   className,
+  bg = "var(--plain)",
 }: {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
-  /** Overrides the default `max-w-md` (e.g. a wider desktop dialog) —
-   * merged via `cn()`, so a `max-w-*` class here wins over the default. */
+  /** Overrides the default md+ width (`max-w-[560px]`) — merged via `cn()`, so a `max-w-*` class here wins. */
   className?: string;
+  bg?: string;
 }) {
   const isDesktop = useIsDesktop();
 
   useEffect(() => {
     if (!open) return;
+    const trigger = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const unlock = lockRoot();
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
@@ -57,15 +61,19 @@ export function BottomSheet({
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKeyDown);
+      unlock();
+      trigger?.focus?.();
     };
   }, [open, onClose]);
+
+  const isPlain = bg === "var(--plain)" || bg === "var(--plain2)";
 
   return createPortal(
     <>
       <div
-        className="fixed inset-0 z-50 transition-opacity duration-300"
+        className="fixed inset-0 z-[60] transition-opacity duration-300"
         style={{
-          background: "rgba(15,17,25,.62)",
+          background: "var(--scrim)",
           opacity: open ? 1 : 0,
           pointerEvents: open ? "auto" : "none",
         }}
@@ -75,40 +83,49 @@ export function BottomSheet({
       <div
         role="dialog"
         aria-modal="true"
+        aria-hidden={!open}
         className={cn(
-          "fixed z-50 w-full max-w-md px-[18px] transition-[transform,opacity] duration-400",
+          "no-scrollbar fixed z-[61] overflow-y-auto transition-[transform,opacity] duration-300",
           isDesktop
-            ? "inset-0 m-auto h-fit max-h-[85vh] overflow-y-auto rounded-[20px] py-6"
-            : "inset-x-0 bottom-0 mx-auto rounded-t-[20px] pt-3 pb-[calc(34px+env(safe-area-inset-bottom))]",
+            ? "inset-0 m-auto h-fit max-h-[calc(100%-80px)] w-[calc(100%-32px)] max-w-[560px] p-6"
+            : "inset-x-1.5 bottom-[calc(6px+env(safe-area-inset-bottom))] max-h-[88%] p-4",
           className,
         )}
         style={{
-          background: "var(--color-card)",
-          boxShadow: isDesktop
-            ? "var(--shadow-lg), 0 0 0 1px var(--color-hairline)"
-            : "0 0 0 1px var(--color-hairline), var(--shadow-lg)",
-          transform: isDesktop ? `scale(${open ? 1 : 0.96})` : `translateY(${open ? "0" : "104%"})`,
+          background: bg,
+          color: isPlain ? "var(--plainText)" : "var(--onTile)",
+          border: "2.5px solid var(--line)",
+          borderRadius: 28,
+          boxSizing: "border-box",
+          boxShadow: isDesktop ? "9px 9px 0 var(--shadow)" : "5px 5px 0 var(--shadow)",
+          transform: isDesktop ? `scale(${open ? 1 : 0.96}) rotate(-0.6deg)` : `translateY(${open ? "0" : "110%"})`,
           opacity: isDesktop && !open ? 0 : 1,
-          // Mobile's off-screen translateY naturally can't overlap anything
-          // while closed; desktop's centered scale-down stays put and would
-          // otherwise sit there invisible but still clickable-through, right
-          // on top of whatever's underneath.
+          // Mobile's off-screen translateY can't overlap anything while closed; desktop's centred scale-down stays
+          // put and would otherwise sit there invisible but still clickable, on top of whatever's underneath.
           pointerEvents: open ? "auto" : "none",
+          visibility: open ? "visible" : "hidden",
+          transitionProperty: "transform, opacity, visibility",
           transitionTimingFunction: "cubic-bezier(.2,.85,.25,1)",
         }}
       >
-        {isDesktop ? (
+        {isDesktop && (
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="absolute top-4 right-4"
-            style={{ color: "var(--color-ink-600)" }}
+            className="absolute top-4 right-4 flex cursor-pointer items-center justify-center p-0"
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              border: "2.5px solid var(--line)",
+              background: "var(--plain)",
+              color: "var(--plainText)",
+              boxShadow: "2px 2px 0 var(--shadow)",
+            }}
           >
-            <X size={18} weight="regular" aria-hidden="true" />
+            <X size={15} weight="bold" aria-hidden="true" />
           </button>
-        ) : (
-          <div className="mx-auto mb-[15px] h-1 w-10 rounded-full" style={{ background: "var(--color-hairline)" }} />
         )}
         {children}
       </div>

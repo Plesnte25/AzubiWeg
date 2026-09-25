@@ -1,3 +1,4 @@
+import { rm } from "node:fs/promises";
 import { Router } from "express";
 import { z } from "zod";
 import type { RoadmapSkill } from "@prisma/client";
@@ -6,6 +7,7 @@ import { deleteStoredFile } from "./files.js";
 import { requireAuth } from "../middleware/auth.js";
 import { computeBestStreak, computeDayStreak, localDateKey } from "../services/learning/activity.js";
 import { setRoadmapTaskCompletion } from "../services/learning/completion-sync.js";
+import { applyTimerIntent, bankTimer, startsTimer } from "../services/learning/timer.js";
 import { levelProgress, levelStates } from "../services/learning/progress.js";
 import { aggregateReview, goetheReadiness, masteryDistribution, masteryTrend, skillPerformance, weakAreasFromBreakdowns } from "../services/learning/review.js";
 import { computeRoadmapPace } from "../services/learning/pace.js";
@@ -13,7 +15,8 @@ import { addDaysUTC, computeBacklog, dayStatus, diffReseed } from "../services/l
 import { DEFAULT_ROADMAP_DAYS, ROADMAP_VERSION, type DefaultRoadmapDay } from "../services/learning/roadmap-defaults.js";
 import { buildUserRoadmapPlan, type SyllabusRowForGeneration } from "../services/learning/roadmap-generator.js";
 import { ensureSyllabusSeeded } from "../services/learning/syllabus-seed.js";
-import { planDailyQueues, STUDY_CAPACITIES } from "../services/learning/daily-plan.js";
+import { appAudioDir } from "../services/vault/sync.js";
+import { isStudyDay, isValidCapacity, planDailyQueues, taskEstimateMinutes } from "../services/learning/daily-plan.js";
 import { blockedTopicIds } from "../services/learning/prerequisites.js";
 
 export const roadmapRouter = Router();
@@ -137,16 +140,37 @@ async function ensureCurrentVersion(userId: string, roadmapVersion: number, road
 
 roadmapRouter.get("/status", async (req, res) => {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
-  res.json({ activated: user.roadmapStartedAt !== null, startedAt: user.roadmapStartedAt, studyCapacityMinutes: user.studyCapacityMinutes });
+  res.json({
+    activated: user.roadmapStartedAt !== null,
+    startedAt: user.roadmapStartedAt,
+    studyCapacityMinutes: user.studyCapacityMinutes,
+    studyDays: user.studyDays,
+    newWordsPerDay: user.newWordsPerDay,
+  });
 });
 
-const capacitySchema = z.object({ minutes: z.number().int().refine((value) => (STUDY_CAPACITIES as readonly number[]).includes(value), "Unsupported study capacity") });
+/** Settings → Capacity (saves immediately; any subset of the three). */
+const capacitySchema = z
+  .object({
+    minutes: z.number().refine(isValidCapacity, "Minutes a day must be 10–180 in steps of 5").optional(),
+    studyDays: z.array(z.boolean()).length(7).optional(),
+    newWordsPerDay: z.union([z.literal(5), z.literal(10), z.literal(15), z.literal(20)]).optional(),
+  })
+  .refine((d) => d.minutes !== undefined || d.studyDays !== undefined || d.newWordsPerDay !== undefined, { message: "Nothing to update" });
 
 roadmapRouter.patch("/capacity", async (req, res) => {
   const parsed = capacitySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
-  const user = await prisma.user.update({ where: { id: req.userId }, data: { studyCapacityMinutes: parsed.data.minutes } });
-  res.json({ studyCapacityMinutes: user.studyCapacityMinutes });
+  const { minutes, studyDays, newWordsPerDay } = parsed.data;
+  const user = await prisma.user.update({
+    where: { id: req.userId },
+    data: {
+      ...(minutes !== undefined ? { studyCapacityMinutes: minutes } : {}),
+      ...(studyDays !== undefined ? { studyDays } : {}),
+      ...(newWordsPerDay !== undefined ? { newWordsPerDay } : {}),
+    },
+  });
+  res.json({ studyCapacityMinutes: user.studyCapacityMinutes, studyDays: user.studyDays, newWordsPerDay: user.newWordsPerDay });
 });
 
 const examTargetSchema = z.object({ examTargetDate: z.iso.date().nullable() });
@@ -208,37 +232,52 @@ roadmapRouter.post("/activate", async (req, res) => {
   res.status(201).json({ startedAt });
 });
 
-/** Wipes the whole 182-day plan (every RoadmapDay/RoadmapTask and any files
- * attached to a task) and unsets roadmapStartedAt so the user can reactivate
- * from a new date via the normal /activate flow. Deleting RoadmapDay rows
- * cascades to RoadmapTask and then to UploadedFile in the DB, but never
- * touches bytes on disk — those are unlinked explicitly first, same as
- * DELETE /syllabus/:id does. Nothing else (syllabus completion, vocab/SRS,
- * self-test history, streaks) has an FK into RoadmapDay/RoadmapTask, so this
- * can't touch them. */
-roadmapRouter.post("/reset", async (req, res) => {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
-  if (!user.roadmapStartedAt) return res.status(409).json({ error: "Roadmap not activated" });
+const resetSchema = z.object({
+  keepWords: z.boolean().default(true),
+  keepNotes: z.boolean().default(true),
+  keepApplications: z.boolean().default(true),
+});
 
-  const days = await prisma.roadmapDay.findMany({
-    where: { userId: req.userId },
-    select: { tasks: { select: { id: true } } },
-  });
+/** Settings → Reset plan: wipes the route (every RoadmapDay/RoadmapTask and any files attached to a task), builds a
+ * fresh one from today, and starts the current streak again (User.streakResetAt). Deleting RoadmapDay rows cascades to
+ * RoadmapTask and then to UploadedFile in the DB, but never touches bytes on disk — those are unlinked explicitly
+ * first, same as DELETE /syllabus/:id does. Syllabus completion and self-test history always stay.
+ *
+ * The keep flags (all true by default) can also clear words + their review history, notes, or applications. Words
+ * can't be cleared while a vault is linked: they live in the user's Obsidian vault, and this won't delete vault cards. */
+roadmapRouter.post("/reset", async (req, res) => {
+  const parsed = resetSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+  const { keepWords, keepNotes, keepApplications } = parsed.data;
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
+  if (!keepWords && user.vaultPath) return res.status(409).json({ error: "Words live in your Obsidian vault. Unlink it to clear them here." });
+
+  const [days, notes] = await Promise.all([
+    prisma.roadmapDay.findMany({ where: { userId: req.userId }, select: { tasks: { select: { id: true } } } }),
+    keepNotes ? [] : prisma.note.findMany({ where: { userId: req.userId }, select: { id: true } }),
+  ]);
   const taskIds = days.flatMap((d) => d.tasks.map((t) => t.id));
   const files = await prisma.uploadedFile.findMany({
-    where: { roadmapTaskId: { in: taskIds } },
+    where: { OR: [{ roadmapTaskId: { in: taskIds } }, { noteId: { in: notes.map((n) => n.id) } }] },
     select: { storedName: true },
   });
   for (const file of files) {
     await deleteStoredFile(req.userId, file.storedName);
   }
+  if (!keepWords) await rm(appAudioDir(req.userId), { recursive: true, force: true });
 
-  await prisma.$transaction([
-    prisma.roadmapDay.deleteMany({ where: { userId: req.userId } }),
-    prisma.user.update({ where: { id: req.userId }, data: { roadmapStartedAt: null, roadmapVersion: 0 } }),
-  ]);
-
-  res.json({ reset: true });
+  // word deletion cascades to ReviewLog; notes to their UploadedFile rows; applications to their events and phrases
+  const cleared = await prisma.$transaction(async (tx) => {
+    await tx.roadmapDay.deleteMany({ where: { userId: req.userId } });
+    const words = keepWords ? 0 : (await tx.word.deleteMany({ where: { userId: req.userId } })).count;
+    const notes = keepNotes ? 0 : (await tx.note.deleteMany({ where: { userId: req.userId } })).count;
+    const applications = keepApplications ? 0 : (await tx.application.deleteMany({ where: { userId: req.userId } })).count;
+    await tx.user.update({ where: { id: req.userId }, data: { roadmapStartedAt: null, roadmapVersion: 0, streakResetAt: new Date() } });
+    return { words, notes, applications };
+  });
+  const startedAt = todayLocal();
+  await activateRoadmapForUser(req.userId, startedAt);
+  res.json({ startedAt, cleared });
 });
 
 roadmapRouter.get("/today", async (req, res) => {
@@ -269,11 +308,14 @@ roadmapRouter.get("/today", async (req, res) => {
   // Phase 11 (Plan rebuild) resolves this by no longer filtering them out —
   // they show in the task list like any other task, tagged the same
   // "Context" skill label SourcesPage's RESOURCE_SKILL_LABEL already uses.
-  const capacity = user.studyCapacityMinutes as 5 | 20 | 45 | 90 | 180 | 330;
+  const capacity = user.studyCapacityMinutes;
+  // a day off (Settings → Study days) gets no ticket: today's tasks stay unplanned and roll into tomorrow's
+  // carried-over row like any missed day
+  const restDay = !isStudyDay(user.studyDays, today);
   const planned = planDailyQueues(
-    (todayRow?.tasks ?? []).map((task) => ({
+    (restDay ? [] : (todayRow?.tasks ?? [])).map((task) => ({
       id: task.id,
-      estimateMinutes: task.type === "study_source" ? 20 : task.type === "milestone_test" ? 15 : 10,
+      estimateMinutes: taskEstimateMinutes(task.type),
       completedAt: task.completedAt,
       blocked: task.syllabusItemId !== null && blockedIds.has(task.syllabusItemId),
     })),
@@ -301,6 +343,7 @@ roadmapRouter.get("/today", async (req, res) => {
     theme: todayRow?.theme ?? null,
     tasks: todayRow?.tasks ?? [],
     backlog: computeBacklog(days, today).filter((g) => g.tasks.length > 0),
+    restDay,
     capacity: {
       minutes: capacity,
       revisionMinutes: planned.revisionMinutes,
@@ -486,15 +529,6 @@ const toggleSchema = z
     { message: "Nothing to update" },
   );
 
-/** Elapsed seconds right now — the stored total plus whatever's accrued
- * since it was last started, if it's currently running. The single source
- * of truth both the PATCH response and any read route should use, so the
- * client never has to (mis)trust its own clock across a stale tab/reopen. */
-function liveTimerSeconds(task: { timerSeconds: number; timerRunningSince: Date | null }): number {
-  if (!task.timerRunningSince) return task.timerSeconds;
-  return task.timerSeconds + Math.max(0, Math.floor((Date.now() - task.timerRunningSince.getTime()) / 1000));
-}
-
 /** Every dayOffset in [0, DEFAULT_ROADMAP_DAYS.length) always has a materialized
  * RoadmapDay row from activation onward — reschedule/custom-add targets never
  * need to create one, only look it up. */
@@ -539,31 +573,33 @@ roadmapRouter.patch("/tasks/:id", async (req, res) => {
     if (!targetDay) return res.status(400).json({ error: "No roadmap day at that offset" });
   }
 
-  // Timer fields are folded down to a single new (seconds, runningSince) pair
-  // before touching the DB — setSeconds is a correction to the base ("as of
-  // now, elapsed is exactly X"), applied before start/pause/reset so the two
-  // can combine predictably even though the client only ever sends one kind
-  // of intent at a time.
-  const timerTouched = parsed.data.setSeconds !== undefined || parsed.data.timerAction !== undefined;
-  let timerSeconds = existing.timerSeconds;
-  let timerRunningSince = existing.timerRunningSince;
-  if (parsed.data.setSeconds !== undefined) {
-    timerSeconds = parsed.data.setSeconds;
-    if (timerRunningSince) timerRunningSince = new Date();
-  }
-  if (parsed.data.timerAction === "start") {
-    if (!timerRunningSince) timerRunningSince = new Date();
-  } else if (parsed.data.timerAction === "pause") {
-    if (timerRunningSince) {
-      timerSeconds = liveTimerSeconds({ timerSeconds, timerRunningSince });
-      timerRunningSince = null;
-    }
-  } else if (parsed.data.timerAction === "reset") {
-    timerSeconds = 0;
-    timerRunningSince = null;
-  }
+  // Timer fields are folded down to a single new (seconds, runningSince) pair before touching the DB (see
+  // services/learning/timer.ts). Completing a running task also stops its timer.
+  const now = new Date();
+  const completing = parsed.data.completed === true && !!existing.timerRunningSince;
+  const timerTouched = parsed.data.setSeconds !== undefined || parsed.data.timerAction !== undefined || completing;
+  const { timerSeconds, timerRunningSince } = applyTimerIntent(
+    existing,
+    { setSeconds: parsed.data.setSeconds, action: parsed.data.timerAction, completing },
+    now,
+  );
+  const startsRunning = startsTimer(existing, { timerSeconds, timerRunningSince });
 
   const task = await prisma.$transaction(async (tx) => {
+    if (startsRunning) {
+      // One timer app-wide: bank whatever else this user has running before this one starts.
+      const others = await tx.roadmapTask.findMany({
+        where: { day: { userId: req.userId }, timerRunningSince: { not: null }, id: { not: existing.id } },
+        select: { id: true, timerSeconds: true, timerRunningSince: true },
+      });
+      for (const other of others) {
+        const banked = bankTimer(other, now);
+        await tx.roadmapTask.update({
+          where: { id: other.id },
+          data: { ...banked, minutesSpent: Math.round(banked.timerSeconds / 60) },
+        });
+      }
+    }
     if (parsed.data.completed !== undefined) {
       // also mirrors onto the linked SyllabusItem, if any (completion-sync.ts)
       await setRoadmapTaskCompletion(tx, req.userId, existing.id, parsed.data.completed);
@@ -928,6 +964,7 @@ roadmapRouter.get("/progress", async (req, res) => {
     prisma.roadmapTask.findMany({ where: { day: { userId: req.userId }, completedAt: { not: null } }, select: { completedAt: true } }),
     prisma.reviewLog.findMany({ where: { word: { userId: req.userId } }, select: { reviewedAt: true } }),
   ]);
+  const streakUser = await prisma.user.findUniqueOrThrow({ where: { id: req.userId }, select: { streakResetAt: true } });
   const learningTimestamps = [
     ...syllabusActivity.map((r) => r.completedAt as Date),
     ...sourceActivity.map((r) => r.loggedAt),
@@ -984,7 +1021,7 @@ roadmapRouter.get("/progress", async (req, res) => {
       },
       testAvg: { value: testAvg, deltaPoints: testAvg !== null && prevTestAvg !== null ? testAvg - prevTestAvg : null },
       syllabusPercent: { value: syllabusPercentNow, deltaPoints: syllabusPercentNow - syllabusPercentThen },
-      streak: { current: computeDayStreak(learningTimestamps, new Date()), best: computeBestStreak(learningTimestamps) },
+      streak: { current: computeDayStreak(learningTimestamps, new Date(), streakUser.streakResetAt), best: computeBestStreak(learningTimestamps) },
     },
     chart: {
       labels: Array.from({ length: days }, (_, i) => addDaysUTC(rangeStart, i).toISOString().slice(0, 10)),

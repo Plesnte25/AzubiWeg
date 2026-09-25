@@ -19,6 +19,8 @@ export interface ApplicationStats {
   active: number;
   byStatus: Record<ApplicationStatus, number>;
   /** share of applied applications that got any response (interview/offer/rejected); null when nothing applied */
+  /** Stats Bewerbungen funnel: ever applied, of those responded, of those reached interview/offer. */
+  funnel: { sent: number; replies: number; interviews: number };
   responseRate: number | null;
   /** share of applied applications that reached at least an interview; null when nothing applied */
   interviewRate: number | null;
@@ -102,6 +104,7 @@ export function computeStats(
     total: apps.length,
     active: apps.length - byStatus.rejected,
     byStatus,
+    funnel: { sent: applied.length, replies: responded.length, interviews: interviewed.length },
     responseRate: applied.length ? responded.length / applied.length : null,
     interviewRate: applied.length ? interviewed.length / applied.length : null,
     offers: byStatus.offer,

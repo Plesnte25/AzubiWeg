@@ -1,45 +1,78 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { X } from "@phosphor-icons/react";
 import { cn } from "../../lib/cn";
+import { lockRoot } from "../../lib/inertRoot";
+import { Tape } from "./Tile";
 
 interface ModalProps {
-  title: string;
+  /** Omitted for header-less dialogs (Stats drill: tag + close only) — pass `ariaLabel` then. */
+  title?: ReactNode;
   onClose: () => void;
+  /** Small rotated chip above the title ("Station 8 · Grammar"). */
+  tag?: ReactNode;
+  subtitle?: ReactNode;
+  /** Body colour by context (README §1.6); default `var(--plain)`. */
+  bg?: string;
+  /** md+ width in px (README: 540–580, Plan Library 720). Overrides `size`. */
+  width?: number;
+  /** Footer row, usually a secondary PillButton (min-width 110) plus a primary one (flex 1). */
+  footer?: ReactNode;
+  /** Accessible name when `title` isn't plain text. */
+  ariaLabel?: string;
+  /** Legacy width steps from the pre-Bento Modal (sm 460 · md 560 · lg 720 · xl 960). */
   size?: "sm" | "md" | "lg" | "xl";
-  /** This modal has an sm/md-specific replacement elsewhere (e.g. a bottom
-   * sheet) — stay mounted (for shared trigger state) but only render visibly
-   * at lg. See client/src/pages/vocabulary/AnalyticsSheet.tsx. */
+  /** Legacy: render only at Tailwind lg+ because an sm/md replacement lives elsewhere (ApplicationDetailModal). */
   desktopOnly?: boolean;
-  /** Below md, render as a full-screen takeover (no backdrop, no rounded
-   * corners) instead of a centered dialog — the standard shape for
-   * add/edit forms on a phone. Unaffected at md and up, where this behaves
-   * exactly like the default centered-dialog-with-backdrop. Mutually
-   * exclusive with desktopOnly (that's for a different pattern — a wholly
-   * separate sibling component handling sm/md, e.g. a bottom sheet). */
+  /** Replaces the tag/title/subtitle column (Notes editor: category chips). The close button stays. */
+  header?: ReactNode;
+  /** Sticky-note shape (Notes editor): its radius, a fixed md+ height and md+ tilt, and on sm a tall sheet from
+   * `top: 70px`. */
+  sticky?: { radius: string; height: number; tilt: number };
+  /** Legacy no-op: every Bento modal is a bottom sheet below md. */
   sheetOnSm?: boolean;
   children: ReactNode;
 }
 
-const SIZE_CLASSES = { sm: "max-w-md", md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-5xl" };
-// Tailwind's scanner needs each full class string literally present in
-// source — can't build "md:" + SIZE_CLASSES[size] at runtime and expect it
-// to be picked up, hence this parallel static map instead of a template.
-const MD_SIZE_CLASSES = { sm: "md:max-w-md", md: "md:max-w-lg", lg: "md:max-w-2xl", xl: "md:max-w-5xl" };
-
+const SIZE_WIDTH = { sm: 460, md: 560, lg: 720, xl: 960 };
 const FOCUSABLE = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
 
-export function Modal({ title, onClose, size = "md", desktopOnly, sheetOnSm, children }: ModalProps) {
+/**
+ * Bento modal (handoff README §1.6). md+: centred, `translate(-50%,-50%) rotate(-0.6deg)`, radius 28, padding 24,
+ * 9px shadow, tape on top, max-height `calc(100% - 80px)`. sm: bottom sheet at `left/right/bottom: 6px`, max-height
+ * 88%, padding 16, 5px shadow, no rotation. Header = tag chip + 30px title + 14px subtitle + 40px round close; the
+ * body scrolls; optional footer. Closes on backdrop, close button, or Esc; traps Tab; returns focus to whatever was
+ * focused when it opened. Mount it conditionally (`{open && <Modal …/>}`).
+ */
+export function Modal({
+  title,
+  onClose,
+  tag,
+  subtitle,
+  bg = "var(--plain)",
+  width,
+  footer,
+  ariaLabel,
+  size = "md",
+  desktopOnly,
+  header,
+  sticky,
+  children,
+}: ModalProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
+    const trigger = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const unlock = lockRoot();
     ref.current?.focus();
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key === "Tab" && ref.current) {
@@ -60,56 +93,104 @@ export function Modal({ title, onClose, size = "md", desktopOnly, sheetOnSm, chi
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKeyDown);
+      unlock();
+      trigger?.focus?.();
     };
-  }, [onClose]);
+  }, []);
+
+  const isPlain = bg === "var(--plain)" || bg === "var(--plain2)";
 
   return createPortal(
-    <div
-      className={
-        desktopOnly
-          ? "fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto bg-ink-900/40 p-4 sm:py-12 lg:flex"
-          : sheetOnSm
-            ? "fixed inset-0 z-50 flex flex-col overflow-y-auto bg-card md:flex-row md:items-start md:justify-center md:bg-ink-900/40 md:p-4 md:py-12"
-            : "fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink-900/40 p-4 sm:py-12"
-      }
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
+    <div className={cn("fixed inset-0 z-[60]", desktopOnly && "hidden lg:block")}>
+      <div className="absolute inset-0" style={{ background: "var(--scrim)" }} onClick={onClose} aria-hidden="true" />
       <div
         ref={ref}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-label={ariaLabel ?? (typeof title === "string" ? title : undefined)}
         tabIndex={-1}
-        className={
-          sheetOnSm
-            ? cn(
-                // min-h-full (not min-h-screen): grows with content past one
-                // viewport instead of clipping, still fills at least the screen.
-                "flex min-h-full w-full min-w-0 flex-col bg-card p-5 outline-none",
-                // level 3 (overlay): shadow only, no border — see Card.tsx
-                "md:min-h-0 md:animate-scale-in md:rounded-xl md:shadow-lg",
-                MD_SIZE_CLASSES[size],
-              )
-            : cn(
-                // min-w-0: flex items default to min-width:auto, which lets a
-                // wide-min-content child (a long unbreakable string, an unwrapped
-                // form control) force this box past its own max-width instead of
-                // shrinking/wrapping internally — override that default.
-                // level 3 (overlay): shadow only, no border — see Card.tsx
-                "animate-scale-in w-full min-w-0 rounded-xl bg-card p-5 shadow-lg outline-none",
-                SIZE_CLASSES[size],
-              )
+        className={cn(
+          "absolute flex flex-col outline-none",
+          "inset-x-1.5 bottom-1.5 gap-3.5 p-4 shadow-[5px_5px_0_var(--shadow)]",
+          sticky ? "top-[70px] md:h-[var(--h)]" : "max-h-[88%]",
+          "md:inset-x-auto md:bottom-auto md:top-1/2 md:left-1/2 md:max-h-[calc(100%-80px)] md:w-[var(--w)] md:max-w-[calc(100%-32px)] md:gap-4 md:p-6",
+          "md:shadow-[9px_9px_0_var(--shadow)] md:[transform:translate(-50%,-50%)_rotate(var(--tilt))]",
+        )}
+        style={
+          {
+            "--w": `${width ?? SIZE_WIDTH[size]}px`,
+            "--tilt": `${sticky?.tilt ?? -0.6}deg`,
+            ...(sticky ? { "--h": `${sticky.height}px` } : {}),
+            background: bg,
+            color: isPlain ? "var(--plainText)" : "var(--onTile)",
+            border: "2.5px solid var(--line)",
+            borderRadius: sticky?.radius ?? 28,
+            boxSizing: "border-box",
+          } as React.CSSProperties
         }
       >
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <h2 className="text-title font-semibold">{title}</h2>
-          <button className="text-ink-400 hover:text-ink-900" onClick={onClose} title="Close" aria-label="Close">
-            <X className="size-5" aria-hidden="true" />
+        <Tape left="40%" width={86} />
+        <div className={cn("flex shrink-0 justify-between gap-3", title ? "items-start" : "items-center")}>
+          {header ?? (
+            <div className="flex min-w-0 flex-col gap-1.5">
+              {tag && (
+                <span
+                  className="self-start"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    background: "var(--plain)",
+                    color: "var(--plainText)",
+                    border: "2px solid var(--line)",
+                    borderRadius: 8,
+                    padding: "2px 9px",
+                    transform: "rotate(-3deg)",
+                  }}
+                >
+                  {tag}
+                </span>
+              )}
+              {title && (
+                <h2
+                  style={{
+                    fontSize: "calc(var(--k, 1) * 30px)",
+                    fontWeight: 700,
+                    letterSpacing: "-.04em",
+                    lineHeight: 1,
+                    margin: 0,
+                  }}
+                >
+                  {title}
+                </h2>
+              )}
+              {subtitle && <span style={{ fontSize: 14, fontWeight: 600 }}>{subtitle}</span>}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex shrink-0 cursor-pointer items-center justify-center p-0"
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              border: "2.5px solid var(--line)",
+              background: "var(--plain)",
+              color: "var(--plainText)",
+              boxShadow: "2px 2px 0 var(--shadow)",
+            }}
+          >
+            <X size={15} weight="bold" aria-hidden="true" />
           </button>
         </div>
-        {children}
+        <div
+          className="no-scrollbar flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto"
+          style={{ padding: "2px 4px 4px 2px" }}
+        >
+          {children}
+        </div>
+        {footer && <div className="flex shrink-0 gap-2">{footer}</div>}
       </div>
     </div>,
     document.body,

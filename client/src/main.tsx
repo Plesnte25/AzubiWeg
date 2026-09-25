@@ -7,40 +7,33 @@ import { api, getToken, setSession } from "./api/client";
 import Layout from "./components/Layout";
 import { Toaster } from "./components/ui/Toast";
 import { ThemeProvider } from "./lib/theme";
-import Dashboard from "./pages/Dashboard";
+import Today from "./pages/today/Today";
 import Login from "./pages/Login";
 
-// only Login (unauthenticated) and Dashboard (the first authenticated view,
+// only Login (unauthenticated) and Today (the first authenticated view,
 // mounted at Today's "/") are needed for first paint — every other route is
 // its own chunk, loaded on navigation, so signing in doesn't pull in the CV
 // editor/kanban/quiz code up front
 const JobSearch = lazy(() => import("./pages/job-search"));
-const Plan = lazy(() => import("./pages/plan/Plan"));
-const Syllabus = lazy(() => import("./pages/plan/Syllabus"));
-const Sources = lazy(() => import("./pages/plan/Sources"));
-const Notes = lazy(() => import("./pages/plan/Notes"));
-const NoteEditor = lazy(() => import("./pages/plan/NoteEditor"));
-const SelfTests = lazy(() => import("./pages/plan/SelfTests"));
-const SelfTestRunner = lazy(() => import("./pages/plan/SelfTestRunner"));
-const ExamGate = lazy(() => import("./pages/plan/ExamGate"));
-const ExamRunner = lazy(() => import("./pages/plan/ExamRunner"));
-const Settings = lazy(() => import("./pages/Settings"));
+const Notes = lazy(() => import("./pages/notes/Notes"));
+const SelfTestRunner = lazy(() => import("./pages/plan/tests/SelfTestRunner"));
+const GenderDrillPage = lazy(() => import("./pages/plan/tests/GenderDrill"));
+const ListenType = lazy(() => import("./pages/plan/tests/ListenType"));
+const ExamRunner = lazy(() => import("./pages/plan/tests/ExamRunner"));
+const Settings = lazy(() => import("./pages/settings/Settings"));
 const Stats = lazy(() => import("./pages/stats/Stats"));
-const Vocabulary = lazy(() => import("./pages/Vocabulary"));
-const WordDetail = lazy(() => import("./pages/words/WordDetail"));
+const Words = lazy(() => import("./pages/words/Words"));
+const Journey = lazy(() => import("./pages/plan/journey/Journey"));
 const ReviewSession = lazy(() => import("./pages/review/ReviewSession"));
 
 function Lazy({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<p className="text-ink-600">Loading…</p>}>{children}</Suspense>;
+  return <Suspense fallback={<p className="text-plain-muted">Loading…</p>}>{children}</Suspense>;
 }
 
-// <Navigate to> doesn't interpolate the CURRENT route's params into its
-// target — a plain <Navigate to="/notes/edit/:id" /> would send everyone to
-// the literal string "/notes/edit/:id". A bookmarked/shared per-note editor
-// link should keep pointing at the same note, not just the notes list.
+// Old per-note editor URLs (/notes/edit/:id, /plan/notes/edit/:id) open that note's editor modal on the wall.
 function NotesEditRedirect() {
   const { id } = useParams();
-  return <Navigate to={`/notes/edit/${id}`} replace />;
+  return <Navigate to="/notes" replace state={id && id !== "new" ? { open: id } : undefined} />;
 }
 
 const queryClient = new QueryClient({
@@ -76,7 +69,7 @@ function RequireAuth() {
     };
   }, []);
 
-  if (status === "checking") return <p className="text-ink-600">Loading…</p>;
+  if (status === "checking") return <p className="text-plain-muted">Loading…</p>;
   return status === "authed" ? <Outlet /> : <Navigate to="/login" replace />;
 }
 
@@ -90,21 +83,20 @@ const router = createBrowserRouter([
         element: <Layout />,
         children: [
           // ── the 6 real tab destinations (Today/Words/Plan/Jobs/Stats/Notes) ──
-          { path: "/", element: <Dashboard /> },
-          { path: "/words", element: <Lazy><Vocabulary /></Lazy> },
-          { path: "/words/:id", element: <Lazy><WordDetail /></Lazy> },
+          { path: "/", element: <Today /> },
+          { path: "/words", element: <Lazy><Words /></Lazy> },
+          { path: "/words/:id", element: <Lazy><Words /></Lazy> },
           { path: "/review", element: <Lazy><ReviewSession /></Lazy> },
-          { path: "/plan", element: <Lazy><Plan /></Lazy> },
-          { path: "/plan/syllabus", element: <Lazy><Syllabus /></Lazy> },
-          { path: "/plan/sources", element: <Lazy><Sources /></Lazy> },
-          // Notes' page files stay under pages/plan/ until Phase 7 (the
-          // Notes reskin) actually moves them to pages/notes/ — only the
-          // route path is promoted to top-level here.
+          { path: "/plan", element: <Lazy><Journey /></Lazy> },
+          { path: "/plan/syllabus", element: <Navigate to="/plan" replace /> },
+          { path: "/plan/sources", element: <Navigate to="/plan" replace /> },
           { path: "/notes", element: <Lazy><Notes /></Lazy> },
-          { path: "/notes/edit/:id", element: <Lazy><NoteEditor /></Lazy> },
-          { path: "/plan/self-tests", element: <Lazy><SelfTests /></Lazy> },
+          { path: "/notes/edit/:id", element: <NotesEditRedirect /> },
+          { path: "/plan/self-tests", element: <Navigate to="/plan" replace /> },
           { path: "/plan/self-tests/run", element: <Lazy><SelfTestRunner /></Lazy> },
-          { path: "/plan/exam-gate", element: <Lazy><ExamGate /></Lazy> },
+          { path: "/plan/self-tests/gender", element: <Lazy><GenderDrillPage /></Lazy> },
+          { path: "/plan/self-tests/listen", element: <Lazy><ListenType /></Lazy> },
+          { path: "/plan/exam-gate", element: <Navigate to="/plan" replace /> },
           { path: "/exam-take", element: <Lazy><ExamRunner /></Lazy> },
           { path: "/jobs", element: <Lazy><JobSearch /></Lazy> },
           { path: "/stats", element: <Lazy><Stats /></Lazy> },

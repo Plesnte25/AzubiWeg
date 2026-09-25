@@ -1,10 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { planDailyQueues } from "../src/services/learning/daily-plan.js";
+import { isStudyDay, isValidCapacity, planDailyQueues } from "../src/services/learning/daily-plan.js";
 import { failedReview, isReviewDue, nextMastery } from "../src/services/learning/mastery.js";
 import { summarizeMistakes } from "../src/services/learning/mistakes.js";
 import { blockedTopicIds } from "../src/services/learning/prerequisites.js";
 
 const task = (id: string, estimateMinutes: number, completedAt: Date | null = null) => ({ id, estimateMinutes, completedAt });
+
+describe("Settings capacity", () => {
+  it("accepts 10–180 minutes in steps of 5 only", () => {
+    expect([10, 45, 95, 180].every(isValidCapacity)).toBe(true);
+    expect([5, 12, 185, 330, 47.5].some(isValidCapacity)).toBe(false);
+  });
+
+  it("reads study days Monday → Sunday from a local date", () => {
+    const noSaturday = [true, true, true, true, true, false, true];
+    expect(isStudyDay(noSaturday, new Date(2026, 8, 26))).toBe(false); // Saturday
+    expect(isStudyDay(noSaturday, new Date(2026, 8, 27))).toBe(true); // Sunday
+    expect(isStudyDay(noSaturday, new Date(2026, 8, 21))).toBe(true); // Monday
+  });
+});
 
 describe("planDailyQueues", () => {
   it("keeps revision first and fits core work to a short capacity", () => {

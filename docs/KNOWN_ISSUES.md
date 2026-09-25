@@ -1,4 +1,4 @@
-# Known issues — Nocturne redesign
+# Known issues
 
 Bugs and rough edges found while building the Nocturne redesign
 (`~/.claude/plans/so-we-are-going-wondrous-axolotl.md`), tracked here instead
@@ -9,40 +9,62 @@ re-deriving the investigation.
 
 ## Open — needs a fix
 
-- **2026-09-22, from the Nocturne v2 nav-model phase (6th tab added)** —
-  re-measuring `BottomTabBar.tsx` at 390px per the `ui-ux-pro-max` skill's
-  `bottom-nav-limit`/touch-target guidance (since Notes' promotion to a real
-  6th tab is itself a deliberate deviation from that skill's max-5
-  guidance) found each button renders **64px wide × 36px tall** with **0px
-  gap** between adjacent buttons (`justify-around` + `flex-1`, no explicit
-  gap class). Width is fine; height (36px) is under the 44×44pt minimum and
-  gap (0px) is under the 8px minimum. Pre-existing at 5 items too — item
-  count only affects width via `flex-1`, not height/gap — so not introduced
-  by this phase, but not previously measured/flagged either. Not fixed
-  here per this project's "log incidental bugs instead of fixing mid-phase"
-  convention; candidate fix is a small vertical padding increase on each
-  button plus an explicit `gap-1`/`gap-2` on the `<nav>` instead of relying
-  on `justify-around`.
+Found by the 2026-09-25 pre-deploy sweep (184 screenshots, a fresh-account walk at lg/sm, scripted flows: roadmap
+activation, add word, review + grade, timer, exercise submit, G-chords, theme persistence). Fix one per commit.
 
-- **2026-09-20, from the Mastery Syllabus remediation pass** — two loose
-  ends the fix pass (`0dba600`/`4130208`/`6ded832`/`4ab51d3`) didn't touch,
-  per `docs/AUDIT_2026-09-20.md`'s post-remediation verification:
-  1. `server/src/services/learning/prerequisites.ts`'s `blockedTopicIds()`
-     (per-level prerequisite-gating logic) still has zero test coverage —
-     the original audit flagged it alongside `mastery.ts`/`mistakes.ts`,
-     but only those two got regression tests added.
-  2. `client/src/pages/plan/SelfTests.tsx` still has no real desktop layout
-     at 1440px — renders as a single mobile-width column with ~60% unused
-     viewport, unlike every sibling screen in the same nav group (Plan/
-     Syllabus/Stats), which all got real multi-column desktop treatments.
-     Not necessarily a defect — worth a product call on whether it needs
-     one — but flagged since it was never claimed fixed.
+1. ✅ **Fixed** — **Review with nothing due shows Session Done** (medium). Now a "Nothing due." state with the next due date. `/review` with an empty queue jumps straight to "Stack
+   cleared. 0 cards in 0:01 · 0% first try" with a 0-card stats row. Should be a "nothing due" state (next due
+   date, browse words / take a self-test). Repro: fresh account → `/review`.
+2. ✅ **Fixed** — **Today hero before the roadmap is started** (medium). A fresh account's hero says "0 stops left on today's route.
+   Keep rolling." while the route tile says to start the roadmap. The hero should say the same (and point at it).
+3. ✅ **Fixed** — **Stale "Jump to" destinations** (low). Jump to is the six tabs (Stats is now G S); the station jump opens that station. `QUICK_LINKS` (`lib/navDestinations.ts`) still lists Syllabus (G S),
+   Sources (G O) and Self-tests (G E); all three routes now just redirect to `/plan`. Remove them (or point them at
+   the Plan modals) in the ⌘K palette and the G-chord set.
+4. ✅ **Fixed** — **"Plural —" on non-nouns** (low). Words detail tile shows a Plural box with "—" for function words, adverbs,
+   phrases (e.g. "am Main"). Show plural for nouns, the Perfekt for verbs, otherwise omit the box.
+5. ✅ **Fixed** — **Empty word list copy** (low). With 0 words the list says "No words in this filter yet." on the All filter; it
+   should be a first-word prompt.
+6. ✅ **Fixed** — **Jobs md card names truncate hard** (low). Narrow cards stack the name under the logo (container query). At 834px the four columns cut company names to ~6 characters
+   ("Nordwi…", "Muster …"). Let names wrap to two lines at md.
+7. ✅ **Fixed** — **Stats projection wraps at sm** (low). "A1 exam readiness · no tests yet" breaks over three lines in the
+   narrow sm tile; shorten or stack the label and value.
+8. ✅ **Fixed** — **Mid-string POS tags in meanings** (low). Display sites drop inner tags that repeat the word's own class; other-class tags stay. Gender-drill glosses show "…Gymnasium; (Noun) first of exchange":
+   `stripLeadingPosTag` only strips a leading tag, so multi-sense meanings keep inner "(Noun)" tags.
 
-Otherwise nothing open as of the 2026-09-07 pass below — see that entry for
-what was just closed out (Task Detail modal, Syllabus 3-pane rework, Sources
-rebuild + Google Books/podcast/generic-preview engines, Stats expansion).
+### Deferred at Bento ship (2026-09-25) — after deployment
+
+Knowingly shipped without these; pick them up after the Bento deploy.
+
+9. **404 + crash screen** — unknown routes and render errors still show the plain fallback. Needs a Sticker-style
+   not-found page and an error boundary screen.
+10. **Loading states** — pages render nothing while their queries load (Plan is blank for ~1–3 s). Also make
+    `client/scripts/shots.mjs` wait for content rather than network idle.
+11. **Audio recorder** (`components/AudioRecorder.tsx`) — still the Nocturne-era layout (only its tokens were swapped to
+    Bento ones); needs a proper design.
+12. **Application checklist** — omitted from the Jobs detail modal (plan: deferred, no correct implementation yet).
+13. **Valency tab** — hidden in the word details modal; no data source.
+14. **Settings: exam name/location and Goethe session dates** — no data source, so the sub-line shows the active level
+    and hours left, and the "Next sessions" chips are left out.
+15. **Settings: Obsidian "Plan log" / "Applications" writes** — only Words (two-way) and Notes (one-way to /Notizen)
+    are written; the other two chips are left out until there's a writer for them.
+16. **Settings: "follow system" theme** — the old Appearance tile is gone (the design has none), so once the nav
+    toggle is used there's no way back to following the OS.
+
+Covered by the planned items, not separate fixes: pages render nothing while their queries load (Plan is blank for
+~1–3 s) → loading states; `client/scripts/shots.mjs` waits only for network idle, so it can capture a page before it
+renders → make it wait for content as part of the loading-states item.
 
 ## Resolved during the redesign (for reference — no action needed)
+
+- **2026-09-24 (Bento Phase 3.2)** — the review session invalidated `["reviews", "weak-words"]` while Stats cached
+  the shakiest-words list under `["reviews", "weakWords"]`; fixed in `useReviewSession.ts` (one key).
+
+- **2026-09-24 (Bento Phases 1–2)** — three earlier open entries closed:
+  `BottomTabBar.tsx`'s 36px touch targets (component deleted in Bento Phase 1;
+  the new `SmBottomNav` items are 44px high); `blockedTopicIds()` test
+  coverage (`server/tests/learning-prerequisites.test.ts`); and the
+  `SelfTests.tsx` desktop layout (the page is replaced by the Plan journey in
+  Bento Phase 3).
 
 - **2026-09-19, contrast & readability audit pass** — an HIG-grounded
   design review (contrast, focus, type scale) against `docs/screenshots/`

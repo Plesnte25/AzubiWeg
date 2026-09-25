@@ -7,3 +7,6 @@ server/generated/
 server/data/
 server/scripts/backups/
 server/scripts/logs/
+
+# shots.mjs sweep output (regenerate with node client/scripts/shots.mjs)
+docs/screenshots/bento/

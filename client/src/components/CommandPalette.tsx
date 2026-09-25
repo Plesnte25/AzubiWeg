@@ -5,16 +5,16 @@ import { api } from "../api/client";
 import { QUICK_LINKS } from "../lib/navDestinations";
 import type { Themenfeld } from "../api/types";
 import { stripHtml } from "../lib/text";
-import { chipColor, chipLabel } from "../lib/wordDisplay";
+import { articleLabel, wordColor } from "../lib/wordBento";
 import { useNavStack } from "../lib/navStack";
-import { bestMatchingStation, deriveStations } from "../pages/plan/stations";
-import { AddWordsDialog } from "../pages/vocabulary/AddWordsDialog";
+import { bestMatchingStation, deriveStations } from "../pages/plan/journey/model";
+import { AddWordSheet } from "../pages/words/AddWordSheet";
 
 function ShortcutBadge({ letter }: { letter: string }) {
   return (
     <span
-      className="ml-auto flex shrink-0 items-center gap-[3px] rounded px-[5px] py-[2px] font-mono text-micro font-semibold"
-      style={{ background: "var(--color-hairline-soft)", color: "var(--color-ink-600)" }}
+      className="ml-auto flex shrink-0 items-center gap-[3px] px-[6px] py-[1px] font-mono text-[11px] font-bold"
+      style={{ background: "var(--plain2)", border: "2px solid var(--line)", borderRadius: 7 }}
     >
       G {letter.toUpperCase()}
     </span>
@@ -23,7 +23,7 @@ function ShortcutBadge({ letter }: { letter: string }) {
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <div className="px-3 pt-2.5 pb-1 text-micro font-semibold tracking-[.1em] uppercase" style={{ color: "var(--color-ink-600)" }}>
+    <div className="px-3 pt-2.5 pb-1 text-[12px] font-bold tracking-[.1em] uppercase" style={{ color: "var(--plainMuted)" }}>
       {children}
     </div>
   );
@@ -70,7 +70,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const [query, setQuery] = useState("");
   const [addingWord, setAddingWord] = useState(false);
   const { data: wordsData } = useQuery({ queryKey: ["words"], queryFn: api.words, enabled: open });
-  const { data: notesData } = useQuery({ queryKey: ["notes"], queryFn: () => api.notesFeed(), enabled: open });
+  const { data: notesData } = useQuery({ queryKey: ["notes", "wall"], queryFn: api.notesWall, enabled: open });
   const { data: syllabusData } = useQuery({ queryKey: ["learning", "syllabus"], queryFn: api.learningSyllabus, enabled: open });
 
   useEffect(() => {
@@ -120,12 +120,11 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     const themenfeld = topWord?.themenfeld[0];
     if (!themenfeld || !syllabusData) return null;
     const activeLevel = syllabusData.levels.find((l) => l.percent < 100)?.level ?? syllabusData.levels[syllabusData.levels.length - 1]?.level;
-    const levelItems = syllabusData.items.filter((i) => i.level === activeLevel);
-    const stations = deriveStations(levelItems);
+    if (!activeLevel) return null;
+    const stations = deriveStations(syllabusData.items, activeLevel);
     const station = bestMatchingStation(stations, THEMENFELD_PROBE[themenfeld]);
     if (!station) return null;
-    const index = stations.indexOf(station);
-    return { label: `Syllabus — Chapter ${index + 1}: ${station.theme}`, theme: station.theme };
+    return { label: `Plan — Station ${station.index}: ${station.theme}`, key: station.key };
   }, [wordMatches, syllabusData]);
 
   // Actions always render once there's a query (even with zero word/link/
@@ -140,38 +139,45 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   return (
     <>
-      {/* AddWordsDialog must stay mounted even when the palette itself
+      {/* AddWordSheet must stay mounted even when the palette itself
           closes (its own BottomSheet handles open/close transitions) —
           "Add as new word" closes the palette (onClose below) while
           opening this, so this can't be gated on `open` too, or it would
           unmount in the same tick it's meant to appear. */}
-      <AddWordsDialog open={addingWord} onClose={() => setAddingWord(false)} initialWord={query.trim()} />
+      <AddWordSheet open={addingWord} onClose={() => setAddingWord(false)} initialWord={query.trim()} />
       {open && (
       <div
         className="fixed inset-0 z-[60] flex items-start justify-center pt-[14vh]"
-        style={{ background: "rgba(10,11,18,.6)" }}
+        style={{ background: "var(--scrim)" }}
         onMouseDown={(e) => {
           if (e.target === e.currentTarget) onClose();
         }}
       >
-        <div className="w-full max-w-[520px] overflow-hidden rounded-[14px]" style={{ background: "var(--color-card)", boxShadow: "var(--shadow-lg), 0 0 0 1px var(--color-hairline)" }}>
-          <div className="flex items-center gap-[10px] px-4 py-3.5" style={{ borderBottom: "1px solid var(--color-hairline-soft)" }}>
-            <MagnifyingGlass size={16} weight="regular" style={{ color: "var(--color-ink-400)" }} aria-hidden="true" />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Search"
+          className="mx-3 w-full max-w-[540px] overflow-hidden"
+          style={{ background: "var(--plain)", color: "var(--plainText)", border: "2.5px solid var(--line)", borderRadius: 24, boxShadow: "9px 9px 0 var(--shadow)", transform: "rotate(-0.6deg)" }}
+        >
+          <div className="flex items-center gap-[10px] px-4 py-3.5" style={{ borderBottom: "2.5px dashed var(--line)" }}>
+            <MagnifyingGlass size={18} weight="bold" aria-hidden="true" />
             <input
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search words, notes, or jump to a screen…"
-              className="flex-1 border-0 bg-transparent text-[14.5px] outline-none"
-              style={{ color: "var(--color-ink-900)" }}
+              aria-label="Search"
+              className="flex-1 border-0 bg-transparent text-[16px] font-semibold outline-none"
+              style={{ color: "inherit" }}
             />
-            <span className="rounded px-[5px] py-[2px] font-mono text-micro font-semibold" style={{ background: "var(--color-hairline-soft)", color: "var(--color-ink-600)" }}>
+            <span className="px-[6px] py-[1px] font-mono text-[11px] font-bold" style={{ background: "var(--plain2)", border: "2px solid var(--line)", borderRadius: 7 }}>
               esc
             </span>
           </div>
           <div className="max-h-[420px] overflow-y-auto p-2">
             {!hasResults ? (
-              <p className="px-3 py-6 text-center text-[12.5px]" style={{ color: "var(--color-ink-600)" }}>
+              <p className="px-3 py-6 text-center text-[13px] font-semibold" style={{ color: "var(--plainMuted)" }}>
                 No matches.
               </p>
             ) : (
@@ -184,19 +190,20 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                         key={w.id}
                         type="button"
                         onClick={() => go(() => push(`/words/${w.id}`))}
-                        className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
-                        style={{ color: "var(--color-ink-900)" }}
+                        className="flex w-full cursor-pointer items-center gap-[11px] rounded-[12px] px-3 py-2.5 text-left font-semibold hover:bg-[var(--plain2)]"
+                        style={{ color: "inherit" }}
                       >
                         <span
-                          className="grid size-7 shrink-0 place-items-center rounded-[8px] text-micro font-medium"
-                          style={{ background: "var(--color-hairline-soft)", color: chipColor(w) }}
+                          lang="de"
+                          className="inline-flex shrink-0 items-center justify-center"
+                          style={{ minWidth: 42, height: 26, padding: "0 7px", borderRadius: 8, border: "2px solid var(--line)", background: wordColor(w), color: "var(--onTile)", fontSize: 12, fontWeight: 700, transform: "rotate(-3deg)", boxSizing: "border-box" }}
                         >
-                          {chipLabel(w)}
+                          {articleLabel(w)}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[13.5px]">{w.headword}</span>
+                          <span className="block truncate text-[14px] font-bold">{w.headword}</span>
                           {w.meaning && (
-                            <span className="block truncate text-[11px]" style={{ color: "var(--color-ink-400)" }}>
+                            <span className="block truncate text-[11px]" style={{ color: "var(--plainMuted)" }}>
                               {w.meaning}
                             </span>
                           )}
@@ -214,24 +221,23 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                         key={l.to}
                         type="button"
                         onClick={() => go(() => switchTab(l.to))}
-                        className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
-                        style={{ color: "var(--color-ink-900)" }}
+                        className="flex w-full cursor-pointer items-center gap-[11px] rounded-[12px] px-3 py-2.5 text-left font-semibold hover:bg-[var(--plain2)]"
+                        style={{ color: "inherit" }}
                       >
-                        <l.icon size={16} weight="regular" style={{ color: "var(--color-ink-400)", flexShrink: 0 }} aria-hidden="true" />
-                        <span className="min-w-0 flex-1 truncate text-[13.5px]">{l.label}</span>
+                        <l.icon size={16} weight="fill" style={{ flexShrink: 0 }} aria-hidden="true" />
+                        <span className="min-w-0 flex-1 truncate text-[14px] font-bold">{l.label}</span>
                         <ShortcutBadge letter={l.shortcut} />
                       </button>
                     ))}
                     {syllabusJump && (
                       <button
                         type="button"
-                        onClick={() => go(() => push("/plan/syllabus", { state: { openStationTheme: syllabusJump.theme } }))}
-                        className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
-                        style={{ color: "var(--color-ink-900)" }}
+                        onClick={() => go(() => push("/plan", { state: { openStationKey: syllabusJump.key } }))}
+                        className="flex w-full cursor-pointer items-center gap-[11px] rounded-[12px] px-3 py-2.5 text-left font-semibold hover:bg-[var(--plain2)]"
+                        style={{ color: "inherit" }}
                       >
-                        <SyllabusIcon size={16} weight="regular" style={{ color: "var(--color-ink-400)", flexShrink: 0 }} aria-hidden="true" />
-                        <span className="min-w-0 flex-1 truncate text-[13.5px]">{syllabusJump.label}</span>
-                        <ShortcutBadge letter="s" />
+                        <SyllabusIcon size={16} weight="fill" style={{ flexShrink: 0 }} aria-hidden="true" />
+                        <span className="min-w-0 flex-1 truncate text-[14px] font-bold">{syllabusJump.label}</span>
                       </button>
                     )}
                   </div>
@@ -246,20 +252,20 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                         setAddingWord(true);
                         onClose();
                       }}
-                      className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
-                      style={{ color: "var(--color-ink-900)" }}
+                      className="flex w-full cursor-pointer items-center gap-[11px] rounded-[12px] px-3 py-2.5 text-left font-semibold hover:bg-[var(--plain2)]"
+                      style={{ color: "inherit" }}
                     >
-                      <Plus size={16} weight="regular" style={{ color: "var(--color-ink-400)", flexShrink: 0 }} aria-hidden="true" />
-                      <span className="min-w-0 flex-1 truncate text-[13.5px]">Add &ldquo;{query.trim()}&rdquo; as a new word</span>
+                      <Plus size={16} weight="fill" style={{ flexShrink: 0 }} aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate text-[14px] font-bold">Add &ldquo;{query.trim()}&rdquo; as a new word</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => go(() => push("/notes/edit/new", { state: { contextTag: query.trim() } }))}
-                      className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
-                      style={{ color: "var(--color-ink-900)" }}
+                      onClick={() => go(() => push("/notes", { state: { draft: query.trim() } }))}
+                      className="flex w-full cursor-pointer items-center gap-[11px] rounded-[12px] px-3 py-2.5 text-left font-semibold hover:bg-[var(--plain2)]"
+                      style={{ color: "inherit" }}
                     >
-                      <NotePencil size={16} weight="regular" style={{ color: "var(--color-ink-400)", flexShrink: 0 }} aria-hidden="true" />
-                      <span className="min-w-0 flex-1 truncate text-[13.5px]">New note tagged &ldquo;{query.trim()}&rdquo;</span>
+                      <NotePencil size={16} weight="fill" style={{ flexShrink: 0 }} aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate text-[14px] font-bold">New note: &ldquo;{query.trim()}&rdquo;</span>
                     </button>
                   </div>
                 )}
@@ -271,14 +277,14 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                       <button
                         key={n.id}
                         type="button"
-                        onClick={() => go(() => push(`/notes/edit/${n.id}`))}
-                        className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-white/5"
-                        style={{ color: "var(--color-ink-900)" }}
+                        onClick={() => go(() => push("/notes", { state: { open: n.id } }))}
+                        className="flex w-full cursor-pointer items-center gap-[11px] rounded-[12px] px-3 py-2.5 text-left font-semibold hover:bg-[var(--plain2)]"
+                        style={{ color: "inherit" }}
                       >
-                        <NotePencil size={16} weight="regular" style={{ color: "var(--color-ink-400)", flexShrink: 0 }} aria-hidden="true" />
+                        <NotePencil size={16} weight="fill" style={{ flexShrink: 0 }} aria-hidden="true" />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[13.5px]">{n.title?.trim() || "Untitled note"}</span>
-                          <span className="block truncate text-[11px]" style={{ color: "var(--color-ink-400)" }}>
+                          <span className="block truncate text-[14px] font-bold">{n.title?.trim() || "Untitled note"}</span>
+                          <span className="block truncate text-[11px]" style={{ color: "var(--plainMuted)" }}>
                             {stripHtml(n.body ?? "").slice(0, 60)}
                           </span>
                         </span>

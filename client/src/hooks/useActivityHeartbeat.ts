@@ -1,5 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { api } from "../api/client";
+import { isLearningPath } from "../lib/navDestinations";
 
 const HEARTBEAT_MS = 3 * 60 * 1000;
 // Must stay comfortably above HEARTBEAT_MS so a normal reading pause between
@@ -19,6 +21,11 @@ const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "scroll", "touchst
  * cheap, passive listeners just to know whether *anything* happened
  * recently, not full engagement analysis. */
 export function useActivityHeartbeat() {
+  // Read at ping time (a ref, not an effect dependency) so navigating doesn't restart the heartbeat interval.
+  const { pathname } = useLocation();
+  const pathRef = useRef(pathname);
+  pathRef.current = pathname;
+
   useEffect(() => {
     let lastActivityAt = Date.now();
     const markActive = () => {
@@ -26,7 +33,7 @@ export function useActivityHeartbeat() {
     };
     const ping = () => {
       if (document.visibilityState === "visible" && Date.now() - lastActivityAt < IDLE_THRESHOLD_MS) {
-        void api.activityPing().catch(() => {});
+        void api.activityPing(isLearningPath(pathRef.current)).catch(() => {});
       }
     };
     for (const evt of ACTIVITY_EVENTS) document.addEventListener(evt, markActive, { passive: true });

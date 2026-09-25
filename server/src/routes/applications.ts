@@ -5,16 +5,45 @@ import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { planMove, type Columns } from "../services/applications/order.js";
 import { fetchJobPreview } from "../services/applications/fetchPreview.js";
+import { phrasesForStage } from "../services/applications/phrases.js";
 import { computeStats } from "../services/applications/stats.js";
 
 export const applicationsRouter = Router();
 applicationsRouter.use(requireAuth);
 
 const STATUS = z.enum(["wishlist", "applied", "interview", "offer", "rejected"]);
+const GERMAN_LEVEL = z.enum(["a1", "a2", "b1", "b2", "c1", "c2"]);
 const toDate = (s: string) => new Date(s + "T00:00:00Z");
 const todayUtc = () => toDate(new Date().toISOString().slice(0, 10));
 
 const fetchPreviewSchema = z.object({ url: z.url() });
+
+// the shelf document an application points at, with every version's file so the one it went out with can be picked
+const cvInclude = {
+  select: { id: true, title: true, version: true, files: { select: { id: true, originalName: true, cvVersion: true }, orderBy: { cvVersion: "desc" } } },
+} as const satisfies Prisma.Application$cvArgs;
+
+/** `cv.file` = the file of the version the application used (cvVersion), else the current one. */
+function withCvFile<T extends { cvVersion: number | null; cv: Prisma.CvGetPayload<typeof cvInclude> | null }>({ cv, ...a }: T) {
+  if (!cv) return { ...a, cv: null };
+  const { files, ...doc } = cv;
+  const file = files.find((f) => f.cvVersion === a.cvVersion) ?? files[0];
+  return { ...a, cv: { ...doc, file: file ? { id: file.id, originalName: file.originalName } : null } };
+}
+
+/** The board list: every application plus its next upcoming interview (the Jobs card's date line). */
+async function listApplications(userId: string) {
+  const rows = await prisma.application.findMany({
+    where: { userId },
+    orderBy: [{ status: "asc" }, { sortOrder: "asc" }],
+    include: {
+      _count: { select: { events: true } },
+      cv: cvInclude,
+      events: { where: { type: "interview", occurredAt: { gte: new Date() } }, orderBy: { occurredAt: "asc" }, take: 1, select: { occurredAt: true } },
+    },
+  });
+  return rows.map(({ events, ...a }) => ({ ...withCvFile(a), nextInterviewAt: events[0]?.occurredAt ?? null }));
+}
 
 applicationsRouter.post("/fetch-preview", async (req, res) => {
   const parsed = fetchPreviewSchema.safeParse(req.body);
@@ -25,12 +54,7 @@ applicationsRouter.post("/fetch-preview", async (req, res) => {
 });
 
 applicationsRouter.get("/", async (req, res) => {
-  const applications = await prisma.application.findMany({
-    where: { userId: req.userId },
-    orderBy: [{ status: "asc" }, { sortOrder: "asc" }],
-    include: { _count: { select: { events: true } }, cv: { select: { id: true, title: true, file: { select: { id: true, originalName: true } } } } },
-  });
-  res.json({ applications });
+  res.json({ applications: await listApplications(req.userId) });
 });
 
 applicationsRouter.get("/stats", async (req, res) => {
@@ -52,11 +76,13 @@ applicationsRouter.get("/:id", async (req, res) => {
     where: { id: req.params.id, userId: req.userId },
     include: {
       events: { orderBy: { occurredAt: "desc" } },
-      cv: { select: { id: true, title: true, file: { select: { id: true, originalName: true } } } },
+      cv: cvInclude,
+      phrases: { orderBy: { createdAt: "asc" } },
     },
   });
   if (!application) return res.status(404).json({ error: "Application not found" });
-  res.json({ application });
+  // curated phrases for the current stage, alongside the user's own (application.phrases)
+  res.json({ application: withCvFile(application), suggestedPhrases: phrasesForStage(application.status) });
 });
 
 const createSchema = z.object({
@@ -73,19 +99,23 @@ const createSchema = z.object({
   status: STATUS.default("wishlist"),
   appliedAt: z.iso.date().nullish(),
   cvId: z.string().nullish(),
+  // detected on fetch-preview, always overridable; null = unknown (no badge)
+  germanLevel: GERMAN_LEVEL.nullish(),
 });
 
-async function ownCvOr400(userId: string, cvId: string | null | undefined): Promise<boolean> {
-  if (!cvId) return true;
-  const cv = await prisma.cv.findFirst({ where: { id: cvId, userId } });
-  return cv !== null;
+/** The user's own document for `cvId` (null for none), or false when it isn't theirs. */
+async function ownCvOr400(userId: string, cvId: string | null | undefined): Promise<{ version: number } | null | false> {
+  if (!cvId) return null;
+  const cv = await prisma.cv.findFirst({ where: { id: cvId, userId }, select: { version: true } });
+  return cv ?? false;
 }
 
 applicationsRouter.post("/", async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
   const { appliedAt, status, cvId, ...fields } = parsed.data;
-  if (!(await ownCvOr400(req.userId, cvId))) return res.status(400).json({ error: "Unknown CV" });
+  const cv = await ownCvOr400(req.userId, cvId);
+  if (cv === false) return res.status(400).json({ error: "Unknown CV" });
 
   const count = await prisma.application.count({ where: { userId: req.userId, status } });
   const application = await prisma.application.create({
@@ -93,14 +123,15 @@ applicationsRouter.post("/", async (req, res) => {
       userId: req.userId,
       ...fields,
       cvId: cvId ?? null,
+      cvVersion: cv?.version ?? null,
       status,
       sortOrder: count,
       appliedAt: appliedAt ? toDate(appliedAt) : status === "applied" ? todayUtc() : null,
       events: { create: { type: "created", toStatus: status } },
     },
-    include: { _count: { select: { events: true } }, cv: { select: { id: true, title: true, file: { select: { id: true, originalName: true } } } } },
+    include: { _count: { select: { events: true } }, cv: cvInclude },
   });
-  res.status(201).json({ application });
+  res.status(201).json({ application: withCvFile(application) });
 });
 
 const patchSchema = createSchema.partial();
@@ -126,9 +157,10 @@ applicationsRouter.patch("/:id", async (req, res) => {
     where: { id: req.params.id, userId: req.userId },
   });
   if (!existing) return res.status(404).json({ error: "Application not found" });
-  if (parsed.data.cvId !== undefined && !(await ownCvOr400(req.userId, parsed.data.cvId))) {
-    return res.status(400).json({ error: "Unknown CV" });
-  }
+  const cv = parsed.data.cvId !== undefined ? await ownCvOr400(req.userId, parsed.data.cvId) : undefined;
+  if (cv === false) return res.status(400).json({ error: "Unknown CV" });
+  // picking a (different) document records the version it's at now
+  const cvVersion = cv !== undefined && parsed.data.cvId !== existing.cvId ? { cvVersion: cv?.version ?? null } : {};
 
   const { status, appliedAt, ...fields } = parsed.data;
   const statusChanged = status !== undefined && status !== existing.status;
@@ -156,12 +188,13 @@ applicationsRouter.patch("/:id", async (req, res) => {
       where: { id: existing.id },
       data: {
         ...fields,
+        ...cvVersion,
         ...(appliedAt !== undefined ? { appliedAt: appliedAt ? toDate(appliedAt) : null } : {}),
       },
-      include: { _count: { select: { events: true } }, cv: { select: { id: true, title: true, file: { select: { id: true, originalName: true } } } } },
+      include: { _count: { select: { events: true } }, cv: cvInclude },
     });
   });
-  res.json({ application });
+  res.json({ application: withCvFile(application) });
 });
 
 const moveSchema = z.object({
@@ -202,12 +235,7 @@ applicationsRouter.patch("/:id/move", async (req, res) => {
     }
   });
 
-  const applications = await prisma.application.findMany({
-    where: { userId: req.userId },
-    orderBy: [{ status: "asc" }, { sortOrder: "asc" }],
-    include: { _count: { select: { events: true } }, cv: { select: { id: true, title: true, file: { select: { id: true, originalName: true } } } } },
-  });
-  res.json({ applications });
+  res.json({ applications: await listApplications(req.userId) });
 });
 
 const eventSchema = z.object({
@@ -242,6 +270,26 @@ applicationsRouter.delete("/:id/events/:eventId", async (req, res) => {
   });
   if (!event) return res.status(404).json({ error: "Event not found" });
   await prisma.applicationEvent.delete({ where: { id: event.id } });
+  res.status(204).end();
+});
+
+const phraseSchema = z.object({ text: z.string().trim().min(1).max(300) });
+
+applicationsRouter.post("/:id/phrases", async (req, res) => {
+  const parsed = phraseSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+  const app = await prisma.application.findFirst({ where: { id: req.params.id, userId: req.userId }, select: { id: true } });
+  if (!app) return res.status(404).json({ error: "Application not found" });
+  const phrase = await prisma.applicationPhrase.create({ data: { applicationId: app.id, text: parsed.data.text } });
+  res.status(201).json({ phrase });
+});
+
+applicationsRouter.delete("/:id/phrases/:phraseId", async (req, res) => {
+  const phrase = await prisma.applicationPhrase.findFirst({
+    where: { id: req.params.phraseId, applicationId: req.params.id, application: { userId: req.userId } },
+  });
+  if (!phrase) return res.status(404).json({ error: "Phrase not found" });
+  await prisma.applicationPhrase.delete({ where: { id: phrase.id } });
   res.status(204).end();
 });
 

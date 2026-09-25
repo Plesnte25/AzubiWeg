@@ -14,8 +14,9 @@ export function localDateKey(d: Date): string {
  * timestamp. Activity earlier today isn't required to keep a streak alive —
  * yesterday counts, matching the review streak on the dashboard.
  */
-export function computeDayStreak(timestamps: Date[], today: Date): number {
-  const days = new Set(timestamps.map(localDateKey));
+export function computeDayStreak(timestamps: Date[], today: Date, since?: Date | null): number {
+  // a plan reset (User.streakResetAt) starts the count again from zero
+  const days = new Set((since ? timestamps.filter((t) => t >= since) : timestamps).map(localDateKey));
   let streak = 0;
   const cursor = new Date(today);
   if (!days.has(localDateKey(cursor))) cursor.setDate(cursor.getDate() - 1);

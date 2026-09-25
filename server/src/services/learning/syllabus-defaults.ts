@@ -21,7 +21,8 @@ export interface DefaultSyllabusItem {
   exerciseType?: "free_text" | "self_check" | "multiple_choice" | "correction" | "listening_audio" | "speaking_audio";
   exercisePrompt?: string;
   exerciseAnswer?: string;
-  exerciseOptions?: { options: string[]; correctIndex: number };
+  /** multiple_choice: options + correctIndex. self_check: the three things the learner confirms (`checks`). */
+  exerciseOptions?: { options: string[]; correctIndex: number } | { checks: [string, string, string] };
 }
 
 /**
@@ -55,8 +56,10 @@ export interface DefaultSyllabusItem {
  * v8: added transcript and comprehension guidance for listening lessons.
  * v9: added authored A1-B1 listening anchors with app-native transcripts and
  * scored comprehension checks.
+ * v10: the Exam prep items (task types, full Modellsatz) became self_check activities with their own checklists —
+ * they're done away from the app, so the honest pass is a self-report, not a sentence to type.
  */
-export const SYLLABUS_VERSION = 9;
+export const SYLLABUS_VERSION = 10;
 
 type AuthoredActivity = Pick<
   DefaultSyllabusItem,
@@ -234,8 +237,61 @@ const AUTHORED_LISTENING_LESSONS: Record<string, AuthoredActivity> = {
   },
 };
 
+/** Exam-prep work happens outside the app (reading the exam format, sitting a practice test); the learner confirms it. */
+const taskTypes = (level: string, modules: string, note: string): AuthoredActivity => ({
+  learningOutcome: `I know every part of the Goethe ${level} exam: what each task asks and how long it takes.`,
+  resourceTitle: `The Goethe ${level} exam, part by part`,
+  resourceBody: `${modules}\n\n${note}\n\nCheck the current format and the free Übungsmaterial on goethe.de; formats change now and then.`,
+  guidedPractice: "For each module, say aloud what you do in it, how many parts it has and how long it takes.",
+  exerciseType: "self_check",
+  exercisePrompt: `Go through one official ${level} sample (Übungssatz) module by module — you don't need to answer it yet.`,
+  exerciseOptions: {
+    checks: [
+      "I can name every module and roughly how long each takes.",
+      "I know what each part asks me to do (matching, true/false, a form, a message, a conversation…).",
+      "I've looked at the official sample tasks for each module.",
+    ],
+  },
+});
+const modellsatz = (level: string): AuthoredActivity => ({
+  learningOutcome: `I've sat a full ${level} practice exam under real timing and know where I lose points.`,
+  resourceTitle: `One full ${level} Modellsatz`,
+  resourceBody: `Take one complete official ${level} Modellsatz (goethe.de Übungsmaterial) in one sitting: set a timer for each module, no dictionary, no pausing. Then mark it with the Lösungen and count your points per module.`,
+  guidedPractice: "Write down the two parts that cost you the most points — add them as a Mistakes note so they come back to you.",
+  exerciseType: "self_check",
+  exercisePrompt: `Sit the whole ${level} Modellsatz with a timer, then mark it.`,
+  exerciseOptions: {
+    checks: [
+      "I did every module of one Modellsatz with a timer.",
+      "I marked it with the Lösungen and counted my points.",
+      "I wrote down the two parts that cost me the most points.",
+    ],
+  },
+});
+
+const AUTHORED_SELF_CHECKS: Record<string, AuthoredActivity> = {
+  "Goethe A1 task types": taskTypes(
+    "A1",
+    "Start Deutsch 1 has four modules: Hören (about 20 min), Lesen (about 25 min), Schreiben (about 20 min) and Sprechen (about 15 min, in a small group).",
+    "Schreiben is a form to fill in plus a short message; Sprechen is introducing yourself, asking and answering questions, and making requests.",
+  ),
+  "Goethe A2 task types": taskTypes(
+    "A2",
+    "The Goethe-Zertifikat A2 has four modules: Hören (about 30 min), Lesen (about 30 min), Schreiben (about 30 min) and Sprechen (about 15 min, usually in pairs).",
+    "Schreiben is two short texts (a message and an email); Sprechen is questions about yourself, talking about your life, and planning something together.",
+  ),
+  "Goethe B1 task types": taskTypes(
+    "B1",
+    "The Goethe-Zertifikat B1 is modular: Lesen (65 min), Hören (40 min), Schreiben (60 min) and Sprechen (15 min, in pairs). You can sit and pass modules separately.",
+    "Schreiben is three texts (a personal email, an opinion post, a formal message); Sprechen is planning something together, a short presentation, and reacting to your partner's.",
+  ),
+  "One full A1 Modellsatz": modellsatz("A1"),
+  "One full A2 Modellsatz": modellsatz("A2"),
+  "One full B1 Modellsatz": modellsatz("B1"),
+};
+
 function activityFor(item: DefaultSyllabusItem) {
-  const authored = AUTHORED_LISTENING_LESSONS[item.title] ?? AUTHORED_EXERCISES[item.title] ?? {};
+  const authored = AUTHORED_LISTENING_LESSONS[item.title] ?? AUTHORED_EXERCISES[item.title] ?? AUTHORED_SELF_CHECKS[item.title] ?? {};
   const outcome = authored.learningOutcome ?? item.learningOutcome ?? `I can use ${item.title.toLowerCase()} in a practical German situation.`;
   const resourceTitle = authored.resourceTitle ?? item.resourceTitle ?? `Core lesson: ${item.title}`;
   const resourceBody =

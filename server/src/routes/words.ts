@@ -6,9 +6,10 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { BATCH_DELAY_MS, createPonsBudget, delay, enrichResolved, resolveWordSafe } from "../services/enrichment/index.js";
-import { classifyTheme, THEMENFELD_VALUES, withComputedFields } from "../services/vocab/classify.js";
+import { classifyTheme, strength, THEMENFELD_VALUES, withComputedFields } from "../services/vocab/classify.js";
 import { firstProtected, formatCardLine } from "../services/vault/format.js";
 import { appAudioDir, cardFromBlock, makeCard, vaultFiles, vaultSync } from "../services/vault/sync.js";
+import { listeningAudioFor } from "../services/learning/listening-audio.js";
 
 export const wordsRouter = Router();
 wordsRouter.use(requireAuth);
@@ -16,12 +17,23 @@ wordsRouter.use(requireAuth);
 // Faceting (search/state/type/level/theme/source) is all client-side now —
 // the shelves UI needs the whole set in memory anyway for cross-filtered
 // facet counts, so replicating 6-way AND filtering in SQL isn't worth it.
-wordsRouter.get("/", async (req, res) => {
-  const words = await prisma.word.findMany({
-    where: { userId: req.userId },
-    orderBy: { sortKey: "asc" },
+/** Most recent review grade per word (optionally for one word), for `strength()`. */
+export async function lastGrades(userId: string, wordId?: string) {
+  const logs = await prisma.reviewLog.findMany({
+    where: wordId ? { wordId, word: { userId } } : { word: { userId } },
+    distinct: ["wordId"],
+    orderBy: [{ wordId: "asc" }, { reviewedAt: "desc" }],
+    select: { wordId: true, grade: true },
   });
-  res.json({ words: words.map(withComputedFields) });
+  return new Map(logs.map((l) => [l.wordId, l.grade]));
+}
+
+wordsRouter.get("/", async (req, res) => {
+  const [words, grades] = await Promise.all([
+    prisma.word.findMany({ where: { userId: req.userId }, orderBy: { sortKey: "asc" } }),
+    lastGrades(req.userId),
+  ]);
+  res.json({ words: words.map((w) => ({ ...withComputedFields(w), strength: strength(w, grades.get(w.id) ?? null) })) });
 });
 
 wordsRouter.get("/meta", async (req, res) => {
@@ -358,13 +370,11 @@ wordsRouter.patch("/:id", async (req, res) => {
       },
     });
   }
-  res.json({
-    word: withComputedFields(
-      await prisma.word.findUniqueOrThrow({
-        where: { userId_sortKey: { userId: user.id, sortKey: word.sortKey } },
-      }),
-    ),
+  const updated = await prisma.word.findUniqueOrThrow({
+    where: { userId_sortKey: { userId: user.id, sortKey: word.sortKey } },
   });
+  const grades = await lastGrades(user.id, updated.id);
+  res.json({ word: { ...withComputedFields(updated), strength: strength(updated, grades.get(updated.id) ?? null) } });
 });
 
 wordsRouter.delete("/:id", async (req, res) => {
@@ -384,18 +394,26 @@ wordsRouter.delete("/:id", async (req, res) => {
 
 wordsRouter.get("/:id/audio", async (req, res) => {
   const word = await prisma.word.findFirst({ where: { id: req.params.id, userId: req.userId } });
-  if (!word?.audioPath) return res.status(404).json({ error: "No audio for this word" });
+  if (!word) return res.status(404).json({ error: "Word not found" });
 
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
-  const baseDir = user.vaultPath
-    ? path.join(vaultFiles(user.vaultPath).audioDir, "..")
-    : path.join(appAudioDir(user.id), "..");
-  const resolved = path.resolve(baseDir, word.audioPath);
-  // audioPath comes from vault markdown — never let it escape the audio root
-  if (!resolved.startsWith(path.resolve(baseDir) + path.sep) || !existsSync(resolved)) {
-    return res.status(404).json({ error: "Audio file not found" });
+  let recording: string | null = null;
+  if (word.audioPath) {
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
+    const baseDir = user.vaultPath ? path.join(vaultFiles(user.vaultPath).audioDir, "..") : path.join(appAudioDir(user.id), "..");
+    const resolved = path.resolve(baseDir, word.audioPath);
+    // audioPath comes from vault markdown — never let it escape the audio root
+    if (resolved.startsWith(path.resolve(baseDir) + path.sep) && existsSync(resolved)) recording = resolved;
   }
-  res.sendFile(resolved);
+  if (recording) return res.sendFile(recording);
+
+  // ?fallback=tts: a word with no recording (or whose file is missing, e.g. a vault not synced to this machine) gets
+  // the same cached Edge TTS the listening lessons use
+  if (req.query.fallback === "tts") {
+    const spoken = await listeningAudioFor(word.headword);
+    if (!spoken) return res.status(503).json({ error: "Audio could not be generated. Please try again shortly." });
+    return res.type("audio/mpeg").setHeader("Cache-Control", "private, max-age=31536000, immutable").sendFile(spoken);
+  }
+  res.status(404).json({ error: word.audioPath ? "Audio file not found" : "No audio for this word" });
 });
 
 // DErivBase's probability score tiers into two bands for display — "closely

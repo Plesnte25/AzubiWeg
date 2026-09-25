@@ -2,9 +2,18 @@ import type { RoadmapSkill } from "@prisma/client";
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
-import { computeDayStreak, localDateKey } from "../services/learning/activity.js";
+import { dayLernzeit, splitActiveMinutes } from "../services/activity/session.js";
+import { computeBestStreak, computeDayStreak, localDateKey } from "../services/learning/activity.js";
+import { summarizeMistakes } from "../services/learning/mistakes.js";
+import { levelStatesWithExamGate } from "../services/learning/progress.js";
 import { addDaysUTC, dayStatus } from "../services/learning/roadmap.js";
 import { skillPerformance } from "../services/learning/review.js";
+import { levelMastery, skillMastery } from "../services/learning/stations.js";
+import { pickWeakSpot } from "../services/learning/weak-spot.js";
+import { addDaysKey, mondayKey, weeklyGoal } from "../services/learning/weekly-goal.js";
+import { isShaky, strength } from "../services/vocab/classify.js";
+import { examGateForUser } from "./learning.js";
+import { lastGrades } from "./words.js";
 
 const CORE_SKILLS = ["grammar", "vocab", "listening", "speaking", "writing", "reading"] as const satisfies readonly RoadmapSkill[];
 
@@ -35,6 +44,16 @@ dashboardRouter.get("/", async (req, res) => {
   const todayUtc = todayUtcFromLocal();
   const weekStart = mondayOf(todayUtc);
   const weekEnd = addDaysUTC(weekStart, 7);
+
+  // Bento streak calendar: 32 Monday-aligned weeks ending with this week (the md layout's widest grid; lg shows the
+  // last 22, sm the last 17). Lernzeit rows are UTC-midnight @db.Date keys; pings are instants.
+  const todayKey = localDateKey(new Date());
+  const calendarStart = addDaysKey(mondayKey(todayKey), -31 * 7);
+  const calendarEnd = addDaysKey(mondayKey(todayKey), 6);
+  const [cy, cm, cd] = calendarStart.split("-").map(Number);
+  const calendarStartLocal = new Date(cy!, cm! - 1, cd);
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000);
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
 
   const [
     totalWords,
@@ -87,7 +106,7 @@ dashboardRouter.get("/", async (req, res) => {
     }),
     prisma.syllabusItem.findMany({
       where: { userId: req.userId },
-      select: { level: true, skill: true, completedAt: true },
+      select: { id: true, level: true, theme: true, sortOrder: true, masteryState: true, skippedAt: true, skill: true, completedAt: true },
     }),
     prisma.syllabusItem.findMany({
       where: { userId: req.userId, completedAt: { gte: activityHorizon } },
@@ -118,7 +137,7 @@ dashboardRouter.get("/", async (req, res) => {
     prisma.dailyActiveMinutes.aggregate({ where: { userId: req.userId }, _sum: { minutes: true } }),
     prisma.user.findUniqueOrThrow({
       where: { id: req.userId },
-      select: { roadmapStartedAt: true, examTargetDate: true },
+      select: { roadmapStartedAt: true, examTargetDate: true, studyCapacityMinutes: true, studyDays: true, streakResetAt: true },
     }),
     prisma.roadmapDay.findMany({
       where: { userId: req.userId, date: { gte: weekStart, lt: weekEnd } },
@@ -132,6 +151,36 @@ dashboardRouter.get("/", async (req, res) => {
         },
       },
       orderBy: { date: "asc" },
+    }),
+  ]);
+
+  // Bento Today/Stats blocks (a second batch: independent of the legacy fields above, removed from there as the
+  // Nocturne consumers go away in Phase 3)
+  const [strengthWords, grades, activeDays, pings, examGate, mistakeAttempts, nextInterviewEvent, runningTask] = await Promise.all([
+    prisma.word.findMany({ where: { userId: req.userId }, select: { id: true, srInterval: true, leech: true, createdAt: true } }),
+    lastGrades(req.userId),
+    prisma.dailyActiveMinutes.findMany({
+      where: { userId: req.userId, date: { gte: new Date(`${calendarStart}T00:00:00Z`) } },
+      select: { date: true, minutes: true, learningMinutes: true },
+    }),
+    // normally just today's; older ones only until the next ping/summary folds them into DailyActiveMinutes
+    prisma.activityPing.findMany({
+      where: { userId: req.userId, pingedAt: { gte: calendarStartLocal } },
+      select: { pingedAt: true, learning: true },
+    }),
+    examGateForUser(req.userId),
+    prisma.exerciseAttempt.findMany({
+      where: { userId: req.userId, passed: false, mistakeCategory: { not: null }, createdAt: { gte: thirtyDaysAgo } },
+      select: { mistakeCategory: true, syllabusItem: { select: { title: true } } },
+    }),
+    prisma.applicationEvent.findFirst({
+      where: { type: "interview", occurredAt: { gte: new Date() }, application: { userId: req.userId, status: { not: "rejected" } } },
+      orderBy: { occurredAt: "asc" },
+      select: { occurredAt: true, note: true, application: { select: { id: true, company: true, role: true, location: true } } },
+    }),
+    prisma.roadmapTask.findFirst({
+      where: { day: { userId: req.userId }, timerRunningSince: { not: null } },
+      select: { id: true, title: true, skill: true, timerSeconds: true, timerRunningSince: true },
     }),
   ]);
 
@@ -194,7 +243,7 @@ dashboardRouter.get("/", async (req, res) => {
     ...roadmapActivity.map((r) => r.completedAt as Date),
     ...recentLogs.map((r) => r.reviewedAt),
   ];
-  const streak = computeDayStreak(learningTimestamps, new Date());
+  const streak = computeDayStreak(learningTimestamps, new Date(), user.streakResetAt);
 
   // GitHub-style heatmap: last 15 full weeks of reviews + learning activity,
   // aligned so the grid starts on a Monday and ends today
@@ -256,7 +305,75 @@ dashboardRouter.get("/", async (req, res) => {
         }
       : null;
 
+  // Lernzeit per local day: finalized rollups plus any not-yet-finalized pings (today's, at least)
+  const lernzeitByDay = new Map<string, number>();
+  for (const d of activeDays) lernzeitByDay.set(d.date.toISOString().slice(0, 10), dayLernzeit(d));
+  const pingsByDay = new Map<string, typeof pings>();
+  for (const p of pings) {
+    const key = localDateKey(p.pingedAt);
+    pingsByDay.set(key, [...(pingsByDay.get(key) ?? []), p]);
+  }
+  for (const [key, dayPings] of pingsByDay) {
+    lernzeitByDay.set(key, (lernzeitByDay.get(key) ?? 0) + splitActiveMinutes(dayPings).learningMinutes);
+  }
+
+  const streakCalendar: { date: string; activity: number; lernzeit: number; future: boolean }[] = [];
+  for (let key = calendarStart; key <= calendarEnd; key = addDaysKey(key, 1)) {
+    streakCalendar.push({ date: key, activity: learningCounts.get(key) ?? 0, lernzeit: lernzeitByDay.get(key) ?? 0, future: key > todayKey });
+  }
+
+  // Level % (one definition app-wide, see stations.ts), with the active level following the real exam gate
+  const masteries = (["a1", "a2", "b1"] as const).map((level) => levelMastery(syllabusRows, level));
+  const masteryStates = levelStatesWithExamGate(
+    masteries.map((m) => ({ total: m.countedItems, percent: m.percent })),
+    examGate,
+  );
+  const activeMastery = masteries[Math.max(0, masteryStates.indexOf("active"))]!;
+
+  const wordStrengths = strengthWords.map((w) => strength(w, grades.get(w.id) ?? null));
+
   res.json({
+    bento: {
+      level: {
+        level: activeMastery.level,
+        percent: activeMastery.percent,
+        passedItems: activeMastery.passedItems,
+        countedItems: activeMastery.countedItems,
+        closedStations: activeMastery.closedStations,
+        totalStations: activeMastery.totalStations,
+        currentStation: activeMastery.current
+          ? { key: activeMastery.current.key, index: activeMastery.current.index, theme: activeMastery.current.theme }
+          : null,
+        levels: masteries.map((m, i) => ({ level: m.level, percent: m.percent, state: masteryStates[i] })),
+      },
+      skillMastery: skillMastery(syllabusRows, activeMastery.level),
+      weeklyGoal: weeklyGoal(user.studyCapacityMinutes, user.studyDays, lernzeitByDay, todayKey),
+      lernzeitToday: lernzeitByDay.get(todayKey) ?? 0,
+      words: {
+        total: totalWords,
+        shaky: wordStrengths.filter(isShaky).length,
+        newThisWeek: strengthWords.filter((w) => w.createdAt >= sevenDaysAgo).length,
+      },
+      weakSpot: pickWeakSpot(
+        selfTestBreakdownRows.flatMap((r) =>
+          Array.isArray(r.breakdown) ? (r.breakdown as { topic: string; level?: string; correct: number; total: number }[]) : [],
+        ),
+        summarizeMistakes(mistakeAttempts.map((a) => ({ mistakeCategory: a.mistakeCategory, syllabusItem: a.syllabusItem }))),
+      ),
+      nextInterview: nextInterviewEvent
+        ? {
+            at: nextInterviewEvent.occurredAt,
+            note: nextInterviewEvent.note,
+            applicationId: nextInterviewEvent.application.id,
+            company: nextInterviewEvent.application.company,
+            role: nextInterviewEvent.application.role,
+            location: nextInterviewEvent.application.location,
+          }
+        : null,
+      runningTask,
+      bestStreak: computeBestStreak(learningTimestamps),
+      streakCalendar,
+    },
     examTargetDate: user.examTargetDate ? user.examTargetDate.toISOString().slice(0, 10) : null,
     totalWords,
     dueToday,
@@ -276,7 +393,7 @@ dashboardRouter.get("/", async (req, res) => {
       levels,
       skillProgress,
       skillPerformance: skillPerf,
-      streak: computeDayStreak(learningTimestamps, now),
+      streak: computeDayStreak(learningTimestamps, now, user.streakResetAt),
       lastSelfTest,
     },
     roadmapToday,

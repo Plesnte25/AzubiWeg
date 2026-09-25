@@ -86,6 +86,8 @@ export interface Word {
   genus: Genus;
   state: SrsState;
   enrichmentStatus: EnrichmentStatus;
+  /** Present on GET /api/words and PATCH responses. */
+  strength?: Strength;
 }
 
 export type RoadmapDayStripStatus = "done" | "overdue" | "today" | "upcoming";
@@ -98,7 +100,40 @@ export interface DashboardNextTask {
   description: string | null;
 }
 
+export interface BentoDashboard {
+  level: {
+    level: CefrLevel;
+    percent: number;
+    passedItems: number;
+    countedItems: number;
+    closedStations: number;
+    totalStations: number;
+    currentStation: { key: string; index: number; theme: string } | null;
+    levels: { level: CefrLevel; percent: number; state: LevelState }[];
+  };
+  weeklyGoal: {
+    goalMinutes: number;
+    minutes: number;
+    percent: number;
+    days: { date: string; minutes: number; status: "past" | "today" | "future" }[];
+  };
+  /** Active level's Level % split by skill (null percent = no items for that skill). */
+  skillMastery: { skill: "reading" | "listening" | "grammar" | "writing" | "speaking"; passed: number; counted: number; percent: number | null }[];
+  lernzeitToday: number;
+  words: { total: number; shaky: number; newThisWeek: number };
+  weakSpot:
+    | { source: "self_test"; label: string; topic: string; level: string | null; percent: number; answered: number }
+    | { source: "mistakes"; label: string; category: string; count: number; topics: string[] }
+    | null;
+  nextInterview: { at: string; note: string | null; applicationId: string; company: string; role: string; location: string | null } | null;
+  runningTask: { id: string; title: string; skill: RoadmapSkill | null; timerSeconds: number; timerRunningSince: string } | null;
+  bestStreak: number;
+  streakCalendar: { date: string; activity: number; lernzeit: number; future: boolean }[];
+}
+
 export interface DashboardData {
+  /** Bento Today/Stats blocks (server routes/dashboard.ts `bento`). */
+  bento: BentoDashboard;
   totalWords: number;
   dueToday: number;
   newWords: number;
@@ -129,12 +164,16 @@ export interface DashboardData {
 
 export interface VaultStatus {
   vaultPath: string | null;
+  /** Kept after unlinking, so sync can be switched back on. */
+  lastVaultPath: string | null;
+  /** Notes are written to <vault>/Notizen as markdown. */
+  writeNotes: boolean;
   wordCount: number;
   watching: boolean;
   lastSyncAt: string | null;
 }
 
-export type Grade = "hard" | "good" | "easy";
+export type Grade = "again" | "hard" | "good" | "easy";
 
 export interface ScheduleResult {
   due: string;
@@ -153,11 +192,17 @@ export interface ReviewHistoryEntry {
   intervalAfter: number;
 }
 
+/** Word strength (server services/vocab/classify.ts strength()): 0 = never reviewed, 1–5 pips; shaky = 1–2. */
+export type Strength = 0 | 1 | 2 | 3 | 4 | 5;
+
 export interface WeakWord {
   wordId: string;
   headword: string;
-  lastGrade: Grade;
-  lastReviewedAt: string;
+  strength: Strength;
+  /** Times graded hard, all-time. */
+  hardCount: number;
+  lastGrade: Grade | null;
+  lastReviewedAt: string | null;
 }
 
 export interface ReviewStats {
@@ -166,6 +211,10 @@ export interface ReviewStats {
   reviewsThisWeek: number;
   gradeBreakdown: Record<Grade, number>;
   avgIntervalAfter: number | null;
+  /** Share graded good/easy per trailing window. */
+  accuracy: Record<"7d" | "30d" | "1y", number | null>;
+  /** Recalled % by gap since the previous review (buckets without samples omitted). */
+  retention: { day: number; percent: number; samples: number }[];
 }
 
 export interface UploadedFileMeta {
@@ -181,15 +230,19 @@ export interface UploadedFileMeta {
   createdAt: string;
 }
 
-export type CvCategory = "lebenslauf" | "ats";
+export type CvKind = "cv" | "letter" | "certificates";
 
-// a CV is just an uploaded file with a title/category — no in-app builder,
-// nothing rendered; server/src/routes/cvs.ts
+// Settings → CV shelf: a document is its uploaded files, one per version — no in-app builder, nothing rendered;
+// server/src/routes/cvs.ts
 export interface Cv {
   id: string;
   title: string;
-  category: CvCategory;
-  file: { id: string; originalName: string; mimeType: string; size: number };
+  kind: CvKind;
+  /** The current version; `file` is its file. */
+  version: number;
+  /** The CV Jobs preselects (one per user, CVs only). */
+  isDefault: boolean;
+  file: { id: string; originalName: string; mimeType: string; size: number } | null;
   // count of applications currently pointing at this CV; 0 = unused
   usedIn: number;
   createdAt: string;
@@ -213,9 +266,32 @@ export interface Application {
   sortOrder: number;
   appliedAt: string | null;
   cvId: string | null;
-  cv: { id: string; title: string; file: { id: string; originalName: string } } | null;
+  /** `file` is the version the application used (`cvVersion`); `version` is the shelf's current one. */
+  cv: { id: string; title: string; version: number; file: { id: string; originalName: string } | null } | null;
+  cvVersion: number | null;
+  /** Asked-for German level: detected on fetch, overridable; null = not stated. */
+  germanLevel: GermanLevel | null;
   createdAt: string;
   _count?: { events: number };
+  /** Next upcoming interview event (list responses only). */
+  nextInterviewAt?: string | null;
+}
+
+export type GermanLevel = "a1" | "a2" | "b1" | "b2" | "c1" | "c2";
+
+export interface ApplicationPhrase {
+  id: string;
+  text: string;
+  createdAt: string;
+}
+
+/** Curated interview/Probetag phrase (server services/applications/phrases.ts). */
+export interface CuratedPhrase {
+  id: string;
+  de: string;
+  en: string;
+  context: string;
+  stages: ApplicationStatus[];
 }
 
 /** Best-effort result of scraping a pasted job-posting URL; server/src/services/applications/fetchPreview.ts */
@@ -224,6 +300,7 @@ export interface JobPreview {
   role: string | null;
   location: string | null;
   portal: string | null;
+  germanLevel: GermanLevel | null;
 }
 
 export interface ApplicationEvent {
@@ -237,12 +314,14 @@ export interface ApplicationEvent {
 
 export interface ApplicationDetail extends Application {
   events: ApplicationEvent[];
+  phrases: ApplicationPhrase[];
 }
 
 export interface ApplicationStats {
   total: number;
   active: number;
   byStatus: Record<ApplicationStatus, number>;
+  funnel: { sent: number; replies: number; interviews: number };
   responseRate: number | null;
   interviewRate: number | null;
   offers: number;
@@ -279,7 +358,8 @@ export interface SyllabusItem {
   exerciseType: "free_text" | "self_check" | "multiple_choice" | "correction" | "listening_audio" | "speaking_audio" | null;
   exercisePrompt: string | null;
   exerciseAnswer: string | null;
-  exerciseOptions: { options: string[]; correctIndex: number } | null;
+  /** multiple_choice: options + correctIndex; self_check: the three confirmations (`checks`). */
+  exerciseOptions: { options: string[]; correctIndex: number } | { checks: string[] } | null;
   masteryState: "not_started" | "learning" | "passed" | "mastered";
   reviewDueAt: string | null;
   successfulAttempts: number;
@@ -352,6 +432,9 @@ export interface RoutePace {
   examTargetDate: string | null;
   weeksBehindPace: number | null;
   goalFeasibility: GoalFeasibility;
+  /** The level being worked on, and the study hours left in it (Settings' readiness box). */
+  level: CefrLevel | null;
+  hoursLeft: number;
 }
 
 export interface SyllabusResponse {
@@ -400,6 +483,8 @@ export interface StudySource {
   // always wins for display over coverImageUrl's auto-fetched thumbnail
   coverFileId: string | null;
   coverImageUrl: string | null;
+  /** Plan journey station this source fuels ("level:theme"), or null. */
+  stationKey: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -424,9 +509,9 @@ export type ExamAnswerValue = string | number | boolean;
 
 // mirrors server's ExamQuestionPublic — server/src/services/learning/exam.ts
 export type ExamQuestionPublic =
-  | { qid: string; section: ExamSection; type: "mcq"; prompt: string; choices: string[] }
-  | { qid: string; section: ExamSection; type: "fill_blank"; prompt: string }
-  | { qid: string; section: ExamSection; type: "true_false"; prompt: string };
+  | { qid: string; section: ExamSection; type: "mcq"; prompt: string; choices: string[]; audio: boolean }
+  | { qid: string; section: ExamSection; type: "fill_blank"; prompt: string; audio: boolean }
+  | { qid: string; section: ExamSection; type: "true_false"; prompt: string; audio: boolean };
 
 export interface ExamSectionBreakdown {
   section: ExamSection;
@@ -443,6 +528,8 @@ export interface ExamAttempt {
   total: number | null;
   passed: boolean | null;
   sectionBreakdown: ExamSectionBreakdown[] | null;
+  /** mock = practice run: no 7-day lock, never passes. */
+  mode: "real" | "mock";
 }
 
 export interface ExamStatus {
@@ -456,6 +543,10 @@ export interface ExamStatus {
   cooldownDays: number;
   passThreshold: number;
   sectionCounts: Record<ExamSection, number>;
+  lastMockAttempt: ExamAttempt | null;
+  examTargetDate: string | null;
+  /** Exam date minus 14 days (YYYY-MM-DD), or null without an exam date. */
+  suggestedMockDate: string | null;
 }
 
 export interface TopicBreakdown {
@@ -468,7 +559,7 @@ export interface TopicBreakdown {
 
 export interface SelfTestResult {
   id: string;
-  kind: "vocab" | "mixed";
+  kind: "vocab" | "mixed" | "gender_drill" | "listen_type" | "checkpoint";
   direction: QuizDirection;
   lesson: string | null;
   level: CefrLevel | null;
@@ -478,12 +569,30 @@ export interface SelfTestResult {
   takenAt: string;
 }
 
+export interface SelfTestScore {
+  percent: number | null;
+  count: number;
+}
+
+export type Article = "der" | "die" | "das";
+
+export interface ArticleAccuracy {
+  byArticle: Record<Article, { correct: number; total: number; percent: number | null }>;
+  mostMissed: Article | null;
+  recentWrong: { wrong: number; of: number } | null;
+}
+
 export interface QuizResultsResponse {
   results: SelfTestResult[];
   testsTaken: number;
   best: number | null;
   avg: number | null;
   weakestTopics: RoadmapTopicWeakness[];
+  /** Checkpoint tiles, over the last 20 tests. */
+  scores: { multipleChoice: SelfTestScore; fillIn: SelfTestScore; genderDrill: SelfTestScore; listenType: SelfTestScore };
+  /** From every gender-drill answer. */
+  articles: ArticleAccuracy;
+  checkpoints: { level: CefrLevel | null; index: number; score: number; total: number; takenAt: string }[];
 }
 
 export type RoadmapTaskType = "generic" | "vocab" | "study_source" | "milestone_test";
@@ -515,6 +624,7 @@ export interface RoadmapTask {
   files: UploadedFileMeta[];
   // set when this task's content is derived from a syllabus topic — the
   // same fact as that SyllabusItem's completion, kept in sync
+  syllabusItemId: string | null;
   syllabusItem: { level: CefrLevel; theme: string | null; description: string | null } | null;
 }
 
@@ -536,9 +646,28 @@ export interface Note {
   // tapped (e.g. "/Jobs"), shown as a removable chip
   wordId: string | null;
   contextTag: string | null;
+  /** Bento sticky-wall category, pin, and the /job and /station links. */
+  category: NoteCategory;
+  pinned: boolean;
+  applicationId: string | null;
+  stationKey: string | null;
+  /** /source link (sticky wall). */
+  studySourceId: string | null;
+  /** "Surfaced today" rotation (grammar/mistakes notes); null = not in rotation. */
+  resurfaceDueAt: string | null;
+  resurfaceStep: number;
   files: UploadedFileMeta[];
   createdAt: string;
   updatedAt: string;
+}
+
+export type NoteCategory = "grammar" | "mistakes" | "everyday" | "jobs" | "listening";
+
+/** GET /api/notes/wall: a note plus the names its link chip shows. */
+export interface WallNote extends Note {
+  word: { id: string; headword: string } | null;
+  application: { id: string; company: string } | null;
+  studySource: { id: string; title: string } | null;
 }
 
 /** SyllabusItem's Grammar Notebook (examples/exceptions/commonMistakes),
@@ -569,8 +698,15 @@ export interface NotesFeedResponse {
 export interface RoadmapStatus {
   activated: boolean;
   startedAt: string | null;
-  studyCapacityMinutes: 5 | 20 | 45 | 90 | 180 | 330;
+  /** Minutes a day, 10–180 in steps of 5. */
+  studyCapacityMinutes: number;
+  /** Monday → Sunday. */
+  studyDays: boolean[];
+  newWordsPerDay: NewWordsPerDay;
 }
+
+export type NewWordsPerDay = 5 | 10 | 15 | 20;
+export type CapacityUpdate = Partial<{ minutes: number; studyDays: boolean[]; newWordsPerDay: NewWordsPerDay }>;
 
 export interface DailyJournal {
   id: string;
@@ -604,8 +740,10 @@ export interface RoadmapTodayResponse {
   tasks: RoadmapTask[];
   backlog: RoadmapBacklogGroup[];
   overview: RoadmapOverview;
+  /** Today is off in Settings → Study days: no ticket, its tasks carry over. */
+  restDay: boolean;
   capacity: {
-    minutes: 5 | 20 | 45 | 90 | 180 | 330;
+    minutes: number;
     revisionMinutes: number;
     coreMinutes: number;
     hasMore: boolean;
@@ -743,7 +881,10 @@ export interface Portal {
 export interface ActivitySummary {
   minutesToday: number;
   minutesThisWeek: number;
-  history: { date: string; minutes: number }[];
+  /** Bento Lernzeit: active minutes on learning routes only. */
+  lernzeitToday: number;
+  lernzeitThisWeek: number;
+  history: { date: string; minutes: number; lernzeit: number }[];
 }
 
 export interface ActivityFeedEntry {

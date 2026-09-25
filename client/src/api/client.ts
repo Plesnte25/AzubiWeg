@@ -3,10 +3,13 @@ import type {
   ActivitySummary,
   Application,
   ApplicationDetail,
+  ApplicationPhrase,
+  WallNote,
+  CuratedPhrase,
   ApplicationStats,
   ApplicationStatus,
   Cv,
-  CvCategory,
+  CvKind,
   DashboardData,
   ExamAttempt,
   ExamQuestionPublic,
@@ -34,6 +37,7 @@ import type {
   RoadmapMonthlyReview,
   RoadmapSkill,
   RoadmapStatus,
+  CapacityUpdate,
   DailyJournal,
   RoadmapTask,
   RoadmapTodayResponse,
@@ -58,8 +62,7 @@ import type {
   WeakWord,
   Themenfeld,
   Word,
-  WordFamilyMember,
-} from "./types";
+  WordFamilyMember, NoteCategory } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -161,7 +164,7 @@ export const api = {
   words: () => request<{ words: Word[] }>("/api/words"),
   wordsMeta: () => request<{ lessons: { lesson: string; count: number }[] }>("/api/words/meta"),
   addWords: (words: string[], lesson?: string, classification?: { themenfeld?: Themenfeld[]; level?: CefrLevel }) =>
-    request<{ words: Word[] }>("/api/words", {
+    request<{ words: Word[]; rejected: { word: string; reason: "loanword" | "not-german" }[] }>("/api/words", {
       method: "POST",
       body: JSON.stringify({ words, ...(lesson ? { lesson } : {}), ...classification }),
     }),
@@ -176,7 +179,9 @@ export const api = {
     request<{ total: number; updated: number }>("/api/words/reclassify", { method: "POST" }),
   wordFamily: (id: string) => request<{ members: WordFamilyMember[] }>(`/api/words/${id}/family`),
 
-  reviewQueue: () => request<{ due: Word[]; fresh: Word[] }>("/api/reviews/queue"),
+  reviewQueue: () => request<{ due: Word[]; fresh: Word[]; shaky: Word[] }>("/api/reviews/queue"),
+  /** Reverts the word's latest grade (review session Undo). */
+  undoReview: (wordId: string) => request<{ word: Word }>(`/api/reviews/${wordId}/undo`, { method: "POST", body: "{}" }),
   gradeWord: (wordId: string, grade: Grade) =>
     request<{ next: { due: string; interval: number; ease: number }; word: Word }>(`/api/reviews/${wordId}`, {
       method: "POST",
@@ -193,26 +198,32 @@ export const api = {
 
   vaultStatus: () => request<VaultStatus>("/api/vault/status"),
   vaultLink: (path: string) =>
-    request<{ vaultPath: string; wordCount: number }>("/api/vault/link", {
+    request<{ vaultPath: string; wordCount: number; notesWritten: number }>("/api/vault/link", {
       method: "POST",
       body: JSON.stringify({ path }),
     }),
   vaultUnlink: () => request<{ ok: boolean }>("/api/vault/unlink", { method: "POST" }),
-  vaultSyncNow: () => request<{ wordCount: number }>("/api/vault/sync", { method: "POST" }),
+  vaultSyncNow: () => request<{ wordCount: number; notesWritten: number }>("/api/vault/sync", { method: "POST" }),
+  vaultSettings: (data: { writeNotes: boolean }) =>
+    request<{ writeNotes: boolean; notesWritten: number }>("/api/vault/settings", { method: "PATCH", body: JSON.stringify(data) }),
 
   deleteFile: (id: string) => request<void>(`/api/files/${id}`, { method: "DELETE" }),
 
   cvs: () => request<{ cvs: Cv[] }>("/api/cvs"),
   cv: (id: string) => request<{ cv: Cv }>(`/api/cvs/${id}`),
-  addCv: (data: { title: string; category: CvCategory; fileId: string }) =>
+  addCv: (data: { title: string; kind: CvKind; fileId: string }) =>
     request<{ cv: Cv }>("/api/cvs", { method: "POST", body: JSON.stringify(data) }),
-  updateCv: (id: string, data: Partial<{ title: string; category: CvCategory }>) =>
+  updateCv: (id: string, data: Partial<{ title: string; kind: CvKind }>) =>
     request<{ cv: Cv }>(`/api/cvs/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  addCvVersion: (id: string, fileId: string) =>
+    request<{ cv: Cv }>(`/api/cvs/${id}/versions`, { method: "POST", body: JSON.stringify({ fileId }) }),
+  makeDefaultCv: (id: string) => request<{ cv: Cv }>(`/api/cvs/${id}/default`, { method: "POST" }),
   deleteCv: (id: string) => request<void>(`/api/cvs/${id}`, { method: "DELETE" }),
 
   applications: () => request<{ applications: Application[] }>("/api/applications"),
   applicationStats: () => request<{ stats: ApplicationStats }>("/api/applications/stats"),
-  application: (id: string) => request<{ application: ApplicationDetail }>(`/api/applications/${id}`),
+  application: (id: string) =>
+    request<{ application: ApplicationDetail; suggestedPhrases: CuratedPhrase[] }>(`/api/applications/${id}`),
   fetchJobPreview: (url: string) =>
     request<{ fetched: boolean; data: JobPreview | null }>("/api/applications/fetch-preview", {
       method: "POST",
@@ -236,7 +247,7 @@ export const api = {
   deleteApplication: (id: string) => request<void>(`/api/applications/${id}`, { method: "DELETE" }),
   addApplicationEvent: (
     id: string,
-    data: { type: "note" | "interview" | "follow_up"; note?: string },
+    data: { type: "note" | "interview" | "follow_up"; note?: string; occurredAt?: string },
   ) =>
     request<{ event: ApplicationDetail["events"][number] }>(`/api/applications/${id}/events`, {
       method: "POST",
@@ -244,6 +255,10 @@ export const api = {
     }),
   deleteApplicationEvent: (id: string, eventId: string) =>
     request<void>(`/api/applications/${id}/events/${eventId}`, { method: "DELETE" }),
+  addApplicationPhrase: (id: string, text: string) =>
+    request<{ phrase: ApplicationPhrase }>(`/api/applications/${id}/phrases`, { method: "POST", body: JSON.stringify({ text }) }),
+  deleteApplicationPhrase: (id: string, phraseId: string) =>
+    request<void>(`/api/applications/${id}/phrases/${phraseId}`, { method: "DELETE" }),
 
   learningSyllabus: () => request<SyllabusResponse>("/api/learning/syllabus"),
   syllabusWorkspace: (id: string) => request<SyllabusWorkspace>(`/api/learning/syllabus/${id}/workspace`),
@@ -301,6 +316,7 @@ export const api = {
     unitLabel?: StudySourceUnitLabel;
     notes?: string | null;
     autoFetch?: boolean;
+    stationKey?: string | null;
   }) =>
     request<{ source: StudySource; fetch: PlaylistFetchOutcome }>("/api/learning/sources", {
       method: "POST",
@@ -331,6 +347,7 @@ export const api = {
       // set via the two-step flow: upload (kind: "source_cover") then PATCH
       // with the new file's id; null clears the cover
       coverFileId: string | null;
+      stationKey: string | null;
     }>,
   ) =>
     request<{ source: StudySource }>(`/api/learning/sources/${id}`, {
@@ -349,33 +366,52 @@ export const api = {
       `/api/learning/sources/activity${opts.cursor ? `?${new URLSearchParams({ cursor: opts.cursor })}` : ""}`,
     ),
 
-  startSelfTest: (opts: { size?: number } = {}) =>
-    request<{ questions: SessionQuestion[]; level: CefrLevel }>("/api/learning/quiz", {
+  /** checkpointIndex (1–3): a mixed test scoped to that checkpoint's stations at `level`. */
+  startSelfTest: (opts: { size?: number; checkpointIndex?: number; level?: CefrLevel } = {}) =>
+    request<{ questions: SessionQuestion[]; level: CefrLevel; checkpoint?: { index: number; stations: string[]; scopedQuestions: number } }>("/api/learning/quiz", {
       method: "POST",
       body: JSON.stringify(opts),
     }),
   quizResults: () => request<QuizResultsResponse>("/api/learning/quiz/results"),
+  genderDrill: (opts: { size?: number; wordId?: string; shakyOnly?: boolean } = {}) =>
+    request<{ words: { wordId: string; headword: string; meaning: string | null; article: "der" | "die" | "das" }[] }>("/api/learning/quiz/gender-drill", {
+      method: "POST",
+      body: JSON.stringify(opts),
+    }),
+  listenType: (size = 8) =>
+    request<{ words: { wordId: string; headword: string; meaning: string | null; audioUrl: string }[] }>("/api/learning/quiz/listen-type", {
+      method: "POST",
+      body: JSON.stringify({ size }),
+    }),
 
   examStatus: () => request<ExamStatus>("/api/learning/exam/status"),
-  startExam: () =>
-    request<{ attemptId: string; level: CefrLevel; questions: ExamQuestionPublic[]; timeLimitMinutes: number }>(
+  /** mode "mock": practice run with no 7-day lock that never counts as a pass. */
+  /** A listening question's clip for an attempt (auth'd fetch; play it as a blob). */
+  examAudioUrl: (attemptId: string, qid: string) => `/api/learning/exam/${attemptId}/audio/${encodeURIComponent(qid)}`,
+  examTranscript: (attemptId: string, qid: string) =>
+    request<{ transcript: string }>(`/api/learning/exam/${attemptId}/transcript/${encodeURIComponent(qid)}`),
+  startExam: (mode: "real" | "mock" = "real") =>
+    request<{ attemptId: string; level: CefrLevel; mode: "real" | "mock"; questions: ExamQuestionPublic[]; timeLimitMinutes: number }>(
       "/api/learning/exam/start",
-      { method: "POST" },
+      { method: "POST", body: JSON.stringify({ mode }) },
     ),
   submitExam: (attemptId: string, answers: { qid: string; answer: string | number | boolean }[]) =>
-    request<{ attempt: ExamAttempt }>(`/api/learning/exam/${attemptId}/submit`, {
+    request<{ attempt: ExamAttempt; wouldHavePassed: boolean }>(`/api/learning/exam/${attemptId}/submit`, {
       method: "POST",
       body: JSON.stringify({ answers }),
     }),
   submitQuizResult: (data: {
     score: number;
     total: number;
-    kind: "mixed";
+    kind: "mixed" | "checkpoint" | "gender_drill" | "listen_type";
     level?: CefrLevel | null;
+    checkpointIndex?: number | null;
     questionIds?: string[];
     breakdown?: TopicBreakdown[];
+    typeBreakdown?: { type: "mcq" | "fill_blank" | "true_false"; correct: number; total: number }[];
+    answers?: { wordId: string; article: "der" | "die" | "das"; picked: "der" | "die" | "das" }[];
   }) =>
-    request<{ result: SelfTestResult }>("/api/learning/quiz/results", {
+    request<{ result: SelfTestResult; flaggedShaky?: number }>("/api/learning/quiz/results", {
       method: "POST",
       body: JSON.stringify(data),
     }),
@@ -388,10 +424,10 @@ export const api = {
   }) => request<NotebookLinkResult>("/api/learning/quiz/notebook", { method: "POST", body: JSON.stringify(data) }),
 
   roadmapStatus: () => request<RoadmapStatus>("/api/learning/roadmap/status"),
-  updateStudyCapacity: (minutes: 5 | 20 | 45 | 90 | 180 | 330) =>
-    request<{ studyCapacityMinutes: number }>("/api/learning/roadmap/capacity", {
+  updateStudyCapacity: (data: CapacityUpdate) =>
+    request<Omit<RoadmapStatus, "activated" | "startedAt">>("/api/learning/roadmap/capacity", {
       method: "PATCH",
-      body: JSON.stringify({ minutes }),
+      body: JSON.stringify(data),
     }),
   dailyJournal: (date: string) => request<{ journal: DailyJournal | null }>(`/api/learning/roadmap/journal/day/${date}`),
   saveDailyJournal: (date: string, data: Pick<DailyJournal, "learned" | "difficult" | "nextStep">) =>
@@ -404,7 +440,12 @@ export const api = {
       method: "POST",
       body: JSON.stringify(startDate ? { startDate } : {}),
     }),
-  resetRoadmap: () => request<{ reset: boolean }>("/api/learning/roadmap/reset", { method: "POST" }),
+  /** Rebuilds the route from today and restarts the streak; unticked keeps clear that data. */
+  resetRoadmap: (keep: { keepWords?: boolean; keepNotes?: boolean; keepApplications?: boolean } = {}) =>
+    request<{ startedAt: string; cleared: { words: number; notes: number; applications: number } }>("/api/learning/roadmap/reset", {
+      method: "POST",
+      body: JSON.stringify(keep),
+    }),
   roadmapToday: () => request<RoadmapTodayResponse>("/api/learning/roadmap/today"),
   roadmapBacklog: () => request<RoadmapBacklogResponse>("/api/learning/roadmap/backlog"),
   roadmapDay: (date: string) => request<{ day: RoadmapDayDetail }>(`/api/learning/roadmap/day/${date}`),
@@ -464,7 +505,18 @@ export const api = {
     roadmapTaskId?: string | null;
     wordId?: string | null;
     contextTag?: string | null;
+    category?: NoteCategory;
+    pinned?: boolean;
+    applicationId?: string | null;
+    stationKey?: string | null;
+    studySourceId?: string | null;
   }) => request<{ note: Note }>("/api/notes", { method: "POST", body: JSON.stringify(data) }),
+  notesWall: () => request<{ notes: WallNote[] }>("/api/notes/wall"),
+  surfacedNotes: () => request<{ notes: Note[] }>("/api/notes/surfaced"),
+  resurfaceNote: (id: string, outcome: "again" | "known") =>
+    request<{ note: Note }>(`/api/notes/${id}/resurface`, { method: "POST", body: JSON.stringify({ outcome }) }),
+  stationNotes: (stationKey: string) =>
+    request<{ notes: Note[] }>(`/api/notes?stationKey=${encodeURIComponent(stationKey)}`),
   updateNote: (
     id: string,
     data: Partial<{
@@ -475,6 +527,11 @@ export const api = {
       roadmapTaskId: string | null;
       wordId: string | null;
       contextTag: string | null;
+      category: NoteCategory;
+      pinned: boolean;
+      applicationId: string | null;
+      stationKey: string | null;
+      studySourceId: string | null;
     }>,
   ) => request<{ note: Note }>(`/api/notes/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteNote: (id: string) => request<void>(`/api/notes/${id}`, { method: "DELETE" }),
@@ -498,10 +555,10 @@ export const api = {
     request<{ portal: Portal }>(`/api/portals/${id}/checked`, { method: "POST" }),
   deletePortal: (id: string) => request<void>(`/api/portals/${id}`, { method: "DELETE" }),
 
-  activityPing: () => request<void>("/api/activity/ping", { method: "POST" }),
+  activityPing: (learning: boolean) =>
+    request<void>("/api/activity/ping", { method: "POST", body: JSON.stringify({ learning }) }),
   activitySummary: (days?: number) =>
     request<ActivitySummary>(`/api/activity/summary${days ? `?days=${days}` : ""}`),
-  activityHourly: () => request<{ hours: { hour: number; minutes: number }[] }>("/api/activity/hourly"),
 };
 
 /**
@@ -564,9 +621,10 @@ export async function downloadFile(fileId: string, name: string): Promise<void> 
 }
 
 /** Fetches word audio with auth and plays it (audio tags can't send headers). */
+/** Plays a word's recording; words without one fall back to the server's cached Edge TTS of the headword. */
 export async function playWordAudio(wordId: string): Promise<void> {
   const token = getToken();
-  const res = await fetch(`/api/words/${wordId}/audio`, {
+  const res = await fetch(`/api/words/${wordId}/audio?fallback=tts`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) throw new ApiError(res.status, "Audio not available");

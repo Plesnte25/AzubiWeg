@@ -1,4 +1,4 @@
-import type { CefrLevel, Themenfeld } from "@prisma/client";
+import type { CefrLevel, Grade, Themenfeld } from "@prisma/client";
 import { stripEditorialMetadata, type CardCuration } from "../vault/format.js";
 import { deriveEnrichmentStatus, type DerivedEnrichmentStatus } from "../enrichment/index.js";
 
@@ -84,6 +84,39 @@ export function deriveSrsState(word: { srDue: Date | null; srInterval: number | 
   if (word.srDue.getTime() <= Date.now()) return "due";
   if (word.srInterval !== null && word.srInterval >= MASTERED_INTERVAL_DAYS) return "mastered";
   return "learning";
+}
+
+/** Word strength 1–5 for the Bento pips, or 0 = never reviewed (dashed, no pips). Derived, never stored. */
+export type Strength = 0 | 1 | 2 | 3 | 4 | 5;
+
+/**
+ * One definition of word strength for every surface (Words pips/chip/tile, Stats, the Today tile), replacing the
+ * three older "weak word" readings. Derived from the SRS interval bands plus the most recent grade:
+ *
+ * - 0: never reviewed (no SR state yet).
+ * - 1: manually flagged as shaky (`Word.leech`), or last graded hard with an interval of at most 1 day.
+ * - 2: interval under 3 days, or last graded hard.
+ * - 3: 3–9 days · 4: 10–20 days · 5: 21+ days (the same 21-day line `deriveSrsState` calls "mastered").
+ *
+ * A manual flag wins even before the first review: flagging is the user saying "this one's shaky". `lastGrade` is
+ * null when the app has no ReviewLog for the word (e.g. it was scheduled in Obsidian), which then reads as not-hard.
+ */
+export function strength(word: { srInterval: number | null; leech: boolean }, lastGrade: Grade | null): Strength {
+  if (word.leech) return 1;
+  const interval = word.srInterval;
+  if (interval === null) return 0;
+  // a lapse (again) reads like hard: not remembered
+  const hard = lastGrade === "hard" || lastGrade === "again";
+  if (hard && interval <= 1) return 1;
+  if (hard || interval < 3) return 2;
+  if (interval < 10) return 3;
+  if (interval < MASTERED_INTERVAL_DAYS) return 4;
+  return 5;
+}
+
+/** "Shaky" everywhere = strength 1–2 (README: filter chip "Shaky (strength ≤ 2)"). Never-reviewed words aren't. */
+export function isShaky(s: Strength): boolean {
+  return s === 1 || s === 2;
 }
 
 interface LessonThemeEntry {

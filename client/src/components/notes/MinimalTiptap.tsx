@@ -27,8 +27,8 @@ function ToolbarButton({
         onClick();
       }}
       className={cn(
-        "grid size-6 place-items-center rounded text-ink-400 hover:bg-card hover:text-ink-900",
-        active && "bg-card text-brand-600",
+        "grid size-6 place-items-center rounded text-plain-muted hover:bg-plain2 hover:text-plain-text",
+        active && "bg-sel text-sel-text",
       )}
     >
       {children}
@@ -82,10 +82,10 @@ export function MinimalTiptap({
     editorProps: {
       attributes: {
         class: cn(
-          "max-w-none text-body outline-none",
+          "max-w-none text-[15px] leading-[1.55] outline-none",
           "[&_p]:my-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5",
-          "[&_blockquote]:my-1 [&_blockquote]:border-l-2 [&_blockquote]:border-hairline [&_blockquote]:pl-2 [&_blockquote]:text-ink-600",
-          "[&_.is-editor-empty:first-child]:before:float-left [&_.is-editor-empty:first-child]:before:h-0 [&_.is-editor-empty:first-child]:before:text-ink-400 [&_.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]",
+          "[&_blockquote]:my-1 [&_blockquote]:border-l-2 [&_blockquote]:border-dash [&_blockquote]:pl-2 [&_blockquote]:text-plain-muted",
+          "[&_.is-editor-empty:first-child]:before:float-left [&_.is-editor-empty:first-child]:before:h-0 [&_.is-editor-empty:first-child]:before:text-plain-muted [&_.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]",
           !editable && "[&_p]:my-2.5 text-[15px] leading-[1.75]",
         ),
       },
@@ -128,7 +128,7 @@ export function MinimalTiptap({
 export function MinimalTiptapToolbar({ editor, wordCount }: { editor: Editor | null; wordCount: number }) {
   if (!editor) return null;
   return (
-    <div className="flex items-center gap-0.5 border-t border-hairline pt-1.5">
+    <div className="flex items-center gap-0.5 border-t border-dash pt-1.5">
       <ToolbarButton active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} title="Bold">
         <TextB size={14} weight="regular" aria-hidden="true" />
       </ToolbarButton>

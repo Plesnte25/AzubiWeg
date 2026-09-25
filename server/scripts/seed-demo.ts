@@ -18,6 +18,7 @@ import { prisma } from "../src/db.js";
 import { activateRoadmapForUser } from "../src/routes/roadmap.js";
 import { setRoadmapTaskCompletion } from "../src/services/learning/completion-sync.js";
 import { ensureSyllabusSeeded } from "../src/services/learning/syllabus-seed.js";
+import { deriveStations } from "../src/services/learning/stations.js";
 
 const DEMO_EMAIL = process.env.DEMO_USER_EMAIL ?? "demo@azubiweg.internal";
 const DAY_MS = 86_400_000;
@@ -94,6 +95,9 @@ async function seedWords(userId: string): Promise<void> {
         srDue,
         srInterval,
         srEase,
+        // "New" = added in the last 7 days; the rest were added over the past two months
+        createdAt: new Date(Date.now() - (w.state === "new" ? DEMO_WORDS.indexOf(w) % 6 : 14 + DEMO_WORDS.indexOf(w) * 2) * DAY_MS),
+        starred: ["Ausbildung", "Bewerbung", "Termin"].includes(w.headword),
         rawBlock: `${w.headword}\n?\n${w.meaning}`,
       },
     });
@@ -195,6 +199,189 @@ async function seedApplications(userId: string): Promise<void> {
   }
 }
 
+
+const daysAgo = (n: number, hour = 18) => {
+  const d = new Date(Date.now() - n * DAY_MS);
+  d.setHours(hour, (n * 7) % 60, 0, 0);
+  return d;
+};
+const utcDay = (n: number) => {
+  const d = new Date(Date.now() - n * DAY_MS);
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+};
+
+/** Bento Settings/Plan: an exam date ~5 months out (drives the countdown, pace and readiness). */
+async function seedProfile(userId: string): Promise<void> {
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  if (user.examTargetDate) return;
+  await prisma.user.update({ where: { id: userId }, data: { examTargetDate: utcDay(-148), studyCapacityMinutes: 45 } });
+}
+
+/**
+ * Journey progress like the design's demo: A1 stations 1–7 closed (every third item mastered), station 8 half done,
+ * a few passed topics due for review, and the matching past route tasks ticked. Completions spread over 45 days.
+ */
+async function seedSyllabusProgress(userId: string): Promise<void> {
+  const passedAlready = await prisma.syllabusItem.count({ where: { userId, masteryState: { in: ["passed", "mastered"] } } });
+  if (passedAlready > 3) return;
+  const items = await prisma.syllabusItem.findMany({
+    where: { userId, level: "a1" },
+    select: { id: true, level: true, theme: true, sortOrder: true, masteryState: true, skippedAt: true },
+  });
+  const stations = deriveStations(items as Parameters<typeof deriveStations>[0], "a1");
+  const done = stations.slice(0, 7).flatMap((st) => st.itemIds);
+  const half = stations[7] ? stations[7].itemIds.slice(0, Math.ceil(stations[7].itemIds.length / 2)) : [];
+  const passed = [...done, ...half];
+  for (const [i, id] of passed.entries()) {
+    const completedAt = daysAgo(Math.max(1, 45 - Math.round((i / passed.length) * 44)));
+    await prisma.syllabusItem.update({
+      where: { id },
+      data: {
+        masteryState: i % 3 === 0 && i < done.length ? "mastered" : "passed",
+        completedAt,
+        lastAttemptAt: completedAt,
+        successfulAttempts: i % 3 === 0 ? 2 : 1,
+        // three topics come due today (Plan: "topic reviews that are due appear as tasks")
+        reviewDueAt: i % 9 === 4 ? utcDay(0) : new Date(completedAt.getTime() + 21 * DAY_MS),
+      },
+    });
+  }
+  await prisma.roadmapTask.updateMany({
+    where: { syllabusItemId: { in: passed }, day: { userId, date: { lt: utcDay(0) } }, completedAt: null },
+    data: { completedAt: daysAgo(1) },
+  });
+}
+
+/** Stats/Plan: checkpoint 1 score, a mock exam, and per-type self-test scores. */
+async function seedTests(userId: string): Promise<void> {
+  if ((await prisma.selfTestResult.count({ where: { userId } })) > 0) return;
+  await prisma.selfTestResult.createMany({
+    data: [
+      { userId, kind: "checkpoint", checkpointIndex: 1, level: "a1", score: 16, total: 20, takenAt: daysAgo(5) },
+      { userId, kind: "mixed", level: "a1", score: 8, total: 10, takenAt: daysAgo(12) },
+      { userId, kind: "mixed", level: "a1", score: 9, total: 10, takenAt: daysAgo(3) },
+      { userId, kind: "gender_drill", level: "a1", score: 17, total: 20, takenAt: daysAgo(8) },
+      { userId, kind: "gender_drill", level: "a1", score: 19, total: 20, takenAt: daysAgo(2) },
+      { userId, kind: "listen_type", level: "a1", score: 7, total: 10, takenAt: daysAgo(4) },
+    ],
+  });
+  await prisma.examAttempt.create({
+    data: { userId, level: "a1", mode: "mock", startedAt: daysAgo(6, 17), submittedAt: daysAgo(6), score: 15, total: 20, passed: false },
+  });
+}
+
+const DEMO_NOTES: { title: string; body: string; category: "grammar" | "mistakes" | "everyday" | "jobs" | "listening"; pinned?: boolean; station?: number; app?: string; word?: string }[] = [
+  { title: "Dativ nach mit, nach, bei", body: "<p><strong>mit, nach, bei, seit, von, zu, aus</strong> always take the Dativ.</p><ul><li><p>mit <em>dem</em> Bus</p></li><li><p>nach <em>der</em> Arbeit</p></li></ul>", category: "grammar", pinned: true, station: 7 },
+  { title: "Verb goes second", body: "<p>Heute <strong>gehe</strong> ich ins Kino. Not: Heute ich gehe…</p>", category: "mistakes", pinned: true },
+  { title: "die Werkstatt", body: "<p>-statt words are feminine: die Werkstatt, die Stätte.</p>", category: "mistakes" },
+  { title: "Bäckerei small talk", body: "<p>Ich hätte gern zwei Brötchen, bitte. — Sonst noch etwas? — Nein, danke, das ist alles.</p>", category: "everyday" },
+  { title: "Interview: Pflege", body: "<p>Warum möchten Sie in der Pflege arbeiten? Prepare 3 sentences about motivation.</p>", category: "jobs", app: "Rheinland Pflege gGmbH" },
+  { title: "Easy German #412", body: "<p>Heard <em>eigentlich</em> five times: softens a statement, like “actually”.</p>", category: "listening" },
+  { title: "", body: "<p>Termin <strong>vereinbaren</strong>, not machen, in formal emails.</p>", category: "everyday", word: "termin" },
+];
+
+/** Notes sticky wall: every category, two pinned, grammar/mistakes in the "Surfaced today" rotation. */
+async function seedNotes(userId: string): Promise<void> {
+  if ((await prisma.note.count({ where: { userId } })) > 0) return;
+  const items = await prisma.syllabusItem.findMany({ where: { userId, level: "a1" }, select: { id: true, level: true, theme: true, sortOrder: true, masteryState: true, skippedAt: true } });
+  const stations = deriveStations(items as Parameters<typeof deriveStations>[0], "a1");
+  for (const [i, n] of DEMO_NOTES.entries()) {
+    const app = n.app ? await prisma.application.findFirst({ where: { userId, company: n.app }, select: { id: true } }) : null;
+    const word = n.word ? await prisma.word.findFirst({ where: { userId, sortKey: n.word }, select: { id: true } }) : null;
+    const rotating = n.category === "grammar" || n.category === "mistakes";
+    await prisma.note.create({
+      data: {
+        userId,
+        title: n.title || null,
+        body: n.body,
+        category: n.category,
+        pinned: n.pinned ?? false,
+        stationKey: n.station ? (stations[n.station - 1]?.key ?? null) : null,
+        applicationId: app?.id ?? null,
+        wordId: word?.id ?? null,
+        resurfaceDueAt: rotating ? utcDay(0) : null,
+        resurfaceStep: rotating ? 1 : 0,
+        createdAt: daysAgo(2 + i * 4),
+      },
+    });
+  }
+}
+
+/** Plan library: three sources with progress, linked to stations, with a few +1 taps. */
+async function seedSources(userId: string): Promise<void> {
+  if ((await prisma.studySource.count({ where: { userId } })) > 0) return;
+  const items = await prisma.syllabusItem.findMany({ where: { userId, level: "a1" }, select: { id: true, level: true, theme: true, sortOrder: true, masteryState: true, skippedAt: true } });
+  const stations = deriveStations(items as Parameters<typeof deriveStations>[0], "a1");
+  const sources = [
+    { type: "youtube" as const, provider: "Easy German", title: "Easy German — Super Easy", url: "https://www.youtube.com/@EasyGerman", totalUnits: 40, completedUnits: 14, unitLabel: "episodes" as const, station: 8 },
+    { type: "book" as const, provider: "Hueber", title: "Menschen A1.1 Kursbuch", url: null, totalUnits: 12, completedUnits: 7, unitLabel: "chapters" as const, station: 7 },
+    { type: "course" as const, provider: "Deutsche Welle", title: "Nicos Weg A1", url: "https://learngerman.dw.com/de/nicos-weg/c-36519687", totalUnits: 76, completedUnits: 31, unitLabel: "lessons" as const, station: 6 },
+  ];
+  for (const [i, src] of sources.entries()) {
+    const { station, ...data } = src;
+    await prisma.studySource.create({
+      data: {
+        userId,
+        ...data,
+        level: "a1",
+        stationKey: stations[station - 1]?.key ?? null,
+        createdAt: daysAgo(40 - i * 6),
+        logs: { create: Array.from({ length: 5 }, (_, j) => ({ delta: 1, loggedAt: daysAgo(1 + j * 3 + i) })) },
+      },
+    });
+  }
+}
+
+/** Jobs: asked-for German levels, a dated upcoming interview, and phrases on it. */
+async function seedJobDetails(userId: string): Promise<void> {
+  const apps = await prisma.application.findMany({ where: { userId }, select: { id: true, company: true, germanLevel: true } });
+  if (apps.some((a) => a.germanLevel)) return;
+  const levels: Record<string, "a2" | "b1" | "b2"> = {
+    "Nordwind Logistik GmbH": "a2",
+    "Muster GmbH": "b2",
+    "Süddeutsche Handwerk KG": "b1",
+    "Rheinland Pflege gGmbH": "b1",
+    "Beispielstadt Verwaltung": "b2",
+  };
+  for (const app of apps) {
+    const lvl = levels[app.company];
+    if (lvl) await prisma.application.update({ where: { id: app.id }, data: { germanLevel: lvl, location: app.company.startsWith("Rheinland") ? "Köln" : null } });
+    if (app.company === "Rheinland Pflege gGmbH") {
+      const at = new Date(Date.now() + 4 * DAY_MS);
+      at.setHours(10, 30, 0, 0);
+      await prisma.applicationEvent.createMany({
+        data: [
+          { applicationId: app.id, type: "status_change", fromStatus: "applied", toStatus: "interview", occurredAt: daysAgo(3) },
+          { applicationId: app.id, type: "interview", note: "Vorstellungsgespräch vor Ort, Pflegedienstleitung", occurredAt: at },
+        ],
+      });
+      await prisma.applicationPhrase.createMany({
+        data: [
+          { applicationId: app.id, text: "Ich arbeite gern mit Menschen und möchte Verantwortung übernehmen." },
+          { applicationId: app.id, text: "Könnten Sie mir den Ablauf der Ausbildung kurz erklären?" },
+        ],
+      });
+    }
+  }
+}
+
+/** Lernzeit + streak heatmap: rolled-up minutes for the past ~10 weeks (19-day current streak), and today's pings. */
+async function seedActivity(userId: string): Promise<void> {
+  if ((await prisma.dailyActiveMinutes.count({ where: { userId } })) > 0) return;
+  const rows = [];
+  for (let n = 1; n <= 70; n++) {
+    // a gap on day 20 ends the previous run; weekends are lighter
+    if (n === 20 || (n > 20 && n % 6 === 0)) continue;
+    const learning = 15 + ((n * 37) % 40);
+    rows.push({ userId, date: utcDay(n), minutes: learning + 10, learningMinutes: learning });
+  }
+  await prisma.dailyActiveMinutes.createMany({ data: rows });
+  const now = Date.now();
+  await prisma.activityPing.createMany({
+    data: Array.from({ length: 22 }, (_, i) => ({ userId, pingedAt: new Date(now - (40 - i) * 60_000), learning: true })),
+  });
+}
+
 async function main() {
   const user = await seedUser();
 
@@ -203,6 +390,14 @@ async function main() {
   await seedWords(user.id);
   await seedReviewLogs(user.id);
   await seedApplications(user.id);
+  // Bento features (plan Phase 5): each step guards itself, so re-running is safe
+  await seedProfile(user.id);
+  await seedSyllabusProgress(user.id);
+  await seedTests(user.id);
+  await seedJobDetails(user.id);
+  await seedNotes(user.id);
+  await seedSources(user.id);
+  await seedActivity(user.id);
 
   console.log(`Demo account ready: ${DEMO_EMAIL} (id ${user.id})`);
   await prisma.$disconnect();

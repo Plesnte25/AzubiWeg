@@ -4,6 +4,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { exportNotesToVault } from "../services/vault/notes.js";
 import { vaultFiles, vaultSync } from "../services/vault/sync.js";
 
 export const vaultRouter = Router();
@@ -22,7 +23,9 @@ vaultRouter.post("/link", async (req, res) => {
     });
   }
   const count = await vaultSync.link(req.userId, vaultPath);
-  res.json({ vaultPath, wordCount: count });
+  await prisma.user.update({ where: { id: req.userId }, data: { lastVaultPath: vaultPath } });
+  const notesWritten = await exportNotesToVault(req.userId);
+  res.json({ vaultPath, wordCount: count, notesWritten });
 });
 
 vaultRouter.post("/unlink", async (req, res) => {
@@ -35,7 +38,20 @@ vaultRouter.post("/sync", async (req, res) => {
   if (!user.vaultPath) return res.status(400).json({ error: "No vault linked" });
   const count = await vaultSync.syncFromVault(user.id, user.vaultPath);
   await vaultSync.processInbox(user.id, user.vaultPath);
-  res.json({ wordCount: count });
+  const notesWritten = await exportNotesToVault(user.id);
+  res.json({ wordCount: count, notesWritten });
+});
+
+const settingsSchema = z.object({ writeNotes: z.boolean() });
+
+/** Settings → Obsidian sync → "Writes to the vault". Words always sync while linked (the vault is their master list). */
+vaultRouter.patch("/settings", async (req, res) => {
+  const parsed = settingsSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+  const user = await prisma.user.update({ where: { id: req.userId }, data: { vaultWriteNotes: parsed.data.writeNotes } });
+  // turning notes on catches the folder up straight away
+  const notesWritten = user.vaultPath && user.vaultWriteNotes ? await exportNotesToVault(req.userId) : 0;
+  res.json({ writeNotes: user.vaultWriteNotes, notesWritten });
 });
 
 vaultRouter.get("/status", async (req, res) => {
@@ -43,6 +59,8 @@ vaultRouter.get("/status", async (req, res) => {
   const wordCount = await prisma.word.count({ where: { userId: req.userId } });
   res.json({
     vaultPath: user.vaultPath,
+    lastVaultPath: user.lastVaultPath,
+    writeNotes: user.vaultWriteNotes,
     wordCount,
     ...vaultSync.status(req.userId),
   });
