@@ -17,6 +17,13 @@ describe("computeDayStreak", () => {
     expect(computeDayStreak([], today)).toBe(0);
   });
 
+  it("only counts activity after a plan reset", () => {
+    const ts = [local(2026, 7, 16, 15), local(2026, 7, 16, 9), local(2026, 7, 15), local(2026, 7, 14)];
+    expect(computeDayStreak(ts, today, local(2026, 7, 16, 10))).toBe(1);
+    expect(computeDayStreak(ts.slice(1), today, local(2026, 7, 16, 10))).toBe(0);
+    expect(computeDayStreak(ts, today, null)).toBe(3);
+  });
+
   it("counts consecutive days ending today", () => {
     const ts = [local(2026, 7, 16), local(2026, 7, 15), local(2026, 7, 14)];
     expect(computeDayStreak(ts, today)).toBe(3);

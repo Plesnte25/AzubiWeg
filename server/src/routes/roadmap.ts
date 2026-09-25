@@ -1,3 +1,4 @@
+import { rm } from "node:fs/promises";
 import { Router } from "express";
 import { z } from "zod";
 import type { RoadmapSkill } from "@prisma/client";
@@ -14,6 +15,7 @@ import { addDaysUTC, computeBacklog, dayStatus, diffReseed } from "../services/l
 import { DEFAULT_ROADMAP_DAYS, ROADMAP_VERSION, type DefaultRoadmapDay } from "../services/learning/roadmap-defaults.js";
 import { buildUserRoadmapPlan, type SyllabusRowForGeneration } from "../services/learning/roadmap-generator.js";
 import { ensureSyllabusSeeded } from "../services/learning/syllabus-seed.js";
+import { appAudioDir } from "../services/vault/sync.js";
 import { isStudyDay, isValidCapacity, planDailyQueues, taskEstimateMinutes } from "../services/learning/daily-plan.js";
 import { blockedTopicIds } from "../services/learning/prerequisites.js";
 
@@ -230,37 +232,52 @@ roadmapRouter.post("/activate", async (req, res) => {
   res.status(201).json({ startedAt });
 });
 
-/** Wipes the whole 182-day plan (every RoadmapDay/RoadmapTask and any files
- * attached to a task) and unsets roadmapStartedAt so the user can reactivate
- * from a new date via the normal /activate flow. Deleting RoadmapDay rows
- * cascades to RoadmapTask and then to UploadedFile in the DB, but never
- * touches bytes on disk — those are unlinked explicitly first, same as
- * DELETE /syllabus/:id does. Nothing else (syllabus completion, vocab/SRS,
- * self-test history, streaks) has an FK into RoadmapDay/RoadmapTask, so this
- * can't touch them. */
-roadmapRouter.post("/reset", async (req, res) => {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
-  if (!user.roadmapStartedAt) return res.status(409).json({ error: "Roadmap not activated" });
+const resetSchema = z.object({
+  keepWords: z.boolean().default(true),
+  keepNotes: z.boolean().default(true),
+  keepApplications: z.boolean().default(true),
+});
 
-  const days = await prisma.roadmapDay.findMany({
-    where: { userId: req.userId },
-    select: { tasks: { select: { id: true } } },
-  });
+/** Settings → Reset plan: wipes the route (every RoadmapDay/RoadmapTask and any files attached to a task), builds a
+ * fresh one from today, and starts the current streak again (User.streakResetAt). Deleting RoadmapDay rows cascades to
+ * RoadmapTask and then to UploadedFile in the DB, but never touches bytes on disk — those are unlinked explicitly
+ * first, same as DELETE /syllabus/:id does. Syllabus completion and self-test history always stay.
+ *
+ * The keep flags (all true by default) can also clear words + their review history, notes, or applications. Words
+ * can't be cleared while a vault is linked: they live in the user's Obsidian vault, and this won't delete vault cards. */
+roadmapRouter.post("/reset", async (req, res) => {
+  const parsed = resetSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+  const { keepWords, keepNotes, keepApplications } = parsed.data;
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
+  if (!keepWords && user.vaultPath) return res.status(409).json({ error: "Words live in your Obsidian vault. Unlink it to clear them here." });
+
+  const [days, notes] = await Promise.all([
+    prisma.roadmapDay.findMany({ where: { userId: req.userId }, select: { tasks: { select: { id: true } } } }),
+    keepNotes ? [] : prisma.note.findMany({ where: { userId: req.userId }, select: { id: true } }),
+  ]);
   const taskIds = days.flatMap((d) => d.tasks.map((t) => t.id));
   const files = await prisma.uploadedFile.findMany({
-    where: { roadmapTaskId: { in: taskIds } },
+    where: { OR: [{ roadmapTaskId: { in: taskIds } }, { noteId: { in: notes.map((n) => n.id) } }] },
     select: { storedName: true },
   });
   for (const file of files) {
     await deleteStoredFile(req.userId, file.storedName);
   }
+  if (!keepWords) await rm(appAudioDir(req.userId), { recursive: true, force: true });
 
-  await prisma.$transaction([
-    prisma.roadmapDay.deleteMany({ where: { userId: req.userId } }),
-    prisma.user.update({ where: { id: req.userId }, data: { roadmapStartedAt: null, roadmapVersion: 0 } }),
-  ]);
-
-  res.json({ reset: true });
+  // word deletion cascades to ReviewLog; notes to their UploadedFile rows; applications to their events and phrases
+  const cleared = await prisma.$transaction(async (tx) => {
+    await tx.roadmapDay.deleteMany({ where: { userId: req.userId } });
+    const words = keepWords ? 0 : (await tx.word.deleteMany({ where: { userId: req.userId } })).count;
+    const notes = keepNotes ? 0 : (await tx.note.deleteMany({ where: { userId: req.userId } })).count;
+    const applications = keepApplications ? 0 : (await tx.application.deleteMany({ where: { userId: req.userId } })).count;
+    await tx.user.update({ where: { id: req.userId }, data: { roadmapStartedAt: null, roadmapVersion: 0, streakResetAt: new Date() } });
+    return { words, notes, applications };
+  });
+  const startedAt = todayLocal();
+  await activateRoadmapForUser(req.userId, startedAt);
+  res.json({ startedAt, cleared });
 });
 
 roadmapRouter.get("/today", async (req, res) => {
@@ -947,6 +964,7 @@ roadmapRouter.get("/progress", async (req, res) => {
     prisma.roadmapTask.findMany({ where: { day: { userId: req.userId }, completedAt: { not: null } }, select: { completedAt: true } }),
     prisma.reviewLog.findMany({ where: { word: { userId: req.userId } }, select: { reviewedAt: true } }),
   ]);
+  const streakUser = await prisma.user.findUniqueOrThrow({ where: { id: req.userId }, select: { streakResetAt: true } });
   const learningTimestamps = [
     ...syllabusActivity.map((r) => r.completedAt as Date),
     ...sourceActivity.map((r) => r.loggedAt),
@@ -1003,7 +1021,7 @@ roadmapRouter.get("/progress", async (req, res) => {
       },
       testAvg: { value: testAvg, deltaPoints: testAvg !== null && prevTestAvg !== null ? testAvg - prevTestAvg : null },
       syllabusPercent: { value: syllabusPercentNow, deltaPoints: syllabusPercentNow - syllabusPercentThen },
-      streak: { current: computeDayStreak(learningTimestamps, new Date()), best: computeBestStreak(learningTimestamps) },
+      streak: { current: computeDayStreak(learningTimestamps, new Date(), streakUser.streakResetAt), best: computeBestStreak(learningTimestamps) },
     },
     chart: {
       labels: Array.from({ length: days }, (_, i) => addDaysUTC(rangeStart, i).toISOString().slice(0, 10)),

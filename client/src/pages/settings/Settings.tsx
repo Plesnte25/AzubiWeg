@@ -372,7 +372,7 @@ function ResetPlan({ onReset }: { onReset: () => void }) {
   const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState(false);
   const reset = useMutation({
-    mutationFn: api.resetRoadmap,
+    mutationFn: () => api.resetRoadmap(),
     onSuccess: () => {
       setConfirming(false);
       invalidateHub(queryClient);

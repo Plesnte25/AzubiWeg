@@ -41,6 +41,8 @@ model User {
   studyDays            Boolean[]            @default([true, true, true, true, true, false, true])
   // cap on never-reviewed words a review session introduces per day
   newWordsPerDay       Int                  @default(10)
+  // Settings → Reset plan sets this: the current streak only counts activity from here on (best streak keeps history)
+  streakResetAt        DateTime?
   lastLoginAt         DateTime?
   activityPings       ActivityPing[]
   dailyActiveMinutes  DailyActiveMinutes[]

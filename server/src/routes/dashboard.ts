@@ -137,7 +137,7 @@ dashboardRouter.get("/", async (req, res) => {
     prisma.dailyActiveMinutes.aggregate({ where: { userId: req.userId }, _sum: { minutes: true } }),
     prisma.user.findUniqueOrThrow({
       where: { id: req.userId },
-      select: { roadmapStartedAt: true, examTargetDate: true, studyCapacityMinutes: true, studyDays: true },
+      select: { roadmapStartedAt: true, examTargetDate: true, studyCapacityMinutes: true, studyDays: true, streakResetAt: true },
     }),
     prisma.roadmapDay.findMany({
       where: { userId: req.userId, date: { gte: weekStart, lt: weekEnd } },
@@ -243,7 +243,7 @@ dashboardRouter.get("/", async (req, res) => {
     ...roadmapActivity.map((r) => r.completedAt as Date),
     ...recentLogs.map((r) => r.reviewedAt),
   ];
-  const streak = computeDayStreak(learningTimestamps, new Date());
+  const streak = computeDayStreak(learningTimestamps, new Date(), user.streakResetAt);
 
   // GitHub-style heatmap: last 15 full weeks of reviews + learning activity,
   // aligned so the grid starts on a Monday and ends today
@@ -393,7 +393,7 @@ dashboardRouter.get("/", async (req, res) => {
       levels,
       skillProgress,
       skillPerformance: skillPerf,
-      streak: computeDayStreak(learningTimestamps, now),
+      streak: computeDayStreak(learningTimestamps, now, user.streakResetAt),
       lastSelfTest,
     },
     roadmapToday,

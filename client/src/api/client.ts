@@ -435,7 +435,12 @@ export const api = {
       method: "POST",
       body: JSON.stringify(startDate ? { startDate } : {}),
     }),
-  resetRoadmap: () => request<{ reset: boolean }>("/api/learning/roadmap/reset", { method: "POST" }),
+  /** Rebuilds the route from today and restarts the streak; unticked keeps clear that data. */
+  resetRoadmap: (keep: { keepWords?: boolean; keepNotes?: boolean; keepApplications?: boolean } = {}) =>
+    request<{ startedAt: string; cleared: { words: number; notes: number; applications: number } }>("/api/learning/roadmap/reset", {
+      method: "POST",
+      body: JSON.stringify(keep),
+    }),
   roadmapToday: () => request<RoadmapTodayResponse>("/api/learning/roadmap/today"),
   roadmapBacklog: () => request<RoadmapBacklogResponse>("/api/learning/roadmap/backlog"),
   roadmapDay: (date: string) => request<{ day: RoadmapDayDetail }>(`/api/learning/roadmap/day/${date}`),
