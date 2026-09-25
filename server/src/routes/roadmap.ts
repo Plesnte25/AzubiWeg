@@ -14,7 +14,7 @@ import { addDaysUTC, computeBacklog, dayStatus, diffReseed } from "../services/l
 import { DEFAULT_ROADMAP_DAYS, ROADMAP_VERSION, type DefaultRoadmapDay } from "../services/learning/roadmap-defaults.js";
 import { buildUserRoadmapPlan, type SyllabusRowForGeneration } from "../services/learning/roadmap-generator.js";
 import { ensureSyllabusSeeded } from "../services/learning/syllabus-seed.js";
-import { planDailyQueues, STUDY_CAPACITIES, taskEstimateMinutes } from "../services/learning/daily-plan.js";
+import { isStudyDay, isValidCapacity, planDailyQueues, taskEstimateMinutes } from "../services/learning/daily-plan.js";
 import { blockedTopicIds } from "../services/learning/prerequisites.js";
 
 export const roadmapRouter = Router();
@@ -138,16 +138,37 @@ async function ensureCurrentVersion(userId: string, roadmapVersion: number, road
 
 roadmapRouter.get("/status", async (req, res) => {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
-  res.json({ activated: user.roadmapStartedAt !== null, startedAt: user.roadmapStartedAt, studyCapacityMinutes: user.studyCapacityMinutes });
+  res.json({
+    activated: user.roadmapStartedAt !== null,
+    startedAt: user.roadmapStartedAt,
+    studyCapacityMinutes: user.studyCapacityMinutes,
+    studyDays: user.studyDays,
+    newWordsPerDay: user.newWordsPerDay,
+  });
 });
 
-const capacitySchema = z.object({ minutes: z.number().int().refine((value) => (STUDY_CAPACITIES as readonly number[]).includes(value), "Unsupported study capacity") });
+/** Settings → Capacity (saves immediately; any subset of the three). */
+const capacitySchema = z
+  .object({
+    minutes: z.number().refine(isValidCapacity, "Minutes a day must be 10–180 in steps of 5").optional(),
+    studyDays: z.array(z.boolean()).length(7).optional(),
+    newWordsPerDay: z.union([z.literal(5), z.literal(10), z.literal(15), z.literal(20)]).optional(),
+  })
+  .refine((d) => d.minutes !== undefined || d.studyDays !== undefined || d.newWordsPerDay !== undefined, { message: "Nothing to update" });
 
 roadmapRouter.patch("/capacity", async (req, res) => {
   const parsed = capacitySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
-  const user = await prisma.user.update({ where: { id: req.userId }, data: { studyCapacityMinutes: parsed.data.minutes } });
-  res.json({ studyCapacityMinutes: user.studyCapacityMinutes });
+  const { minutes, studyDays, newWordsPerDay } = parsed.data;
+  const user = await prisma.user.update({
+    where: { id: req.userId },
+    data: {
+      ...(minutes !== undefined ? { studyCapacityMinutes: minutes } : {}),
+      ...(studyDays !== undefined ? { studyDays } : {}),
+      ...(newWordsPerDay !== undefined ? { newWordsPerDay } : {}),
+    },
+  });
+  res.json({ studyCapacityMinutes: user.studyCapacityMinutes, studyDays: user.studyDays, newWordsPerDay: user.newWordsPerDay });
 });
 
 const examTargetSchema = z.object({ examTargetDate: z.iso.date().nullable() });
@@ -270,9 +291,12 @@ roadmapRouter.get("/today", async (req, res) => {
   // Phase 11 (Plan rebuild) resolves this by no longer filtering them out —
   // they show in the task list like any other task, tagged the same
   // "Context" skill label SourcesPage's RESOURCE_SKILL_LABEL already uses.
-  const capacity = user.studyCapacityMinutes as 5 | 20 | 45 | 90 | 180 | 330;
+  const capacity = user.studyCapacityMinutes;
+  // a day off (Settings → Study days) gets no ticket: today's tasks stay unplanned and roll into tomorrow's
+  // carried-over row like any missed day
+  const restDay = !isStudyDay(user.studyDays, today);
   const planned = planDailyQueues(
-    (todayRow?.tasks ?? []).map((task) => ({
+    (restDay ? [] : (todayRow?.tasks ?? [])).map((task) => ({
       id: task.id,
       estimateMinutes: taskEstimateMinutes(task.type),
       completedAt: task.completedAt,
@@ -302,6 +326,7 @@ roadmapRouter.get("/today", async (req, res) => {
     theme: todayRow?.theme ?? null,
     tasks: todayRow?.tasks ?? [],
     backlog: computeBacklog(days, today).filter((g) => g.tasks.length > 0),
+    restDay,
     capacity: {
       minutes: capacity,
       revisionMinutes: planned.revisionMinutes,

@@ -137,7 +137,7 @@ dashboardRouter.get("/", async (req, res) => {
     prisma.dailyActiveMinutes.aggregate({ where: { userId: req.userId }, _sum: { minutes: true } }),
     prisma.user.findUniqueOrThrow({
       where: { id: req.userId },
-      select: { roadmapStartedAt: true, examTargetDate: true, studyCapacityMinutes: true },
+      select: { roadmapStartedAt: true, examTargetDate: true, studyCapacityMinutes: true, studyDays: true },
     }),
     prisma.roadmapDay.findMany({
       where: { userId: req.userId, date: { gte: weekStart, lt: weekEnd } },
@@ -347,7 +347,7 @@ dashboardRouter.get("/", async (req, res) => {
         levels: masteries.map((m, i) => ({ level: m.level, percent: m.percent, state: masteryStates[i] })),
       },
       skillMastery: skillMastery(syllabusRows, activeMastery.level),
-      weeklyGoal: weeklyGoal(user.studyCapacityMinutes, lernzeitByDay, todayKey),
+      weeklyGoal: weeklyGoal(user.studyCapacityMinutes, user.studyDays, lernzeitByDay, todayKey),
       lernzeitToday: lernzeitByDay.get(todayKey) ?? 0,
       words: {
         total: totalWords,

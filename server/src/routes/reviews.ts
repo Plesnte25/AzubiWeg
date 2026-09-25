@@ -71,7 +71,20 @@ reviewsRouter.get("/stats", async (req, res) => {
 const SHAKY_EXTRA = 10;
 
 reviewsRouter.get("/queue", async (req, res) => {
-  const newLimit = Math.min(Number(req.query.newLimit ?? 10), 50);
+  // Settings → New words a day, minus the words already introduced today (first-ever review today)
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const [user, todaysLogs] = await Promise.all([
+    prisma.user.findUniqueOrThrow({ where: { id: req.userId }, select: { newWordsPerDay: true } }),
+    prisma.reviewLog.findMany({ where: { word: { userId: req.userId }, reviewedAt: { gte: startOfToday } }, distinct: ["wordId"], select: { wordId: true } }),
+  ]);
+  const reviewedBefore = await prisma.reviewLog.findMany({
+    where: { wordId: { in: todaysLogs.map((l) => l.wordId) }, reviewedAt: { lt: startOfToday } },
+    distinct: ["wordId"],
+    select: { wordId: true },
+  });
+  const introducedToday = todaysLogs.length - reviewedBefore.length;
+  const newLimit = Math.max(0, user.newWordsPerDay - introducedToday);
   // meaning: { not: null } -- a word without a usable meaning yet
   // (transient-failure placeholder, or the new "unresolved" outcome) isn't
   // learnable; same condition self-test quiz generation already applies

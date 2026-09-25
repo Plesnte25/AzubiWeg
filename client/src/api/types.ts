@@ -422,6 +422,9 @@ export interface RoutePace {
   examTargetDate: string | null;
   weeksBehindPace: number | null;
   goalFeasibility: GoalFeasibility;
+  /** The level being worked on, and the study hours left in it (Settings' readiness box). */
+  level: CefrLevel | null;
+  hoursLeft: number;
 }
 
 export interface SyllabusResponse {
@@ -685,8 +688,15 @@ export interface NotesFeedResponse {
 export interface RoadmapStatus {
   activated: boolean;
   startedAt: string | null;
-  studyCapacityMinutes: 5 | 20 | 45 | 90 | 180 | 330;
+  /** Minutes a day, 10–180 in steps of 5. */
+  studyCapacityMinutes: number;
+  /** Monday → Sunday. */
+  studyDays: boolean[];
+  newWordsPerDay: NewWordsPerDay;
 }
+
+export type NewWordsPerDay = 5 | 10 | 15 | 20;
+export type CapacityUpdate = Partial<{ minutes: number; studyDays: boolean[]; newWordsPerDay: NewWordsPerDay }>;
 
 export interface DailyJournal {
   id: string;
@@ -720,8 +730,10 @@ export interface RoadmapTodayResponse {
   tasks: RoadmapTask[];
   backlog: RoadmapBacklogGroup[];
   overview: RoadmapOverview;
+  /** Today is off in Settings → Study days: no ticket, its tasks carry over. */
+  restDay: boolean;
   capacity: {
-    minutes: 5 | 20 | 45 | 90 | 180 | 330;
+    minutes: number;
     revisionMinutes: number;
     coreMinutes: number;
     hasMore: boolean;

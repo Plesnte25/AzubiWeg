@@ -94,7 +94,7 @@ export interface GoalFeasibility {
 // everything else=10min) — a syllabus item review/exercise pass is closest
 // to that "everything else" bucket, so 10 is the honest single number here
 // rather than inventing a separate, unvalidated estimate.
-const MINUTES_PER_ITEM = 10;
+export const MINUTES_PER_ITEM = 10;
 
 /**
  * Turns the exam target date + the user's own stated daily study capacity
@@ -108,9 +108,11 @@ export function computeGoalFeasibility(params: {
   remainingItems: number;
   examTargetDate: Date | null;
   studyCapacityMinutes: number;
+  /** Study days a week (Settings → Capacity); 7 when omitted. */
+  studyDaysPerWeek?: number;
   today: Date;
 }): GoalFeasibility {
-  const sustainableItemsPerWeek = Math.round(((params.studyCapacityMinutes * 7) / MINUTES_PER_ITEM) * 10) / 10;
+  const sustainableItemsPerWeek = Math.round(((params.studyCapacityMinutes * (params.studyDaysPerWeek ?? 7)) / MINUTES_PER_ITEM) * 10) / 10;
 
   if (!params.examTargetDate || params.remainingItems === 0) {
     return {

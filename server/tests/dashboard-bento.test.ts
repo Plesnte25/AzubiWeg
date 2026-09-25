@@ -3,6 +3,8 @@ import { addDaysKey, mondayKey, weeklyGoal } from "../src/services/learning/week
 import { pickWeakSpot } from "../src/services/learning/weak-spot.js";
 
 describe("weeklyGoal", () => {
+  const SIX_DAYS = [true, true, true, true, true, false, true];
+
   it("finds the Monday of a week, across month ends", () => {
     expect(mondayKey("2026-09-24")).toBe("2026-09-21"); // Thursday
     expect(mondayKey("2026-09-21")).toBe("2026-09-21");
@@ -10,21 +12,26 @@ describe("weeklyGoal", () => {
     expect(addDaysKey("2026-12-31", 1)).toBe("2027-01-01");
   });
 
-  it("totals Monday–Sunday Lernzeit against capacity × 6 and tags each day", () => {
+  it("totals Monday–Sunday Lernzeit against capacity × study days and tags each day", () => {
     const minutes = new Map([
       ["2026-09-20", 99], // previous Sunday: outside the week
       ["2026-09-21", 30],
       ["2026-09-23", 20],
       ["2026-09-24", 10],
     ]);
-    const g = weeklyGoal(20, minutes, "2026-09-24");
+    const g = weeklyGoal(20, SIX_DAYS, minutes, "2026-09-24");
     expect(g).toMatchObject({ goalMinutes: 120, minutes: 60, percent: 50 });
     expect(g.days.map((d) => d.status)).toEqual(["past", "past", "past", "today", "future", "future", "future"]);
     expect(g.days[0]).toEqual({ date: "2026-09-21", minutes: 30, status: "past" });
   });
 
+  it("sizes the goal by the number of study days", () => {
+    expect(weeklyGoal(30, [true, false, true, false, true, false, false], new Map(), "2026-09-24").goalMinutes).toBe(90);
+    expect(weeklyGoal(30, Array(7).fill(false), new Map([["2026-09-24", 10]]), "2026-09-24")).toMatchObject({ goalMinutes: 0, percent: 0 });
+  });
+
   it("caps the ring percent at 100", () => {
-    expect(weeklyGoal(5, new Map([["2026-09-24", 100]]), "2026-09-24").percent).toBe(100);
+    expect(weeklyGoal(5, SIX_DAYS, new Map([["2026-09-24", 100]]), "2026-09-24").percent).toBe(100);
   });
 });
 

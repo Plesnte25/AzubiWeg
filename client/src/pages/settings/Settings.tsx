@@ -67,13 +67,12 @@ function Appearance() {
 
 // ── study time ───────────────────────────────────────────────────────────────
 
-const CAPACITIES: { v: RoadmapStatus["studyCapacityMinutes"]; l: string }[] = [
-  { v: 5, l: "5 min" },
+const CAPACITIES: { v: number; l: string }[] = [
+  { v: 10, l: "10 min" },
   { v: 20, l: "20 min" },
   { v: 45, l: "45 min" },
   { v: 90, l: "1½ h" },
   { v: 180, l: "3 h" },
-  { v: 330, l: "5½ h" },
 ];
 
 const hours = (m: number) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}` : ""}`);
@@ -81,7 +80,7 @@ const hours = (m: number) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)}h${m %
 function StudyTime({ status }: { status: RoadmapStatus | undefined }) {
   const queryClient = useQueryClient();
   const save = useMutation({
-    mutationFn: api.updateStudyCapacity,
+    mutationFn: (minutes: number) => api.updateStudyCapacity({ minutes }),
     onSuccess: (d) => {
       invalidateHub(queryClient);
       void queryClient.invalidateQueries({ queryKey: ["roadmap", "status"] });

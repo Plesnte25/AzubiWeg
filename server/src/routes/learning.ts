@@ -7,7 +7,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { localDateKey } from "../services/learning/activity.js";
 import { setSyllabusItemCompletion } from "../services/learning/completion-sync.js";
 import { buildSession } from "../services/learning/engine.js";
-import { computeGoalFeasibility, computeRoutePace } from "../services/learning/pace.js";
+import { MINUTES_PER_ITEM, computeGoalFeasibility, computeRoutePace } from "../services/learning/pace.js";
 import { levelProgress, levelStates, levelStatesWithExamGate, sourcePercent } from "../services/learning/progress.js";
 import { QUESTION_BANK } from "../services/learning/question-bank.js";
 import {
@@ -84,7 +84,7 @@ export async function examGateForUser(userId: string) {
 async function routePaceForUser(userId: string) {
   const [items, user, examGate] = await Promise.all([
     prisma.syllabusItem.findMany({ where: { userId }, select: { level: true, completedAt: true, skippedAt: true } }),
-    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { examTargetDate: true, studyCapacityMinutes: true } }),
+    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { examTargetDate: true, studyCapacityMinutes: true, studyDays: true } }),
     examGateForUser(userId),
   ]);
   const levels = levelProgress(items.map((i, idx) => ({ id: String(idx), level: i.level, title: "", sortOrder: idx, completedAt: i.completedAt })));
@@ -104,9 +104,11 @@ async function routePaceForUser(userId: string) {
     remainingItems,
     examTargetDate: user.examTargetDate,
     studyCapacityMinutes: user.studyCapacityMinutes,
+    studyDaysPerWeek: user.studyDays.filter(Boolean).length,
     today,
   });
-  return { ...pace, goalFeasibility };
+  // Settings' readiness box: study hours left in the active level, at the same flat per-item estimate as feasibility
+  return { ...pace, goalFeasibility, level: activeLevel ?? null, hoursLeft: Math.round(((remainingItems * MINUTES_PER_ITEM) / 60) * 10) / 10 };
 }
 
 learningRouter.get("/pace", async (req, res) => {

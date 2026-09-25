@@ -37,6 +37,7 @@ import type {
   RoadmapMonthlyReview,
   RoadmapSkill,
   RoadmapStatus,
+  CapacityUpdate,
   DailyJournal,
   RoadmapTask,
   RoadmapTodayResponse,
@@ -418,10 +419,10 @@ export const api = {
   }) => request<NotebookLinkResult>("/api/learning/quiz/notebook", { method: "POST", body: JSON.stringify(data) }),
 
   roadmapStatus: () => request<RoadmapStatus>("/api/learning/roadmap/status"),
-  updateStudyCapacity: (minutes: 5 | 20 | 45 | 90 | 180 | 330) =>
-    request<{ studyCapacityMinutes: number }>("/api/learning/roadmap/capacity", {
+  updateStudyCapacity: (data: CapacityUpdate) =>
+    request<Omit<RoadmapStatus, "activated" | "startedAt">>("/api/learning/roadmap/capacity", {
       method: "PATCH",
-      body: JSON.stringify({ minutes }),
+      body: JSON.stringify(data),
     }),
   dailyJournal: (date: string) => request<{ journal: DailyJournal | null }>(`/api/learning/roadmap/journal/day/${date}`),
   saveDailyJournal: (date: string, data: Pick<DailyJournal, "learned" | "difficult" | "nextStep">) =>
