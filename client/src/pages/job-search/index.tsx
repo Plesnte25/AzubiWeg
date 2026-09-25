@@ -55,8 +55,9 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", 
 function CardBody({ app, you }: { app: Application; you: CefrLevel | null }) {
   const gap = app.germanLevel && you ? levelGap(app.germanLevel, you) : 0;
   return (
-    <>
-      <div className="flex items-center" style={{ gap: 10 }}>
+    <div className="@container flex flex-col" style={{ gap: 8 }}>
+      {/* narrow cards (md's four columns) stack the name under the logo + badge instead of squeezing it to a few letters */}
+      <div className="flex items-center @max-[210px]:flex-wrap" style={{ gap: 10 }}>
         <span
           className="flex shrink-0 items-center justify-center"
           style={{
@@ -74,8 +75,8 @@ function CardBody({ app, you }: { app: Application; you: CefrLevel | null }) {
         >
           {initials(app.company)}
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="overflow-hidden text-ellipsis whitespace-nowrap" style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-.02em", lineHeight: 1.1 }}>
+        <div className="min-w-0 flex-1 @max-[210px]:order-last @max-[210px]:basis-full">
+          <div className="line-clamp-2" style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-.02em", lineHeight: 1.1 }}>
             {app.company}
           </div>
           {app.location && (
@@ -86,7 +87,7 @@ function CardBody({ app, you }: { app: Application; you: CefrLevel | null }) {
         </div>
         {app.germanLevel && (
           <span
-            className="shrink-0"
+            className="shrink-0 @max-[210px]:ml-auto"
             title={gap > 0 ? "Above the level you're working on" : "You meet this"}
             style={{
               fontSize: 12,
@@ -109,7 +110,7 @@ function CardBody({ app, you }: { app: Application; you: CefrLevel | null }) {
         <CalendarCheck size={13} weight="fill" aria-hidden="true" />
         {whenLine(app)}
       </div>
-    </>
+    </div>
   );
 }
 

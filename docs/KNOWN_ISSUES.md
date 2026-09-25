@@ -24,7 +24,7 @@ activation, add word, review + grade, timer, exercise submit, G-chords, theme pe
    phrases (e.g. "am Main"). Show plural for nouns, the Perfekt for verbs, otherwise omit the box.
 5. ✅ **Fixed** — **Empty word list copy** (low). With 0 words the list says "No words in this filter yet." on the All filter; it
    should be a first-word prompt.
-6. **Jobs md card names truncate hard** (low). At 834px the four columns cut company names to ~6 characters
+6. ✅ **Fixed** — **Jobs md card names truncate hard** (low). Narrow cards stack the name under the logo (container query). At 834px the four columns cut company names to ~6 characters
    ("Nordwi…", "Muster …"). Let names wrap to two lines at md.
 7. **Stats projection wraps at sm** (low). "A1 exam readiness · no tests yet" breaks over three lines in the
    narrow sm tile; shorten or stack the label and value.
