@@ -100,7 +100,7 @@ export default function AudioRecorder({
       <div className="flex items-center gap-2">
         {!recording ? (
           <button
-            className="rounded border border-hairline px-2 py-0.5 text-caption text-ink-600 hover:bg-paper disabled:opacity-60"
+            className="rounded border border-line px-2 py-0.5 text-[13px] text-plain-muted hover:bg-plain2 disabled:opacity-60"
             onClick={start}
             disabled={uploading}
           >
@@ -108,13 +108,13 @@ export default function AudioRecorder({
           </button>
         ) : (
           <button
-            className="rounded border border-danger-600 bg-danger-50 px-2 py-0.5 text-caption text-danger-600"
+            className="rounded border border-line bg-tomato px-2 py-0.5 text-[13px] text-on-tile"
             onClick={stop}
           >
             ● Stop recording
           </button>
         )}
-        {error && <span className="text-caption text-danger-600">{error}</span>}
+        {error && <span className="text-[13px] font-bold text-plain-text">{error}</span>}
       </div>
       {previewUrl && <audio controls preload="metadata" src={previewUrl} className="h-10 w-full max-w-sm" aria-label="Review your speaking recording" />}
     </div>

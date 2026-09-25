@@ -27,7 +27,7 @@ const Journey = lazy(() => import("./pages/plan/journey/Journey"));
 const ReviewSession = lazy(() => import("./pages/review/ReviewSession"));
 
 function Lazy({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<p className="text-ink-600">Loading…</p>}>{children}</Suspense>;
+  return <Suspense fallback={<p className="text-plain-muted">Loading…</p>}>{children}</Suspense>;
 }
 
 // Old per-note editor URLs (/notes/edit/:id, /plan/notes/edit/:id) open that note's editor modal on the wall.
@@ -69,7 +69,7 @@ function RequireAuth() {
     };
   }, []);
 
-  if (status === "checking") return <p className="text-ink-600">Loading…</p>;
+  if (status === "checking") return <p className="text-plain-muted">Loading…</p>;
   return status === "authed" ? <Outlet /> : <Navigate to="/login" replace />;
 }
 

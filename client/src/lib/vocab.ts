@@ -1,4 +1,4 @@
-import type { Genus, Themenfeld, Wortart } from "../api/types";
+import type { Themenfeld } from "../api/types";
 
 /** Fixed 14-item Themenfeld list (frozen, no free text) — same order everywhere it's listed. */
 export const THEMENFELD_ORDER: Themenfeld[] = [
@@ -34,31 +34,3 @@ export const THEMENFELD_LABELS: Record<Themenfeld, string> = {
   natur_umwelt: "Natur & Umwelt",
   gesellschaft: "Gesellschaft",
 };
-
-export const WORTART_ORDER: Wortart[] = ["Nomen", "Verb", "Adjektiv", "Adverb", "Funktionswort", "Wendung"];
-
-export const WORTART_COLORS: Record<Wortart, string> = {
-  Nomen: "var(--color-wortart-nomen)",
-  Verb: "var(--color-wortart-verb)",
-  Adjektiv: "var(--color-wortart-adjektiv)",
-  Adverb: "var(--color-wortart-adverb)",
-  Funktionswort: "var(--color-wortart-funktionswort)",
-  Wendung: "var(--color-wortart-wendung)",
-};
-
-export const GENUS_COLORS: Record<NonNullable<Genus>, string> = {
-  der: "var(--color-genus-der)",
-  die: "var(--color-genus-die)",
-  das: "var(--color-genus-das)",
-};
-
-export const GENUS_BG: Record<NonNullable<Genus>, string> = {
-  der: "var(--color-genus-der-bg)",
-  die: "var(--color-genus-die-bg)",
-  das: "var(--color-genus-das-bg)",
-};
-
-/** Prefixes a gendered article onto a headword for display ("Bahnhof" -> "der Bahnhof"). */
-export function articleFront(headword: string, genus: Genus): string {
-  return genus ? `${genus} ${headword}` : headword;
-}
