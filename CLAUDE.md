@@ -20,7 +20,7 @@ in this project — always run `npx prisma generate` explicitly after a
 migration, or the server throws "Unknown argument" errors against a stale
 generated client. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-## The Bento "Sticker Club" redesign (in progress, `bento` branch)
+## The Bento "Sticker Club" redesign (shipped 2026-09-25)
 
 The app is being rebuilt against a Claude Design handoff that replaces the earlier Nocturne design entirely:
 `~/Downloads/Personal German Learning Companion (1)/design_handoff_azubiweg_bento/` (the `README.md` is the spec;
@@ -29,14 +29,11 @@ bento grid in a playful sticker style: chunky ink outlines, hard offset shadows,
 round stickers and one colour per area, with light/dark following the OS and three breakpoints.
 
 **The plan is `~/.claude/plans/recursive-booping-sunbeam.md`**: phases, and every keep/cut/redefine decision settled
-with the user (metrics definitions, per-page scope, what's deferred). Read it before starting a phase. Nocturne v2 is
-tagged `nocturne-final` and is what production runs until the `bento` branch is merged.
+with the user (metrics definitions, per-page scope, what's deferred). Nocturne v2 is tagged
+`nocturne-final` (the last pre-Bento production build). Post-ship leftovers are in `docs/KNOWN_ISSUES.md`.
 
-Rollout: all Bento work lands on the long-lived `bento` branch, which is merged and deployed **once**, at the end.
-There's no per-page production rollout and no feature flag. When a phase rebuilds a page, the old Nocturne
-implementation is deleted outright (grep for external consumers first), not kept behind a flag. Until every page is
-rebuilt, not-yet-rebuilt pages render their Nocturne styling inside the Bento shell (they look wrong in light mode;
-that's expected on the branch).
+Rollout: all Bento work landed on the long-lived `bento` branch and was merged into `main` and deployed once, at
+the end (2026-09-25). The Nocturne implementation, tokens and keyframes are deleted.
 
 **Reproduce the handoff with literal fidelity** — exact colours, spacing, copy, rotation, structure — by extracting
 the actual values from the `.dc.html` source: markup between `<x-dc>` tags, and `renderVals()` in the
@@ -121,8 +118,9 @@ the same path). See `ReviewSession.tsx`'s outer/inner split for the pattern.
   700/600. Timers and clocks use `var(--font-mono)` with tabular nums.
 - **Icons**: Phosphor (`@phosphor-icons/react`) with **`weight="fill"`** on Bento surfaces. `lucide-react` has been
   removed.
-- The legacy Nocturne `@theme` tokens (`brand-*`, `ink-*`, `paper`, `card`, …) and keyframes remain only for pages not
-  yet rebuilt. Don't use them in Bento code; they're deleted in the Phase 5 dead-code pass.
+- The legacy Nocturne tokens (`brand-*`, `ink-*`, `paper`, `card`, the text scale) and their keyframes were deleted in
+  the Phase 5 dead-code pass. Only `--font-sans`/`--font-mono`, `--radius-md` and `animate-slide-up` (Toast) remain
+  in that `@theme` block.
 
 **Idiom**: inline `style={{}}` for literal handoff values (`var(--line)`, exact px, tilt degrees) plus Tailwind
 utilities for layout. Hover lift and pressed nudge can't be inline, so they're classes in `index.css`: `.lift`

@@ -11,9 +11,10 @@ posting URL). **V3** adds a Learning Progress Hub — a CEFR syllabus, a day-by-
 study roadmap, exam-gated level progression, and self-tests — feeding a richer
 dashboard.
 
-> The whole UI runs on a dark-only design system ("Nocturne") with a 5-tab
-> navigation model (Today/Words/Plan/Jobs/Stats) and a real desktop layout —
-> see [CLAUDE.md](CLAUDE.md#the-nocturne-redesign-complete) for what changed.
+> The UI is the **Bento "Sticker Club"** design: a bento grid in a playful sticker style (chunky ink outlines, hard
+> offset shadows, slightly rotated tiles), light and dark following the OS, and three real breakpoints. Six tabs:
+> Today · Words · Plan · Jobs · Stats · Notes, plus Settings and a focused Review session — see
+> [CLAUDE.md](CLAUDE.md#the-bento-sticker-club-redesign-shipped-2026-09-25).
 
 <p align="center">
   <img src="docs/screenshots/dashboard-sm.png" width="200" alt="Today — mobile" />
@@ -46,15 +47,17 @@ seconds, then writes its own edits — added words, reviews, grades — back int
 exact same flashcard format, **byte-identical** (verified against a real vault
 snapshot). Reviews done in the app and in Obsidian update the same
 `<!--SR:!date,interval,ease-->` comments, so both schedulers stay in step.
+Notes can be written to the vault too, one markdown file each under `Notizen/`.
 
 ## What V2 adds
 
-- **Job Search** — a kanban application tracker (Wishlist → Applied → Interview →
-  Offer / Rejected) with a permanent CV shelf beside it, so "which CV did I send
-  where" never needs a second page. A CV here is just a file you already have
-  (PDF/Word, tagged Lebenslauf or ATS) — no in-app builder to keep in sync with a
-  PDF export; there used to be one (a form + live `@react-pdf/renderer` preview),
-  retired in favor of this simpler, less-brittle model. New applications can be
+- **Job Search** — a pinboard application tracker (Wishlist → Applied → Interview →
+  Offer, with rejections counted as closed) that detects the German level a posting
+  asks for and keeps per-job interview phrases. CVs, cover letters and certificates
+  live on a **CV shelf** in Settings: each document keeps its old versions, one CV is
+  the default that new applications preselect, and every application remembers the
+  version it went out with. A document is just a file you already have (PDF/Word) —
+  no in-app builder to keep in sync with a PDF export. New applications can be
   created from a pasted job-posting URL: a server-side fetch reads the page's
   `JobPosting` structured data (or falls back to its title/meta tags) to
   best-effort prefill company/role/location/portal — always editable, never
@@ -70,8 +73,8 @@ snapshot). Reviews done in the app and in Obsidian update the same
   B1. Checking items off drives per-level completion percentage and "what's
   next" suggestions.
   <p>
-    <img src="docs/screenshots/syllabus-sm.png" width="200" alt="Syllabus — mobile" />
-    <img src="docs/screenshots/syllabus-lg.png" width="520" alt="Syllabus — desktop" />
+    <img src="docs/screenshots/plan-sm.png" width="200" alt="Plan — mobile" />
+    <img src="docs/screenshots/plan-lg.png" width="520" alt="Plan — desktop" />
   </p>
 - **Exam-gated level progression** — sequential CEFR unlocking: a dedicated,
   separately-authored exam question bank (distinct from the practice-quiz
@@ -179,6 +182,11 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full ecosystem plan and feature s
 - **V3 — Learning Progress Hub** — CEFR syllabus, a generated day-by-day
   study roadmap, exam-gated level progression, self-tests, word family
   lookups, word-linked notes, and activity tracking.
+- **The Bento redesign** — a second full UI rebuild against a Claude Design
+  handoff: bento-grid pages with light/dark themes, a journey-style Plan (stations,
+  checkpoints, mock exam), a Notes sticky wall, a flashcard Review session with
+  Again/Undo, and Settings for study capacity, exam date, Obsidian sync, plan reset
+  and the CV shelf. Deferred leftovers are tracked in `docs/KNOWN_ISSUES.md`.
 - **The Nocturne redesign** — a complete UI/UX rebuild against a dark-only
   design system, a 5-tab navigation model, and a real desktop (lg+) layout.
   Full 20-phase history in

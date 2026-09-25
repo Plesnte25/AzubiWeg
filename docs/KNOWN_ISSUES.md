@@ -31,6 +31,25 @@ activation, add word, review + grade, timer, exercise submit, G-chords, theme pe
 8. ✅ **Fixed** — **Mid-string POS tags in meanings** (low). Display sites drop inner tags that repeat the word's own class; other-class tags stay. Gender-drill glosses show "…Gymnasium; (Noun) first of exchange":
    `stripLeadingPosTag` only strips a leading tag, so multi-sense meanings keep inner "(Noun)" tags.
 
+### Deferred at Bento ship (2026-09-25) — after deployment
+
+Knowingly shipped without these; pick them up after the Bento deploy.
+
+9. **404 + crash screen** — unknown routes and render errors still show the plain fallback. Needs a Sticker-style
+   not-found page and an error boundary screen.
+10. **Loading states** — pages render nothing while their queries load (Plan is blank for ~1–3 s). Also make
+    `client/scripts/shots.mjs` wait for content rather than network idle.
+11. **Audio recorder** (`components/AudioRecorder.tsx`) — still the Nocturne-era layout (only its tokens were swapped to
+    Bento ones); needs a proper design.
+12. **Application checklist** — omitted from the Jobs detail modal (plan: deferred, no correct implementation yet).
+13. **Valency tab** — hidden in the word details modal; no data source.
+14. **Settings: exam name/location and Goethe session dates** — no data source, so the sub-line shows the active level
+    and hours left, and the "Next sessions" chips are left out.
+15. **Settings: Obsidian "Plan log" / "Applications" writes** — only Words (two-way) and Notes (one-way to /Notizen)
+    are written; the other two chips are left out until there's a writer for them.
+16. **Settings: "follow system" theme** — the old Appearance tile is gone (the design has none), so once the nav
+    toggle is used there's no way back to following the OS.
+
 Covered by the planned items, not separate fixes: pages render nothing while their queries load (Plan is blank for
 ~1–3 s) → loading states; `client/scripts/shots.mjs` waits only for network idle, so it can capture a page before it
 renders → make it wait for content as part of the loading-states item.
