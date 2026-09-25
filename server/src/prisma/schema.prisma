@@ -12,6 +12,10 @@ model User {
   passwordHash        String
   name                String
   vaultPath           String?
+  // the last vault linked, kept after unlinking so Settings' switch can turn sync back on
+  lastVaultPath       String?
+  // Settings → Obsidian sync → "Notes": write notes to <vault>/Notizen as markdown (services/vault/notes.ts)
+  vaultWriteNotes     Boolean               @default(true)
   // same idea for the CEFR syllabus (learning hub)
   learningSeededAt    DateTime?
   // which revision of DEFAULT_SYLLABUS_ITEMS this user has; a bump triggers a

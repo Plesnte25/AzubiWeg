@@ -164,6 +164,10 @@ export interface DashboardData {
 
 export interface VaultStatus {
   vaultPath: string | null;
+  /** Kept after unlinking, so sync can be switched back on. */
+  lastVaultPath: string | null;
+  /** Notes are written to <vault>/Notizen as markdown. */
+  writeNotes: boolean;
   wordCount: number;
   watching: boolean;
   lastSyncAt: string | null;

@@ -198,12 +198,14 @@ export const api = {
 
   vaultStatus: () => request<VaultStatus>("/api/vault/status"),
   vaultLink: (path: string) =>
-    request<{ vaultPath: string; wordCount: number }>("/api/vault/link", {
+    request<{ vaultPath: string; wordCount: number; notesWritten: number }>("/api/vault/link", {
       method: "POST",
       body: JSON.stringify({ path }),
     }),
   vaultUnlink: () => request<{ ok: boolean }>("/api/vault/unlink", { method: "POST" }),
-  vaultSyncNow: () => request<{ wordCount: number }>("/api/vault/sync", { method: "POST" }),
+  vaultSyncNow: () => request<{ wordCount: number; notesWritten: number }>("/api/vault/sync", { method: "POST" }),
+  vaultSettings: (data: { writeNotes: boolean }) =>
+    request<{ writeNotes: boolean; notesWritten: number }>("/api/vault/settings", { method: "PATCH", body: JSON.stringify(data) }),
 
   deleteFile: (id: string) => request<void>(`/api/files/${id}`, { method: "DELETE" }),
 

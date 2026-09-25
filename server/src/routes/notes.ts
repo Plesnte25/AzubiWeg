@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { isStationKey } from "../services/learning/stations.js";
 import { initialNoteCategory } from "../services/notes/category.js";
 import { dayPlus, nextResurface, resurfaceForCategory } from "../services/notes/resurface.js";
+import { removeNoteFromVault, writeNoteToVault } from "../services/vault/notes.js";
 import { deleteStoredFile } from "./files.js";
 
 export const notesRouter = Router();
@@ -228,6 +229,7 @@ notesRouter.post("/", async (req, res) => {
     },
     include: { files: true },
   });
+  void writeNoteToVault(req.userId, note);
   res.status(201).json({ note });
 });
 
@@ -278,6 +280,7 @@ notesRouter.patch("/:id", async (req, res) => {
     },
     include: { files: true },
   });
+  void writeNoteToVault(req.userId, note);
   res.json({ note });
 });
 
@@ -318,5 +321,6 @@ notesRouter.delete("/:id", async (req, res) => {
     await deleteStoredFile(req.userId, file.storedName);
   }
   await prisma.note.delete({ where: { id: note.id } });
+  void removeNoteFromVault(req.userId, note.id);
   res.status(204).end();
 });
