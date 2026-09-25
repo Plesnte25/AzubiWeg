@@ -13,7 +13,7 @@ import { stripLeadingPosTag } from "../../lib/wordDisplay";
 import { ReviewNotesPane } from "./ReviewNotesPane";
 import { ReviewQueuePane } from "./ReviewQueuePane";
 import { ReviewWordPane } from "./ReviewWordPane";
-import { SessionDone } from "./SessionDone";
+import { NothingDue, SessionDone } from "./SessionDone";
 import { useReviewSession } from "./useReviewSession";
 
 /*
@@ -189,7 +189,11 @@ function ReviewSessionInner({ state }: { state: { words?: Word[] } | null }) {
   if (isDone) {
     return (
       <div className="flex min-h-dvh flex-col justify-center" style={{ padding: pagePad }}>
-        <SessionDone done={done} total={total} elapsedSeconds={elapsedSeconds} onHome={() => goBack()} onTakeTest={() => push("/plan/self-tests")} />
+        {total === 0 ? (
+          <NothingDue onBack={() => goBack()} />
+        ) : (
+          <SessionDone done={done} total={total} elapsedSeconds={elapsedSeconds} onHome={() => goBack()} onTakeTest={() => push("/plan")} />
+        )}
       </div>
     );
   }

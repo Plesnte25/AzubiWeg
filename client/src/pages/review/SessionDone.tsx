@@ -6,7 +6,7 @@ import { PillButton } from "../../components/ui/PillButton";
 import { RoundSticker } from "../../components/ui/Sticker";
 import { Tile } from "../../components/ui/Tile";
 import { useNavStack } from "../../lib/navStack";
-import { articleChipStyle, articleLabel } from "../../lib/wordBento";
+import { articleChipStyle, articleLabel, nextReviewLabel } from "../../lib/wordBento";
 import { findSlippingWord } from "../../lib/wordDisplay";
 import { GradeBar } from "./ReviewQueuePane";
 
@@ -91,6 +91,44 @@ export function SessionDone({
         </PillButton>
         <PillButton className="flex-1" onClick={onTakeTest}>
           Take a self-test
+        </PillButton>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The review route with nothing to review (no due cards and no new words with a meaning yet): says when the next card
+ * comes due instead of showing an empty "Stack cleared" result.
+ */
+export function NothingDue({ onBack }: { onBack: () => void }) {
+  const { push } = useNavStack();
+  const { data: wordsData } = useQuery({ queryKey: ["words"], queryFn: api.words });
+  const words = wordsData?.words ?? [];
+  // srDue is a UTC-midnight @db.Date string, so the ISO strings sort chronologically
+  const nextDue = words.reduce<string | null>((min, w) => (w.srDue && (!min || w.srDue < min) ? w.srDue : min), null);
+  const line = !wordsData
+    ? " "
+    : words.length === 0
+      ? "Add a few words and they'll show up here to review."
+      : nextDue
+        ? `Your next card is due ${nextReviewLabel(nextDue)}.`
+        : "Words without a meaning yet can't be reviewed. Finish them in Words.";
+  return (
+    <div className="mx-auto flex w-full max-w-[560px] flex-col gap-5">
+      <Tile bg="var(--mint)" tilt={-0.8} radius={26} shadow={6} tape className="flex flex-col gap-3" style={{ padding: 24 }}>
+        <RoundSticker size={64} tilt={12} bg="var(--lemon)" style={{ position: "absolute", top: -18, right: -12 }}>
+          <Check size={28} weight="bold" aria-hidden="true" />
+        </RoundSticker>
+        <h1 style={{ margin: 0, fontSize: 44, fontWeight: 700, letterSpacing: "-.045em", lineHeight: 0.95 }}>Nothing due.</h1>
+        <span style={{ fontSize: 15, fontWeight: 600 }}>{line}</span>
+      </Tile>
+      <div className="flex gap-2">
+        <PillButton variant="secondary" style={{ minWidth: 110 }} onClick={onBack}>
+          Back
+        </PillButton>
+        <PillButton className="flex-1" onClick={() => push("/words")}>
+          {words.length === 0 ? "Add words" : "Browse words"}
         </PillButton>
       </div>
     </div>

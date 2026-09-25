@@ -12,7 +12,7 @@ re-deriving the investigation.
 Found by the 2026-09-25 pre-deploy sweep (184 screenshots, a fresh-account walk at lg/sm, scripted flows: roadmap
 activation, add word, review + grade, timer, exercise submit, G-chords, theme persistence). Fix one per commit.
 
-1. **Review with nothing due shows Session Done** (medium). `/review` with an empty queue jumps straight to "Stack
+1. ✅ **Fixed** — **Review with nothing due shows Session Done** (medium). Now a "Nothing due." state with the next due date. `/review` with an empty queue jumps straight to "Stack
    cleared. 0 cards in 0:01 · 0% first try" with a 0-card stats row. Should be a "nothing due" state (next due
    date, browse words / take a self-test). Repro: fresh account → `/review`.
 2. **Today hero before the roadmap is started** (medium). A fresh account's hero says "0 stops left on today's route.
