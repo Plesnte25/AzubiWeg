@@ -1,4 +1,4 @@
-# Known issues — Nocturne redesign
+# Known issues
 
 Bugs and rough edges found while building the Nocturne redesign
 (`~/.claude/plans/so-we-are-going-wondrous-axolotl.md`), tracked here instead
@@ -9,7 +9,31 @@ re-deriving the investigation.
 
 ## Open — needs a fix
 
-_(none right now)_
+Found by the 2026-09-25 pre-deploy sweep (184 screenshots, a fresh-account walk at lg/sm, scripted flows: roadmap
+activation, add word, review + grade, timer, exercise submit, G-chords, theme persistence). Fix one per commit.
+
+1. **Review with nothing due shows Session Done** (medium). `/review` with an empty queue jumps straight to "Stack
+   cleared. 0 cards in 0:01 · 0% first try" with a 0-card stats row. Should be a "nothing due" state (next due
+   date, browse words / take a self-test). Repro: fresh account → `/review`.
+2. **Today hero before the roadmap is started** (medium). A fresh account's hero says "0 stops left on today's route.
+   Keep rolling." while the route tile says to start the roadmap. The hero should say the same (and point at it).
+3. **Stale "Jump to" destinations** (low). `QUICK_LINKS` (`lib/navDestinations.ts`) still lists Syllabus (G S),
+   Sources (G O) and Self-tests (G E); all three routes now just redirect to `/plan`. Remove them (or point them at
+   the Plan modals) in the ⌘K palette and the G-chord set.
+4. **"Plural —" on non-nouns** (low). Words detail tile shows a Plural box with "—" for function words, adverbs,
+   phrases (e.g. "am Main"). Show plural for nouns, the Perfekt for verbs, otherwise omit the box.
+5. **Empty word list copy** (low). With 0 words the list says "No words in this filter yet." on the All filter; it
+   should be a first-word prompt.
+6. **Jobs md card names truncate hard** (low). At 834px the four columns cut company names to ~6 characters
+   ("Nordwi…", "Muster …"). Let names wrap to two lines at md.
+7. **Stats projection wraps at sm** (low). "A1 exam readiness · no tests yet" breaks over three lines in the
+   narrow sm tile; shorten or stack the label and value.
+8. **Mid-string POS tags in meanings** (low). Gender-drill glosses show "…Gymnasium; (Noun) first of exchange":
+   `stripLeadingPosTag` only strips a leading tag, so multi-sense meanings keep inner "(Noun)" tags.
+
+Covered by the planned items, not separate fixes: pages render nothing while their queries load (Plan is blank for
+~1–3 s) → loading states; `client/scripts/shots.mjs` waits only for network idle, so it can capture a page before it
+renders → make it wait for content as part of the loading-states item.
 
 ## Resolved during the redesign (for reference — no action needed)
 
