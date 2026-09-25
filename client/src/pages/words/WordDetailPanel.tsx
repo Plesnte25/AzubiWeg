@@ -215,7 +215,7 @@ export function WordDetailPanel({
   const form = isVerb ? past : plural ? `die ${plural}` : null;
   const hasForms = isVerb || word.wortart === "Nomen" || !!word.genus;
   const strength = word.strength ?? 0;
-  const meaning = stripLeadingPosTag(word.meaning ?? "");
+  const meaning = stripLeadingPosTag(word.meaning ?? "", word.wortart);
   const badge =
     word.enrichmentStatus === "published_review" ? "needs review" : word.enrichmentStatus === "incomplete" || word.enrichmentStatus === "unresolved" ? "incomplete" : null;
 

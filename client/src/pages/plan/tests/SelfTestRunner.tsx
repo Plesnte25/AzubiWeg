@@ -216,7 +216,7 @@ export default function SelfTestRunner() {
     setDraft("");
     setIndex(index + 1);
   };
-  const choices = q.type === "mcq" ? q.choices.map(stripLeadingPosTag) : q.type === "true_false" ? ["Falsch", "Richtig"] : [];
+  const choices = q.type === "mcq" ? q.choices.map((c) => stripLeadingPosTag(c)) : q.type === "true_false" ? ["Falsch", "Richtig"] : [];
   const rightIndex = q.type === "mcq" ? q.answerIndex : q.type === "true_false" ? (q.answer ? 1 : 0) : -1;
 
   return (

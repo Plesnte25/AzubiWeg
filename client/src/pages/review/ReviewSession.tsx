@@ -63,7 +63,7 @@ function FlipCard({ word, flipped, onFlip, onOpen, height }: { word: Word; flipp
     flexDirection: "column",
     boxSizing: "border-box",
   };
-  const meaning = stripLeadingPosTag(word.meaning ?? "");
+  const meaning = stripLeadingPosTag(word.meaning ?? "", word.wortart);
   return (
     <div className="flex justify-center" style={{ perspective: 1400 }}>
       <div

@@ -28,7 +28,7 @@ activation, add word, review + grade, timer, exercise submit, G-chords, theme pe
    ("Nordwi…", "Muster …"). Let names wrap to two lines at md.
 7. ✅ **Fixed** — **Stats projection wraps at sm** (low). "A1 exam readiness · no tests yet" breaks over three lines in the
    narrow sm tile; shorten or stack the label and value.
-8. **Mid-string POS tags in meanings** (low). Gender-drill glosses show "…Gymnasium; (Noun) first of exchange":
+8. ✅ **Fixed** — **Mid-string POS tags in meanings** (low). Display sites drop inner tags that repeat the word's own class; other-class tags stay. Gender-drill glosses show "…Gymnasium; (Noun) first of exchange":
    `stripLeadingPosTag` only strips a leading tag, so multi-sense meanings keep inner "(Noun)" tags.
 
 Covered by the planned items, not separate fixes: pages render nothing while their queries load (Plan is blank for

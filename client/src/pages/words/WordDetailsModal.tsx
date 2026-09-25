@@ -371,7 +371,7 @@ export function WordDetailsModal({ word, onClose }: { word: Word; onClose: () =>
           <span lang="de" style={{ fontSize: "calc(var(--k) * 38px)", overflowWrap: "anywhere" }}>
             {word.headword}
           </span>
-          <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: 0 }}>{stripLeadingPosTag(word.meaning ?? "")}</span>
+          <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: 0 }}>{stripLeadingPosTag(word.meaning ?? "", word.wortart)}</span>
         </span>
       }
       ariaLabel={`Word details: ${word.headword}`}

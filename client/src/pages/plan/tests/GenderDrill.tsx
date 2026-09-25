@@ -130,7 +130,7 @@ export function GenderDrillBody({
         >
           {picked ? w.article : "___"} {w.headword}
         </span>
-        {w.meaning && <span style={{ fontSize: 15, fontWeight: 600, color: "var(--plainMuted)" }}>{stripLeadingPosTag(w.meaning)}</span>}
+        {w.meaning && <span style={{ fontSize: 15, fontWeight: 600, color: "var(--plainMuted)" }}>{stripLeadingPosTag(w.meaning, "Nomen")}</span>}
       </div>
       <div className="grid grid-cols-3 gap-2">
         {ARTICLES.map((a) => (

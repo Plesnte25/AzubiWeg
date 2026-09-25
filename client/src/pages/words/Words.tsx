@@ -236,7 +236,7 @@ export default function Words() {
                     {w.headword}
                   </div>
                   <div className="truncate" style={{ fontSize: 13, fontWeight: 500, color: "var(--plainMuted)" }}>
-                    {stripLeadingPosTag(w.meaning ?? "") || "—"}
+                    {stripLeadingPosTag(w.meaning ?? "", w.wortart) || "—"}
                   </div>
                 </div>
                 {isNewWord(w) && (
