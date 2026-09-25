@@ -50,6 +50,28 @@ Knowingly shipped without these; pick them up after the Bento deploy.
 16. **Settings: "follow system" theme** — the old Appearance tile is gone (the design has none), so once the nav
     toggle is used there's no way back to following the OS.
 
+### Found on the live site after the Bento ship (2026-09-25)
+
+Spotted while capturing the README screenshots from production. The user is testing on multiple screens; their
+findings join this list, then all post-deploy bugs are fixed together.
+
+17. **sm bottom tab bar isn't sticky** (high). On a 390×844 phone the `SmBottomNav`
+    (`components/chrome/Chrome.tsx`, `sticky bottom-[…]`) sits at the end of the page (top ≈ 2344px on Today, document
+    2422px tall) instead of pinned to the bottom of the viewport, so switching tabs on a phone means scrolling all the
+    way down. Likely an ancestor in `Layout.tsx` breaks the sticky containing block (overflow/height); check every
+    page, not only Today.
+18. **Demo words have no word class** (medium, demo only). `server/scripts/seed-demo.ts` gives words a plain
+    `meaning` and no `grammar`, so `deriveWortart()` (`services/vocab/classify.ts`) falls back: every row shows a
+    generic "word" tag, "arbeiten" is labelled Funktionswort, the Nouns/Verbs filters are empty and der·die·das says
+    "no nouns yet". Real, enriched words are unaffected. After the fix: re-seed prod's demo and re-capture
+    `docs/screenshots/words-*.png`.
+19. **Stats "Mastery by skill" clips its last row** (low). At lg (1440×900) the Speaking row is cut off at the tile's
+    bottom edge.
+20. **Demo note titled "Untitled"** (low, demo only). One Everyday seed note ("Termin vereinbaren, not machen…") has
+    no title.
+21. **Demo interview shows 16:00 instead of 10:30** (low, demo only). The seed ran on the UTC server, so the
+    interview time was built in UTC rather than the intended local time.
+
 Covered by the planned items, not separate fixes: pages render nothing while their queries load (Plan is blank for
 ~1–3 s) → loading states; `client/scripts/shots.mjs` waits only for network idle, so it can capture a page before it
 renders → make it wait for content as part of the loading-states item.
