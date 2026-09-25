@@ -226,15 +226,19 @@ export interface UploadedFileMeta {
   createdAt: string;
 }
 
-export type CvCategory = "lebenslauf" | "ats";
+export type CvKind = "cv" | "letter" | "certificates";
 
-// a CV is just an uploaded file with a title/category — no in-app builder,
-// nothing rendered; server/src/routes/cvs.ts
+// Settings → CV shelf: a document is its uploaded files, one per version — no in-app builder, nothing rendered;
+// server/src/routes/cvs.ts
 export interface Cv {
   id: string;
   title: string;
-  category: CvCategory;
-  file: { id: string; originalName: string; mimeType: string; size: number };
+  kind: CvKind;
+  /** The current version; `file` is its file. */
+  version: number;
+  /** The CV Jobs preselects (one per user, CVs only). */
+  isDefault: boolean;
+  file: { id: string; originalName: string; mimeType: string; size: number } | null;
   // count of applications currently pointing at this CV; 0 = unused
   usedIn: number;
   createdAt: string;
@@ -258,7 +262,9 @@ export interface Application {
   sortOrder: number;
   appliedAt: string | null;
   cvId: string | null;
-  cv: { id: string; title: string; file: { id: string; originalName: string } } | null;
+  /** `file` is the version the application used (`cvVersion`); `version` is the shelf's current one. */
+  cv: { id: string; title: string; version: number; file: { id: string; originalName: string } | null } | null;
+  cvVersion: number | null;
   /** Asked-for German level: detected on fetch, overridable; null = not stated. */
   germanLevel: GermanLevel | null;
   createdAt: string;

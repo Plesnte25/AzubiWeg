@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CloudArrowUp } from "@phosphor-icons/react";
 import { api, uploadFile } from "../../api/client";
-import type { CvCategory } from "../../api/types";
+import type { CvKind } from "../../api/types";
 import { Chip } from "../../components/ui/Chip";
 import { Modal } from "../../components/ui/Modal";
 import { PillButton } from "../../components/ui/PillButton";
@@ -11,14 +11,15 @@ import { eyebrow, fieldInput } from "../../components/ui/fields";
 
 /** Add a CV (Settings → CVs): upload a file you already have; nothing is built or edited here. */
 
-const CATEGORIES: { value: CvCategory; label: string }[] = [
-  { value: "lebenslauf", label: "Lebenslauf (DE)" },
-  { value: "ats", label: "ATS (EN)" },
+const CATEGORIES: { value: CvKind; label: string }[] = [
+  { value: "cv", label: "CV" },
+  { value: "letter", label: "Letter" },
+  { value: "certificates", label: "Certificates" },
 ];
 
 export default function AddCvModal({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
-  const [category, setCategory] = useState<CvCategory>("lebenslauf");
+  const [category, setCategory] = useState<CvKind>("cv");
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -27,8 +28,8 @@ export default function AddCvModal({ onClose }: { onClose: () => void }) {
     mutationFn: async () => {
       const uploaded = await uploadFile(file!, { kind: "document" });
       return api.addCv({
-        title: title.trim() || `Untitled · ${category === "lebenslauf" ? "Lebenslauf" : "ATS"}`,
-        category,
+        title: title.trim() || `Untitled · ${CATEGORIES.find((c) => c.value === category)!.label}`,
+        kind: category,
         fileId: uploaded.id,
       });
     },

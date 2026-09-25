@@ -26,7 +26,10 @@ export default function NewApplicationModal({ onClose, onAdded }: { onClose: () 
   const [f, setF] = useState({ company: "", role: "", location: "" });
   const [portal, setPortal] = useState<string | null>(null);
   const [level, setLevel] = useState<GermanLevel | null>(null);
-  const [cvId, setCvId] = useState<string | null>(null);
+  // Settings → CV shelf: CVs only, the default preselected (until the user picks something else)
+  const [pickedCv, setCvId] = useState<string | null | undefined>(undefined);
+  const shelfCvs = (cvs?.cvs ?? []).filter((c) => c.kind === "cv");
+  const cvId = pickedCv === undefined ? (shelfCvs.find((c) => c.isDefault)?.id ?? null) : pickedCv;
   const [stage, setStage] = useState<BoardStage>("wishlist");
   const [fetched, setFetched] = useState(false);
   const valid = !!(f.company.trim() && f.role.trim());
@@ -140,7 +143,7 @@ export default function NewApplicationModal({ onClose, onAdded }: { onClose: () 
       />
       <Pickers
         label="CV to use"
-        options={[...(cvs?.cvs ?? []).map((c) => [c.id, c.title] as const), [null, "None"] as const]}
+        options={[...shelfCvs.map((c) => [c.id, c.isDefault ? `${c.title} ★` : c.title] as const), [null, "None"] as const]}
         value={cvId}
         onPick={setCvId}
       />

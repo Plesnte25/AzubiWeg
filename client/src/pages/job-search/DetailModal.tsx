@@ -392,7 +392,7 @@ function EditForm({ app, onDone, onChanged }: { app: ApplicationDetail; onDone: 
       />
       <Pickers
         label="CV to use"
-        options={[[null, "None"], ...(cvs?.cvs ?? []).map((c) => [c.id, c.title] as const)]}
+        options={[[null, "None"], ...(cvs?.cvs ?? []).filter((c) => c.kind === "cv" || c.id === f.cvId).map((c) => [c.id, c.title] as const)]}
         value={f.cvId}
         onPick={(v) => setF({ ...f, cvId: v })}
       />
@@ -542,9 +542,10 @@ export function DetailModal({
             Posting <ArrowSquareOut size={13} weight="bold" aria-hidden="true" />
           </a>
         )}
-        {app.cv && (
-          <ToolButton icon={<FileText size={13} weight="fill" aria-hidden="true" />} onClick={() => downloadFile(app.cv!.file.id, app.cv!.file.originalName)}>
+        {app.cv?.file && (
+          <ToolButton icon={<FileText size={13} weight="fill" aria-hidden="true" />} onClick={() => downloadFile(app.cv!.file!.id, app.cv!.file!.originalName)}>
             {app.cv.title}
+            {app.cvVersion !== null && app.cvVersion !== app.cv.version && ` · v${app.cvVersion}`}
           </ToolButton>
         )}
         <span className="flex-1" />

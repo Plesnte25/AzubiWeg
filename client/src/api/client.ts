@@ -9,7 +9,7 @@ import type {
   ApplicationStats,
   ApplicationStatus,
   Cv,
-  CvCategory,
+  CvKind,
   DashboardData,
   ExamAttempt,
   ExamQuestionPublic,
@@ -209,10 +209,13 @@ export const api = {
 
   cvs: () => request<{ cvs: Cv[] }>("/api/cvs"),
   cv: (id: string) => request<{ cv: Cv }>(`/api/cvs/${id}`),
-  addCv: (data: { title: string; category: CvCategory; fileId: string }) =>
+  addCv: (data: { title: string; kind: CvKind; fileId: string }) =>
     request<{ cv: Cv }>("/api/cvs", { method: "POST", body: JSON.stringify(data) }),
-  updateCv: (id: string, data: Partial<{ title: string; category: CvCategory }>) =>
+  updateCv: (id: string, data: Partial<{ title: string; kind: CvKind }>) =>
     request<{ cv: Cv }>(`/api/cvs/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  addCvVersion: (id: string, fileId: string) =>
+    request<{ cv: Cv }>(`/api/cvs/${id}/versions`, { method: "POST", body: JSON.stringify({ fileId }) }),
+  makeDefaultCv: (id: string) => request<{ cv: Cv }>(`/api/cvs/${id}/default`, { method: "POST" }),
   deleteCv: (id: string) => request<void>(`/api/cvs/${id}`, { method: "DELETE" }),
 
   applications: () => request<{ applications: Application[] }>("/api/applications"),

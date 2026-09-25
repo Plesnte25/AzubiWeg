@@ -194,7 +194,7 @@ function ExamDate({ suggest }: { suggest: number | null }) {
 
 // ── CVs ──────────────────────────────────────────────────────────────────────
 
-const CV_KIND: Record<Cv["category"], string> = { lebenslauf: "Lebenslauf", ats: "ATS" };
+const CV_KIND: Record<Cv["kind"], string> = { cv: "CV", letter: "Letter", certificates: "Certificates" };
 
 function Cvs() {
   const queryClient = useQueryClient();
@@ -223,12 +223,12 @@ function Cvs() {
             className="flex items-center"
             style={{ gap: 8, padding: "8px 10px", border: "2px solid var(--line)", borderRadius: 12, background: "var(--plain)", color: "var(--plainText)" }}
           >
-            <button type="button" onClick={() => downloadFile(cv.file.id, cv.file.originalName)} className="min-w-0 flex-1 cursor-pointer text-left" title={`Download ${cv.file.originalName}`} style={{ border: "none", background: "transparent", color: "inherit", padding: 0 }}>
+            <button type="button" onClick={() => cv.file && downloadFile(cv.file.id, cv.file.originalName)} className="min-w-0 flex-1 cursor-pointer text-left" title={cv.file ? `Download ${cv.file.originalName}` : undefined} style={{ border: "none", background: "transparent", color: "inherit", padding: 0 }}>
               <span className="block truncate" style={{ fontSize: 14, fontWeight: 700 }}>
                 {cv.title}
               </span>
               <span className="block" style={{ fontSize: 12, fontWeight: 600, color: "var(--plainMuted)" }}>
-                {CV_KIND[cv.category]} · {cv.usedIn === 0 ? "not used yet" : `used by ${cv.usedIn} application${cv.usedIn === 1 ? "" : "s"}`}
+                {CV_KIND[cv.kind]} · {cv.usedIn === 0 ? "not used yet" : `used by ${cv.usedIn} application${cv.usedIn === 1 ? "" : "s"}`}
               </span>
             </button>
             <button

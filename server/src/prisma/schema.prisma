@@ -288,9 +288,10 @@ model UploadedFile {
   coveringSource StudySource?  @relation("StudySourceCover")
   roadmapTaskId  String?
   roadmapTask    RoadmapTask?  @relation(fields: [roadmapTaskId], references: [id], onDelete: Cascade)
-  // a CV is just an uploaded file with metadata (see Cv below) — one file per CV
-  cvId           String?       @unique
+  // a shelf document is uploaded files with metadata (see Cv below): one file per version, the highest is current
+  cvId           String?
   cv             Cv?           @relation(fields: [cvId], references: [id], onDelete: Cascade)
+  cvVersion      Int?
   noteId         String?
   note           Note?         @relation(fields: [noteId], references: [id], onDelete: Cascade)
   kind           FileKind      @default(document)
@@ -321,18 +322,23 @@ model Cv {
   userId       String
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   title        String
-  category     CvCategory    @default(lebenslauf)
-  // the CV IS this file — a PDF/Word doc the user already has, nothing
-  // rendered or edited in-app; see UploadedFile.cvId for the other side
-  file         UploadedFile?
+  kind         CvKind        @default(cv)
+  // the document IS its files — PDFs/Word docs the user already has, nothing rendered or edited in-app. "New version"
+  // uploads another file (UploadedFile.cvVersion); older versions stay. `version` is the current one.
+  files        UploadedFile[]
+  version      Int           @default(1)
+  // at most one per user, and only a CV: Jobs preselects it and it can't be removed while it's the default
+  isDefault    Boolean       @default(false)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   applications Application[]
 }
 
-enum CvCategory {
-  lebenslauf
-  ats
+// Settings → CV shelf
+enum CvKind {
+  cv
+  letter
+  certificates
 }
 
 model Application {
@@ -356,6 +362,8 @@ model Application {
   appliedAt   DateTime?          @db.Date
   cvId        String?
   cv          Cv?                @relation(fields: [cvId], references: [id], onDelete: SetNull)
+  // the shelf version the application went out with
+  cvVersion   Int?
   // German level the posting asks for: detected on fetch (detectGermanLevel), manually overridable; null = unknown
   germanLevel GermanLevel?
   events      ApplicationEvent[]
