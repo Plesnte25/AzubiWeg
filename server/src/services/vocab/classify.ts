@@ -105,7 +105,8 @@ export function strength(word: { srInterval: number | null; leech: boolean }, la
   if (word.leech) return 1;
   const interval = word.srInterval;
   if (interval === null) return 0;
-  const hard = lastGrade === "hard";
+  // a lapse (again) reads like hard: not remembered
+  const hard = lastGrade === "hard" || lastGrade === "again";
   if (hard && interval <= 1) return 1;
   if (hard || interval < 3) return 2;
   if (interval < 10) return 3;

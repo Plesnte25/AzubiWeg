@@ -2,29 +2,39 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../api/client";
 import type { Grade, Word } from "../../api/types";
+import { toast } from "../../components/ui/Toast";
 
-export type QueueOrder = "due-first" | "new-first" | "shuffle";
+/*
+ * The review-session state machine (AzubiReview.dc.html §2.7): a tagged queue, an index, the grades given this
+ * session, and undo snapshots. Every grade is saved to the server straight away (it writes the schedule, and the
+ * vault when linked); Again also puts the card back into this session 4 places later. Undo reverts the last grade on
+ * the server (POST /reviews/:id/undo) and restores the snapshot.
+ */
 
-export function orderQueue(due: Word[], fresh: Word[], order: QueueOrder): Word[] {
-  if (order === "new-first") return [...fresh, ...due];
-  if (order === "shuffle") {
-    const all = [...due, ...fresh];
-    for (let i = all.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [all[i], all[j]] = [all[j]!, all[i]!];
-    }
-    return all;
-  }
-  return [...due, ...fresh];
+export type CardTag = "Due" | "New" | "Shaky";
+export interface QueueItem {
+  word: Word;
+  tag: CardTag;
+}
+export interface GradedEntry {
+  wordId: string;
+  grade: Grade;
+}
+interface Snapshot {
+  queue: QueueItem[];
+  idx: number;
+  graded: GradedEntry[];
 }
 
-/**
- * The review-session state machine (queue ordering, grading, cache
- * invalidation, mid-session leech toggling, elapsed-time tracking) — used by
- * the single Nocturne review screen (client/src/pages/review/ReviewSession.tsx)
- * at every breakpoint. Ported from the pre-Nocturne split of the same name
- * (formerly shared by PracticeOverlay/ReviewModal, one per breakpoint).
- */
+/** Again re-inserts the card this many places later (or at the end). */
+const AGAIN_GAP = 4;
+
+/** A card's tag from its own state, for curated sessions (drills) that don't come from the queue endpoint. */
+function tagFor(word: Word): CardTag {
+  if (!word.srDue) return "New";
+  return word.strength === 1 || word.strength === 2 ? "Shaky" : "Due";
+}
+
 export function useReviewSession({ words }: { words?: Word[] }) {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
@@ -35,30 +45,30 @@ export function useReviewSession({ words }: { words?: Word[] }) {
     staleTime: Infinity,
   });
 
-  const [queue, setQueue] = useState<Word[] | null>(words ?? null);
-  const [revealed, setRevealed] = useState(false);
-  const [done, setDone] = useState<Record<Grade, number>>({ hard: 0, good: 0, easy: 0 });
+  const [queue, setQueue] = useState<QueueItem[] | null>(words ? words.map((w) => ({ word: w, tag: tagFor(w) })) : null);
+  const [initial, setInitial] = useState<QueueItem[] | null>(queue);
+  const [idx, setIdx] = useState(0);
+  const [graded, setGraded] = useState<GradedEntry[]>([]);
+  const [history, setHistory] = useState<Snapshot[]>([]);
+  const [flipped, setFlipped] = useState(false);
   const startedAtRef = useRef(Date.now());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   useEffect(() => {
-    if (words === undefined && data && queue === null) setQueue(orderQueue(data.due, data.fresh, "due-first"));
+    if (words === undefined && data && queue === null) {
+      const q: QueueItem[] = [
+        ...data.due.map((w) => ({ word: w, tag: "Due" as const })),
+        ...data.fresh.map((w) => ({ word: w, tag: "New" as const })),
+        ...data.shaky.map((w) => ({ word: w, tag: "Shaky" as const })),
+      ];
+      setQueue(q);
+      setInitial(q);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, queue, words]);
 
-  // staleTime: Infinity above is deliberate -- it keeps this session's queue
-  // frozen (no reshuffling mid-session if some other invalidation fires) --
-  // but that same freeze must not survive past this mount, or reopening
-  // Review after a partial/interrupted session replays the untouched
-  // pre-session snapshot instead of the real remaining due list (each grade
-  // is already persisted server-side immediately; only this client cache was
-  // stale). removeQueries (not invalidateQueries) on unmount: invalidating
-  // still lets the next mount's useQuery synchronously return the now-stale
-  // cached data on its first render, and the `queue === null` guard above
-  // then locks that stale snapshot in before the background refetch it
-  // triggers resolves. Removing the cache entry outright means the next
-  // mount starts with no data at all, so `queue` only ever gets seeded once
-  // a real network round trip against current srDue values completes.
+  // staleTime: Infinity keeps this session's queue frozen, but the snapshot must not outlive the mount: reopening
+  // Review has to start from the real remaining due list, so the cache entry is removed (not invalidated) on unmount.
   useEffect(() => {
     if (words !== undefined) return;
     return () => {
@@ -66,43 +76,92 @@ export function useReviewSession({ words }: { words?: Word[] }) {
     };
   }, [queryClient, words]);
 
+  const loading = words === undefined && (isLoading || queue === null);
+  const total = queue?.length ?? 0;
+  const done = !loading && idx >= total;
+
+  // the timer counts while the session runs and stops on the done card
   useEffect(() => {
+    if (done) return;
     const id = setInterval(() => setElapsedSeconds(Math.round((Date.now() - startedAtRef.current) / 1000)), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [done]);
 
-  const grade = useMutation({
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["words"] });
+    void queryClient.invalidateQueries({ queryKey: ["reviews"] });
+    void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+  };
+
+  const gradeMutation = useMutation({
     mutationFn: ({ wordId, g }: { wordId: string; g: Grade }) => api.gradeWord(wordId, g),
-    onSuccess: (_res, { g }) => {
-      setDone((d) => ({ ...d, [g]: d[g] + 1 }));
-      setQueue((q) => (q ? q.slice(1) : q));
-      setRevealed(false);
-      queryClient.invalidateQueries({ queryKey: ["words"] });
-      queryClient.invalidateQueries({ queryKey: ["reviews", "history"] });
-      queryClient.invalidateQueries({ queryKey: ["reviews", "weakWords"] });
-      queryClient.invalidateQueries({ queryKey: ["reviews", "stats"] });
+    onSuccess: (_res, { wordId, g }) => {
+      if (!queue) return;
+      setHistory((h) => [...h, { queue, idx, graded }]);
+      const next = queue.slice();
+      if (g === "again") next.splice(Math.min(next.length, idx + AGAIN_GAP), 0, next[idx]!);
+      setQueue(next);
+      setIdx(idx + 1);
+      setGraded([...graded, { wordId, grade: g }]);
+      setFlipped(false);
+      invalidate();
     },
+    onError: () => toast.error("Couldn't save that grade · try again"),
   });
 
-  const loading = words === undefined && (isLoading || queue === null);
-  const current = queue?.[0] ?? null;
-  const total = Object.values(done).reduce((a, b) => a + b, 0);
-  const remaining = queue?.length ?? 0;
-  const sessionSize = remaining + total;
-  const progressPercent = sessionSize === 0 ? 0 : Math.round((total / sessionSize) * 100);
+  const undoMutation = useMutation({
+    mutationFn: (wordId: string) => api.undoReview(wordId),
+    onSuccess: () => {
+      const snap = history[history.length - 1];
+      if (!snap) return;
+      setQueue(snap.queue);
+      setIdx(snap.idx);
+      setGraded(snap.graded);
+      setHistory(history.slice(0, -1));
+      setFlipped(false);
+      invalidate();
+      toast.info("Undone");
+    },
+    onError: () => toast.error("Couldn't undo that"),
+  });
+
+  const current = queue && idx < queue.length ? queue[idx]! : null;
+  const busy = gradeMutation.isPending || undoMutation.isPending;
 
   return {
     loading,
-    queue: queue ?? [],
-    current,
-    total,
-    remaining,
-    sessionSize,
-    progressPercent,
-    revealed,
-    setRevealed,
     done,
-    grade,
+    current,
+    queue: queue ?? [],
+    idx,
+    total,
+    graded,
+    flipped,
+    setFlipped,
     elapsedSeconds,
+    canUndo: history.length > 0 && !busy,
+    busy,
+    grade: (g: Grade) => current && !busy && gradeMutation.mutate({ wordId: current.word.id, g }),
+    undo: () => {
+      const last = graded[graded.length - 1];
+      if (last && !busy) undoMutation.mutate(last.wordId);
+    },
+    /** Restart with only the cards graded Again this session. */
+    drillAgain: () => {
+      const ids = [...new Set(graded.filter((x) => x.grade === "again").map((x) => x.wordId))];
+      const items = ids.map((id) => (queue ?? []).find((q) => q.word.id === id)!).filter(Boolean);
+      restartWith(items);
+    },
+    restart: () => restartWith(initial ?? []),
   };
+
+  function restartWith(items: QueueItem[]) {
+    setQueue(items);
+    setIdx(0);
+    setGraded([]);
+    setHistory([]);
+    setFlipped(false);
+    startedAtRef.current = Date.now();
+    setElapsedSeconds(0);
+  }
 }

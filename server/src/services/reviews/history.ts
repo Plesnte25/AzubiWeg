@@ -1,5 +1,6 @@
 import type { Grade } from "@prisma/client";
 import { isShaky, strength, type Strength } from "../vocab/classify.js";
+import { isMiss } from "../srs.js";
 
 export interface ReviewLogRow {
   wordId: string;
@@ -19,7 +20,7 @@ export interface WeakWord {
   wordId: string;
   headword: string;
   strength: Strength;
-  /** Times graded hard, all-time — the "6×" on the Stats shakiest-words tile. */
+  /** Times missed (graded again or hard), all-time — the "6×" on the Stats shakiest-words tile. */
   hardCount: number;
   lastGrade: Grade | null;
   lastReviewedAt: Date | null;
@@ -42,7 +43,7 @@ export function latestLogByWord<T extends { wordId: string; reviewedAt: Date }>(
 export function computeWeakWords(words: WeakWordCandidate[], logs: ReviewLogRow[], limit: number): WeakWord[] {
   const latest = latestLogByWord(logs);
   const hardCounts = new Map<string, number>();
-  for (const l of logs) if (l.grade === "hard") hardCounts.set(l.wordId, (hardCounts.get(l.wordId) ?? 0) + 1);
+  for (const l of logs) if (isMiss(l.grade)) hardCounts.set(l.wordId, (hardCounts.get(l.wordId) ?? 0) + 1);
 
   return words
     .map((w) => {
@@ -83,7 +84,7 @@ export function computeReviewStats(
   const startOfWeek = new Date(startOfToday);
   startOfWeek.setDate(startOfWeek.getDate() - 6);
 
-  const gradeBreakdown: Record<Grade, number> = { hard: 0, good: 0, easy: 0 };
+  const gradeBreakdown: Record<Grade, number> = { again: 0, hard: 0, good: 0, easy: 0 };
   let reviewsToday = 0;
   let reviewsThisWeek = 0;
   let intervalSum = 0;
@@ -112,7 +113,7 @@ export function computeReviewAccuracy(
     const since = now.getTime() - days * 86_400_000;
     const inWindow = logs.filter((l) => l.reviewedAt.getTime() >= since);
     if (inWindow.length === 0) return null;
-    return Math.round((inWindow.filter((l) => l.grade !== "hard").length / inWindow.length) * 100);
+    return Math.round((inWindow.filter((l) => !isMiss(l.grade)).length / inWindow.length) * 100);
   };
   return { "7d": windowPercent(7), "30d": windowPercent(30), "1y": windowPercent(365) };
 }
@@ -147,7 +148,7 @@ export function computeRetention(
       const gapDays = (list[i]!.reviewedAt.getTime() - list[i - 1]!.reviewedAt.getTime()) / 86_400_000;
       const b = buckets[RETENTION_BUCKETS.findIndex((x) => gapDays <= x.maxDays)]!;
       b.total++;
-      if (list[i]!.grade !== "hard") b.recalled++;
+      if (!isMiss(list[i]!.grade)) b.recalled++;
     }
   }
   return RETENTION_BUCKETS.map((x, i) => ({

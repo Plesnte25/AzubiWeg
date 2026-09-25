@@ -181,9 +181,14 @@ model ReviewLog {
   grade         Grade
   reviewedAt    DateTime @default(now())
   intervalAfter Int
+  // the word's schedule before this grade, so Undo in the review session can restore it; all null = it was new
+  prevDue       DateTime? @db.Date
+  prevInterval  Int?
+  prevEase      Int?
 }
 
 enum Grade {
+  again
   hard
   good
   easy

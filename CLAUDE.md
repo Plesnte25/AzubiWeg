@@ -55,8 +55,10 @@ version instead. Cases already settled (the plan has the full list):
   Strength pips are derived from SRS interval bands; "shaky" = strength ≤ 2 everywhere. Lernzeit = heartbeat minutes
   on learning routes. Weekly goal = `studyCapacityMinutes` × 6. "New" = added in the last 7 days.
 - **Real rules over demo copy.** The exam gate shows the real rules (20 questions / 20 min / 70%), not the demo's
-  40/45/80. The review session is Hard/Good/Easy only (`server/src/services/srs.ts` has no "again" grade), and its
-  interval labels come from `GET /api/reviews/:wordId/preview`.
+  40/45/80. The review session has Again/Hard/Good/Easy: Again is this app's
+  addition to the Obsidian-plugin scheduler (`server/src/services/srs.ts`, a lapse to 1 day; the vault SR line format
+  is unchanged), and the interval labels come from `GET /api/reviews/:wordId/preview`. Undo reverts a grade on the
+  server (`POST /api/reviews/:wordId/undo`, from the previous schedule stored on ReviewLog).
 - **Missing data is hidden, not faked.** Declension, conjugation and word family come from kaikki.org/DErivBase with
   incomplete coverage: hide the tab/card rather than show an empty or invented table. The Valency tab has no data
   source, so it's hidden.

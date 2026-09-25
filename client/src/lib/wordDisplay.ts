@@ -6,7 +6,7 @@ import { GENUS_BG, GENUS_COLORS, WORTART_COLORS } from "./vocab";
 // lands in the 3rd tier below, "no review yet" pads with the dimmest one.
 // Shared by the Words list's row sparkline (Vocabulary.tsx) and Word
 // Detail's larger review-history chart (words/ReviewHistoryCard.tsx).
-export const GRADE_HEIGHT: Record<Grade, number> = { hard: 6, good: 11, easy: 16 };
+export const GRADE_HEIGHT: Record<Grade, number> = { again: 3, hard: 6, good: 11, easy: 16 };
 export const NO_DATA_HEIGHT = 3;
 export const SPARKLINE_SLOTS = 6;
 
@@ -137,7 +137,7 @@ export function findSlippingWord(entries: ReviewHistoryEntry[]): SlippingWord | 
     const sorted = [...logs].sort((a, b) => new Date(b.reviewedAt).getTime() - new Date(a.reviewedAt).getTime());
     let streak = 0;
     for (const log of sorted) {
-      if (log.grade !== "hard") break;
+      if (log.grade !== "hard" && log.grade !== "again") break;
       streak++;
     }
     if (streak >= 2 && (!best || streak > best.streak)) {

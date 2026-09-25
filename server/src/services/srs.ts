@@ -12,7 +12,12 @@ import type { SrState } from "./vault/format.js";
  * a valid schedule for the plugin to pick up).
  */
 
-export type Grade = "hard" | "good" | "easy";
+/** "again" is this app's addition (the plugin has Hard/Good/Easy): a lapse — the card starts over at 1 day and loses
+ * ease like Hard. The SR line it writes is the same format, so the plugin keeps reading it. */
+export type Grade = "again" | "hard" | "good" | "easy";
+
+/** Grades that count as not remembered (retention, accuracy, "missed ×", strength). */
+export const isMiss = (g: string) => g === "again" || g === "hard";
 
 const BASE_EASE = 250;
 const MIN_EASE = 130;
@@ -62,6 +67,9 @@ export function schedule(
     interval *= EASY_BONUS;
   } else if (grade === "good") {
     interval = ((interval + delayedDays / 2) * ease) / 100;
+  } else if (grade === "again") {
+    ease = Math.max(MIN_EASE, ease - 20);
+    interval = INITIAL_INTERVAL;
   } else {
     ease = Math.max(MIN_EASE, ease - 20);
     interval = Math.max(1, (interval + delayedDays / 4) * LAPSES_INTERVAL_CHANGE);

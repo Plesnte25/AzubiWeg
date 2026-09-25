@@ -55,3 +55,20 @@ describe("SRS scheduling matches the Obsidian plugin", () => {
     expect(schedule("hard", prev, today).ease).toBe(130);
   });
 });
+
+describe("again (lapse)", () => {
+  it("restarts the card at 1 day and drops ease like hard", () => {
+    const today = new Date(2026, 8, 25);
+    const prev = { interval: 20, ease: 250, due: today };
+    const again = schedule("again", prev, today);
+    expect(again.interval).toBe(1);
+    expect(again.ease).toBe(230);
+    expect(again.due).toBe("2026-09-26");
+    expect(schedule("hard", prev, today).interval).toBe(10);
+  });
+
+  it("never drops ease below the minimum", () => {
+    const today = new Date(2026, 8, 25);
+    expect(schedule("again", { interval: 3, ease: 135, due: today }, today).ease).toBe(130);
+  });
+});

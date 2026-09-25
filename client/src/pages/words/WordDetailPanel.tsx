@@ -328,7 +328,7 @@ export function WordDetailPanel({
           variant="secondary"
           className="flex-1"
           icon={<Lightning size={16} weight="fill" aria-hidden="true" />}
-          onClick={() => push("/review", { state: { words: [word] } })}
+          onClick={() => push("/review", { state: { words: [word], deckLabel: `Words · ${word.headword}` } })}
           disabled={!word.meaning}
         >
           Drill now

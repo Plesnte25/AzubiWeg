@@ -4,8 +4,9 @@ import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { computeRetention, computeReviewAccuracy, computeReviewStats, computeWeakWords } from "../services/reviews/history.js";
 import { schedule } from "../services/srs.js";
-import { withComputedFields } from "../services/vocab/classify.js";
-import { formatSrLine, parseSrLine } from "../services/vault/format.js";
+import { isShaky, strength, withComputedFields } from "../services/vocab/classify.js";
+import { lastGrades } from "./words.js";
+import { formatSrLine, parseSrLine, type SrState } from "../services/vault/format.js";
 import { vaultSync } from "../services/vault/sync.js";
 
 export const reviewsRouter = Router();
@@ -66,6 +67,9 @@ reviewsRouter.get("/stats", async (req, res) => {
   res.json({ ...computeReviewStats(logs, now), accuracy: computeReviewAccuracy(logs, now), retention: computeRetention(logs) });
 });
 
+/** How many not-yet-due shaky words a session tacks on after the due and new cards. */
+const SHAKY_EXTRA = 10;
+
 reviewsRouter.get("/queue", async (req, res) => {
   const newLimit = Math.min(Number(req.query.newLimit ?? 10), 50);
   // meaning: { not: null } -- a word without a usable meaning yet
@@ -74,7 +78,7 @@ reviewsRouter.get("/queue", async (req, res) => {
   // (routes/learning.ts). Independent of curation: a published_review word
   // with a real meaning stays eligible, a blank protected/incomplete one
   // doesn't.
-  const [due, fresh] = await Promise.all([
+  const [due, fresh, scheduled, grades] = await Promise.all([
     prisma.word.findMany({
       where: { userId: req.userId, srDue: { lte: endOfToday() }, meaning: { not: null } },
       orderBy: { srDue: "asc" },
@@ -84,8 +88,16 @@ reviewsRouter.get("/queue", async (req, res) => {
       orderBy: { createdAt: "asc" },
       take: newLimit,
     }),
+    prisma.word.findMany({
+      where: { userId: req.userId, srDue: { gt: endOfToday() }, meaning: { not: null } },
+      orderBy: { srDue: "asc" },
+    }),
+    lastGrades(req.userId),
   ]);
-  res.json({ due: due.map(withComputedFields), fresh: fresh.map(withComputedFields) });
+  // Review handoff: the session is due first, then today's new words, then shaky words that aren't due yet
+  // (strength 1–2, the app-wide rule) as extra practice
+  const shaky = scheduled.filter((w) => isShaky(strength(w, grades.get(w.id) ?? null))).slice(0, SHAKY_EXTRA);
+  res.json({ due: due.map(withComputedFields), fresh: fresh.map(withComputedFields), shaky: shaky.map(withComputedFields) });
 });
 
 function previousScheduleFor(word: { srDue: Date | null; srInterval: number | null; srEase: number | null }) {
@@ -105,13 +117,60 @@ reviewsRouter.get("/:wordId/preview", async (req, res) => {
 
   const previous = previousScheduleFor(word);
   res.json({
+    again: schedule("again", previous),
     hard: schedule("hard", previous),
     good: schedule("good", previous),
     easy: schedule("easy", previous),
   });
 });
 
-const gradeSchema = z.object({ grade: z.enum(["hard", "good", "easy"]) });
+const gradeSchema = z.object({ grade: z.enum(["again", "hard", "good", "easy"]) });
+
+/** Writes a card's schedule (or clears it, for a card going back to new) — through the vault when one is linked
+ * (reconcile mirrors it to the DB), else straight to the Word row. Shared by grading and undo. */
+async function writeSchedule(
+  user: { id: string; vaultPath: string | null },
+  word: { id: string; sortKey: string; rawBlock: string },
+  sr: SrState | null,
+) {
+  if (user.vaultPath) {
+    await vaultSync.applyToVault(user.id, user.vaultPath, (cards) =>
+      cards.map((c) =>
+        c.sortKey === word.sortKey ? { ...c, sr: sr ? parseSrLine(formatSrLine(sr)) : null, srLines: sr ? [formatSrLine(sr)] : [] } : c,
+      ),
+    );
+    return;
+  }
+  const cardLine = word.rawBlock.split("\n")[0]! + "\n";
+  await prisma.word.update({
+    where: { id: word.id },
+    data: sr
+      ? { srDue: new Date(sr.due), srInterval: sr.interval, srEase: sr.ease, rawBlock: cardLine + formatSrLine(sr) }
+      : { srDue: null, srInterval: null, srEase: null, rawBlock: cardLine },
+  });
+}
+
+/**
+ * Undo (review session "Z" / the undo button): reverts the word's most recent grade — restores the schedule it had
+ * before (or clears it, if it was new) and deletes that review log. Only the latest grade per word can be undone.
+ */
+reviewsRouter.post("/:wordId/undo", async (req, res) => {
+  const word = await prisma.word.findFirst({ where: { id: req.params.wordId, userId: req.userId } });
+  if (!word) return res.status(404).json({ error: "Word not found" });
+  const last = await prisma.reviewLog.findFirst({ where: { wordId: word.id }, orderBy: { reviewedAt: "desc" } });
+  if (!last) return res.status(409).json({ error: "Nothing to undo for this word" });
+
+  const restored: SrState | null =
+    last.prevDue && last.prevInterval !== null && last.prevEase !== null
+      ? { due: last.prevDue.toISOString().slice(0, 10), interval: last.prevInterval, ease: last.prevEase }
+      : null;
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
+  await writeSchedule(user, word, restored);
+  await prisma.reviewLog.delete({ where: { id: last.id } });
+  res.json({
+    word: withComputedFields(await prisma.word.findUniqueOrThrow({ where: { id: word.id } })),
+  });
+});
 
 reviewsRouter.post("/:wordId", async (req, res) => {
   const parsed = gradeSchema.safeParse(req.body);
@@ -127,27 +186,7 @@ reviewsRouter.post("/:wordId", async (req, res) => {
   const next = schedule(grade, previous);
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
-  if (user.vaultPath) {
-    // write the new SR comment into master.md; reconcile mirrors it to the DB
-    await vaultSync.applyToVault(user.id, user.vaultPath, (cards) =>
-      cards.map((c) =>
-        c.sortKey === word.sortKey
-          ? { ...c, sr: parseSrLine(formatSrLine(next)), srLines: [formatSrLine(next)] }
-          : c,
-      ),
-    );
-  } else {
-    const cardLine = word.rawBlock.split("\n")[0]! + "\n";
-    await prisma.word.update({
-      where: { id: word.id },
-      data: {
-        srDue: new Date(next.due),
-        srInterval: next.interval,
-        srEase: next.ease,
-        rawBlock: cardLine + formatSrLine(next),
-      },
-    });
-  }
+  await writeSchedule(user, word, next);
   // leech is app-only state (see schema.prisma) — clearing it on a good
   // grade never touches the vault, regardless of user.vaultPath above.
   if (grade === "easy" && word.leech) {
@@ -155,7 +194,14 @@ reviewsRouter.post("/:wordId", async (req, res) => {
   }
 
   await prisma.reviewLog.create({
-    data: { wordId: word.id, grade, intervalAfter: next.interval },
+    data: {
+      wordId: word.id,
+      grade,
+      intervalAfter: next.interval,
+      prevDue: previous?.due ?? null,
+      prevInterval: previous?.interval ?? null,
+      prevEase: previous?.ease ?? null,
+    },
   });
 
   res.json({

@@ -41,7 +41,7 @@ const SIZES = {
   lg: { width: 1440, height: 900 },
   laptop: { width: 1366, height: 768 },
 };
-const ROUTES = ["/", "/words", "/plan", "/jobs", "/stats", "/notes", "/settings"];
+const ROUTES = ["/", "/words", "/plan", "/jobs", "/stats", "/notes", "/settings", "/review"];
 
 /** Named states: a route plus the interaction that opens the state. Extend as each Phase 3 page lands. */
 const STATES = [
@@ -139,6 +139,14 @@ const STATES = [
     run: async (page) => {
       await page.getByRole("button", { name: /· / }).filter({ hasText: /Grammar|Mistakes|Everyday|Jobs|Listening/ }).first().click();
       await page.waitForTimeout(600);
+    },
+  },
+  {
+    name: "review-flipped",
+    route: "/review",
+    run: async (page) => {
+      await page.getByRole("button", { name: "Show answer" }).click();
+      await page.waitForTimeout(800);
     },
   },
   {

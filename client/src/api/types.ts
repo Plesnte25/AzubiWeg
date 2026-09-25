@@ -169,7 +169,7 @@ export interface VaultStatus {
   lastSyncAt: string | null;
 }
 
-export type Grade = "hard" | "good" | "easy";
+export type Grade = "again" | "hard" | "good" | "easy";
 
 export interface ScheduleResult {
   due: string;

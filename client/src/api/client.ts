@@ -178,7 +178,9 @@ export const api = {
     request<{ total: number; updated: number }>("/api/words/reclassify", { method: "POST" }),
   wordFamily: (id: string) => request<{ members: WordFamilyMember[] }>(`/api/words/${id}/family`),
 
-  reviewQueue: () => request<{ due: Word[]; fresh: Word[] }>("/api/reviews/queue"),
+  reviewQueue: () => request<{ due: Word[]; fresh: Word[]; shaky: Word[] }>("/api/reviews/queue"),
+  /** Reverts the word's latest grade (review session Undo). */
+  undoReview: (wordId: string) => request<{ word: Word }>(`/api/reviews/${wordId}/undo`, { method: "POST", body: "{}" }),
   gradeWord: (wordId: string, grade: Grade) =>
     request<{ next: { due: string; interval: number; ease: number }; word: Word }>(`/api/reviews/${wordId}`, {
       method: "POST",

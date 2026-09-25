@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { cn } from "../lib/cn";
 import { Outlet, useLocation } from "react-router-dom";
 import { useActivityHeartbeat } from "../hooks/useActivityHeartbeat";
 import { isTransientPath, NavStackProvider, useNavStack } from "../lib/navStack";
@@ -80,6 +81,8 @@ function GlobalShortcuts({ armed }: { armed: boolean }) {
 export default function Layout() {
   const location = useLocation();
   const isTransient = isTransientPath(location.pathname);
+  // the review session never page-scrolls (Review handoff §2): it gets exactly the viewport, minus the demo banner
+  const noScroll = location.pathname === "/review";
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   useActivityHeartbeat();
@@ -98,10 +101,10 @@ export default function Layout() {
   return (
     <NavStackProvider>
       {/* Outer column so the demo banner shares the viewport height with the shell instead of adding to it. */}
-      <div className="flex min-h-dvh flex-col lgfill:h-dvh">
+      <div className={cn("flex min-h-dvh flex-col lgfill:h-dvh", noScroll && "h-dvh overflow-hidden")}>
         <DemoBanner />
         {isTransient ? (
-          <main className="flex-1">
+          <main className={cn("flex-1", noScroll && "flex min-h-0 flex-col")}>
             <Outlet />
           </main>
         ) : (

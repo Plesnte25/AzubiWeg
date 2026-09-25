@@ -58,7 +58,7 @@ describe("computeReviewStats", () => {
     expect(stats.totalReviews).toBe(3);
     expect(stats.reviewsToday).toBe(1);
     expect(stats.reviewsThisWeek).toBe(2);
-    expect(stats.gradeBreakdown).toEqual({ hard: 1, good: 1, easy: 1 });
+    expect(stats.gradeBreakdown).toEqual({ again: 0, hard: 1, good: 1, easy: 1 });
     expect(stats.avgIntervalAfter).toBe(Math.round((1 + 3 + 30) / 3));
   });
 
@@ -98,5 +98,22 @@ describe("computeRetention", () => {
       { day: 1, percent: 100, samples: 1 },
       { day: 30, percent: 50, samples: 2 },
     ]);
+  });
+});
+
+describe("again counts as a miss", () => {
+  it("in accuracy, retention and the missed count", () => {
+    const now = new Date("2026-09-25T12:00:00Z");
+    expect(computeReviewAccuracy([{ grade: "again" as const, reviewedAt: now }, { grade: "good" as const, reviewedAt: now }], now)["7d"]).toBe(50);
+    const t = (d: number) => new Date(Date.UTC(2026, 0, 1) + d * 86_400_000);
+    expect(computeRetention([{ wordId: "a", grade: "good" as const, reviewedAt: t(0) }, { wordId: "a", grade: "again" as const, reviewedAt: t(1) }])).toEqual([
+      { day: 1, percent: 0, samples: 1 },
+    ]);
+    const weak = computeWeakWords(
+      [{ wordId: "w", headword: "Termin", srInterval: 1, leech: false }],
+      [{ wordId: "w", headword: "Termin", grade: "again", reviewedAt: t(2) }, { wordId: "w", headword: "Termin", grade: "hard", reviewedAt: t(1) }],
+      5,
+    );
+    expect(weak[0]).toMatchObject({ hardCount: 2, strength: 1 });
   });
 });
