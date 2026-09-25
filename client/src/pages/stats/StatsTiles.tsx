@@ -300,9 +300,10 @@ export function ProjectionTile({
         </div>
       </div>
       <div className="flex flex-col" style={{ gap: 5 }}>
-        <div className="flex justify-between" style={{ fontSize: 12, fontWeight: 700 }}>
+        {/* the value stays short ("–" before any test) so the row fits the narrow sm tile on one line */}
+        <div className="flex justify-between whitespace-nowrap" style={{ fontSize: 12, fontWeight: 700, gap: 6 }}>
           <span>{LVL} exam readiness</span>
-          <span>{score === null ? "no tests yet" : `${score}%`}</span>
+          <span title={score === null ? "No self-tests or exams at this level yet" : undefined}>{score === null ? "–" : `${score}%`}</span>
         </div>
         <div style={{ height: 12, border: "2px solid var(--line)", borderRadius: 999, background: "var(--plain)", overflow: "hidden", boxSizing: "border-box" }}>
           {score !== null && score > 0 && (
