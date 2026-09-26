@@ -551,6 +551,8 @@ model StudySourceUnit {
   url         String?
   // free-form per-lesson notes, edited inline in the lesson list
   notes       String?
+  // what the lesson covers: fetched where the source has one (Nicos Weg lesson teasers), editable by the user
+  description String?
   // null = not done
   completedAt DateTime?
 

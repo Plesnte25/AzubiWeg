@@ -451,7 +451,7 @@ async function seedSources(userId: string): Promise<void> {
   const sources = [
     { type: "youtube" as const, provider: "Easy German", title: "Easy German — Super Easy", url: "https://www.youtube.com/@EasyGerman", totalUnits: 40, completedUnits: 14, unitLabel: "episodes" as const, station: 8 },
     { type: "book" as const, provider: "Hueber", title: "Menschen A1.1 Kursbuch", url: null, totalUnits: 12, completedUnits: 7, unitLabel: "chapters" as const, station: 7 },
-    { type: "course" as const, provider: "Deutsche Welle", title: "Nicos Weg A1", url: "https://learngerman.dw.com/de/nicos-weg/c-36519687", totalUnits: 76, completedUnits: 31, unitLabel: "lessons" as const, station: 6 },
+    { type: "course" as const, provider: "Deutsche Welle", title: "Nicos Weg A1", url: "https://learngerman.dw.com/en/nicos-weg/c-36519789", totalUnits: 76, completedUnits: 31, unitLabel: "lessons" as const, station: 6 },
   ];
   for (const [i, src] of sources.entries()) {
     const { station, ...data } = src;

@@ -445,6 +445,8 @@ export interface StudySourceUnit {
   videoId: string | null;
   url: string | null;
   notes: string | null;
+  /** What the lesson covers: fetched (Nicos Weg) or written by the user. */
+  description: string | null;
   completedAt: string | null;
 }
 

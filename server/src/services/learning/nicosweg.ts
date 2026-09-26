@@ -13,6 +13,26 @@ const BROWSER_UA =
 export interface CourseLesson {
   title: string;
   url: string;
+  /** DW's lesson teaser, trimmed of its marketing lines; null when there's none. */
+  description: string | null;
+}
+
+// DW teasers are part summary, part SEO copy: "A1 German: Learn the alphabet… Click here to learn with DW's free
+// online class today!" Keep the summary sentences only.
+const TEASER_LEVEL_PREFIX = /^(?:[AB][12]\s+German(?:\s+for\s+beginners)?|Intensive German course at your pace)\s*:\s*/i;
+const TEASER_PROMO = /click here|learn german dw|\bDW\b|free online|start practicing/i;
+
+/** The summary part of a DW lesson teaser, or null. */
+export function cleanTeaser(teaser: unknown): string | null {
+  if (typeof teaser !== "string") return null;
+  const sentences = teaser
+    .replace(TEASER_LEVEL_PREFIX, "")
+    .split(/(?<=[.!?])\s+/)
+    .map((x) => x.trim())
+    .filter((x) => x && !TEASER_PROMO.test(x));
+  const text = sentences.join(" ").trim();
+  if (!text) return null;
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 /** Course id from a learngerman.dw.com course URL (…/nicos-weg/c-36519789). */
@@ -30,6 +50,7 @@ export function extractCourseId(url: string): number | null {
 interface GraphQlLesson {
   name?: unknown;
   namedUrl?: unknown;
+  teaser?: unknown;
 }
 
 /** Pure response parsing, split out for tests. */
@@ -44,7 +65,7 @@ export function parseCourseResponse(body: unknown): { title: string | null; less
   const lessons: CourseLesson[] = [];
   for (const lesson of course.lessons as GraphQlLesson[]) {
     if (typeof lesson?.name !== "string" || typeof lesson?.namedUrl !== "string") continue;
-    lessons.push({ title: lesson.name, url: BASE_URL + lesson.namedUrl });
+    lessons.push({ title: lesson.name, url: BASE_URL + lesson.namedUrl, description: cleanTeaser(lesson.teaser) });
   }
   return { title: typeof course.name === "string" ? course.name : null, lessons };
 }
@@ -58,7 +79,7 @@ export async function fetchCourse(
       method: "POST",
       headers: { "Content-Type": "application/json", "User-Agent": BROWSER_UA },
       body: JSON.stringify({
-        query: `{ content(id: ${courseId}, lang: ENGLISH) { ... on Course { name lessons { name namedUrl } } } }`,
+        query: `{ content(id: ${courseId}, lang: ENGLISH) { ... on Course { name lessons { name namedUrl teaser } } } }`,
       }),
       signal: AbortSignal.timeout(15_000),
     });

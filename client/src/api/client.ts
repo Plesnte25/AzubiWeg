@@ -324,6 +324,11 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ done }),
     }),
+  updateUnitDescription: (sourceId: string, unitId: string, description: string | null) =>
+    request<{ source: StudySource }>(`/api/learning/sources/${sourceId}/units/${unitId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ description }),
+    }),
   updateUnitNotes: (sourceId: string, unitId: string, notes: string | null) =>
     request<{ source: StudySource }>(`/api/learning/sources/${sourceId}/units/${unitId}`, {
       method: "PATCH",
@@ -345,6 +350,8 @@ export const api = {
       // with the new file's id; null clears the cover
       coverFileId: string | null;
       stationKey: string | null;
+      // re-fetch the default cover from the link (YouTube thumbnail / og:image)
+      refetchCover: boolean;
     }>,
   ) =>
     request<{ source: StudySource }>(`/api/learning/sources/${id}`, {

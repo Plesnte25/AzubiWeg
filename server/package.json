@@ -16,6 +16,7 @@
     "backfill:example-translation": "tsx scripts/backfill-example-translation.ts",
     "backfill:examples": "tsx scripts/backfill-examples.ts",
     "import:tatoeba": "tsx scripts/import-tatoeba.ts",
+    "backfill:source-covers": "tsx scripts/backfill-source-covers.ts",
     "migrate:notes-bento": "tsx scripts/migrate-notes-bento.ts",
     "backfill:ipa": "tsx scripts/backfill-ipa-slashes.ts",
     "typecheck:scripts": "tsc --noEmit -p scripts/tsconfig.json",

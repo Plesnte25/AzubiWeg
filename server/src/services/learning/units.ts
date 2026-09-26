@@ -6,6 +6,7 @@ export interface NewUnit {
   title: string;
   videoId?: string;
   url?: string;
+  description?: string | null;
 }
 
 /** "Lesson 1..N" placeholders for manual sources with a known total. */
@@ -21,7 +22,7 @@ export function buildPlaylistUnits(videos: PlaylistVideo[]): NewUnit[] {
 }
 
 export function buildCourseUnits(lessons: CourseLesson[]): NewUnit[] {
-  return lessons.map((l, i) => ({ position: i, title: l.title, url: l.url }));
+  return lessons.map((l, i) => ({ position: i, title: l.title, url: l.url, description: l.description }));
 }
 
 export interface UnitLike {
