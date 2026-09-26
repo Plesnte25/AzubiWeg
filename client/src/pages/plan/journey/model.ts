@@ -106,17 +106,3 @@ export function sourceProgress(s: StudySource): { done: number; total: number | 
   const unit = s.unitLabel;
   return { done: s.completedUnits, total, pct, label: total ? `${s.completedUnits}/${total} ${unit}` : `${s.completedUnits} ${unit}` };
 }
-
-const tokenize = (s: string) => new Set(s.toLowerCase().replace(/[^a-z0-9äöüß]+/g, " ").split(" ").filter(Boolean));
-
-/** Best-effort theme match (exact, else most shared words) — for linking a word's Themenfeld to a station. */
-export function bestMatchingStation<T extends { theme: string }>(stations: T[], theme: string): T | null {
-  const exact = stations.find((s) => s.theme === theme);
-  if (exact) return exact;
-  const want = tokenize(theme);
-  const scored = stations
-    .map((s) => ({ s, score: [...want].filter((t) => tokenize(s.theme).has(t)).length }))
-    .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score);
-  return scored[0]?.s ?? null;
-}

@@ -31,8 +31,9 @@ import { extractCourseId, fetchCourse } from "../services/learning/nicosweg.js";
 import { fetchBook } from "../services/learning/googleBooks.js";
 import { fetchPodcast } from "../services/learning/itunesPodcasts.js";
 import { fetchGenericPreview } from "../services/learning/genericPreview.js";
-import { buildCourseUnits, buildManualUnits, buildPlaylistUnits, resizeManualUnits, unitProgress } from "../services/learning/units.js";
-import { extractPlaylistId, fetchPlaylist } from "../services/learning/youtube.js";
+import { buildCourseUnits, buildManualUnits, buildPlaylistUnits, type NewUnit, resizeManualUnits, unitProgress } from "../services/learning/units.js";
+import { extractPlaylistId, extractVideoId, fetchPlaylist } from "../services/learning/youtube.js";
+import { fetchCoverUrl, youtubeThumbnail } from "../services/learning/cover.js";
 import { deleteStoredFile } from "./files.js";
 import { gradeSyllabusExercise } from "../services/learning/exercise-grading.js";
 import { checkpointStations, deriveStations, isStationKey } from "../services/learning/stations.js";
@@ -581,7 +582,7 @@ learningRouter.post("/sources", async (req, res) => {
   const { totalUnits, completedUnits, autoFetch, ...rest } = parsed.data;
 
   let fetchOutcome: FetchOutcome = "manual";
-  let units: { position: number; title: string; videoId?: string; url?: string }[] = [];
+  let units: NewUnit[] = [];
   let scrapedTitle: string | null = null;
   let scrapedProvider: string | null = null;
   let scrapedCoverUrl: string | null = null;
@@ -637,18 +638,25 @@ learningRouter.post("/sources", async (req, res) => {
     } else {
       fetchOutcome = "failed";
     }
-  } else if (autoFetch && (rest.type === "video" || rest.type === "article" || rest.type === "link") && rest.url) {
+  } else if (autoFetch && (rest.type === "youtube" || rest.type === "video" || rest.type === "article" || rest.type === "link") && rest.url) {
+    // "youtube" lands here for a single video or a channel (no list= param)
     const preview = await fetchGenericPreview(rest.url);
     if (preview) {
       scrapedTitle = preview.title;
       scrapedProvider = preview.siteName;
-      scrapedCoverUrl = rest.type !== "link" ? preview.imageUrl : null; // link cards render lighter, no thumbnail
+      scrapedCoverUrl = preview.imageUrl;
       fetchOutcome = "preview";
     } else {
       fetchOutcome = "failed";
     }
   }
   if (units.length === 0 && totalUnits) units = buildManualUnits(totalUnits);
+  // Every source with a link gets a cover from it by default (a YouTube thumbnail, else the page's og:image):
+  // playlists, courses and pages whose preview had no image included.
+  if (autoFetch && rest.url && !scrapedCoverUrl) scrapedCoverUrl = await fetchCoverUrl(rest.url, units);
+  // a YouTube video's own thumbnail beats the generic og:image the preview returned
+  const videoId = rest.url ? extractVideoId(rest.url) : null;
+  if (autoFetch && videoId) scrapedCoverUrl = youtubeThumbnail(videoId);
 
   const finalTitle = rest.title || scrapedTitle || "";
   if (!finalTitle) {
@@ -699,6 +707,8 @@ const patchSourceSchema = z.object({
   // studySourceId: this id) via the existing generic file-upload route,
   // then PATCH here with the new file's id. null clears the cover.
   coverFileId: z.string().nullish(),
+  // re-fetch the default cover from the link (Library "Refresh cover"); a changed url does this too
+  refetchCover: z.boolean().optional(),
 });
 
 learningRouter.patch("/sources/:id", async (req, res) => {
@@ -711,8 +721,12 @@ learningRouter.patch("/sources/:id", async (req, res) => {
   });
   if (!existing) return res.status(404).json({ error: "Study source not found" });
 
-  const data = { ...parsed.data };
+  const { refetchCover, ...data } = parsed.data;
   const hasUnits = existing.units.length > 0;
+  const linkChanged = data.url !== undefined && data.url !== existing.url;
+  const coverUrl = data.url !== undefined ? data.url : existing.url;
+  const fetchedCover =
+    refetchCover || linkChanged ? { coverImageUrl: coverUrl ? await fetchCoverUrl(coverUrl, existing.units) : null } : {};
 
   if (data.coverFileId !== undefined && data.coverFileId !== null) {
     const file = await prisma.uploadedFile.findFirst({ where: { id: data.coverFileId, userId: req.userId } });
@@ -754,6 +768,7 @@ learningRouter.patch("/sources/:id", async (req, res) => {
         where: { id: existing.id },
         data: {
           ...data,
+          ...fetchedCover,
           totalUnits: progress.total,
           completedUnits: progress.done,
         },
@@ -771,6 +786,7 @@ learningRouter.patch("/sources/:id", async (req, res) => {
     where: { id: existing.id },
     data: {
       ...data,
+      ...fetchedCover,
       totalUnits: hasUnits ? existing.totalUnits : total,
       completedUnits: hasUnits
         ? existing.completedUnits
@@ -787,8 +803,10 @@ const unitPatchSchema = z
     done: z.boolean().optional(),
     // per-lesson notes, edited inline in the lesson list
     notes: z.string().max(5000).nullish(),
+    // what the lesson covers (fetched for Nicos Weg, else written by the user)
+    description: z.string().trim().max(500).nullish(),
   })
-  .refine((d) => d.done !== undefined || d.notes !== undefined, {
+  .refine((d) => d.done !== undefined || d.notes !== undefined || d.description !== undefined, {
     message: "Nothing to update",
   });
 
@@ -810,6 +828,7 @@ learningRouter.patch("/sources/:id/units/:unitId", async (req, res) => {
           ? { completedAt: parsed.data.done ? new Date() : null }
           : {}),
         ...(parsed.data.notes !== undefined ? { notes: parsed.data.notes ?? null } : {}),
+        ...(parsed.data.description !== undefined ? { description: parsed.data.description || null } : {}),
       },
     });
     const units = await tx.studySourceUnit.findMany({ where: { sourceId: unit.sourceId } });

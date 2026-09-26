@@ -60,7 +60,6 @@ import type {
   User,
   VaultStatus,
   WeakWord,
-  Themenfeld,
   Word,
   WordFamilyMember, NoteCategory } from "./types";
 
@@ -163,7 +162,7 @@ export const api = {
   // — this always fetches the full vault, no query params.
   words: () => request<{ words: Word[] }>("/api/words"),
   wordsMeta: () => request<{ lessons: { lesson: string; count: number }[] }>("/api/words/meta"),
-  addWords: (words: string[], lesson?: string, classification?: { themenfeld?: Themenfeld[]; level?: CefrLevel }) =>
+  addWords: (words: string[], lesson?: string, classification?: { level?: CefrLevel }) =>
     request<{ words: Word[]; rejected: { word: string; reason: "loanword" | "not-german" }[] }>("/api/words", {
       method: "POST",
       body: JSON.stringify({ words, ...(lesson ? { lesson } : {}), ...classification }),
@@ -171,12 +170,10 @@ export const api = {
   updateWord: (
     id: string,
     data: Partial<
-      Pick<Word, "meaning" | "ipa" | "grammar" | "example" | "lesson" | "themenfeld" | "level" | "leech" | "starred">
+      Pick<Word, "meaning" | "ipa" | "grammar" | "example" | "lesson" | "level" | "leech" | "starred">
     >,
   ) => request<{ word: Word }>(`/api/words/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteWord: (id: string) => request<void>(`/api/words/${id}`, { method: "DELETE" }),
-  reclassifyWords: () =>
-    request<{ total: number; updated: number }>("/api/words/reclassify", { method: "POST" }),
   wordFamily: (id: string) => request<{ members: WordFamilyMember[] }>(`/api/words/${id}/family`),
 
   reviewQueue: () => request<{ due: Word[]; fresh: Word[]; shaky: Word[] }>("/api/reviews/queue"),
@@ -327,6 +324,11 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ done }),
     }),
+  updateUnitDescription: (sourceId: string, unitId: string, description: string | null) =>
+    request<{ source: StudySource }>(`/api/learning/sources/${sourceId}/units/${unitId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ description }),
+    }),
   updateUnitNotes: (sourceId: string, unitId: string, notes: string | null) =>
     request<{ source: StudySource }>(`/api/learning/sources/${sourceId}/units/${unitId}`, {
       method: "PATCH",
@@ -348,6 +350,8 @@ export const api = {
       // with the new file's id; null clears the cover
       coverFileId: string | null;
       stationKey: string | null;
+      // re-fetch the default cover from the link (YouTube thumbnail / og:image)
+      refetchCover: boolean;
     }>,
   ) =>
     request<{ source: StudySource }>(`/api/learning/sources/${id}`, {

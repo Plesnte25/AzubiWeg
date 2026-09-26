@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowSquareOut, Check, Image, Minus, Plus, Trash } from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowSquareOut, Check, Image, Minus, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
 import { api, fetchFileBlobUrl, uploadFile } from "../../../api/client";
-import type { StudySource, StudySourceType, StudySourceUnitLabel } from "../../../api/types";
+import type { StudySource, StudySourceType, StudySourceUnit, StudySourceUnitLabel } from "../../../api/types";
 import { Chip } from "../../../components/ui/Chip";
 import { Modal } from "../../../components/ui/Modal";
 import { PillButton } from "../../../components/ui/PillButton";
@@ -176,6 +176,15 @@ export function SourceModal({ source, stations, pickable, onClose }: { source: S
     },
     onError,
   });
+  const refetchCover = useMutation({
+    mutationFn: () => api.updateStudySource(source.id, { refetchCover: true }),
+    onSuccess: (res) => {
+      if (res.source.coverImageUrl) toast.success("Cover fetched from the link");
+      else toast.info("The link has no cover image");
+      refresh();
+    },
+    onError,
+  });
   const del = useMutation({
     mutationFn: () => api.deleteStudySource(source.id),
     onSuccess: () => {
@@ -227,6 +236,18 @@ export function SourceModal({ source, stations, pickable, onClose }: { source: S
         <PillButton height={40} variant="secondary" icon={<Image size={15} weight="fill" aria-hidden="true" />} disabled={cover.isPending} onClick={() => fileRef.current?.click()}>
           {source.coverFileId ? "Change cover" : "Add cover"}
         </PillButton>
+        {source.url && !source.coverFileId && (
+          <PillButton
+            height={40}
+            variant="secondary"
+            icon={<ArrowClockwise size={15} weight="bold" aria-hidden="true" />}
+            disabled={refetchCover.isPending}
+            onClick={() => refetchCover.mutate()}
+            aria-label="Fetch the cover from the link again"
+          >
+            Refresh
+          </PillButton>
+        )}
         {source.url && (
           <a href={source.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5" style={{ height: 40, padding: "0 14px", border: "2.5px solid var(--line)", borderRadius: 999, background: "var(--plain)", color: "var(--plainText)", fontWeight: 700, fontSize: 14 }}>
             <ArrowSquareOut size={15} weight="bold" aria-hidden="true" />
@@ -250,30 +271,104 @@ export function SourceModal({ source, stations, pickable, onClose }: { source: S
       {source.units.length > 0 && (
         <div className="flex shrink-0 flex-col gap-1.5">
           <span style={eyebrow}>Units · {source.units.filter((u) => u.completedAt).length}/{source.units.length}</span>
-          {source.units.map((u) => {
-            const d = !!u.completedAt;
-            return (
-              <button
-                key={u.id}
-                type="button"
-                role="checkbox"
-                aria-checked={d}
-                onClick={() => unit.mutate({ id: u.id, done: !d })}
-                className="flex cursor-pointer items-center gap-2.5 text-left"
-                style={{ padding: "8px 10px", borderRadius: 12, border: "2px solid var(--line)", background: "var(--plain)", color: "var(--plainText)", font: "inherit" }}
-              >
-                <span className="flex shrink-0 items-center justify-center" style={{ width: 20, height: 20, borderRadius: 6, border: "2.5px solid var(--line)", background: d ? "var(--mint)" : "transparent", color: "var(--onTile)" }}>
-                  {d && <Check size={11} weight="bold" aria-hidden="true" />}
-                </span>
-                <span className="min-w-0 flex-1 truncate" style={{ fontSize: 14, fontWeight: 600, textDecoration: d ? "line-through" : "none", opacity: d ? 0.55 : 1 }}>
-                  {u.position}. {u.title}
-                </span>
-              </button>
-            );
-          })}
+          {source.units.map((u) => (
+            <UnitRow key={u.id} sourceId={source.id} unit={u} onToggle={(done) => unit.mutate({ id: u.id, done })} />
+          ))}
         </div>
       )}
     </Modal>
+  );
+}
+
+/**
+ * One lesson: its own checkbox (completion), then the title and a short description of what it covers. Tapping the
+ * text expands the description; the pencil edits it (fetched descriptions can be corrected, others written).
+ */
+function UnitRow({ sourceId, unit, onToggle }: { sourceId: string; unit: StudySourceUnit; onToggle: (done: boolean) => void }) {
+  const refresh = useSourceRefresh();
+  const done = !!unit.completedAt;
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<string | null>(null);
+  const save = useMutation({
+    mutationFn: (text: string) => api.updateUnitDescription(sourceId, unit.id, text.trim() || null),
+    onSuccess: () => {
+      setDraft(null);
+      refresh();
+    },
+    onError,
+  });
+  return (
+    <div
+      className="flex items-start gap-2.5"
+      style={{ padding: "8px 10px", borderRadius: 12, border: "2px solid var(--line)", background: "var(--plain)", color: "var(--plainText)" }}
+    >
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={done}
+        aria-label={`${unit.title}: ${done ? "done" : "not done"}`}
+        onClick={() => onToggle(!done)}
+        className="flex shrink-0 cursor-pointer items-center justify-center p-0"
+        style={{ width: 22, height: 22, marginTop: 1, borderRadius: 6, border: "2.5px solid var(--line)", background: done ? "var(--mint)" : "transparent", color: "var(--onTile)" }}
+      >
+        {done && <Check size={11} weight="bold" aria-hidden="true" />}
+      </button>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="flex cursor-pointer flex-col gap-0.5 border-0 bg-transparent p-0 text-left"
+          style={{ color: "inherit", font: "inherit" }}
+        >
+          <span className={open ? undefined : "truncate"} style={{ fontSize: 14, fontWeight: 600, textDecoration: done ? "line-through" : "none", opacity: done ? 0.55 : 1, maxWidth: "100%" }}>
+            {unit.position + 1}. {unit.title}
+          </span>
+          {unit.description && draft === null && (
+            <span className={open ? undefined : "line-clamp-2"} style={{ fontSize: 12.5, fontWeight: 500, lineHeight: 1.35, color: "var(--plainMuted)" }}>
+              {unit.description}
+            </span>
+          )}
+        </button>
+        {draft !== null ? (
+          <div className="flex flex-col gap-1.5" style={{ marginTop: 4 }}>
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              maxLength={500}
+              rows={3}
+              autoFocus
+              aria-label={`What ${unit.title} covers`}
+              placeholder="What this lesson covers…"
+              style={{ resize: "vertical", padding: "8px 10px", border: "2px solid var(--line)", borderRadius: 10, background: "var(--plain2)", color: "var(--plainText)", fontSize: 13, fontFamily: "inherit" }}
+            />
+            <div className="flex gap-1.5">
+              <PillButton height={34} disabled={save.isPending} onClick={() => save.mutate(draft)}>
+                Save
+              </PillButton>
+              <PillButton height={34} variant="secondary" onClick={() => setDraft(null)}>
+                Cancel
+              </PillButton>
+            </div>
+          </div>
+        ) : (
+          (open || !unit.description) && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(true);
+                setDraft(unit.description ?? "");
+              }}
+              className="flex cursor-pointer items-center gap-1 self-start border-0 bg-transparent p-0"
+              style={{ color: "var(--plainMuted)", fontSize: 12, fontWeight: 700 }}
+            >
+              <PencilSimple size={12} weight="fill" aria-hidden="true" />
+              {unit.description ? "Edit description" : "Add a description"}
+            </button>
+          )
+        )}
+      </div>
+    </div>
   );
 }
 

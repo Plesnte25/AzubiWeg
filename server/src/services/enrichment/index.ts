@@ -13,15 +13,16 @@ import {
   translateText,
 } from "./kaikki.js";
 import { type PonsBudget, ponsDiagnosticEligible, runPonsDiagnostic } from "./pons.js";
+import { findTatoebaExample, isSimpleExample, wordForms } from "./tatoeba.js";
 
 export { resolveWord, type Resolution, TransientLookupError } from "./kaikki.js";
 export { createPonsBudget, type PonsBudget } from "./pons.js";
 
 // declension/conjugation are app-only columns on Word, same status as
-// themenfeld/level/leech (never part of the vault card format — see Word's
+// level/leech (never part of the vault card format — see Word's
 // own schema comment) — deliberately NOT part of CardFields, which is the
 // strict vault-round-trip contract. Callers must apply these through the
-// same separate "app-only column" write path themenfeld/level already use,
+// same separate "app-only column" write path level already uses,
 // never let them ride along through Card.fields/vault markdown, or a vault
 // resync (which re-parses CardFields fresh from the file, with no
 // declension/conjugation in it) would silently wipe them back to null.
@@ -205,6 +206,18 @@ export async function enrichResolved(
   // translation rather than leave it blank — same free endpoint
   // translateLiteral already uses for the meaning fallback above.
   if (example && !exampleTranslation) exampleTranslation = await translateText(example);
+  // Every word gets a simple bilingual example: when there's still no short,
+  // current-spelling one (Wiktionary's are often long period quotations), or
+  // it couldn't be translated, take a real Tatoeba sentence pair
+  // (human-written German with a human English translation, see tatoeba.ts).
+  // The Wiktionary example stays when Tatoeba has nothing.
+  if (!isPedagogicalExample(example) || !isSimpleExample(example) || !exampleTranslation) {
+    const tatoeba = await findTatoebaExample(
+      res.headword,
+      wordForms(res.headword, { grammar: buildGrammarNote(entry), declension: entry?.declension, conjugation: entry?.conjugation }),
+    );
+    if (tatoeba) ({ de: example, en: exampleTranslation } = tatoeba);
+  }
 
   // Review-flag signals are intrinsic to the resolution itself (ambiguous
   // senses, or the only meaning came from the machine-translation fallback)

@@ -1,8 +1,8 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "@phosphor-icons/react";
 import { cn } from "../../lib/cn";
-import { lockRoot } from "../../lib/inertRoot";
+import { useOverlay } from "../../lib/overlay";
 
 /** True at md+ (768px) — the breakpoint BottomSheet switches from a
  * slide-up mobile sheet to a centered desktop dialog at. A plain
@@ -47,21 +47,19 @@ export function BottomSheet({
   bg?: string;
 }) {
   const isDesktop = useIsDesktop();
+  const { z, isTop } = useOverlay(open);
+  const isTopRef = useRef(isTop);
+  isTopRef.current = isTop;
 
   useEffect(() => {
     if (!open) return;
     const trigger = document.activeElement as HTMLElement | null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const unlock = lockRoot();
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && isTopRef.current()) onClose();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKeyDown);
-      unlock();
       trigger?.focus?.();
     };
   }, [open, onClose]);
@@ -71,8 +69,9 @@ export function BottomSheet({
   return createPortal(
     <>
       <div
-        className="fixed inset-0 z-[60] transition-opacity duration-300"
+        className="fixed inset-0 transition-opacity duration-300"
         style={{
+          zIndex: z,
           background: "var(--scrim)",
           opacity: open ? 1 : 0,
           pointerEvents: open ? "auto" : "none",
@@ -85,13 +84,14 @@ export function BottomSheet({
         aria-modal="true"
         aria-hidden={!open}
         className={cn(
-          "no-scrollbar fixed z-[61] overflow-y-auto transition-[transform,opacity] duration-300",
+          "no-scrollbar fixed overflow-y-auto overscroll-contain transition-[transform,opacity] duration-300",
           isDesktop
             ? "inset-0 m-auto h-fit max-h-[calc(100%-80px)] w-[calc(100%-32px)] max-w-[560px] p-6"
             : "inset-x-1.5 bottom-[calc(6px+env(safe-area-inset-bottom))] max-h-[88%] p-4",
           className,
         )}
         style={{
+          zIndex: z + 1,
           background: bg,
           color: isPlain ? "var(--plainText)" : "var(--onTile)",
           border: "2.5px solid var(--line)",

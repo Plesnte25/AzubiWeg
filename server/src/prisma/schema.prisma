@@ -99,23 +99,6 @@ model HourlyActiveMinutes {
   @@unique([userId, date, hour])
 }
 
-enum Themenfeld {
-  person_familie
-  alltag_zuhause
-  essen_einkaufen
-  arbeit_ausbildung
-  bildung
-  gesundheit
-  reise_verkehr
-  freizeit_kultur
-  medien_technik
-  geld
-  amt_buerokratie
-  gefuehle_meinung
-  natur_umwelt
-  gesellschaft
-}
-
 // Curation/protection state for a card, mirroring add_word.py's
 // <!--curated:...--> vault-marker convention exactly so cards from either
 // writer stay compatible. "generated" is never written as a marker in the
@@ -172,8 +155,6 @@ model Word {
   // app-only state below — never part of the vault card format (see
   // services/vault/format.ts's CardFields), so vault reconcile() upserts
   // never touch these and a resync can't wipe them.
-  // [] = Unclassified; a max of 2 is enforced in zod at the API layer, not here
-  themenfeld Themenfeld[] @default([])
   // null = Unclassified (Wortart/Genus are computed at read time, not stored)
   level      CefrLevel?
   // manual problem-word flag; cleared automatically when graded "easy"
@@ -570,6 +551,8 @@ model StudySourceUnit {
   url         String?
   // free-form per-lesson notes, edited inline in the lesson list
   notes       String?
+  // what the lesson covers: fetched where the source has one (Nicos Weg lesson teasers), editable by the user
+  description String?
   // null = not done
   completedAt DateTime?
 
@@ -897,4 +880,19 @@ model ExternalAccount {
   // "haven't checked X in a while" notification
   lastCheckedAt DateTime?
   createdAt     DateTime  @default(now())
+}
+
+// German–English sentence pairs from Tatoeba (tatoeba.org, CC BY 2.0 FR), the fallback source for a word's
+// bilingual example when kaikki/Wiktionary has no short one. Global, not per user; filled by
+// `npm run import:tatoeba` (scripts/import-tatoeba.ts). The ids are Tatoeba's own, kept for attribution.
+model TatoebaPair {
+  deId      Int      @id
+  enId      Int
+  de        String
+  en        String
+  // lowercased word tokens of `de`, for "sentences containing any form of this word" (GIN, &&)
+  tokens    String[]
+  wordCount Int
+
+  @@index([tokens], type: Gin)
 }

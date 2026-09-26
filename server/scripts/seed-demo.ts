@@ -8,12 +8,13 @@
  *
  * Safe to re-run: every step either checks the same "already seeded" stamp
  * the real app uses, or guards itself with a row-count check before
- * inserting. Run with `npm run seed:demo`.
+ * inserting. Run with `npm run seed:demo`; `npm run seed:demo -- --reset`
+ * deletes the demo account first so changes to this file reach it.
  */
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "node:crypto";
-import type { CefrLevel, Grade, Themenfeld } from "@prisma/client";
+import type { CefrLevel, Grade } from "@prisma/client";
 import { prisma } from "../src/db.js";
 import { activateRoadmapForUser } from "../src/routes/roadmap.js";
 import { setRoadmapTaskCompletion } from "../src/services/learning/completion-sync.js";
@@ -39,38 +40,144 @@ async function seedUser(): Promise<{ id: string }> {
   });
 }
 
+// Shaped like real enriched words (see enrichResolved() / buildGrammarNote() in services/enrichment/index.ts): the
+// meaning carries the Wiktionary POS tag, and `grammar` is "der; Plural: die …" for nouns and the principal parts for
+// verbs, so the word class, gender and noun/verb filters derive the same way they do for a user's own words.
 const DEMO_WORDS: {
   headword: string;
   meaning: string;
+  grammar: string | null;
   example: string;
-  themenfeld: Themenfeld[];
+  exampleTranslation: string;
   level: CefrLevel;
   state: "due" | "new" | "mastered";
+  declension?: Record<string, { sg?: string; pl?: string }>;
+  conjugation?: { present: Record<string, string>; past?: string; perfect?: string };
 }[] = [
-  { headword: "Haus", meaning: "house", example: "Das Haus ist groß.", themenfeld: ["alltag_zuhause"], level: "a1", state: "mastered" },
-  { headword: "Familie", meaning: "family", example: "Meine Familie wohnt in Berlin.", themenfeld: ["person_familie"], level: "a1", state: "mastered" },
-  { headword: "arbeiten", meaning: "to work", example: "Ich arbeite jeden Tag.", themenfeld: ["arbeit_ausbildung"], level: "a1", state: "mastered" },
-  { headword: "Ausbildung", meaning: "vocational training", example: "Sie macht eine Ausbildung als Krankenschwester.", themenfeld: ["arbeit_ausbildung", "bildung"], level: "a1", state: "mastered" },
-  { headword: "essen", meaning: "to eat", example: "Wir essen um sechs Uhr.", themenfeld: ["essen_einkaufen"], level: "a1", state: "mastered" },
-  { headword: "trinken", meaning: "to drink", example: "Er trinkt gern Kaffee.", themenfeld: ["essen_einkaufen"], level: "a1", state: "mastered" },
-  { headword: "Schule", meaning: "school", example: "Die Schule beginnt um acht Uhr.", themenfeld: ["bildung"], level: "a1", state: "mastered" },
-  { headword: "gesund", meaning: "healthy", example: "Obst ist gesund.", themenfeld: ["gesundheit"], level: "a1", state: "mastered" },
-  { headword: "Bahnhof", meaning: "train station", example: "Der Bahnhof ist nicht weit.", themenfeld: ["reise_verkehr"], level: "a1", state: "due" },
-  { headword: "Wochenende", meaning: "weekend", example: "Was machst du am Wochenende?", themenfeld: ["freizeit_kultur"], level: "a1", state: "due" },
-  { headword: "Handy", meaning: "mobile phone", example: "Mein Handy ist kaputt.", themenfeld: ["medien_technik"], level: "a1", state: "due" },
-  { headword: "Geld", meaning: "money", example: "Ich habe kein Geld dabei.", themenfeld: ["geld"], level: "a1", state: "due" },
-  { headword: "Termin", meaning: "appointment", example: "Ich habe einen Termin beim Amt.", themenfeld: ["amt_buerokratie"], level: "a2", state: "due" },
-  { headword: "Meinung", meaning: "opinion", example: "Was ist deine Meinung dazu?", themenfeld: ["gefuehle_meinung"], level: "a2", state: "due" },
-  { headword: "Umwelt", meaning: "environment", example: "Wir müssen die Umwelt schützen.", themenfeld: ["natur_umwelt"], level: "a2", state: "due" },
-  { headword: "Gesellschaft", meaning: "society", example: "Das ist ein Problem für die ganze Gesellschaft.", themenfeld: ["gesellschaft"], level: "a2", state: "due" },
-  { headword: "beantragen", meaning: "to apply for (officially)", example: "Ich möchte ein Visum beantragen.", themenfeld: ["amt_buerokratie"], level: "a2", state: "new" },
-  { headword: "Bewerbung", meaning: "job application", example: "Ich schreibe eine Bewerbung.", themenfeld: ["arbeit_ausbildung"], level: "a2", state: "new" },
-  { headword: "Vorstellungsgespräch", meaning: "job interview", example: "Das Vorstellungsgespräch war erfolgreich.", themenfeld: ["arbeit_ausbildung"], level: "a2", state: "new" },
-  { headword: "Versicherung", meaning: "insurance", example: "Brauche ich eine Versicherung?", themenfeld: ["gesundheit", "amt_buerokratie"], level: "a2", state: "new" },
-  { headword: "Miete", meaning: "rent", example: "Die Miete ist im August fällig.", themenfeld: ["alltag_zuhause", "geld"], level: "a2", state: "new" },
-  { headword: "Kollege", meaning: "colleague", example: "Mein Kollege hilft mir gern.", themenfeld: ["arbeit_ausbildung"], level: "a1", state: "new" },
-  { headword: "pünktlich", meaning: "punctual", example: "Sei bitte pünktlich!", themenfeld: ["alltag_zuhause"], level: "a1", state: "new" },
-  { headword: "Prüfung", meaning: "exam", example: "Die Prüfung ist nächste Woche.", themenfeld: ["bildung"], level: "a2", state: "new" },
+  {
+    headword: "Haus", meaning: "(Noun) house", grammar: "das; Plural: die Häuser",
+    example: "Das Haus ist groß.", exampleTranslation: "The house is big.", level: "a1", state: "mastered",
+    declension: {
+      nom: { sg: "das Haus", pl: "die Häuser" },
+      akk: { sg: "das Haus", pl: "die Häuser" },
+      dat: { sg: "dem Haus", pl: "den Häusern" },
+      gen: { sg: "des Hauses", pl: "der Häuser" },
+    },
+  },
+  {
+    headword: "Familie", meaning: "(Noun) family", grammar: "die; Plural: die Familien",
+    example: "Meine Familie wohnt in Berlin.", exampleTranslation: "My family lives in Berlin.", level: "a1", state: "mastered",
+  },
+  {
+    headword: "arbeiten", meaning: "(Verb) to work", grammar: "arbeitet, arbeitete, hat gearbeitet",
+    example: "Ich arbeite jeden Tag.", exampleTranslation: "I work every day.", level: "a1", state: "mastered",
+    conjugation: {
+      present: { ich: "arbeite", du: "arbeitest", er: "arbeitet", wir: "arbeiten", ihr: "arbeitet", sie: "arbeiten" },
+      past: "arbeitete",
+      perfect: "hat gearbeitet",
+    },
+  },
+  {
+    headword: "Ausbildung", meaning: "(Noun) vocational training", grammar: "die; Plural: die Ausbildungen",
+    example: "Sie macht eine Ausbildung als Krankenschwester.", exampleTranslation: "She is training as a nurse.", level: "a1", state: "mastered",
+    declension: {
+      nom: { sg: "die Ausbildung", pl: "die Ausbildungen" },
+      akk: { sg: "die Ausbildung", pl: "die Ausbildungen" },
+      dat: { sg: "der Ausbildung", pl: "den Ausbildungen" },
+      gen: { sg: "der Ausbildung", pl: "der Ausbildungen" },
+    },
+  },
+  {
+    headword: "essen", meaning: "(Verb) to eat", grammar: "isst, aß, hat gegessen",
+    example: "Wir essen um sechs Uhr.", exampleTranslation: "We eat at six o'clock.", level: "a1", state: "mastered",
+    conjugation: {
+      present: { ich: "esse", du: "isst", er: "isst", wir: "essen", ihr: "esst", sie: "essen" },
+      past: "aß",
+      perfect: "hat gegessen",
+    },
+  },
+  {
+    headword: "trinken", meaning: "(Verb) to drink", grammar: "trinkt, trank, hat getrunken",
+    example: "Er trinkt gern Kaffee.", exampleTranslation: "He likes drinking coffee.", level: "a1", state: "mastered",
+  },
+  {
+    headword: "Schule", meaning: "(Noun) school", grammar: "die; Plural: die Schulen",
+    example: "Die Schule beginnt um acht Uhr.", exampleTranslation: "School starts at eight o'clock.", level: "a1", state: "mastered",
+  },
+  {
+    headword: "gesund", meaning: "(Adjective) healthy", grammar: null,
+    example: "Obst ist gesund.", exampleTranslation: "Fruit is healthy.", level: "a1", state: "mastered",
+  },
+  {
+    headword: "Bahnhof", meaning: "(Noun) train station", grammar: "der; Plural: die Bahnhöfe",
+    example: "Der Bahnhof ist nicht weit.", exampleTranslation: "The train station isn't far.", level: "a1", state: "due",
+    declension: {
+      nom: { sg: "der Bahnhof", pl: "die Bahnhöfe" },
+      akk: { sg: "den Bahnhof", pl: "die Bahnhöfe" },
+      dat: { sg: "dem Bahnhof", pl: "den Bahnhöfen" },
+      gen: { sg: "des Bahnhofs", pl: "der Bahnhöfe" },
+    },
+  },
+  {
+    headword: "Wochenende", meaning: "(Noun) weekend", grammar: "das; Plural: die Wochenenden",
+    example: "Was machst du am Wochenende?", exampleTranslation: "What are you doing at the weekend?", level: "a1", state: "due",
+  },
+  {
+    headword: "Handy", meaning: "(Noun) mobile phone", grammar: "das; Plural: die Handys",
+    example: "Mein Handy ist kaputt.", exampleTranslation: "My mobile phone is broken.", level: "a1", state: "due",
+  },
+  {
+    headword: "Geld", meaning: "(Noun) money", grammar: "das; Plural: die Gelder",
+    example: "Ich habe kein Geld dabei.", exampleTranslation: "I don't have any money on me.", level: "a1", state: "due",
+  },
+  {
+    headword: "Termin", meaning: "(Noun) appointment", grammar: "der; Plural: die Termine",
+    example: "Ich habe einen Termin beim Amt.", exampleTranslation: "I have an appointment at the authorities' office.", level: "a2", state: "due",
+  },
+  {
+    headword: "Meinung", meaning: "(Noun) opinion", grammar: "die; Plural: die Meinungen",
+    example: "Was ist deine Meinung dazu?", exampleTranslation: "What's your opinion on that?", level: "a2", state: "due",
+  },
+  {
+    headword: "Umwelt", meaning: "(Noun) environment", grammar: "die; Plural: die Umwelten",
+    example: "Wir müssen die Umwelt schützen.", exampleTranslation: "We have to protect the environment.", level: "a2", state: "due",
+  },
+  {
+    headword: "Gesellschaft", meaning: "(Noun) society", grammar: "die; Plural: die Gesellschaften",
+    example: "Das ist ein Problem für die ganze Gesellschaft.", exampleTranslation: "That is a problem for the whole of society.", level: "a2", state: "due",
+  },
+  {
+    headword: "beantragen", meaning: "(Verb) to apply for (officially)", grammar: "beantragt, beantragte, hat beantragt",
+    example: "Ich möchte ein Visum beantragen.", exampleTranslation: "I would like to apply for a visa.", level: "a2", state: "new",
+  },
+  {
+    headword: "Bewerbung", meaning: "(Noun) job application", grammar: "die; Plural: die Bewerbungen",
+    example: "Ich schreibe eine Bewerbung.", exampleTranslation: "I'm writing a job application.", level: "a2", state: "new",
+  },
+  {
+    headword: "Vorstellungsgespräch", meaning: "(Noun) job interview", grammar: "das; Plural: die Vorstellungsgespräche",
+    example: "Das Vorstellungsgespräch war erfolgreich.", exampleTranslation: "The job interview went well.", level: "a2", state: "new",
+  },
+  {
+    headword: "Versicherung", meaning: "(Noun) insurance", grammar: "die; Plural: die Versicherungen",
+    example: "Brauche ich eine Versicherung?", exampleTranslation: "Do I need insurance?", level: "a2", state: "new",
+  },
+  {
+    headword: "Miete", meaning: "(Noun) rent", grammar: "die; Plural: die Mieten",
+    example: "Die Miete ist im August fällig.", exampleTranslation: "The rent is due in August.", level: "a2", state: "new",
+  },
+  {
+    headword: "Kollege", meaning: "(Noun) colleague", grammar: "der; Plural: die Kollegen",
+    example: "Mein Kollege hilft mir gern.", exampleTranslation: "My colleague is happy to help me.", level: "a1", state: "new",
+  },
+  {
+    headword: "pünktlich", meaning: "(Adjective) punctual", grammar: null,
+    example: "Sei bitte pünktlich!", exampleTranslation: "Please be on time!", level: "a1", state: "new",
+  },
+  {
+    headword: "Prüfung", meaning: "(Noun) exam", grammar: "die; Plural: die Prüfungen",
+    example: "Die Prüfung ist nächste Woche.", exampleTranslation: "The exam is next week.", level: "a2", state: "new",
+  },
 ];
 
 async function seedWords(userId: string): Promise<void> {
@@ -89,8 +196,11 @@ async function seedWords(userId: string): Promise<void> {
         headword: w.headword,
         sortKey,
         meaning: w.meaning,
+        grammar: w.grammar,
         example: w.example,
-        themenfeld: w.themenfeld,
+        exampleTranslation: w.exampleTranslation,
+        ...(w.declension ? { declension: w.declension } : {}),
+        ...(w.conjugation ? { conjugation: w.conjugation } : {}),
         level: w.level,
         srDue,
         srInterval,
@@ -200,6 +310,16 @@ async function seedApplications(userId: string): Promise<void> {
 }
 
 
+/** The instant that is `hour:minute` Europe/Berlin time, `daysAhead` days from today. */
+function berlinTime(daysAhead: number, hour: number, minute: number): Date {
+  const day = new Date(Date.now() + daysAhead * DAY_MS);
+  const guess = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), hour, minute));
+  // Berlin's offset on that day (+1 or +2): format the UTC guess in Berlin and compare wall-clock hours
+  const berlinHour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", hour: "2-digit", hourCycle: "h23" }).format(guess));
+  const offsetHours = (berlinHour - hour + 24) % 24;
+  return new Date(guess.getTime() - offsetHours * 3_600_000);
+}
+
 const daysAgo = (n: number, hour = 18) => {
   const d = new Date(Date.now() - n * DAY_MS);
   d.setHours(hour, (n * 7) % 60, 0, 0);
@@ -253,6 +373,22 @@ async function seedSyllabusProgress(userId: string): Promise<void> {
 }
 
 /** Stats/Plan: checkpoint 1 score, a mock exam, and per-type self-test scores. */
+/**
+ * 20 gender-drill answers over the demo nouns, `misses` of them wrong, so Stats' Articles tile has real per-article
+ * accuracy (it reads the answers, not the score). Misses land on "das" nouns first, the classic trap.
+ */
+async function drillAnswers(userId: string, misses: number): Promise<{ wordId: string; article: string; picked: string }[]> {
+  const nouns = await prisma.word.findMany({ where: { userId, grammar: { startsWith: "d" } }, select: { id: true, grammar: true }, orderBy: { sortKey: "asc" } });
+  const withArticle = nouns
+    .map((n) => ({ wordId: n.id, article: n.grammar!.slice(0, 3) }))
+    .filter((n) => n.article === "der" || n.article === "die" || n.article === "das");
+  if (withArticle.length === 0) return [];
+  const answers = Array.from({ length: 20 }, (_, i) => withArticle[i % withArticle.length]!);
+  const order = [...answers.keys()].sort((a, b) => Number(answers[b]!.article === "das") - Number(answers[a]!.article === "das"));
+  const wrong = new Set(order.slice(0, misses));
+  return answers.map((a, i) => ({ ...a, picked: wrong.has(i) ? (a.article === "der" ? "die" : "der") : a.article }));
+}
+
 async function seedTests(userId: string): Promise<void> {
   if ((await prisma.selfTestResult.count({ where: { userId } })) > 0) return;
   await prisma.selfTestResult.createMany({
@@ -260,8 +396,8 @@ async function seedTests(userId: string): Promise<void> {
       { userId, kind: "checkpoint", checkpointIndex: 1, level: "a1", score: 16, total: 20, takenAt: daysAgo(5) },
       { userId, kind: "mixed", level: "a1", score: 8, total: 10, takenAt: daysAgo(12) },
       { userId, kind: "mixed", level: "a1", score: 9, total: 10, takenAt: daysAgo(3) },
-      { userId, kind: "gender_drill", level: "a1", score: 17, total: 20, takenAt: daysAgo(8) },
-      { userId, kind: "gender_drill", level: "a1", score: 19, total: 20, takenAt: daysAgo(2) },
+      { userId, kind: "gender_drill", level: "a1", score: 17, total: 20, takenAt: daysAgo(8), answers: await drillAnswers(userId, 3) },
+      { userId, kind: "gender_drill", level: "a1", score: 19, total: 20, takenAt: daysAgo(2), answers: await drillAnswers(userId, 1) },
       { userId, kind: "listen_type", level: "a1", score: 7, total: 10, takenAt: daysAgo(4) },
     ],
   });
@@ -277,7 +413,7 @@ const DEMO_NOTES: { title: string; body: string; category: "grammar" | "mistakes
   { title: "Bäckerei small talk", body: "<p>Ich hätte gern zwei Brötchen, bitte. — Sonst noch etwas? — Nein, danke, das ist alles.</p>", category: "everyday" },
   { title: "Interview: Pflege", body: "<p>Warum möchten Sie in der Pflege arbeiten? Prepare 3 sentences about motivation.</p>", category: "jobs", app: "Rheinland Pflege gGmbH" },
   { title: "Easy German #412", body: "<p>Heard <em>eigentlich</em> five times: softens a statement, like “actually”.</p>", category: "listening" },
-  { title: "", body: "<p>Termin <strong>vereinbaren</strong>, not machen, in formal emails.</p>", category: "everyday", word: "termin" },
+  { title: "Termin vereinbaren", body: "<p>Termin <strong>vereinbaren</strong>, not machen, in formal emails.</p>", category: "everyday", word: "termin" },
 ];
 
 /** Notes sticky wall: every category, two pinned, grammar/mistakes in the "Surfaced today" rotation. */
@@ -315,7 +451,7 @@ async function seedSources(userId: string): Promise<void> {
   const sources = [
     { type: "youtube" as const, provider: "Easy German", title: "Easy German — Super Easy", url: "https://www.youtube.com/@EasyGerman", totalUnits: 40, completedUnits: 14, unitLabel: "episodes" as const, station: 8 },
     { type: "book" as const, provider: "Hueber", title: "Menschen A1.1 Kursbuch", url: null, totalUnits: 12, completedUnits: 7, unitLabel: "chapters" as const, station: 7 },
-    { type: "course" as const, provider: "Deutsche Welle", title: "Nicos Weg A1", url: "https://learngerman.dw.com/de/nicos-weg/c-36519687", totalUnits: 76, completedUnits: 31, unitLabel: "lessons" as const, station: 6 },
+    { type: "course" as const, provider: "Deutsche Welle", title: "Nicos Weg A1", url: "https://learngerman.dw.com/en/nicos-weg/c-36519789", totalUnits: 76, completedUnits: 31, unitLabel: "lessons" as const, station: 6 },
   ];
   for (const [i, src] of sources.entries()) {
     const { station, ...data } = src;
@@ -347,8 +483,8 @@ async function seedJobDetails(userId: string): Promise<void> {
     const lvl = levels[app.company];
     if (lvl) await prisma.application.update({ where: { id: app.id }, data: { germanLevel: lvl, location: app.company.startsWith("Rheinland") ? "Köln" : null } });
     if (app.company === "Rheinland Pflege gGmbH") {
-      const at = new Date(Date.now() + 4 * DAY_MS);
-      at.setHours(10, 30, 0, 0);
+      // 10:30 in Köln, where the interview is. setHours() would use the server's zone, and prod runs in UTC.
+      const at = berlinTime(4, 10, 30);
       await prisma.applicationEvent.createMany({
         data: [
           { applicationId: app.id, type: "status_change", fromStatus: "applied", toStatus: "interview", occurredAt: daysAgo(3) },
@@ -383,6 +519,12 @@ async function seedActivity(userId: string): Promise<void> {
 }
 
 async function main() {
+  // --reset: delete the demo account first (every relation cascades), so seed changes reach an already-seeded demo.
+  // The steps below only fill empty tables, so without it an existing demo keeps its old data.
+  if (process.argv.includes("--reset")) {
+    const deleted = await prisma.user.deleteMany({ where: { email: DEMO_EMAIL } });
+    console.log(`--reset: removed ${deleted.count} demo account`);
+  }
   const user = await seedUser();
 
   await ensureSyllabusSeeded(user.id);

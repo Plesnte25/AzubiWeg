@@ -466,8 +466,9 @@ export function WordsTile({ words, onOpen }: { words: BentoDashboard["words"]; o
       className="flex cursor-pointer flex-col justify-between gap-2 text-left"
       style={{ gridArea: "words", padding: pad(20), font: "inherit" }}
     >
+      {/* sits above the label row: on a 360px phone the tile is only as wide as "WORTSCHATZ", so a lower sticker covered it */}
       {words.newThisWeek > 0 && (
-        <Starburst size={62} tilt={10} shadow={3} style={{ position: "absolute", top: -18, right: -10 }}>
+        <Starburst size={56} tilt={10} shadow={3} style={{ position: "absolute", top: -30, right: -12 }}>
           <span style={{ fontWeight: 700, fontSize: 14 }}>+{words.newThisWeek}</span>
         </Starburst>
       )}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { cn } from "../lib/cn";
 import { Outlet, useLocation } from "react-router-dom";
 import { useActivityHeartbeat } from "../hooks/useActivityHeartbeat";
@@ -86,6 +86,12 @@ export default function Layout() {
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   useActivityHeartbeat();
+
+  // A new page starts at the top, not at the previous page's scroll offset. Keyed on the pathname only, so query or
+  // hash changes within a page don't jump.
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [location.pathname]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

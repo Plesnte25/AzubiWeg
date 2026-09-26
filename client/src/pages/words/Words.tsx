@@ -315,7 +315,8 @@ export default function Words() {
         <RoundSticker size={56} tilt={14} bg="var(--lemon)" style={{ position: "absolute", top: -16, right: -10, fontSize: 12 }}>
           wackel!
         </RoundSticker>
-        <span className="uppercase" style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".08em" }}>
+        {/* paddingRight keeps the label clear of the sticker; on a narrow phone it wraps instead of hiding under it */}
+        <span className="uppercase" style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".08em", paddingRight: 40 }}>
           Shaky words
         </span>
         <div className="flex items-baseline gap-2">

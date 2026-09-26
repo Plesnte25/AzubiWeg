@@ -256,7 +256,7 @@ export function NotesTile({
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Write a note while it's fresh…"
           aria-label="New station note"
-          style={{ flex: 1, minWidth: 0, height: 48, resize: "none", padding: "8px 10px", border: "2.5px solid var(--line)", borderRadius: 12, background: "var(--plain)", color: "var(--plainText)", fontSize: 14, boxSizing: "border-box" }}
+          style={{ flex: 1, minWidth: 0, height: 58, lineHeight: 1.25, resize: "none", padding: "8px 10px", border: "2.5px solid var(--line)", borderRadius: 12, background: "var(--plain)", color: "var(--plainText)", fontSize: 14, boxSizing: "border-box" }}
         />
         <button
           type="button"

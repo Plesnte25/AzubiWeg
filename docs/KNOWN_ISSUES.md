@@ -55,26 +55,65 @@ Knowingly shipped without these; pick them up after the Bento deploy.
 Spotted while capturing the README screenshots from production. The user is testing on multiple screens; their
 findings join this list, then all post-deploy bugs are fixed together.
 
-17. **sm bottom tab bar isn't sticky** (high). On a 390×844 phone the `SmBottomNav`
+17. ✅ **Fixed** (`feb2017`: `overflow-x: clip` on html/body) — **sm bottom tab bar isn't sticky** (high). On a 390×844 phone the `SmBottomNav`
     (`components/chrome/Chrome.tsx`, `sticky bottom-[…]`) sits at the end of the page (top ≈ 2344px on Today, document
     2422px tall) instead of pinned to the bottom of the viewport, so switching tabs on a phone means scrolling all the
     way down. Likely an ancestor in `Layout.tsx` breaks the sticky containing block (overflow/height); check every
     page, not only Today.
-18. **Demo words have no word class** (medium, demo only). `server/scripts/seed-demo.ts` gives words a plain
+18. ✅ **Fixed** (`792f442`: seed words carry POS-tagged meanings + grammar) — **Demo words have no word class** (medium, demo only). `server/scripts/seed-demo.ts` gives words a plain
     `meaning` and no `grammar`, so `deriveWortart()` (`services/vocab/classify.ts`) falls back: every row shows a
     generic "word" tag, "arbeiten" is labelled Funktionswort, the Nouns/Verbs filters are empty and der·die·das says
     "no nouns yet". Real, enriched words are unaffected. After the fix: re-seed prod's demo and re-capture
     `docs/screenshots/words-*.png`.
-19. **Stats "Mastery by skill" clips its last row** (low). At lg (1440×900) the Speaking row is cut off at the tile's
+19. ✅ **Fixed** (`8e88c60`) — **Stats "Mastery by skill" clips its last row** (low). At lg (1440×900) the Speaking row is cut off at the tile's
     bottom edge.
-20. **Demo note titled "Untitled"** (low, demo only). One Everyday seed note ("Termin vereinbaren, not machen…") has
+20. ✅ **Fixed** (`792f442`) — **Demo note titled "Untitled"** (low, demo only). One Everyday seed note ("Termin vereinbaren, not machen…") has
     no title.
-21. **Demo interview shows 16:00 instead of 10:30** (low, demo only). The seed ran on the UTC server, so the
+21. ✅ **Fixed** (`792f442`: seeded as 10:30 Europe/Berlin; see #32 for what an IST viewer sees) — **Demo interview shows 16:00 instead of 10:30** (low, demo only). The seed ran on the UTC server, so the
     interview time was built in UTC rather than the intended local time.
 
 Covered by the planned items, not separate fixes: pages render nothing while their queries load (Plan is blank for
 ~1–3 s) → loading states; `client/scripts/shots.mjs` waits only for network idle, so it can capture a page before it
 renders → make it wait for content as part of the loading-states item.
+
+### Found by the user on mobile (2026-09-26)
+
+Added by the user from phone testing; fixed in the same post-deploy pass (plan
+`~/.claude/plans/structured-splashing-harbor.md`, branch `bugfix/post-bento`).
+
+22. ✅ **Fixed** (`feb2017`) — **App opens on Words, not Today.** A home-screen shortcut saved `/words` as its address;
+    there was no web manifest. `manifest.webmanifest` now sets `start_url: "/"` (re-add the home-screen icon once).
+23. ✅ **Fixed** (`feb2017`) — **Page behind a modal scrolls.** `lib/overlay.ts` pins the page while any Modal /
+    BottomSheet / command palette is open (iOS-safe) and restores the scroll position on close.
+24. ✅ **Fixed** (`feb2017`) — **New page opens at the previous page's scroll position.** Layout scrolls to the top on
+    every pathname change.
+25. ✅ **Fixed** (`d43d9f4`) — **Sources: cover should come from the link; units need a description.** Default covers
+    are the YouTube thumbnail or the page's og:image; units have a description (DW teasers for Nicos Weg, editable
+    everywhere). See #33 for what's still missing.
+26. ✅ **Fixed** (`8e88c60`) — **Elements cut off on phones.** At 360px: the bottom nav ran off the edge, the weekly-goal
+    ring text overflowed, the Bewerbungen funnel labels were cut, the Lernzeit goal label was see-through, stickers
+    covered the Wortschatz / Shaky words labels, and the Plan station-note box clipped its placeholder.
+27. ✅ **Fixed** (`feb2017`) — **Word details modal opens behind the word sheet.** Overlays now stack in open order,
+    and Esc closes only the top one.
+28. ✅ **Fixed** (`8d0e99e`) — **Inconsistent examples (bilingual / German only / none).** Every word gets a simple
+    bilingual example: Wiktionary's when it is short and current, else a Tatoeba sentence pair. Existing words:
+    `npm run backfill:examples` (dry run, then `--apply`).
+29. ✅ **Fixed** (`792f442`) — **Themenfeld in Add word.** Removed everywhere, column included; the add form was
+    tightened too (Enter saves, grows with a batch, no autocorrect, save button stays above the keyboard).
+30. ✅ **Fixed** (`792f442`) — **Gender drill % on Words but not Stats.** Stats' Articles tile is now "Gender drill" with
+    the overall drill score; the demo's drills carry answers so the per-article bars fill.
+31. ✅ **Fixed** (`09edf2f`) — **Note previews lose bullets and styling.** `NotePreview` keeps lists, paragraphs and
+    inline styles.
+
+### Found while fixing the above (2026-09-26)
+
+32. **No per-user timezone** (medium). The server's day boundaries (`dashboard.ts`, `activity.ts`, `reviews.ts`,
+    `reviews/history.ts`) use the server's zone, which is UTC in prod, and the client shows times in the browser's
+    zone. So "today" rolls over at 05:30 IST, and times entered or seeded for Germany show shifted for a viewer in
+    India (the demo interview at 10:30 Berlin shows as 14:00 IST). Needs a `User.timeZone` and zone-aware day math.
+33. **Sources: YouTube gaps** (low). A YouTube *channel* link gets no cover (the channel page has no usable og:image
+    for the fetcher), and playlist units get no description (the playlist page has no per-video descriptions; fetching
+    every video page is too heavy). Both fall back to the placeholder / "Add a description".
 
 ## Resolved during the redesign (for reference — no action needed)
 
@@ -1117,16 +1156,3 @@ new. All of these were found by actually driving the app in a browser
   schema.prisma — same honest-best-effort approach `bestMatchingStation()`
   already uses elsewhere). All 6 verified working end-to-end in a real
   browser (Playwright against the demo account), not just typechecked.
-
-
-Issues found on mobile 
-1. The very first page I'm seeing when opening app is "Words" page not dashboard.
-2. State when any modal is opened, background scrolling should pause- only the scrolling over the modal should be acceptable.
-3. When shuffling over pages, always start for top, currently it positioned itself from wherever the last page we transitioned from.
-4. sources- i. The option to change or select any photo for "cover" is great but by default it should fetch from the link itself, for e.g., you tube link can  visualize you tube logo as the cover. ii. currently all the units render as checklist only, once tapped, get strikethrough (making complete) and another to revert it. Wouldn't it be more optimal if we could also provide some brief description as what the student will study in that particular unit.
-5. there are lot of elements that are being cut over at mobile screen, for e.g., day streak badges or notes - many elements aren't positioned efficiently and require some detail precise changes.
-6. the word details page modal is not rendering correctly and being displayed behind the word modal and not serving its purpose.
-7. Word description modal- some words has bilingual examples, some has only German & some neither; this inconsistency is not efficient, each and every word needs a simple bilingual example
-8. adding words has "Themenfield"- when we are not displaying or using this pipeline, it was deprecated long before, so keeping this is not right. also adding word input area needs minor optimisation. 
-9. in words page gender drill has its respective percentage, but not on stats page. 
-10. the default preview of any note with certain styling for e.g., bullet points, they are not visible in preview, making it bit confusing

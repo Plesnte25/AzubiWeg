@@ -6,7 +6,8 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { BATCH_DELAY_MS, createPonsBudget, delay, enrichResolved, resolveWordSafe } from "../services/enrichment/index.js";
-import { classifyTheme, strength, THEMENFELD_VALUES, withComputedFields } from "../services/vocab/classify.js";
+import { translateText } from "../services/enrichment/kaikki.js";
+import { classifyLevel, strength, withComputedFields } from "../services/vocab/classify.js";
 import { firstProtected, formatCardLine } from "../services/vault/format.js";
 import { appAudioDir, cardFromBlock, makeCard, vaultFiles, vaultSync } from "../services/vault/sync.js";
 import { listeningAudioFor } from "../services/learning/listening-audio.js";
@@ -48,45 +49,20 @@ wordsRouter.get("/meta", async (req, res) => {
   });
 });
 
-// Fills in themenfeld/level for words that are missing one or the other —
-// e.g. words that entered via the vault-sync path before that path ran
-// classifyTheme(), or words added before the heuristic below was refined.
-// Only ever fills a gap, never overwrites a value that's already set
-// (whether from a prior auto-classification or a manual edit), so it's safe
-// to expose as a repeatable action rather than a one-shot admin script.
-wordsRouter.post("/reclassify", async (req, res) => {
-  const words = await prisma.word.findMany({
-    where: { userId: req.userId, OR: [{ themenfeld: { equals: [] } }, { level: null }] },
-  });
-  const updates = words
-    .map((w) => {
-      const auto = classifyTheme(w);
-      const data: Prisma.WordUpdateInput = {};
-      if (w.themenfeld.length === 0 && auto.themenfeld.length > 0) data.themenfeld = auto.themenfeld;
-      if (w.level === null && auto.level !== null) data.level = auto.level;
-      return Object.keys(data).length ? prisma.word.update({ where: { id: w.id }, data }) : null;
-    })
-    .filter((q) => q !== null);
-  if (updates.length) await prisma.$transaction(updates);
-  res.json({ total: words.length, updated: updates.length });
-});
-
 const addSchema = z.object({
   words: z.array(z.string().trim().min(1).max(60)).min(1).max(50),
   lesson: z
     .string()
     .regex(/^[\w-]+$/)
     .nullish(),
-  // left unset ("Auto") to run classifyTheme() per word; sent explicit to skip it and use as-is
-  // (themenfeld is a non-nullable array column — [] means explicitly "Unclassified", not "auto")
-  themenfeld: z.array(z.enum(THEMENFELD_VALUES)).max(2).optional(),
+  // left unset ("Auto") to derive it from the lesson tag (classifyLevel); sent explicit to use as-is
   level: z.enum(["a1", "a2", "b1"]).nullish(),
 });
 
 wordsRouter.post("/", async (req, res) => {
   const parsed = addSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
-  const { words, lesson, themenfeld: explicitThemenfeld, level: explicitLevel } = parsed.data;
+  const { words, lesson, level: explicitLevel } = parsed.data;
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
   const audioDir = user.vaultPath ? vaultFiles(user.vaultPath).audioDir : appAudioDir(user.id);
@@ -100,7 +76,7 @@ wordsRouter.post("/", async (req, res) => {
   for (const [i, word] of words.entries()) {
     let sortKey: string;
     // declension/conjugation/exampleTranslation are app-only columns (never
-    // part of the vault card format, same status as themenfeld/level below)
+    // part of the vault card format, same status as level below)
     // — captured here from whichever branch resolved the word, applied in
     // the unified app-only update after both branches, never through
     // Card.fields.
@@ -269,23 +245,23 @@ wordsRouter.post("/", async (req, res) => {
       continue;
     }
 
-    // themenfeld/level/declension/conjugation/exampleTranslation are
-    // app-only columns (never part of the vault card format), so this
-    // always writes straight to Postgres regardless of user.vaultPath.
+    // level/declension/conjugation/exampleTranslation are app-only columns
+    // (never part of the vault card format), so this always writes straight
+    // to Postgres regardless of user.vaultPath.
     const created = await prisma.word.findUniqueOrThrow({
       where: { userId_sortKey: { userId: user.id, sortKey } },
     });
-    // Level and Theme are overridden independently — leaving one on "Auto"
-    // while the other is explicit still runs the classifier for the "Auto" one.
-    const auto = classifyTheme(created);
-    const classified = {
-      themenfeld: explicitThemenfeld !== undefined ? explicitThemenfeld : auto.themenfeld,
-      level: explicitLevel !== undefined ? explicitLevel : auto.level,
-      // Json? columns need Prisma's JsonNull sentinel, not plain `null`, to
-      // write a real SQL NULL rather than an ambiguous JSON-null value.
-      declension: (declension ?? Prisma.JsonNull) as Prisma.InputJsonValue,
-      conjugation: (conjugation ?? Prisma.JsonNull) as Prisma.InputJsonValue,
-      exampleTranslation,
+    // Only non-null values are written. Adding an inflected form of a word that
+    // already exists takes the vault merge shortcut, which computes none of
+    // these; writing its nulls wiped the lemma's real tables, translation and
+    // level.
+    const autoLevel = classifyLevel(created.lesson);
+    const level = explicitLevel !== undefined ? explicitLevel : (autoLevel ?? undefined);
+    const classified: Prisma.WordUpdateInput = {
+      ...(level !== undefined ? { level } : {}),
+      ...(declension != null ? { declension: declension as Prisma.InputJsonValue } : {}),
+      ...(conjugation != null ? { conjugation: conjugation as Prisma.InputJsonValue } : {}),
+      ...(exampleTranslation ? { exampleTranslation } : {}),
     };
     const withClassification = await prisma.word.update({
       where: { id: created.id },
@@ -309,7 +285,6 @@ const patchSchema = z.object({
     .regex(/^[\w-]+$/)
     .nullish(),
   // app-only — never part of the vault card format, see the write path below
-  themenfeld: z.array(z.enum(THEMENFELD_VALUES)).max(2).optional(),
   level: z.enum(["a1", "a2", "b1"]).nullish(),
   leech: z.boolean().optional(),
   starred: z.boolean().optional(),
@@ -318,12 +293,12 @@ const patchSchema = z.object({
 wordsRouter.patch("/:id", async (req, res) => {
   const parsed = patchSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
-  const { themenfeld, level, leech, starred, ...vaultPatch } = parsed.data;
+  const { level, leech, starred, ...vaultPatch } = parsed.data;
 
   const word = await prisma.word.findFirst({ where: { id: req.params.id, userId: req.userId } });
   if (!word) return res.status(404).json({ error: "Word not found" });
 
-  // A request touching only app-only fields (starred/leech/themenfeld/level)
+  // A request touching only app-only fields (starred/leech/level)
   // must never change curation -- only an actual content edit resolves a
   // review/mt/manual card (or marks a plain generated one manual). This is
   // the app-side equivalent of the Python vault's manual marker-flip
@@ -356,14 +331,20 @@ wordsRouter.patch("/:id", async (req, res) => {
       data: { ...fields, rawBlock: newLine + oldCard.srLines.join("") },
     });
   }
-  // themenfeld/level/leech/starred bypass the vault entirely — they have no
-  // representation in the card format, so they always go straight to
+  // A changed example needs its own translation: the old one belonged to the
+  // old sentence. Cleared when the new example can't be translated right now.
+  const exampleChanged = vaultPatch.example !== undefined && vaultPatch.example !== word.example;
+  const exampleTranslation = exampleChanged
+    ? (fields.example ? await translateText(fields.example) : null)
+    : undefined;
+  // level/leech/starred/exampleTranslation bypass the vault entirely — they
+  // have no representation in the card format, so they always go straight to
   // Postgres regardless of user.vaultPath (see schema.prisma's Word model).
-  if (themenfeld !== undefined || level !== undefined || leech !== undefined || starred !== undefined) {
+  if (level !== undefined || leech !== undefined || starred !== undefined || exampleTranslation !== undefined) {
     await prisma.word.update({
       where: { id: word.id },
       data: {
-        ...(themenfeld !== undefined ? { themenfeld } : {}),
+        ...(exampleTranslation !== undefined ? { exampleTranslation } : {}),
         ...(level !== undefined ? { level } : {}),
         ...(leech !== undefined ? { leech } : {}),
         ...(starred !== undefined ? { starred } : {}),
