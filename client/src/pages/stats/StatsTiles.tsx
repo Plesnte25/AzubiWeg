@@ -1,3 +1,4 @@
+import { cn } from "../../lib/cn";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { Briefcase, Fire, Lightning, Sparkle } from "@phosphor-icons/react";
 import type { ApplicationStats, ArticleAccuracy, BentoDashboard, ExamStatus, GoetheReadiness, RoutePace, WeakWord, Word } from "../../api/types";
@@ -166,8 +167,8 @@ export function TimeTile({ series, range, bp }: { series: LernzeitSeries; range:
             left: 0,
             right: 0,
             bottom: `${(goal / mx) * 100}%`,
-            borderTop: "2.5px dashed var(--plainText)",
-            opacity: 0.55,
+            // the line is faded, not the whole element: an opacity here also faded the label, so bars showed through it
+            borderTop: "2.5px dashed color-mix(in srgb, var(--plainText) 55%, transparent)",
             zIndex: 2,
             pointerEvents: "none",
           }}
@@ -248,9 +249,9 @@ export function RingTile({ goal }: { goal: BentoDashboard["weeklyGoal"] }) {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ lineHeight: 1 }}>
           <span style={{ fontSize: k(28), fontWeight: 700, letterSpacing: "-.04em" }}>{goal.percent}%</span>
-          <span style={{ fontSize: 11, fontWeight: 700 }}>
-            {fmtMinutes(goal.minutes)} / {fmtMinutes(goal.goalMinutes)}
-          </span>
+          {/* two short lines: "4h 41 / 4h 30" on one line is wider than the ring's hole on a 360px phone */}
+          <span style={{ fontSize: 11, fontWeight: 700, marginTop: 2 }}>{fmtMinutes(goal.minutes)}</span>
+          <span style={{ fontSize: 10, fontWeight: 700 }}>of {fmtMinutes(goal.goalMinutes)}</span>
         </div>
       </div>
       <span style={{ fontSize: 13, fontWeight: 700, textAlign: "center", lineHeight: 1.2 }}>
@@ -446,7 +447,8 @@ export function SkillsTile({ rows, level, bp }: { rows: SkillRow[]; level: strin
         <span style={title}>Mastery by skill</span>
         <span style={{ fontSize: 12, fontWeight: 700, color: "var(--plainMuted)" }}>tap one</span>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col justify-start overflow-hidden" style={{ gap: isLg ? 3 : 6 }}>
+      {/* the list bleeds 8px either side so a selected row's outline isn't clipped by overflow-hidden */}
+      <div className={cn("flex min-h-0 flex-1 flex-col overflow-hidden", isLg ? "justify-between" : "justify-start")} style={{ gap: isLg ? 2 : 6, margin: "0 -8px", padding: "2px 2px" }}>
         {rows.map((r) => {
           const on = r.skill === sel?.skill;
           return (
@@ -458,8 +460,8 @@ export function SkillsTile({ rows, level, bp }: { rows: SkillRow[]; level: strin
               className="flex cursor-pointer items-center text-left"
               style={{
                 gap: 10,
-                padding: isLg ? "2px 8px" : "4px 8px",
-                margin: "0 -8px",
+                padding: isLg ? "1px 6px" : "4px 6px",
+                lineHeight: isLg ? 1.15 : undefined,
                 borderRadius: 10,
                 border: "none",
                 background: on ? "var(--plain2)" : "transparent",
@@ -503,7 +505,10 @@ export function SkillsTile({ rows, level, bp }: { rows: SkillRow[]; level: strin
           }}
         >
           <Sparkle size={15} weight="fill" className="shrink-0" aria-hidden="true" />
-          <span>{skillTip(sel, rows, level)}</span>
+          {/* lg: one line, so all five skill rows fit at 1440×900 (KNOWN_ISSUES #19); the full tip is the title */}
+          <span className={isLg ? "min-w-0 truncate" : undefined} title={isLg ? skillTip(sel, rows, level) : undefined}>
+            {skillTip(sel, rows, level)}
+          </span>
         </div>
       )}
     </Tile>

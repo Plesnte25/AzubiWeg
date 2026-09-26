@@ -37,7 +37,8 @@ import { lernzeitSeries, type Range } from "./series";
 const LAYOUT = {
   lg: '"hero hero time time time ring" "ret ret skills skills art proj" "heat heat heat shaky shaky jobs"',
   md: ['"hero hero proj ring" "time time time time" "ret ret skills skills" "heat heat heat heat" "art shaky shaky jobs"', "250px 230px 290px 270px 300px"],
-  sm: ['"hero hero" "proj ring" "time time" "skills skills" "ret ret" "heat heat" "art jobs" "shaky shaky"', "250px 230px 210px 300px 240px 220px 250px 330px"],
+  // sm: articles and jobs get a full row each; side by side, a 360px phone cut off the funnel labels ("interviews").
+  sm: ['"hero hero" "proj ring" "time time" "skills skills" "ret ret" "heat heat" "art art" "jobs jobs" "shaky shaky"', "250px 230px 210px 300px 240px 220px 220px 210px 330px"],
 } as const;
 
 function gridStyle(bp: Breakpoint, fill: boolean): CSSProperties {

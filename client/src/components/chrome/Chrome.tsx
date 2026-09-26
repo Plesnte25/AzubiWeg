@@ -142,7 +142,14 @@ function NavItems({ sm = false }: { sm?: boolean }) {
             aria-current={active ? "page" : undefined}
             className={cn(
               "flex shrink-0 items-center gap-2 no-underline",
-              active ? "px-[15px]" : sm ? "px-[11px]" : "px-[11px] blg:px-[15px]",
+              // sm: six items must fit a 360px phone (the pill is ~310px inside), so the padding steps down there.
+              active
+                ? sm
+                  ? "px-3 min-[390px]:px-[15px]"
+                  : "px-[15px]"
+                : sm
+                  ? "px-2 min-[390px]:px-[11px]"
+                  : "px-[11px] blg:px-[15px]",
             )}
             style={{
               height: 44,
