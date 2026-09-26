@@ -1,3 +1,4 @@
+import { NotePreview } from "../../components/notes/NotePreview";
 import { useMemo, useState, type CSSProperties } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
@@ -8,7 +9,6 @@ import { Chip } from "../../components/ui/Chip";
 import { Tape, Tile } from "../../components/ui/Tile";
 import { toast } from "../../components/ui/Toast";
 import { NOTE_CATEGORIES, NOTE_COLORS, NOTE_LABELS } from "../../lib/noteCategories";
-import { stripHtml } from "../../lib/text";
 import { useBreakpoint, type Breakpoint } from "../../lib/useBreakpoint";
 import { deriveStations, type Station } from "../plan/journey/model";
 import { NoteEditorModal } from "./NoteEditorModal";
@@ -185,9 +185,9 @@ function Surfaced({ bp, onOpen }: { bp: Breakpoint; onOpen: (id: string) => void
           >
             {cur.title || "Untitled"}
           </button>
-          <span className="min-h-0 flex-1 overflow-hidden" style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.35 }}>
-            {stripHtml(cur.body ?? "")}
-          </span>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <NotePreview html={cur.body ?? ""} lines={4} style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.35 }} />
+          </div>
           <div className="flex" style={{ gap: 6 }}>
             <button
               type="button"
@@ -224,8 +224,6 @@ function Surfaced({ bp, onOpen }: { bp: Breakpoint; onOpen: (id: string) => void
 function Sticky({ note, index, tape, stations, sm, onOpen }: { note: WallNote; index: number; tape: boolean; stations: Station[]; sm: boolean; onOpen: () => void }) {
   const link = noteLink(note, stations);
   const Icon = link ? LINK_ICONS[link.kind] : null;
-  const text = stripHtml(note.body ?? "");
-  const body = sm && text.length > 90 ? `${text.slice(0, 88)}…` : text;
   return (
     <button
       type="button"
@@ -267,7 +265,8 @@ function Sticky({ note, index, tape, stations, sm, onOpen }: { note: WallNote; i
         {NOTE_LABELS[note.category]} · {relativeWhen(note.updatedAt)}
       </span>
       <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-.02em", lineHeight: 1.15, overflowWrap: "anywhere" }}>{note.title || "Untitled"}</span>
-      {body && <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.4, overflowWrap: "anywhere" }}>{body}</span>}
+      {/* formatted, not flattened: bullets and bold read as they were written */}
+      <NotePreview html={note.body ?? ""} lines={sm ? 5 : 8} style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.4 }} />
       {link && Icon && (
         <span
           className="inline-flex max-w-full items-center self-start"
