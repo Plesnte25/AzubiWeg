@@ -63,11 +63,21 @@ const STOCK_NAMES = /\b(Tom|Maria|Mary|John)\b/;
 const OLD_SPELLING = /(?<!\p{L})(daß|muß|mußte|läßt|faßt|Schluß|Theil\p{L}*|theil\p{L}*|seyn|thun|Thür|Werth)(?!\p{L})/u;
 const SIMPLE_MAX_WORDS = 12;
 
-/** Short (at most 12 words) and in current spelling: what a flashcard example should be. */
+/** One short sentence (at most 12 words, no "a / b" alternatives) in current spelling: a flashcard example. */
 export function isSimpleExample(text: string | null): boolean {
   if (!text) return false;
   const words = tokenizeGerman(text).length;
-  return words >= 2 && words <= SIMPLE_MAX_WORDS && !OLD_SPELLING.test(text);
+  return words >= 2 && words <= SIMPLE_MAX_WORDS && !OLD_SPELLING.test(text) && !text.includes("/");
+}
+
+/**
+ * For a capitalised headword (a noun, or a nominalised verb like "das Sprechen"), true when the sentence uses one of
+ * its forms capitalised. Tokens are lowercased, so without this "Zahlen" (numbers) matched "zahlen" (to pay).
+ */
+export function usesNounForm(sentence: string, forms: string[], { midSentence = false } = {}): boolean {
+  // midSentence: skip the first word, where every word is capitalised ("Sprechen Sie…" is the verb)
+  const words = new Set(sentence.split(/[^\p{L}]+/u).filter(Boolean).slice(midSentence ? 1 : 0));
+  return forms.some((f) => words.has(f.charAt(0).toUpperCase() + f.slice(1)));
 }
 
 // Tatoeba has plenty of dark sentences; an everyday one makes a better flashcard when there's a choice
@@ -110,6 +120,11 @@ export async function findTatoebaExample(headword: string, forms: string[]): Pro
   }
   // stored tokens are de-duplicated, so the phrase order is checked against the sentence itself
   if (isPhrase) candidates = candidates.filter((c) => containsPhrase(tokenizeGerman(c.de), phrase));
+  else if (/^\p{Lu}/u.test(headword.trim())) {
+    const nounForms = forms.length ? forms : phrase;
+    const mid = candidates.filter((c) => usesNounForm(c.de, nounForms, { midSentence: true }));
+    candidates = mid.length ? mid : candidates.filter((c) => usesNounForm(c.de, nounForms));
+  }
   if (candidates.length === 0) return null;
   const best = candidates.reduce((a, b) => (exampleScore(b) < exampleScore(a) ? b : a));
   return { de: best.de, en: best.en, deId: best.deId };

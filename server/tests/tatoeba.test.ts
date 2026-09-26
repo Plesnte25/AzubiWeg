@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { containsPhrase, exampleScore, isSimpleExample, tokenizeGerman, wordForms } from "../src/services/enrichment/tatoeba.js";
+import { containsPhrase, exampleScore, isSimpleExample, tokenizeGerman, usesNounForm, wordForms } from "../src/services/enrichment/tatoeba.js";
 
 describe("tokenizeGerman", () => {
   it("lowercases and keeps umlauts and ß", () => {
@@ -69,5 +69,19 @@ describe("isSimpleExample", () => {
   it("rejects long or old-spelling quotations", () => {
     expect(isSimpleExample("Die Werkstätte sind in geringer Anzahl, und die Arbeiter nur einen Theil des Jahres beschäftigt.")).toBe(false);
     expect(isSimpleExample("Ich weiß, daß du kommst.")).toBe(false);
+  });
+});
+
+describe("usesNounForm", () => {
+  it("needs the capitalised form, so a noun doesn't match its verb", () => {
+    expect(usesNounForm("Sie wird bis zu fünfzig Dollar zahlen.", ["zahlen"])).toBe(false);
+    expect(usesNounForm("Die Zahlen sind richtig.", ["zahlen", "zahl"])).toBe(true);
+    expect(usesNounForm("Sprechen Sie Französisch?", ["sprechen"], { midSentence: true })).toBe(false);
+  });
+});
+
+describe("isSimpleExample alternatives", () => {
+  it("rejects slash-separated alternatives", () => {
+    expect(isSimpleExample("Du musst nicht Geburtstag haben / Du musst auch nicht Geburtstag feiern")).toBe(false);
   });
 });
