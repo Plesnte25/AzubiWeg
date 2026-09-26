@@ -112,8 +112,32 @@ Added by the user from phone testing; fixed in the same post-deploy pass (plan
     zone. So "today" rolls over at 05:30 IST, and times entered or seeded for Germany show shifted for a viewer in
     India (the demo interview at 10:30 Berlin shows as 14:00 IST). Needs a `User.timeZone` and zone-aware day math.
 33. **Sources: YouTube gaps** (low). A YouTube *channel* link gets no cover (the channel page has no usable og:image
-    for the fetcher), and playlist units get no description (the playlist page has no per-video descriptions; fetching
-    every video page is too heavy). Both fall back to the placeholder / "Add a description".
+    for the fetcher), and playlist units get no description (the playlist page has no per-video descriptions). Both
+    fall back to the placeholder / "Add a description".
+
+    **Solution (agreed 2026-09-26, not built yet).** Each watch page (`youtube.com/watch?v=<id>`) embeds the full
+    description as `"shortDescription"` in its player JSON; confirmed with no API key. Example: the user's "A1 (Free
+    Course) | Learn German" playlist, Lesson 9's description has a "you will learn…" part and bullets (verb
+    placement, subject, W-questions, yes/no questions) under a promo block.
+    - **Fetch:** after a playlist source is created, a background job fetches each video's watch page one at a time
+      (~1.5 MB each, so ~100 MB for a 66-video playlist: too slow to wait for) and pulls `shortDescription`.
+    - **Keep only the useful part:**
+      1. Boilerplate is found by comparing the videos, not by a hand-kept blocklist: a line that appears in most of
+         the playlist's descriptions is dropped. That removes the channel's promo block (discount code, ✅ list,
+         Patreon link) and repeated sign-offs ("If you have any questions…"), for any channel.
+      2. Then remove hashtags, URLs, "Related Videos:" and everything after it, and "Download worksheet /
+         transcript here" lines.
+      3. What remains (the lesson heading, the overview paragraph and its bullets) becomes
+         `StudySourceUnit.description`.
+    - **Display:** store it with its line breaks. The unit row renders it with `white-space: pre-line`, so the bullets
+      stay a list: two lines collapsed, the full text on tap. It stays editable, and a user-edited description is
+      never overwritten.
+    - **Backfill:** extend `backfill:source-covers` so existing playlists (the user's "A1 Learn German") get it once.
+    - **Channel covers:** use the channel avatar from the channel page's player/metadata JSON, since the og:image
+      read fails there.
+    - **Risk:** this relies on YouTube's page internals, not a supported API. If the format changes, descriptions
+      stay empty and nothing breaks, the same failure mode as the playlist scraper.
+      Parsing and the boilerplate filter are pure functions, so they get unit tests.
 
 ## Resolved during the redesign (for reference — no action needed)
 
