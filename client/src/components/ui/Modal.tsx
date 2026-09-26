@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "@phosphor-icons/react";
 import { cn } from "../../lib/cn";
-import { lockRoot } from "../../lib/inertRoot";
+import { useOverlay } from "../../lib/overlay";
 import { Tape } from "./Tile";
 
 interface ModalProps {
@@ -63,14 +63,16 @@ export function Modal({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
+  const { z, isTop } = useOverlay(true);
+  const isTopRef = useRef(isTop);
+  isTopRef.current = isTop;
+
   useEffect(() => {
     const trigger = document.activeElement as HTMLElement | null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const unlock = lockRoot();
     ref.current?.focus();
 
     function onKeyDown(e: KeyboardEvent) {
+      if (!isTopRef.current()) return;
       if (e.key === "Escape") {
         onCloseRef.current();
         return;
@@ -91,9 +93,7 @@ export function Modal({
     }
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKeyDown);
-      unlock();
       trigger?.focus?.();
     };
   }, []);
@@ -101,7 +101,7 @@ export function Modal({
   const isPlain = bg === "var(--plain)" || bg === "var(--plain2)";
 
   return createPortal(
-    <div className={cn("fixed inset-0 z-[60]", desktopOnly && "hidden lg:block")}>
+    <div className={cn("fixed inset-0", desktopOnly && "hidden lg:block")} style={{ zIndex: z }}>
       <div className="absolute inset-0" style={{ background: "var(--scrim)" }} onClick={onClose} aria-hidden="true" />
       <div
         ref={ref}
@@ -185,7 +185,7 @@ export function Modal({
           </button>
         </div>
         <div
-          className="no-scrollbar flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto"
+          className="no-scrollbar flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto overscroll-contain"
           style={{ padding: "2px 4px 4px 2px" }}
         >
           {children}

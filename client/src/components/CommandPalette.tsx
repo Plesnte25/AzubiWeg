@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { MagnifyingGlass, NotePencil, Path as SyllabusIcon, Plus } from "@phosphor-icons/react";
 import { api } from "../api/client";
@@ -7,6 +8,7 @@ import type { Themenfeld } from "../api/types";
 import { stripHtml } from "../lib/text";
 import { articleLabel, wordColor } from "../lib/wordBento";
 import { useNavStack } from "../lib/navStack";
+import { useOverlay } from "../lib/overlay";
 import { bestMatchingStation, deriveStations } from "../pages/plan/journey/model";
 import { AddWordSheet } from "../pages/words/AddWordSheet";
 
@@ -77,10 +79,14 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     if (!open) setQuery("");
   }, [open]);
 
+  const { z, isTop } = useOverlay(open);
+  const isTopRef = useRef(isTop);
+  isTopRef.current = isTop;
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && isTopRef.current()) onClose();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -145,10 +151,11 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           opening this, so this can't be gated on `open` too, or it would
           unmount in the same tick it's meant to appear. */}
       <AddWordSheet open={addingWord} onClose={() => setAddingWord(false)} initialWord={query.trim()} />
-      {open && (
+      {/* Portalled out of #root: the overlay stack makes #root inert while any overlay is open. */}
+      {open && createPortal(
       <div
-        className="fixed inset-0 z-[60] flex items-start justify-center pt-[14vh]"
-        style={{ background: "var(--scrim)" }}
+        className="fixed inset-0 flex items-start justify-center pt-[14vh]"
+        style={{ background: "var(--scrim)", zIndex: z }}
         onMouseDown={(e) => {
           if (e.target === e.currentTarget) onClose();
         }}
@@ -175,7 +182,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               esc
             </span>
           </div>
-          <div className="max-h-[420px] overflow-y-auto p-2">
+          <div className="max-h-[420px] overflow-y-auto overscroll-contain p-2">
             {!hasResults ? (
               <p className="px-3 py-6 text-center text-[13px] font-semibold" style={{ color: "var(--plainMuted)" }}>
                 No matches.
@@ -296,7 +303,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             )}
           </div>
         </div>
-      </div>
+      </div>,
+      document.body,
       )}
     </>
   );

@@ -172,10 +172,13 @@ h3 {
 /* Global safety net: this app should never scroll horizontally — a page
    should always constrain its own overflowing content (truncate/wrap/
    scroll internally), never widen the document. Applied at the root rather
-   than per-page so no future component can silently reintroduce it. */
+   than per-page so no future component can silently reintroduce it.
+   `clip`, not `hidden`: `hidden` turns <body> into a scroll container that
+   never scrolls, which breaks every `position: sticky` bar inside it (the sm
+   top/bottom nav stuck to the end of the page instead of the viewport). */
 html,
 body {
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* <html> carries the plain ground colour with no transition, so first paint is already the right colour; body's
