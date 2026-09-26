@@ -138,6 +138,37 @@ Added by the user from phone testing; fixed in the same post-deploy pass (plan
     - **Risk:** this relies on YouTube's page internals, not a supported API. If the format changes, descriptions
       stay empty and nothing breaks, the same failure mode as the playlist scraper.
       Parsing and the boilerplate filter are pure functions, so they get unit tests.
+34. **Sources: book lookup never works, and fetching is invisible** (medium). The user added "Complete German" (Paul
+    Coggle & Heiner Schenke) on the live site on 2026-09-26. It was saved exactly as typed: no cover, no page count.
+    - **Cause:** the book branch of `POST /sources` only queries Google Books without an API key. That anonymous
+      quota is shared by everyone, and from the server it returns **429**, so `fetchBook()` returns null and the
+      source is saved as typed. The failure isn't shown, and fetching only happens on save, so it looks like there is
+      no fetching at all. Books also have no link field (`TYPES` in `LibraryModals.tsx` has `link: "none"`).
+
+    **Solution (agreed 2026-09-26, not built yet):**
+    - **Open Library first** (`openlibrary.org/search.json`, no key, no shared quota; tested from the server):
+      - "Complete German Coggle" found Coggle & Schenke, 408 pages, `cover_i`, Hodder & Stoughton.
+      - "Menschen A1.1 Kursbuch" found Evans/Pude/Specht (Hueber) with a cover.
+      - Covers come from `covers.openlibrary.org/b/id/<cover_i>-L.jpg`.
+      - Results must be scored by title and author overlap with the input: the first hit can be an older edition
+        ("German", 1989, ranked above "Complete German", 2011).
+      - Google Books stays as the fallback; an optional `GOOGLE_BOOKS_API_KEY` (free, 1,000 requests a day) makes it
+        reliable.
+    - **Book link / ISBN:** books get an optional "Link or ISBN" field. An ISBN, or an Open Library, Google Books or
+      Amazon URL, gives an exact lookup (`/isbn/<isbn>.json`).
+    - **Fetch before save, for every type:**
+      - Move the per-type fetch branches out of `POST /sources` into one service (`services/learning/sourceFetch.ts`).
+      - Add `POST /api/learning/sources/preview`, which returns `{ type, title, provider, coverImageUrl, totalUnits,
+        unitCount, outcome }` without saving. Cache it briefly per user and URL, so create doesn't fetch a playlist
+        twice.
+    - **Add-source modal:**
+      - Pasting or changing a link triggers the preview automatically (debounced), for every type.
+      - A "Fetch" button covers title searches (book, podcast) and retries.
+      - A preview card shows cover, title, author or channel, and the pages / episodes / lessons count. It fills only
+        the fields the user left empty; "Add source" saves.
+      - A failed lookup says so ("Couldn't find this book — fill in the details below").
+    - **Existing sources:** a "Fetch details" action on the source modal (it extends the cover Refresh) fills in
+      missing fields on a saved source, such as the user's "Complete German".
 
 ## Resolved during the redesign (for reference — no action needed)
 
