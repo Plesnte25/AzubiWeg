@@ -206,6 +206,44 @@ Added by the user from phone testing; fixed in the same post-deploy pass (plan
     - **Later, if wanted:** offline reading (read-only cached words/notes/plan); offline review with queued grades
       (needs conflict handling against the vault SR schedule); daily "N cards due" push (VAPID keys, per-device
       subscriptions, a scheduler; iOS only when installed, 16.4+).
+36. **Splash screen on every screen size** (feature, requested 2026-09-26). None today: a cold open shows a blank page
+    until React mounts, then empty pages while queries load (#10).
+
+    **Agreed design:**
+    - **When:** every cold open (a full page load or refresh, in the browser or the installed app), for at least
+      ~1 second. It stays until both the minimum time has passed and the app is ready, then fades out (~200 ms).
+      In-app navigation never shows it.
+    - **Look:** the sticker logo and wordmark. The tilted lemon "Az" tile (as in `Chrome.tsx`'s `Logo`: 2.5px ink
+      outline, hard shadow, −8°) is centred on the page ground (`--bg` with the dot grid), light or dark per the
+      resolved theme, with "AzubiWeg" below. A small wobble while waiting, none under `prefers-reduced-motion`.
+
+    **How:**
+    - **Instant, no JS:**
+      - The splash is static HTML plus inline CSS in `client/index.html`, so it paints before the bundle loads.
+      - It uses the theme `data-theme` the existing pre-mount script already sets, so there's no light/dark flash.
+      - "Az" and "AzubiWeg" are inline SVG paths exported once from Space Grotesk, so no font request blocks it and
+        there's no fallback-font flash.
+      - It's `aria-hidden`, and `#root` gets `aria-busy` while it shows.
+    - **Ready + minimum:**
+      - Timing starts at `performance.timeOrigin`.
+      - A small `lib/splash.ts` fades and removes the splash once both conditions hold: ≥1000 ms have passed, and
+        the app is ready.
+      - "Ready" means React has mounted and TanStack Query has no fetches in flight for the first time
+        (`useIsFetching() === 0` after mount), so the first page shows with its data, not empty.
+      - Safety cap: hide after 8 s regardless (the page's own loading state, #10, takes over).
+      - Login and logged-out routes count as ready on mount.
+    - **Installed-app launch (with #35):**
+      - Android builds its own launch screen from the manifest (`background_color` + icon + `name`). Match it to the
+        splash ground, so launch screen → splash → app is seamless.
+      - iOS needs `apple-touch-startup-image` links, one per device resolution, light and dark. Generate them with
+        `@vite-pwa/assets-generator` from the same sticker design, or they show a white screen.
+    - **Verify:**
+      - Screenshots at sm/md/lg/laptop, light and dark: the splash is centred and uncropped at every size, including
+        landscape phones.
+      - Throttled "Slow 3G": the splash holds until data is ready.
+      - A fast connection: still ~1 s.
+      - Reduced motion: no wobble.
+      - Installed on Android/iOS: no white flash between the OS launch screen and the splash.
 
 ## Resolved during the redesign (for reference — no action needed)
 
