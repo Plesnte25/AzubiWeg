@@ -130,7 +130,7 @@ export default function Stats() {
       <ProjectionTile level={b.level.level} pace={pace} readiness={readiness} exam={exam} />
       <RetentionTile points={reviewStats?.retention ?? []} />
       <SkillsTile rows={b.skillMastery} level={b.level.level} bp={bp} />
-      <ArticlesTile articles={quiz?.articles} />
+      <ArticlesTile articles={quiz?.articles} drill={quiz?.scores.genderDrill} />
       <HeatTile calendar={b.streakCalendar} streak={dash.streak} best={b.bestStreak} bp={bp} />
       <ShakyTile weak={weak?.words ?? []} wordsById={wordsById} bp={bp} onDrill={() => setDrill(true)} />
       <JobsTile stats={appStats?.stats} interview={b.nextInterview} />

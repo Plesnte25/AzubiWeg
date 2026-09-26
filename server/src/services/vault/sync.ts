@@ -22,7 +22,7 @@ import {
 } from "./format.js";
 import { INBOX_PLACEHOLDER, buildInboxPlaceholder, parseInboxFile, parseMasterFile } from "./parser.js";
 import { atomicWrite, serializeMasterFile } from "./writer.js";
-import { classifyTheme } from "../vocab/classify.js";
+import { classifyLevel } from "../vocab/classify.js";
 
 export function vaultFiles(vaultPath: string) {
   return {
@@ -211,19 +211,14 @@ class VaultSyncService {
             headword: card.front,
             sortKey: card.sortKey,
             ...card.fields,
-            // themenfeld/level only get set here, on creation — words entering
-            // via any path (mobile inbox, add_word.py, external master.md
-            // edits) all funnel through this upsert's create branch, whereas
-            // routes/words.ts's own classifyTheme() call only ever fires for
-            // the in-app "Add words" form. Never done in `update` below:
-            // these are app-only columns vault reconcile must never overwrite
-            // once a word already exists (see schema.prisma's comment on them).
-            ...classifyTheme({
-              lesson: card.fields.lesson ?? null,
-              headword: card.front,
-              meaning: card.fields.meaning ?? null,
-              example: card.fields.example ?? null,
-            }),
+            // level only gets set here, on creation — words entering via any
+            // path (mobile inbox, add_word.py, external master.md edits) all
+            // funnel through this upsert's create branch, whereas
+            // routes/words.ts's own classifyLevel() call only ever fires for
+            // the in-app "Add words" form. Never done in `update` below: it's
+            // an app-only column vault reconcile must never overwrite once a
+            // word already exists (see schema.prisma's comment on it).
+            level: classifyLevel(card.fields.lesson ?? null),
             srDue: card.sr ? new Date(card.sr.due) : null,
             srInterval: card.sr?.interval ?? null,
             srEase: card.sr?.ease ?? null,
@@ -352,13 +347,13 @@ class VaultSyncService {
     // strip found/headword/typed/rejected/declension/conjugation/
     // exampleTranslation before this reaches Card.fields — those aren't
     // CardFields, and declension/conjugation/exampleTranslation specifically
-    // are app-only columns (same status as themenfeld/level — see Word's
+    // are app-only columns (same status as level — see Word's
     // schema comment) that must never round-trip through vault markdown: a
     // later resync re-parses CardFields fresh from the file (none of these
     // in it) and would silently wipe them back to null if they'd been let
     // into Card.fields here. They ride back out via this method's own
     // return value instead, for the caller (routes/words.ts) to apply
-    // through the same separate app-only update themenfeld/level already use.
+    // through the same separate app-only update level already uses.
     // The vault card (Card.fields, parsed from master.md) has no
     // exampleTranslation field at all -- that column is app-only and never
     // written to the vault file (see Word's schema comment). So the ONLY

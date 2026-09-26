@@ -14,22 +14,6 @@ export type SrsState = "new" | "due" | "learning" | "mastered";
 export type CardCuration = "generated" | "review" | "manual" | "mt";
 export type EnrichmentStatus = "published" | "published_review" | "unresolved" | "incomplete" | "protected";
 
-export type Themenfeld =
-  | "person_familie"
-  | "alltag_zuhause"
-  | "essen_einkaufen"
-  | "arbeit_ausbildung"
-  | "bildung"
-  | "gesundheit"
-  | "reise_verkehr"
-  | "freizeit_kultur"
-  | "medien_technik"
-  | "geld"
-  | "amt_buerokratie"
-  | "gefuehle_meinung"
-  | "natur_umwelt"
-  | "gesellschaft";
-
 // noun case x number table, from the kaikki.org enrichment pipeline —
 // server/src/services/enrichment/kaikki.ts's extractDeclension()
 export interface DeclensionTable {
@@ -71,7 +55,6 @@ export interface Word {
   srEase: number | null;
   createdAt: string;
   // app-only, persisted (server/src/prisma/schema.prisma's Word model)
-  themenfeld: Themenfeld[];
   level: CefrLevel | null;
   leech: boolean;
   starred: boolean;

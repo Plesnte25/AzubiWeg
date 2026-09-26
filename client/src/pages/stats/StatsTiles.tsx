@@ -1,7 +1,7 @@
 import { cn } from "../../lib/cn";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { Briefcase, Fire, Lightning, Sparkle } from "@phosphor-icons/react";
-import type { ApplicationStats, ArticleAccuracy, BentoDashboard, ExamStatus, GoetheReadiness, RoutePace, WeakWord, Word } from "../../api/types";
+import type { ApplicationStats, ArticleAccuracy, BentoDashboard, ExamStatus, GoetheReadiness, RoutePace, SelfTestScore, WeakWord, Word } from "../../api/types";
 import { Eyebrow, Tile } from "../../components/ui/Tile";
 import { Segmented } from "../../components/ui/Segmented";
 import { Starburst } from "../../components/ui/Sticker";
@@ -519,12 +519,26 @@ export function SkillsTile({ rows, level, bp }: { rows: SkillRow[]; level: strin
 
 const ART_COLORS = { der: "var(--sky)", die: "var(--plain)", das: "var(--mint)" } as const;
 
-export function ArticlesTile({ articles }: { articles: ArticleAccuracy | undefined }) {
+/**
+ * Gender drill on Stats: the overall drill score (the same number Plan's self-test card shows) as the headline, then
+ * accuracy per article from the individual answers.
+ */
+export function ArticlesTile({ articles, drill }: { articles: ArticleAccuracy | undefined; drill: SelfTestScore | undefined }) {
   const rows = (["der", "die", "das"] as const).map((a) => ({ l: a, v: articles?.byArticle[a]?.percent ?? null }));
   const any = rows.some((r) => r.v !== null);
   return (
     <Tile bg="var(--pink)" tilt={-1} className="flex flex-col" style={{ gridArea: "art", padding: 16, gap: 10 }}>
-      <Eyebrow>Articles</Eyebrow>
+      <div className="flex items-baseline justify-between" style={{ gap: 8 }}>
+        <Eyebrow>Gender drill</Eyebrow>
+        {drill?.percent != null && (
+          <span
+            title={`Average of ${drill.count} drill${drill.count === 1 ? "" : "s"}`}
+            style={{ fontSize: k(24), fontWeight: 700, letterSpacing: "-.04em", lineHeight: 1 }}
+          >
+            {drill.percent}%
+          </span>
+        )}
+      </div>
       <div className="flex min-h-0 flex-1 items-end" style={{ gap: 8 }}>
         {rows.map((r) => (
           <div key={r.l} className="flex h-full flex-1 flex-col items-center justify-end" style={{ gap: 4 }}>

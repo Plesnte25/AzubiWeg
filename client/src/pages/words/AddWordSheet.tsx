@@ -2,11 +2,10 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CaretDown } from "@phosphor-icons/react";
 import { api } from "../../api/client";
-import type { CefrLevel, Themenfeld, Word } from "../../api/types";
+import type { CefrLevel, Word } from "../../api/types";
 import { BottomSheet } from "../../components/ui/BottomSheet";
 import { Chip } from "../../components/ui/Chip";
 import { toast } from "../../components/ui/Toast";
-import { THEMENFELD_LABELS, THEMENFELD_ORDER } from "../../lib/vocab";
 
 /*
  * Add word (AzubiWords.dc.html addOpen, lemon). Honest version of the prototype:
@@ -15,7 +14,8 @@ import { THEMENFELD_LABELS, THEMENFELD_ORDER } from "../../lib/vocab";
  *   right, and it's never sent to the API.
  * - Meaning is an optional override, applied after enrichment and only when adding one word.
  * - Batch entry stays: commas or new lines add several words at once.
- * - Level / Themenfeld / Lesson live under "More options" (auto-classified when left alone).
+ * - Enter saves; Shift+Enter starts another line for a batch.
+ * - Level / Lesson live under "More options" (level is derived from the lesson when left on Auto).
  * Stays mounted with `open` (BottomSheet contract) so the command palette can open it with a prefilled word.
  */
 
@@ -64,7 +64,6 @@ export function AddWordSheet({
   const [guess, setGuess] = useState<Guess | null>(null);
   const [more, setMore] = useState(false);
   const [level, setLevel] = useState<"auto" | CefrLevel>("auto");
-  const [themes, setThemes] = useState<Themenfeld[] | "auto">("auto");
   const [lesson, setLesson] = useState("");
 
   useEffect(() => {
@@ -74,7 +73,6 @@ export function AddWordSheet({
     setGuess(initialWord ? hintFor(initialWord.trim()) : null);
     setMore(false);
     setLevel("auto");
-    setThemes("auto");
     setLesson("");
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [open, initialWord]);
@@ -85,10 +83,7 @@ export function AddWordSheet({
 
   const add = useMutation({
     mutationFn: async () => {
-      const res = await api.addWords(words, lesson || undefined, {
-        ...(level !== "auto" ? { level } : {}),
-        ...(themes !== "auto" ? { themenfeld: themes } : {}),
-      });
+      const res = await api.addWords(words, lesson || undefined, level !== "auto" ? { level } : undefined);
       // optional meaning override: after enrichment, single word only
       if (single && meaning.trim() && res.words[0]) {
         const patched = await api.updateWord(res.words[0].id, { meaning: meaning.trim() });
@@ -174,17 +169,31 @@ export function AddWordSheet({
               const ws = e.target.value.split(/[,\n]/).map((w) => w.trim()).filter(Boolean);
               if (ws.length === 1 && guess === null) setGuess(hintFor(ws[0]!));
             }}
-            placeholder="z. B. Werkstatt — or several, one per line"
-            rows={single !== null || words.length === 0 ? 1 : 3}
+            onKeyDown={(e) => {
+              // Enter saves, like a single-line field; Shift+Enter adds a line for a batch
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                if (canSave) add.mutate();
+              }
+            }}
+            placeholder="z. B. Werkstatt"
+            // grows with the batch, up to six lines
+            rows={Math.min(6, Math.max(1, input.split("\n").length))}
             lang="de"
+            autoCapitalize="off"
+            autoCorrect="off"
+            autoComplete="off"
+            spellCheck={false}
+            enterKeyHint="done"
             style={{ ...field, padding: "11px 14px", minHeight: 48, fontSize: 17, fontWeight: 600, resize: "none" }}
           />
+          <span style={{ fontWeight: 500, opacity: 0.75 }}>Several at once: separate with commas, or Shift+Enter for a new line.</span>
         </label>
 
         {single !== null && (
           <label style={label}>
             Meaning <span style={{ fontWeight: 500, opacity: 0.75 }}>optional — looked up automatically otherwise</span>
-            <input value={meaning} onChange={(e) => setMeaning(e.target.value)} placeholder="e.g. workshop" style={{ ...field, height: 48, fontSize: 16, fontWeight: 500 }} />
+            <input value={meaning} onChange={(e) => setMeaning(e.target.value)} placeholder="e.g. workshop" autoCapitalize="off" enterKeyHint="done" style={{ ...field, height: 48, fontSize: 16, fontWeight: 500 }} />
           </label>
         )}
 
@@ -210,32 +219,6 @@ export function AddWordSheet({
                 ))}
               </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <span style={{ fontSize: 13, fontWeight: 700 }}>Themenfeld {themes !== "auto" && <span style={{ fontWeight: 500 }}>(up to 2)</span>}</span>
-              <div className="flex flex-wrap gap-1.5">
-                <Chip size="sm" selected={themes === "auto"} onClick={() => setThemes("auto")}>
-                  Auto
-                </Chip>
-                {THEMENFELD_ORDER.map((t) => {
-                  const on = themes !== "auto" && themes.includes(t);
-                  return (
-                    <Chip
-                      key={t}
-                      size="sm"
-                      selected={on}
-                      onClick={() =>
-                        setThemes((prev) => {
-                          const cur = prev === "auto" ? [] : prev;
-                          return on ? cur.filter((x) => x !== t) : cur.length < 2 ? [...cur, t] : cur;
-                        })
-                      }
-                    >
-                      {THEMENFELD_LABELS[t]}
-                    </Chip>
-                  );
-                })}
-              </div>
-            </div>
             <label style={label}>
               Lesson
               <input
@@ -253,8 +236,9 @@ export function AddWordSheet({
         <button
           type="submit"
           disabled={!canSave}
-          className="press cursor-pointer disabled:cursor-default"
-          style={{ height: 50, background: "var(--btn)", color: "var(--btnText)", border: "2.5px solid var(--line)", borderRadius: 999, fontWeight: 700, fontSize: 16, opacity: canSave ? 1 : 0.45, boxShadow: "3px 3px 0 var(--shadow)" }}
+          // sticky: stays in view at the bottom of the sheet while the phone keyboard shrinks it
+          className="press sticky bottom-0 cursor-pointer disabled:cursor-default"
+          style={{ height: 50, flexShrink: 0, background: "var(--btn)", color: "var(--btnText)", border: "2.5px solid var(--line)", borderRadius: 999, fontWeight: 700, fontSize: 16, opacity: canSave ? 1 : 0.45, boxShadow: "3px 3px 0 var(--shadow)" }}
         >
           {add.isPending ? "Looking it up…" : words.length > 1 ? `Save ${words.length} words` : "Save word"}
         </button>

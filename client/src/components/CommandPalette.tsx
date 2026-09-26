@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
-import { MagnifyingGlass, NotePencil, Path as SyllabusIcon, Plus } from "@phosphor-icons/react";
+import { MagnifyingGlass, NotePencil, Plus } from "@phosphor-icons/react";
 import { api } from "../api/client";
 import { QUICK_LINKS } from "../lib/navDestinations";
-import type { Themenfeld } from "../api/types";
 import { stripHtml } from "../lib/text";
 import { articleLabel, wordColor } from "../lib/wordBento";
 import { useNavStack } from "../lib/navStack";
 import { useOverlay } from "../lib/overlay";
-import { bestMatchingStation, deriveStations } from "../pages/plan/journey/model";
 import { AddWordSheet } from "../pages/words/AddWordSheet";
 
 function ShortcutBadge({ letter }: { letter: string }) {
@@ -31,31 +29,6 @@ function SectionLabel({ children }: { children: string }) {
   );
 }
 
-// Vocab themenfeld labels (THEMENFELD_LABELS, lib/vocab.ts) are German;
-// syllabus station themes are English — bestMatchingStation's word-overlap
-// needs same-language tokens, so this probes with an English gloss per
-// themenfeld instead of the German display label. Several categories
-// (medien_technik, geld, gesellschaft, …) genuinely have no matching
-// grammar-focused station in this app's syllabus — no match then is
-// correct, the same "empty is a normal outcome" convention
-// WordFamilySheet.tsx already documents for its own best-effort lookup.
-const THEMENFELD_PROBE: Record<Themenfeld, string> = {
-  person_familie: "personal world family",
-  alltag_zuhause: "everyday life living home",
-  essen_einkaufen: "everyday life shopping",
-  arbeit_ausbildung: "work free time education",
-  bildung: "education exam prep",
-  gesundheit: "health basics",
-  reise_verkehr: "out about travel transport",
-  freizeit_kultur: "work free time culture",
-  medien_technik: "media technology",
-  geld: "money",
-  amt_buerokratie: "bureaucracy office",
-  gefuehle_meinung: "feelings opinion personal world",
-  natur_umwelt: "nature environment",
-  gesellschaft: "society",
-};
-
 /**
  * ⌘K palette (German Companion Desktop.dc.html's search trigger) — real
  * search over words and notes (client-side substring match against the
@@ -73,7 +46,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const [addingWord, setAddingWord] = useState(false);
   const { data: wordsData } = useQuery({ queryKey: ["words"], queryFn: api.words, enabled: open });
   const { data: notesData } = useQuery({ queryKey: ["notes", "wall"], queryFn: api.notesWall, enabled: open });
-  const { data: syllabusData } = useQuery({ queryKey: ["learning", "syllabus"], queryFn: api.learningSyllabus, enabled: open });
 
   useEffect(() => {
     if (!open) setQuery("");
@@ -115,23 +87,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   );
 
   const linkMatches = useMemo(() => (q ? QUICK_LINKS.filter((l) => l.label.toLowerCase().includes(q)) : QUICK_LINKS), [q]);
-
-  // Contextual "Syllabus — Chapter N" jump target: the top word match's
-  // themenfeld, fuzzy-matched against the active level's syllabus stations
-  // via the same word-overlap heuristic Dashboard.tsx/Plan.tsx already use
-  // for the analogous roadmap-week-theme -> station pairing (see
-  // THEMENFELD_PROBE above for why it probes with an English gloss).
-  const syllabusJump = useMemo(() => {
-    const topWord = wordMatches[0];
-    const themenfeld = topWord?.themenfeld[0];
-    if (!themenfeld || !syllabusData) return null;
-    const activeLevel = syllabusData.levels.find((l) => l.percent < 100)?.level ?? syllabusData.levels[syllabusData.levels.length - 1]?.level;
-    if (!activeLevel) return null;
-    const stations = deriveStations(syllabusData.items, activeLevel);
-    const station = bestMatchingStation(stations, THEMENFELD_PROBE[themenfeld]);
-    if (!station) return null;
-    return { label: `Plan — Station ${station.index}: ${station.theme}`, key: station.key };
-  }, [wordMatches, syllabusData]);
 
   // Actions always render once there's a query (even with zero word/link/
   // note/syllabus matches — "add as new word"/"new note" are always valid),
@@ -220,7 +175,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                   </div>
                 )}
 
-                {(linkMatches.length > 0 || syllabusJump) && (
+                {linkMatches.length > 0 && (
                   <div>
                     <SectionLabel>Jump to</SectionLabel>
                     {linkMatches.map((l) => (
@@ -236,17 +191,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                         <ShortcutBadge letter={l.shortcut} />
                       </button>
                     ))}
-                    {syllabusJump && (
-                      <button
-                        type="button"
-                        onClick={() => go(() => push("/plan", { state: { openStationKey: syllabusJump.key } }))}
-                        className="flex w-full cursor-pointer items-center gap-[11px] rounded-[12px] px-3 py-2.5 text-left font-semibold hover:bg-[var(--plain2)]"
-                        style={{ color: "inherit" }}
-                      >
-                        <SyllabusIcon size={16} weight="fill" style={{ flexShrink: 0 }} aria-hidden="true" />
-                        <span className="min-w-0 flex-1 truncate text-[14px] font-bold">{syllabusJump.label}</span>
-                      </button>
-                    )}
                   </div>
                 )}
 
