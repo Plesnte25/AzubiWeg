@@ -1117,3 +1117,16 @@ new. All of these were found by actually driving the app in a browser
   schema.prisma — same honest-best-effort approach `bestMatchingStation()`
   already uses elsewhere). All 6 verified working end-to-end in a real
   browser (Playwright against the demo account), not just typechecked.
+
+
+Issues found on mobile 
+1. The very first page I'm seeing when opening app is "Words" page not dashboard.
+2. State when any modal is opened, background scrolling should pause- only the scrolling over the modal should be acceptable.
+3. When shuffling over pages, always start for top, currently it positioned itself from wherever the last page we transitioned from.
+4. sources- i. The option to change or select any photo for "cover" is great but by default it should fetch from the link itself, for e.g., you tube link can  visualize you tube logo as the cover. ii. currently all the units render as checklist only, once tapped, get strikethrough (making complete) and another to revert it. Wouldn't it be more optimal if we could also provide some brief description as what the student will study in that particular unit.
+5. there are lot of elements that are being cut over at mobile screen, for e.g., day streak badges or notes - many elements aren't positioned efficiently and require some detail precise changes.
+6. the word details page modal is not rendering correctly and being displayed behind the word modal and not serving its purpose.
+7. Word description modal- some words has bilingual examples, some has only German & some neither; this inconsistency is not efficient, each and every word needs a simple bilingual example
+8. adding words has "Themenfield"- when we are not displaying or using this pipeline, it was deprecated long before, so keeping this is not right. also adding word input area needs minor optimisation. 
+9. in words page gender drill has its respective percentage, but not on stats page. 
+10. the default preview of any note with certain styling for e.g., bullet points, they are not visible in preview, making it bit confusing
