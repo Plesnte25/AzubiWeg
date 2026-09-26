@@ -169,6 +169,43 @@ Added by the user from phone testing; fixed in the same post-deploy pass (plan
       - A failed lookup says so ("Couldn't find this book — fill in the details below").
     - **Existing sources:** a "Fetch details" action on the source modal (it extends the cover Refresh) fills in
       missing fields on a saved source, such as the user's "Complete German".
+35. **Make AzubiWeg a PWA** (feature, requested 2026-09-26).
+    - **Today:** `client/public/manifest.webmanifest` (start_url `/`, standalone, 192/512 icons) and an
+      apple-touch-icon, from the 09-26 "opens on Words" fix.
+    - **Missing:** a service worker, maskable icons, `theme-color`, iOS meta tags and an update flow. Caddy serves
+      the manifest with no content type.
+
+    **Agreed scope:** installable and fast. No offline data, no offline review, no push notifications for now.
+    - **Service worker:** `vite-plugin-pwa` 1.3 (peer range includes Vite 8) with Workbox `generateSW`.
+      - Precache the built app shell: JS, CSS, Space Grotesk fonts, icons.
+      - `/api/*` is never cached; the app stays online-only for data.
+      - Navigation falls back to the cached `index.html`. When the network is down, the app shows a Sticker-style
+        "You're offline" screen instead of a browser error (ties in with #9's error screens).
+      - Use `registerType: "prompt"` with a toast, "New version available · Reload". Never silently swap versions
+        mid-review.
+    - **Manifest:** let the plugin generate it; drop the hand-written file.
+      - Add `id`, `theme_color` and `background_color` per the light theme, and `orientation: any`.
+      - Icons: 192/512 `any` plus 512 `maskable` with safe-zone padding (from `@vite-pwa/assets-generator` or the
+        existing Playwright icon render).
+      - `shortcuts`: Review (`/review`), Add word (`/words?add=1`), Notes (`/notes`). The Words page needs to open the
+        Add sheet on `?add=1`.
+      - `share_target` (GET, `/share?title&text&url`): a new `/share` route routes shared text to Add word, and a
+        shared URL to Add source (with #34's link fetch, that fills in the details).
+    - **index.html:**
+      - `<meta name="theme-color">` for light and dark (media queries on `prefers-color-scheme`).
+      - `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, `apple-mobile-web-app-title`.
+      - iOS splash screens are optional (the assets generator can make them).
+    - **Caddy (`deploy/Caddyfile`):**
+      - `header /sw.js Cache-Control "no-cache"`, so updates are picked up.
+      - `Content-Type application/manifest+json` for `*.webmanifest`.
+      - `Service-Worker-Allowed` isn't needed (the SW sits at the root).
+      - Needs a Caddy reload after deploy (deploy.sh doesn't do it).
+    - **Verify:** Lighthouse PWA/installability pass. Install on Android Chrome and iOS Safari: it opens on Today in
+      standalone mode, shortcuts work, and sharing a link from YouTube lands in Add source. Offline shows the offline
+      screen. A deploy shows the reload toast.
+    - **Later, if wanted:** offline reading (read-only cached words/notes/plan); offline review with queued grades
+      (needs conflict handling against the vault SR schedule); daily "N cards due" push (VAPID keys, per-device
+      subscriptions, a scheduler; iOS only when installed, 16.4+).
 
 ## Resolved during the redesign (for reference — no action needed)
 
