@@ -149,7 +149,7 @@ mark them as known.
 | Database | PostgreSQL, Prisma 7 |
 | Auth | JWT (jsonwebtoken) + bcrypt |
 | Vault sync | chokidar file watcher, custom markdown parser/writer |
-| Enrichment | kaikki.org (German Wiktionary dump) + DErivBase, ffmpeg, msedge-tts |
+| Enrichment | kaikki.org (German Wiktionary dump) + Tatoeba + DErivBase, ffmpeg, msedge-tts |
 | Uploads | multer → per-user disk storage, auth-checked streaming |
 
 ## Data sources
@@ -166,6 +166,12 @@ Word-family relations come from
 [DErivBase](https://www.ims.uni-stuttgart.de/forschung/ressourcen/lexika/derivbase/)
 v2.0 (Institute for Natural Language Processing, University of Stuttgart),
 licensed CC BY-SA 3.0 (`server/scripts/import-derivbase.ts`).
+
+When Wiktionary has no short example for a word, its German example and
+English translation come from [Tatoeba](https://tatoeba.org)'s sentence
+pairs, licensed CC BY 2.0 FR (`npm run import:tatoeba`,
+`server/scripts/import-tatoeba.ts`; each stored pair keeps its Tatoeba
+sentence ids).
 
 ## Running it
 
