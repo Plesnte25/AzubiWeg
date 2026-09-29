@@ -9,6 +9,7 @@ import { Toaster } from "./components/ui/Toast";
 import { ThemeProvider } from "./lib/theme";
 import Today from "./pages/today/Today";
 import Login from "./pages/Login";
+import { CrashScreen, NotFound } from "./pages/ErrorScreens";
 
 // only Login (unauthenticated) and Today (the first authenticated view,
 // mounted at Today's "/") are needed for first paint — every other route is
@@ -78,40 +79,51 @@ const router = createBrowserRouter([
   { path: "/register", element: <Login mode="register" /> },
   {
     element: <RequireAuth />,
+    errorElement: <CrashScreen />,
     children: [
       {
         element: <Layout />,
+        // a crash in the frame itself: the screen stands alone
+        errorElement: <CrashScreen />,
         children: [
-          // ── the 6 real tab destinations (Today/Words/Plan/Jobs/Stats/Notes) ──
-          { path: "/", element: <Today /> },
-          { path: "/words", element: <Lazy><Words /></Lazy> },
-          { path: "/words/:id", element: <Lazy><Words /></Lazy> },
-          { path: "/review", element: <Lazy><ReviewSession /></Lazy> },
-          { path: "/plan", element: <Lazy><Journey /></Lazy> },
-          { path: "/plan/syllabus", element: <Navigate to="/plan" replace /> },
-          { path: "/plan/sources", element: <Navigate to="/plan" replace /> },
-          { path: "/notes", element: <Lazy><Notes /></Lazy> },
-          { path: "/notes/edit/:id", element: <NotesEditRedirect /> },
-          { path: "/plan/self-tests", element: <Navigate to="/plan" replace /> },
-          { path: "/plan/self-tests/run", element: <Lazy><SelfTestRunner /></Lazy> },
-          { path: "/plan/self-tests/gender", element: <Lazy><GenderDrillPage /></Lazy> },
-          { path: "/plan/self-tests/listen", element: <Lazy><ListenType /></Lazy> },
-          { path: "/plan/exam-gate", element: <Navigate to="/plan" replace /> },
-          { path: "/exam-take", element: <Lazy><ExamRunner /></Lazy> },
-          { path: "/jobs", element: <Lazy><JobSearch /></Lazy> },
-          { path: "/stats", element: <Lazy><Stats /></Lazy> },
-          // ── legacy URL redirects — old bookmarks/links keep working ──
-          { path: "/vocabulary", element: <Navigate to="/words" replace /> },
-          { path: "/learning", element: <Navigate to="/plan" replace /> },
-          { path: "/roadmap", element: <Navigate to="/plan" replace /> },
-          { path: "/job-search", element: <Navigate to="/jobs" replace /> },
-          { path: "/applications", element: <Navigate to="/jobs" replace /> },
-          { path: "/cv", element: <Navigate to="/jobs" replace /> },
-          { path: "/cv/:id", element: <Navigate to="/jobs" replace /> },
-          { path: "/checklist", element: <Navigate to="/" replace /> },
-          { path: "/plan/notes", element: <Navigate to="/notes" replace /> },
-          { path: "/plan/notes/edit/:id", element: <NotesEditRedirect /> },
-          { path: "/settings", element: <Lazy><Settings /></Lazy> },
+          {
+            // a crash in a page: the screen renders inside the frame, so the nav still works
+            errorElement: <CrashScreen />,
+            children: [
+              // ── the 6 real tab destinations (Today/Words/Plan/Jobs/Stats/Notes) ──
+              { path: "/", element: <Today /> },
+              { path: "/words", element: <Lazy><Words /></Lazy> },
+              { path: "/words/:id", element: <Lazy><Words /></Lazy> },
+              { path: "/review", element: <Lazy><ReviewSession /></Lazy> },
+              { path: "/plan", element: <Lazy><Journey /></Lazy> },
+              { path: "/plan/syllabus", element: <Navigate to="/plan" replace /> },
+              { path: "/plan/sources", element: <Navigate to="/plan" replace /> },
+              { path: "/notes", element: <Lazy><Notes /></Lazy> },
+              { path: "/notes/edit/:id", element: <NotesEditRedirect /> },
+              { path: "/plan/self-tests", element: <Navigate to="/plan" replace /> },
+              { path: "/plan/self-tests/run", element: <Lazy><SelfTestRunner /></Lazy> },
+              { path: "/plan/self-tests/gender", element: <Lazy><GenderDrillPage /></Lazy> },
+              { path: "/plan/self-tests/listen", element: <Lazy><ListenType /></Lazy> },
+              { path: "/plan/exam-gate", element: <Navigate to="/plan" replace /> },
+              { path: "/exam-take", element: <Lazy><ExamRunner /></Lazy> },
+              { path: "/jobs", element: <Lazy><JobSearch /></Lazy> },
+              { path: "/stats", element: <Lazy><Stats /></Lazy> },
+              // ── legacy URL redirects — old bookmarks/links keep working ──
+              { path: "/vocabulary", element: <Navigate to="/words" replace /> },
+              { path: "/learning", element: <Navigate to="/plan" replace /> },
+              { path: "/roadmap", element: <Navigate to="/plan" replace /> },
+              { path: "/job-search", element: <Navigate to="/jobs" replace /> },
+              { path: "/applications", element: <Navigate to="/jobs" replace /> },
+              { path: "/cv", element: <Navigate to="/jobs" replace /> },
+              { path: "/cv/:id", element: <Navigate to="/jobs" replace /> },
+              { path: "/checklist", element: <Navigate to="/" replace /> },
+              { path: "/plan/notes", element: <Navigate to="/notes" replace /> },
+              { path: "/plan/notes/edit/:id", element: <NotesEditRedirect /> },
+              { path: "/settings", element: <Lazy><Settings /></Lazy> },
+              // anything else: a Sticker-style not-found page (KNOWN_ISSUES #9)
+              { path: "*", element: <NotFound /> },
+            ],
+          },
         ],
       },
     ],
