@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import {
   ArrowRight,
@@ -114,17 +114,29 @@ export interface TicketRow {
   itemId?: string;
 }
 
+/**
+ * A ticket or station row you can drag onto the Notes tile. The whole row is the drag source (the pointer sensor's
+ * 6px distance and the touch sensor's short press keep its checkbox and title buttons clicking normally); the row
+ * stays in place, dimmed, while Journey's DragOverlay carries a copy above the ticket's and the stream's clipping.
+ * The dots are only a hint. Keyboard: focus the row, Space picks it up, arrows move, Space drops.
+ */
 function Draggable({ id, enabled, children, style }: { id: string; enabled: boolean; children: ReactNode; style: CSSProperties }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id, disabled: !enabled });
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id, disabled: !enabled });
+  // Space/Enter start a keyboard drag only when the row itself has focus, so they still tick the checkbox inside it
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) listeners?.onKeyDown?.(e);
+  };
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, ...(transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 50, position: "relative" } : {}), opacity: isDragging ? 0.85 : 1 }}
+      {...(enabled ? { ...listeners, onKeyDown, ...attributes, role: undefined, "aria-roledescription": "draggable row", "aria-label": undefined } : {})}
+      className={enabled ? "cursor-grab" : undefined}
+      style={{ ...style, opacity: isDragging ? 0.4 : 1 }}
     >
       {children}
       {enabled && (
-        <span {...listeners} {...attributes} aria-label="Drag onto Notes to pin" className="flex shrink-0 cursor-grab items-center" style={{ opacity: 0.45, touchAction: "none" }}>
-          <DotsThree size={16} weight="bold" aria-hidden="true" />
+        <span aria-hidden="true" title="Drag onto Notes to pin" className="flex shrink-0 items-center" style={{ opacity: 0.45 }}>
+          <DotsThree size={16} weight="bold" />
         </span>
       )}
     </div>

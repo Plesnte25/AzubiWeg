@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
-import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import { ApiError, api } from "../../../api/client";
 import type { RoadmapSkill, StudySource } from "../../../api/types";
 import { EmptyState } from "../../../components/ui/EmptyState";
@@ -76,7 +76,13 @@ export default function Journey() {
   const [modal, setModal] = useState<ModalState | null>(null);
   const [laterOpen, setLaterOpen] = useState(false);
   const dragOK = bp !== "sm";
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+    useSensor(KeyboardSensor),
+  );
+  // the row being dragged onto Notes, shown in the DragOverlay
+  const [dragging, setDragging] = useState<string | null>(null);
 
   const { data: dash } = useQuery({ queryKey: ["dashboard"], queryFn: api.dashboard });
   const { data: status } = useQuery({ queryKey: ["roadmap", "status"], queryFn: api.roadmapStatus });
@@ -270,7 +276,11 @@ export default function Journey() {
   const altLevels: AltLevel[] = (dash?.bento.level.levels ?? []).map((l) => ({ level: l.level, percent: l.percent, state: l.state }));
   const activeAlt = altLevels.find((l) => l.state === "active") ?? { level, percent: dash?.bento.level.percent ?? 0, state: "active" as const };
 
+  const dragLabel = (id: string) =>
+    id.startsWith("ticket:") ? rows.find((x) => `ticket:${x.key}` === id)?.title : items.find((x) => `item:${x.id}` === id)?.title;
+  const onDragStart = (e: DragStartEvent) => setDragging(String(e.active.id));
   const onDragEnd = (e: DragEndEvent) => {
+    setDragging(null);
     if (e.over?.id !== "notes-tile") return;
     const id = String(e.active.id);
     if (id.startsWith("ticket:")) {
@@ -413,7 +423,7 @@ export default function Journey() {
   const stationByKey = (key: string) => stations.find((s) => s.key === key);
 
   return (
-    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+    <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
       {layout}
       {modal?.k === "task" && (
         <TaskModal
@@ -455,6 +465,18 @@ export default function Journey() {
         <SourceModal source={sources.find((s) => s.id === modal.id)!} stations={stations} pickable={pickable} onClose={() => setModal(null)} />
       )}
       {modal?.k === "add" && <AddSourceModal stations={pickable} defaultStationKey={current?.key ?? null} onClose={() => setModal(null)} />}
+      <DragOverlay dropAnimation={null}>
+        {dragging && (
+          <div
+            lang="de"
+            className="cursor-grabbing"
+            style={{ maxWidth: 320, padding: "9px 12px", border: "2.5px solid var(--line)", borderRadius: 14, background: "var(--plain)", color: "var(--plainText)", fontSize: 14, fontWeight: 700, boxShadow: "5px 5px 0 var(--shadow)", transform: "rotate(-2deg)" }}
+          >
+            {dragLabel(dragging)}
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--plainMuted)" }}>Drop on Notes to pin</div>
+          </div>
+        )}
+      </DragOverlay>
     </DndContext>
   );
 }
