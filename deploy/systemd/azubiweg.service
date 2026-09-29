@@ -7,6 +7,10 @@ Type=simple
 User=azubiweg
 WorkingDirectory=/opt/azubiweg/repo/server
 EnvironmentFile=/opt/azubiweg/.env
+# The server's day math ("today", streaks, due reviews, the daily ticket) runs in the process's time zone. Set it to
+# the learner's zone, not the VPS's UTC (KNOWN_ISSUES #32): switch to Europe/Berlin after the move. Needs
+# `sudo systemctl daemon-reload && sudo systemctl restart azubiweg` after changing it.
+Environment=TZ=Asia/Kolkata
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
 RestartSec=5

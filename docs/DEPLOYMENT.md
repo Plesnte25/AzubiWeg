@@ -245,6 +245,12 @@ sudo systemctl enable --now azubiweg
 sudo journalctl -u azubiweg -f   # watch it come up
 ```
 
+**Time zone.** The unit sets `TZ=Asia/Kolkata`: every "today" the server works out (the daily ticket, streaks,
+due reviews, Lernzeit days) follows the process's zone, and the VPS itself runs in UTC, which made the day roll over
+at 05:30 IST. It's one zone for the whole server — fine while there is one real learner (KNOWN_ISSUES #32 has the
+per-user version). After moving, change it to `Europe/Berlin`, then `sudo systemctl daemon-reload && sudo systemctl
+restart azubiweg` (deploy.sh doesn't reload units).
+
 In the app, sign in and set your vault path (Settings) to
 `/opt/azubiweg/vaults/sharjeel` — same UX as pointing it at a local folder in
 dev, it's just backed by the bisync now.
