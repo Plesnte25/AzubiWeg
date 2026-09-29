@@ -277,6 +277,13 @@ export function WordDetailPanel({
           {meaning || <i>no meaning yet</i>}
           {word.ipa && <span style={{ fontWeight: 500, opacity: 0.7 }}> · {word.ipa}</span>}
         </span>
+        {/* inflected forms you typed that were filed under this word ("Begrüßungen = plural of Begrüßung"; the vault
+            card's Form field, several joined by "; ") */}
+        {word.form && (
+          <span lang="de" style={{ fontSize: 13, fontWeight: 600, opacity: 0.8 }}>
+            {word.form.split("; ").join(" · ")}
+          </span>
+        )}
       </div>
 
       {!compact && (

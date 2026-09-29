@@ -538,6 +538,26 @@ const GRAMMATICAL_TERM_RE =
   "gerund|imperative|present|past|preterite|participle|infinitive|subjunctive|inflection|form|plural|singular|genitive|dative|accusative|nominative|comparative|superlative|diminutive|augmentative|agent noun|female equivalent|verbal noun|first-person|second-person|third-person";
 const FORM_OF_GLOSS_RE = new RegExp(`^(?:(?:${GRAMMATICAL_TERM_RE})[\\s/]+)+of\\s+`, "i");
 
+/** A stored word meaning that is nothing but cross-references ("(Noun) plural of Begrüßung") instead of a real gloss —
+ * left on old cards made before inflected forms were resolved to their lemma (scripts/backfill-form-meanings.ts).
+ * Every "; "-separated sense must be a bare "… of X"; one that goes on to explain itself ("agent noun of lehren: one
+ * who teaches") is a real meaning, so the whole thing is. */
+export function isFormOfMeaning(meaning: string | null): boolean {
+  if (!meaning?.trim()) return false;
+  return meaning.split(";").every((sense) => {
+    const gloss = sense.trim().replace(/^\([^)]*\)\s*/, "");
+    return FORM_OF_GLOSS_RE.test(gloss) && !gloss.includes(":") && !gloss.includes("(“");
+  });
+}
+
+/** The base words a cross-reference meaning names ("plural of Begrüßung" → ["Begrüßung"]). */
+export function formOfTargets(meaning: string): string[] {
+  return meaning
+    .split(";")
+    .map((sense) => sense.trim().replace(/^\([^)]*\)\s*/, "").replace(FORM_OF_GLOSS_RE, "").trim().split(/[\s,(]/)[0] ?? "")
+    .filter(Boolean);
+}
+
 // A gloss that's WHOLLY grammatical labels with no trailing "of X" clause
 // ("first-person singular present") is just as much a non-gloss as the
 // "...of X" form above -- Kaikki doesn't always attach the cross-reference
