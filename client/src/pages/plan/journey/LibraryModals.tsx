@@ -347,7 +347,7 @@ function UnitRow({ sourceId, unit, onToggle }: { sourceId: string; unit: StudySo
             {unit.position + 1}. {unit.title}
           </span>
           {unit.description && draft === null && (
-            <span className={open ? undefined : "line-clamp-2"} style={{ fontSize: 12.5, fontWeight: 500, lineHeight: 1.35, color: "var(--plainMuted)" }}>
+            <span className={open ? undefined : "line-clamp-2"} style={{ fontSize: 12.5, fontWeight: 500, lineHeight: 1.35, color: "var(--plainMuted)", whiteSpace: "pre-line" }}>
               {unit.description}
             </span>
           )}
@@ -357,7 +357,7 @@ function UnitRow({ sourceId, unit, onToggle }: { sourceId: string; unit: StudySo
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              maxLength={500}
+              maxLength={2000}
               rows={3}
               autoFocus
               aria-label={`What ${unit.title} covers`}

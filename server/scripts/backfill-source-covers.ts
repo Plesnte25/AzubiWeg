@@ -1,7 +1,8 @@
 /**
  * Gives existing study sources what new ones get on create: a default cover fetched from the link (YouTube
- * thumbnail or the page's og:image) when there's neither an uploaded nor a fetched one, and DW's lesson descriptions
- * for Nicos Weg course units that have none. Dry-run by default.
+ * thumbnail, a channel's avatar or the page's og:image) when there's neither an uploaded nor a fetched one, DW's
+ * lesson descriptions for Nicos Weg course units that have none, and each video's cleaned description for YouTube
+ * playlist lessons that have none (services/learning/youtubeDescriptions.ts). Dry-run by default.
  *
  *   npm run backfill:source-covers -- --apply
  */
@@ -9,6 +10,7 @@ import "dotenv/config";
 import { prisma } from "../src/db.js";
 import { fetchCoverUrl } from "../src/services/learning/cover.js";
 import { extractCourseId, fetchCourse } from "../src/services/learning/nicosweg.js";
+import { fillPlaylistDescriptions } from "../src/services/learning/youtubeDescriptions.js";
 
 async function main() {
   const apply = process.argv.includes("--apply");
@@ -38,6 +40,16 @@ async function main() {
         if (apply) await prisma.studySourceUnit.update({ where: { id: unit.id }, data: { description } });
       }
       console.log(`${source.title}: ${missing.length} lessons without a description`);
+    }
+
+    const videoLessons = source.units.filter((u) => u.videoId && !u.description?.trim());
+    if (videoLessons.length > 0) {
+      console.log(`${source.title}: ${videoLessons.length} video lessons without a description${apply ? " — fetching (one video at a time)…" : ""}`);
+      if (apply) {
+        const filled = await fillPlaylistDescriptions(source.id);
+        descriptions += filled;
+        console.log(`  filled ${filled}`);
+      } else descriptions += videoLessons.length;
     }
   }
 

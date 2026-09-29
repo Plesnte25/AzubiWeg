@@ -28,9 +28,20 @@ export function parseGenericPreview(html: string, hostname: string): GenericPrev
   return { title: title || null, imageUrl, siteName };
 }
 
+// YouTube pages put their og: tags ~750 KB in (after the inline player JSON), past the usual 300 KB read: a channel
+// link got no avatar as its cover (KNOWN_ISSUES #33). YouTube hosts get a bigger read.
+const YOUTUBE_MAX_BYTES = 1_500_000;
+const isYouTube = (rawUrl: string) => {
+  try {
+    return /(^|\.)youtube\.com$/.test(new URL(rawUrl).hostname);
+  } catch {
+    return false;
+  }
+};
+
 /** null on any network/HTTP/timeout/non-HTML failure — callers fall back to manual. */
 export async function fetchGenericPreview(rawUrl: string): Promise<GenericPreviewResult | null> {
-  const fetched = await fetchHtml(rawUrl, USER_AGENT);
+  const fetched = await fetchHtml(rawUrl, USER_AGENT, isYouTube(rawUrl) ? YOUTUBE_MAX_BYTES : undefined);
   if (!fetched) return null;
   return parseGenericPreview(fetched.html, new URL(fetched.finalUrl).hostname);
 }

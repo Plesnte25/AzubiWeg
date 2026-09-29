@@ -29,6 +29,7 @@ import { summarizeMistakes } from "../services/learning/mistakes.js";
 import { listeningAudioFor } from "../services/learning/listening-audio.js";
 import { buildManualUnits, type NewUnit, resizeManualUnits, unitProgress } from "../services/learning/units.js";
 import { fetchSourceDetails, fetchSourceDetailsCached } from "../services/learning/sourceFetch.js";
+import { fillPlaylistDescriptions } from "../services/learning/youtubeDescriptions.js";
 import { fetchCoverUrl } from "../services/learning/cover.js";
 import { deleteStoredFile } from "./files.js";
 import { gradeSyllabusExercise } from "../services/learning/exercise-grading.js";
@@ -557,6 +558,8 @@ learningRouter.post("/sources", async (req, res) => {
     },
     include: SOURCE_INCLUDE,
   });
+  // lesson descriptions come from each video's own page: one at a time, in the background (KNOWN_ISSUES #33)
+  if (fetchOutcome === "playlist") void fillPlaylistDescriptions(source.id).catch(() => {});
   res.status(201).json({ source: withPercent(source), fetch: fetchOutcome });
 });
 
@@ -697,7 +700,7 @@ const unitPatchSchema = z
     // per-lesson notes, edited inline in the lesson list
     notes: z.string().max(5000).nullish(),
     // what the lesson covers (fetched for Nicos Weg, else written by the user)
-    description: z.string().trim().max(500).nullish(),
+    description: z.string().trim().max(2000).nullish(),
   })
   .refine((d) => d.done !== undefined || d.notes !== undefined || d.description !== undefined, {
     message: "Nothing to update",

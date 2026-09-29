@@ -103,10 +103,14 @@ export function extractTitle(html: string): string | null {
 }
 
 /** Fetches a URL's HTML with the shared SSRF-safe machinery, capped at
- * MAX_BYTES and FETCH_TIMEOUT_MS. Returns null on any failure (bad URL,
+ * MAX_BYTES (or `maxBytes`) and FETCH_TIMEOUT_MS. Returns null on any failure (bad URL,
  * blocked host, timeout, non-HTML response) — never throws, so callers can
  * always fall back to manual entry. */
-export async function fetchHtml(rawUrl: string, userAgent: string): Promise<{ html: string; finalUrl: string } | null> {
+export async function fetchHtml(
+  rawUrl: string,
+  userAgent: string,
+  maxBytes: number = MAX_BYTES,
+): Promise<{ html: string; finalUrl: string } | null> {
   let url: URL;
   try {
     url = new URL(rawUrl);
@@ -126,7 +130,7 @@ export async function fetchHtml(rawUrl: string, userAgent: string): Promise<{ ht
     const reader = res.body.getReader();
     const chunks: Uint8Array[] = [];
     let total = 0;
-    while (total < MAX_BYTES) {
+    while (total < maxBytes) {
       const { done, value } = await reader.read();
       if (done) break;
       chunks.push(value);
