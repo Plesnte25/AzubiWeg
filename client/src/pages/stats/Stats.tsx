@@ -110,6 +110,13 @@ export default function Stats() {
   const { data: appStats } = useQuery({ queryKey: ["applications", "stats"], queryFn: api.applicationStats });
 
   const words = useMemo(() => wordsData?.words ?? [], [wordsData]);
+  // der · die · das share of the user's nouns — the same numbers as Words' tile, for articles not drilled yet
+  const nounShare = useMemo(() => {
+    const nouns = words.filter((w) => w.genus);
+    if (!nouns.length) return null;
+    const share = (g: "der" | "die" | "das") => Math.round((nouns.filter((w) => w.genus === g).length / nouns.length) * 100);
+    return { der: share("der"), die: share("die"), das: share("das") };
+  }, [words]);
   const wordsById = useMemo(() => new Map(words.map((w) => [w.id, w])), [words]);
   const lernzeitByDay = useMemo(() => {
     const m = new Map<string, number>();
@@ -130,7 +137,7 @@ export default function Stats() {
       <ProjectionTile level={b.level.level} pace={pace} readiness={readiness} exam={exam} />
       <RetentionTile points={reviewStats?.retention ?? []} />
       <SkillsTile rows={b.skillMastery} level={b.level.level} bp={bp} />
-      <ArticlesTile articles={quiz?.articles} drill={quiz?.scores.genderDrill} />
+      <ArticlesTile articles={quiz?.articles} drill={quiz?.scores.genderDrill} nounShare={nounShare} />
       <HeatTile calendar={b.streakCalendar} streak={dash.streak} best={b.bestStreak} bp={bp} />
       <ShakyTile weak={weak?.words ?? []} wordsById={wordsById} bp={bp} onDrill={() => setDrill(true)} />
       <JobsTile stats={appStats?.stats} interview={b.nextInterview} />

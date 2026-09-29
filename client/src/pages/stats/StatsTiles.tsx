@@ -517,15 +517,23 @@ export function SkillsTile({ rows, level, bp }: { rows: SkillRow[]; level: strin
 
 // ── Articles ─────────────────────────────────────────────────────────────────
 
+// die is plain, not the usual pink: the tile itself is pink
 const ART_COLORS = { der: "var(--sky)", die: "var(--plain)", das: "var(--mint)" } as const;
+
+export type NounShare = Record<"der" | "die" | "das", number>;
 
 /**
  * Gender drill on Stats: the overall drill score (the same number Plan's self-test card shows) as the headline, then
- * accuracy per article from the individual answers.
+ * one column per article. A drilled article shows your accuracy on it; one you haven't drilled yet shows the share
+ * of your nouns that take it (what Words' der · die · das tile shows), labelled "of nouns" and drawn dashed, so every
+ * article always has a number and the two measures can't be mistaken for each other.
  */
-export function ArticlesTile({ articles, drill }: { articles: ArticleAccuracy | undefined; drill: SelfTestScore | undefined }) {
-  const rows = (["der", "die", "das"] as const).map((a) => ({ l: a, v: articles?.byArticle[a]?.percent ?? null }));
-  const any = rows.some((r) => r.v !== null);
+export function ArticlesTile({ articles, drill, nounShare }: { articles: ArticleAccuracy | undefined; drill: SelfTestScore | undefined; nounShare: NounShare | null }) {
+  const rows = (["der", "die", "das"] as const).map((a) => {
+    const right = articles?.byArticle[a]?.percent ?? null;
+    return right !== null ? { l: a, v: right, kind: "right" as const } : { l: a, v: nounShare ? nounShare[a] : null, kind: "share" as const };
+  });
+  const any = rows.some((r) => r.kind === "right");
   return (
     <Tile bg="var(--pink)" tilt={-1} className="flex flex-col" style={{ gridArea: "art", padding: 16, gap: 10 }}>
       <div className="flex items-baseline justify-between" style={{ gap: 8 }}>
@@ -542,15 +550,18 @@ export function ArticlesTile({ articles, drill }: { articles: ArticleAccuracy | 
       <div className="flex min-h-0 flex-1 items-end" style={{ gap: 8 }}>
         {rows.map((r) => (
           <div key={r.l} className="flex h-full flex-1 flex-col items-center justify-end" style={{ gap: 4 }}>
-            <span style={{ fontSize: 13, fontWeight: 700 }}>{r.v === null ? "–" : `${r.v}%`}</span>
+            <span className="flex flex-col items-center" style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.05 }}>
+              {r.v === null ? "–" : `${r.v}%`}
+              {r.v !== null && <span style={{ fontSize: 10, fontWeight: 600, opacity: 0.8 }}>{r.kind === "right" ? "right" : "of nouns"}</span>}
+            </span>
             <div
               style={{
                 width: "100%",
-                height: `calc(${r.v ?? 0}% - 44px)`,
+                height: `calc(${r.v ?? 0}% - 58px)`,
                 minHeight: 20,
-                background: r.v === null ? "transparent" : ART_COLORS[r.l],
+                background: r.v === null || r.kind === "share" ? "transparent" : ART_COLORS[r.l],
                 border: "2.5px solid var(--line)",
-                borderStyle: r.v === null ? "dashed" : "solid",
+                borderStyle: r.v === null || r.kind === "share" ? "dashed" : "solid",
                 borderRadius: "10px 10px 4px 4px",
                 boxSizing: "border-box",
               }}
@@ -562,7 +573,13 @@ export function ArticlesTile({ articles, drill }: { articles: ArticleAccuracy | 
         ))}
       </div>
       <span style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.25 }}>
-        {!any ? "No gender drills yet" : articles?.mostMissed ? `${articles.mostMissed} trips you up most` : "No article stands out"}
+        {!any
+          ? nounShare
+            ? "Your nouns so far — take a gender drill to see your accuracy"
+            : "No gender drills yet"
+          : articles?.mostMissed
+            ? `${articles.mostMissed} trips you up most`
+            : "No article stands out"}
       </span>
     </Tile>
   );

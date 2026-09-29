@@ -336,8 +336,11 @@ export default function Words() {
 
       {/* der · die · das */}
       <Tile tilt={-1.2} radius={22} className="flex flex-col justify-between gap-2.5" style={{ gridArea: "gender", padding: "calc(var(--k) * 18px)" }}>
-        <span className="uppercase" style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".08em" }} lang="de">
-          der · die · das
+        <span className="flex items-baseline justify-between gap-2">
+          <span className="uppercase" style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".08em" }} lang="de">
+            der · die · das
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--plainMuted)" }}>share of your nouns</span>
         </span>
         <div className="flex overflow-hidden" style={{ height: 30, border: "2.5px solid var(--line)", borderRadius: 10, color: "var(--onTile)", fontSize: 13, fontWeight: 700 }}>
           {nouns.length === 0 ? (
