@@ -104,7 +104,7 @@ const STATES = [
   },
   ...[
     ["plan-task", async (page) => page.getByRole("button", { name: /^Review: |^Grammar|^Vocabulary|^Reading|^Listening|^Speaking|^Writing/ }).first().click()],
-    ["plan-station", async (page) => page.getByRole("button", { name: "Station overview" }).click()],
+    ["plan-station", async (page) => page.getByRole("button", { name: "Station overview", exact: true }).first().click()],
     ["plan-gate", async (page) => page.getByRole("button", { name: "See the gate" }).click()],
     ["plan-week", async (page) => page.getByRole("button", { name: "Open this week" }).click()],
     ["plan-library", async (page) => page.getByRole("button", { name: "See all" }).click()],

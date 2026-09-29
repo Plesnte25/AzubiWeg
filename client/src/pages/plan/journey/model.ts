@@ -1,4 +1,4 @@
-import type { CefrLevel, StudySource, StudySourceType, SyllabusItem } from "../../../api/types";
+import type { CefrLevel, QueueLine, StudySource, StudySourceType, SyllabusItem } from "../../../api/types";
 
 /*
  * Plan journey model: a client port of server/src/services/learning/stations.ts (same keys, states and Level %
@@ -17,8 +17,12 @@ export interface Station {
   passed: number;
   closed: boolean;
   skipped: boolean;
+  /** The queue line its topics belong to (stations are single-kind: grammar, vocab or skills). */
+  line: QueueLine;
   state: StationState;
 }
+
+export const LINE_LABEL: Record<QueueLine, string> = { grammar: "Grammar", vocab_theme: "Vocab", skill: "Skills" };
 
 export const UNTHEMED = "More topics";
 export const CHECKPOINT_AFTER = [7, 14, 21] as const;
@@ -26,6 +30,11 @@ export const CHECKPOINT_AFTER = [7, 14, 21] as const;
 export const stationKey = (level: CefrLevel, theme: string) => `${level}:${theme}`;
 const isPassed = (s: SyllabusItem["masteryState"]) => s === "passed" || s === "mastered";
 
+/**
+ * Self-paced queue: the three lines (grammar, vocab, skills) run in parallel, so up to three stations are "cur" at
+ * once — every open station with a topic that isn't locked (`item.locked`, from GET /syllabus). The level's last
+ * station is always the gate.
+ */
 export function deriveStations(items: SyllabusItem[], level: CefrLevel): Station[] {
   const groups = new Map<string, SyllabusItem[]>();
   for (const item of items.filter((i) => i.level === level).sort((a, b) => a.sortOrder - b.sortOrder)) {
@@ -42,16 +51,13 @@ export function deriveStations(items: SyllabusItem[], level: CefrLevel): Station
     passed: group.filter((g) => isPassed(g.masteryState)).length,
     closed: group.every((g) => isPassed(g.masteryState) || g.skippedAt !== null),
     skipped: group.every((g) => g.skippedAt !== null),
+    line: (group[0]?.category ?? "grammar") as QueueLine,
     state: "locked",
   }));
-  let cur = false;
   stations.forEach((s, i) => {
     if (i === stations.length - 1 && stations.length > 1) s.state = "gate";
     else if (s.closed) s.state = "done";
-    else if (!cur) {
-      s.state = "cur";
-      cur = true;
-    }
+    else if (s.items.some((it) => !it.locked && !isItemDone(it))) s.state = "cur";
   });
   return stations;
 }
@@ -65,8 +71,10 @@ export function levelPercent(items: SyllabusItem[], level: CefrLevel): number {
 /** Score bands (README §1.2): ≥ 80 % mint · 65–79 % lemon · < 65 % tomato. */
 export const band = (s: number) => (s >= 80 ? "var(--mint)" : s >= 65 ? "var(--lemon)" : "var(--tomato)");
 
+/** Done = passed, mastered or skipped — the same rule the server's queue locks on (a ticked-but-unpassed topic with
+ * an exercise still has to be passed). */
 export function isItemDone(item: SyllabusItem): boolean {
-  return isPassed(item.masteryState) || item.completedAt !== null;
+  return isPassed(item.masteryState) || item.skippedAt !== null;
 }
 
 /** 1-based checkpoint number a station index sits right after, or null. */

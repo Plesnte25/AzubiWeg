@@ -10,14 +10,15 @@ import { setRoadmapTaskCompletion } from "../services/learning/completion-sync.j
 import { applyTimerIntent, bankTimer, startsTimer } from "../services/learning/timer.js";
 import { levelProgress, levelStates } from "../services/learning/progress.js";
 import { aggregateReview, goetheReadiness, masteryDistribution, masteryTrend, skillPerformance, weakAreasFromBreakdowns } from "../services/learning/review.js";
-import { computeRoadmapPace } from "../services/learning/pace.js";
-import { addDaysUTC, computeBacklog, dayStatus, diffReseed } from "../services/learning/roadmap.js";
-import { DEFAULT_ROADMAP_DAYS, ROADMAP_VERSION, type DefaultRoadmapDay } from "../services/learning/roadmap-defaults.js";
-import { buildUserRoadmapPlan, type SyllabusRowForGeneration } from "../services/learning/roadmap-generator.js";
+import { addDaysUTC } from "../services/learning/roadmap.js";
+import { DEFAULT_ROADMAP_DAYS, ROADMAP_VERSION } from "../services/learning/roadmap-defaults.js";
 import { ensureSyllabusSeeded } from "../services/learning/syllabus-seed.js";
 import { appAudioDir } from "../services/vault/sync.js";
-import { isStudyDay, isValidCapacity, planDailyQueues, taskEstimateMinutes } from "../services/learning/daily-plan.js";
-import { blockedTopicIds } from "../services/learning/prerequisites.js";
+import { isStudyDay, isValidCapacity, taskEstimateMinutes } from "../services/learning/daily-plan.js";
+import { planSelfPacedCleanup } from "../services/learning/self-paced.js";
+import { currentByLine, forecastDates, loadQueue, topicTaskData } from "../services/learning/queue.js";
+import { TOPIC_MINUTES, planTicket, queueOrder } from "../services/learning/ticket.js";
+import { EXTRAS } from "../services/learning/extras.js";
 
 export const roadmapRouter = Router();
 roadmapRouter.use(requireAuth);
@@ -67,75 +68,71 @@ const TASK_INCLUDE = {
   },
 };
 
-/** Ensures the user's syllabus is seeded/current, then builds this user's
- * full roadmap plan (hand-authored skeleton + syllabus-derived Mon/Tue/Wed
- * tasks) — the one thing that must happen before either activating or
- * reseeding a roadmap. */
-async function buildPlanForUser(userId: string): Promise<DefaultRoadmapDay[]> {
-  await ensureSyllabusSeeded(userId);
-  const rows: SyllabusRowForGeneration[] = await prisma.syllabusItem.findMany({
-    where: { userId },
-    select: { id: true, level: true, category: true, sortOrder: true, title: true, description: true, completedAt: true, skill: true },
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+/** Every title the old 182-day calendar generated without a syllabus link (its skeleton plus the v5 fillers) — how
+ * the self-paced upgrade tells a user's own tasks from calendar content. */
+const SKELETON_TITLES = new Set([
+  ...DEFAULT_ROADMAP_DAYS.flatMap((d) => d.tasks.map((t) => t.title)),
+  "Grammar consolidation",
+  "Vocabulary review",
+]);
+
+/**
+ * One-time move from the pre-generated calendar to the self-paced queue (ROADMAP_VERSION 7): keeps completed,
+ * worked-on and user-added tasks as the log, deletes untouched generated ones (planSelfPacedCleanup), then drops
+ * days left empty. scripts/migrate-self-paced.ts runs the same thing as a dry run / explicit apply.
+ */
+export async function upgradeToSelfPaced(userId: string, roadmapVersion: number): Promise<void> {
+  if (roadmapVersion >= ROADMAP_VERSION) return;
+  await prisma.$transaction(async (tx) => {
+    const claimed = await tx.user.updateMany({ where: { id: userId, roadmapVersion: { lt: ROADMAP_VERSION } }, data: { roadmapVersion: ROADMAP_VERSION } });
+    if (claimed.count === 0) return;
+    const { plan } = await selfPacedCleanupFor(tx, userId);
+    await tx.roadmapTask.deleteMany({ where: { id: { in: plan.delete } } });
+    await tx.roadmapDay.deleteMany({ where: { userId, tasks: { none: {} } } });
   });
-  return buildUserRoadmapPlan(rows);
 }
 
-/** Reseeds a user's roadmap to ROADMAP_VERSION in place if they're behind,
- * preserving completions and re-attaching UploadedFile.roadmapTaskId onto
- * the freshly-created tasks — by syllabusItemId for linked tasks (stable,
- * survives title changes), by (dayOffset, title) for hand-authored ones. */
-async function ensureCurrentVersion(userId: string, roadmapVersion: number, roadmapStartedAt: Date) {
-  if (roadmapVersion >= ROADMAP_VERSION) return;
-  const plan = await buildPlanForUser(userId);
-
-  await prisma.$transaction(async (tx) => {
-    const existing = await tx.roadmapDay.findMany({
-      where: { userId },
-      include: { tasks: { select: { id: true, title: true, completedAt: true, droppedAt: true, syllabusItemId: true } } },
-    });
-    const reseedPlan = diffReseed(existing, plan);
-
-    const keyFor = (dayOffset: number, title: string, syllabusItemId: string | null) =>
-      syllabusItemId ? `s:${syllabusItemId}` : `t:${dayOffset}|${title.trim().toLowerCase()}`;
-
-    const oldKeyByTaskId = new Map(
-      existing.flatMap((d) => d.tasks.map((t) => [t.id, keyFor(d.dayOffset, t.title, t.syllabusItemId)])),
-    );
-    const oldTaskIds = [...oldKeyByTaskId.keys()];
-    const attachedFiles = await tx.uploadedFile.findMany({
-      where: { roadmapTaskId: { in: oldTaskIds } },
-      select: { id: true, roadmapTaskId: true },
-    });
-
-    await tx.roadmapDay.deleteMany({ where: { userId } });
-
-    const newIdByKey = new Map<string, string>();
-    for (const day of reseedPlan) {
-      const created = await tx.roadmapDay.create({
-        data: {
-          userId,
-          dayOffset: day.dayOffset,
-          date: addDaysUTC(roadmapStartedAt, day.dayOffset),
-          theme: day.theme,
-          tasks: { create: day.tasks },
-        },
-        include: { tasks: true },
-      });
-      for (const t of created.tasks) {
-        newIdByKey.set(keyFor(day.dayOffset, t.title, t.syllabusItemId), t.id);
-      }
-    }
-
-    for (const file of attachedFiles) {
-      const oldKey = file.roadmapTaskId ? oldKeyByTaskId.get(file.roadmapTaskId) : undefined;
-      const newId = oldKey ? newIdByKey.get(oldKey) : undefined;
-      if (newId) {
-        await tx.uploadedFile.update({ where: { id: file.id }, data: { roadmapTaskId: newId } });
-      }
-    }
-
-    await tx.user.update({ where: { id: userId }, data: { roadmapVersion: ROADMAP_VERSION } });
+/** What upgradeToSelfPaced would keep and delete for a user (also the migration script's dry run). */
+export async function selfPacedCleanupFor(db: Tx | typeof prisma, userId: string) {
+  const tasks = await db.roadmapTask.findMany({
+    where: { day: { userId } },
+    select: {
+      id: true, title: true, syllabusItemId: true, completedAt: true, droppedAt: true, timerSeconds: true, minutesSpent: true, journalEntry: true,
+      day: { select: { date: true } },
+      _count: { select: { files: true, notes: true } },
+    },
+    orderBy: { day: { date: "asc" } },
   });
+  const plan = planSelfPacedCleanup(
+    tasks.map(({ _count, day: _d, ...t }) => ({ ...t, fileCount: _count.files, noteCount: _count.notes })),
+    SKELETON_TITLES,
+  );
+  return { tasks, plan };
+}
+
+/** Whole days from the roadmap start to `date` (both @db.Date UTC midnights). */
+const dayOffsetOf = (startedAt: Date, date: Date) => Math.round((date.getTime() - startedAt.getTime()) / 86_400_000);
+
+/** The log row for a date, created on first use — days only exist once something is taken or added on them. */
+async function dayFor(db: Tx | typeof prisma, userId: string, startedAt: Date, date: Date) {
+  const dayOffset = dayOffsetOf(startedAt, date);
+  return db.roadmapDay.upsert({
+    where: { userId_dayOffset: { userId, dayOffset } },
+    create: { userId, dayOffset, date },
+    update: {},
+  });
+}
+
+/** Serializes ticket writes per user, so two tabs refreshing Today can't take the same topic twice. */
+async function lockUser(tx: Tx, userId: string) {
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}))::text`;
+}
+
+async function nextSortOrder(db: Tx | typeof prisma, dayId: string) {
+  const max = await db.roadmapTask.aggregate({ where: { dayId }, _max: { sortOrder: true } });
+  return (max._max.sortOrder ?? -1) + 1;
 }
 
 roadmapRouter.get("/status", async (req, res) => {
@@ -188,36 +185,14 @@ roadmapRouter.patch("/exam-target", async (req, res) => {
 
 const activateSchema = z.object({ startDate: z.iso.date().optional() });
 
-/** Generates and activates a user's roadmap at `startedAt`. Idempotent no-op
- * if already activated (unlike the route, which 409s on a direct hit) —
- * shared with scripts/seed-demo.ts so the demo account is built the exact
- * same way a real activation would build it. */
+/** Activates a user's roadmap at `startedAt`: seeds the syllabus and sets the day-0 anchor. Nothing is generated in
+ * advance any more — the queue builds each day's ticket (GET /today). Idempotent no-op if already activated (unlike
+ * the route, which 409s on a direct hit) — shared with scripts/seed-demo.ts. */
 export async function activateRoadmapForUser(userId: string, startedAt: Date): Promise<void> {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
   if (user.roadmapStartedAt) return;
-
-  // ensures the syllabus exists first, then generates this user's Mon/Tue/Wed
-  // grammar/vocab tasks from it — a fresh activation may already have some of
-  // those syllabus items completed, which lands as already-completed here
-  const plan = await buildPlanForUser(userId);
-
-  await prisma.$transaction([
-    ...plan.map((day) =>
-      prisma.roadmapDay.create({
-        data: {
-          userId,
-          dayOffset: day.dayOffset,
-          date: addDaysUTC(startedAt, day.dayOffset),
-          theme: day.theme,
-          tasks: { create: day.tasks.map((t, i) => ({ sortOrder: i, ...t })) },
-        },
-      }),
-    ),
-    prisma.user.update({
-      where: { id: userId },
-      data: { roadmapStartedAt: startedAt, roadmapVersion: ROADMAP_VERSION },
-    }),
-  ]);
+  await ensureSyllabusSeeded(userId);
+  await prisma.user.update({ where: { id: userId }, data: { roadmapStartedAt: startedAt, roadmapVersion: ROADMAP_VERSION } });
 }
 
 roadmapRouter.post("/activate", async (req, res) => {
@@ -280,113 +255,116 @@ roadmapRouter.post("/reset", async (req, res) => {
   res.json({ startedAt, cleared });
 });
 
+/** Due word reviews on the ticket: same count as the dashboard's dueToday, same estimate as the client's reviewMinutes. */
+async function dueReview(userId: string) {
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+  const cards = await prisma.word.count({ where: { userId, srDue: { lte: endOfToday }, meaning: { not: null } } });
+  return { cards, minutes: cards === 0 ? 0 : Math.max(1, Math.round(cards / 3)) };
+}
+
+/**
+ * Today's ticket (self-paced queue, plans/self-paced-queue.md). Builds itself on every read:
+ * 1. unfinished tasks from earlier days move onto today — nothing is ever overdue, it just stays on the ticket;
+ * 2. open topics are taken onto today until the minutes goal is met (never on a rest day);
+ * 3. `next` is what "Take another" (POST /take) would add beyond that.
+ */
 roadmapRouter.get("/today", async (req, res) => {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
   if (!user.roadmapStartedAt) return res.status(404).json({ error: "Roadmap not activated" });
-  await ensureCurrentVersion(user.id, user.roadmapVersion, user.roadmapStartedAt);
+  const startedAt = user.roadmapStartedAt;
+  await upgradeToSelfPaced(user.id, user.roadmapVersion);
 
   const today = todayLocal();
-  const [days, todayRow] = await Promise.all([
-    prisma.roadmapDay.findMany({ where: { userId: user.id }, include: TASK_INCLUDE }),
-    prisma.roadmapDay.findFirst({ where: { userId: user.id, date: today }, include: TASK_INCLUDE }),
-  ]);
-
-  const allTasks = days.flatMap((d) => d.tasks);
-  const syllabusTopics = await prisma.syllabusItem.findMany({
-    where: { userId: user.id },
-    select: { id: true, level: true, sortOrder: true, masteryState: true },
-  });
-  const blockedIds = blockedTopicIds(syllabusTopics);
-  const tasksDone = allTasks.filter((t) => t.completedAt !== null).length;
-  const currentDayOffset = Math.round((today.getTime() - user.roadmapStartedAt.getTime()) / 86_400_000);
-
-  // Deutschland-Context ("bureaucracy") tasks used to be filtered out of
-  // Today's plan/the overdue backlog list because they surfaced on the
-  // Checklist page instead — with Checklist gone (Phase 1) and no
-  // replacement built for it, that left them invisible and uncompletable
-  // through any UI while still counting toward overview progress below.
-  // Phase 11 (Plan rebuild) resolves this by no longer filtering them out —
-  // they show in the task list like any other task, tagged the same
-  // "Context" skill label SourcesPage's RESOURCE_SKILL_LABEL already uses.
-  const capacity = user.studyCapacityMinutes;
-  // a day off (Settings → Study days) gets no ticket: today's tasks stay unplanned and roll into tomorrow's
-  // carried-over row like any missed day
   const restDay = !isStudyDay(user.studyDays, today);
-  const planned = planDailyQueues(
-    (restDay ? [] : (todayRow?.tasks ?? [])).map((task) => ({
-      id: task.id,
-      estimateMinutes: taskEstimateMinutes(task.type),
-      completedAt: task.completedAt,
-      blocked: task.syllabusItemId !== null && blockedIds.has(task.syllabusItemId),
-    })),
-    capacity,
-  );
-  const plannedBlockedTaskIds = (todayRow?.tasks ?? [])
-    .filter((task) => task.completedAt === null && task.syllabusItemId !== null && blockedIds.has(task.syllabusItemId))
-    .map((task) => task.id);
-  const dueWords = await prisma.word.findMany({
-    where: { userId: user.id, srDue: { lte: new Date() }, meaning: { not: null } },
-    orderBy: { srDue: "asc" },
-    take: Math.max(1, Math.floor(planned.revisionMinutes / 2)),
-    select: { id: true, headword: true, meaning: true, example: true },
-  });
-  const topicReviews = await prisma.syllabusItem.findMany({
-    where: { userId: user.id, reviewDueAt: { lte: new Date() }, masteryState: { not: "not_started" } },
-    orderBy: { reviewDueAt: "asc" },
-    take: 10,
-    select: { id: true, title: true, level: true, theme: true, reviewDueAt: true },
-  });
-  const availableTopicReviews = topicReviews.filter((topic) => !blockedIds.has(topic.id)).slice(0, 5);
+  const [review, topicReviews] = await Promise.all([
+    dueReview(user.id),
+    prisma.syllabusItem.findMany({
+      where: { userId: user.id, reviewDueAt: { lte: new Date() }, masteryState: { not: "not_started" } },
+      orderBy: { reviewDueAt: "asc" },
+      take: 5,
+      select: { id: true, title: true, level: true, theme: true, reviewDueAt: true },
+    }),
+  ]);
+  // due reviews come first and count toward the goal: words at their estimate, topic reviews at a topic's 10 min
+  const reviewMinutes = review.minutes + topicReviews.length * TOPIC_MINUTES;
+
+  const { dayId, queue, next } = await prisma.$transaction(async (tx) => {
+    await lockUser(tx, user.id);
+    const day = await dayFor(tx, user.id, startedAt, today);
+    await tx.roadmapTask.updateMany({
+      where: { day: { userId: user.id, date: { lt: today } }, completedAt: null, droppedAt: null },
+      data: { dayId: day.id },
+    });
+    const queue = await loadQueue(tx, user.id);
+    const onToday = await tx.roadmapTask.findMany({ where: { dayId: day.id, droppedAt: null }, select: { type: true, syllabusItemId: true } });
+    const plan = planTicket({
+      open: queue.open,
+      plannedMinutes: reviewMinutes + onToday.reduce((n, t) => n + taskEstimateMinutes(t.type), 0),
+      goalMinutes: user.studyCapacityMinutes,
+      restDay,
+      hasTopicToday: onToday.some((t) => t.syllabusItemId !== null),
+    });
+    let sortOrder = await nextSortOrder(tx, day.id);
+    for (const id of plan.autoTake) {
+      await tx.roadmapTask.create({ data: { dayId: day.id, sortOrder: sortOrder++, ...topicTaskData(queue.byId.get(id)!) } });
+      queue.taken.add(id);
+    }
+    return { dayId: day.id, queue, next: plan.next ? queue.byId.get(plan.next)! : null };
+  }, { timeout: 15_000 });
+
+  const [tasks, tasksDone] = await Promise.all([
+    prisma.roadmapTask.findMany({ where: { dayId }, orderBy: { sortOrder: "asc" }, include: TASK_INCLUDE.tasks.include }),
+    prisma.roadmapTask.count({ where: { day: { userId: user.id }, completedAt: { not: null } } }),
+  ]);
+  const live = tasks.filter((t) => !t.droppedAt);
 
   res.json({
-    date: todayRow?.date ?? today,
-    theme: todayRow?.theme ?? null,
-    tasks: todayRow?.tasks ?? [],
-    backlog: computeBacklog(days, today).filter((g) => g.tasks.length > 0),
+    date: today,
     restDay,
-    capacity: {
-      minutes: capacity,
-      revisionMinutes: planned.revisionMinutes,
-      coreMinutes: planned.coreMinutes,
-      hasMore: planned.hasMore,
+    tasks,
+    review,
+    goal: {
+      minutes: user.studyCapacityMinutes,
+      plannedMinutes: reviewMinutes + live.reduce((n, t) => n + taskEstimateMinutes(t.type), 0),
+      doneMinutes: live.filter((t) => t.completedAt).reduce((n, t) => n + taskEstimateMinutes(t.type), 0),
     },
-    queues: {
-      revision: dueWords,
-      topicReviews: availableTopicReviews,
-      coreTaskIds: planned.core.map((task) => task.id),
-      accelerationTaskIds: planned.acceleration.map((task) => task.id),
-      blockedTaskIds: plannedBlockedTaskIds,
-    },
-    overview: {
-      totalDays: DEFAULT_ROADMAP_DAYS.length,
-      currentDayOffset,
-      tasksDone,
-      tasksTotal: allTasks.length,
-      percent: allTasks.length === 0 ? 0 : Math.round((tasksDone / allTasks.length) * 100),
-    },
+    next: next ? { id: next.id, title: next.title, category: next.category, theme: next.theme } : null,
+    lines: currentByLine(queue),
+    activeLevel: queue.activeLevel,
+    queues: { topicReviews },
+    overview: { dayNumber: dayOffsetOf(startedAt, today) + 1, tasksDone },
   });
 });
 
-roadmapRouter.get("/backlog", async (req, res) => {
+const takeSchema = z.object({ syllabusItemId: z.string().min(1).optional() });
+
+/** "Take another": puts an open topic on today — the given one, or the next in queue order. */
+roadmapRouter.post("/take", async (req, res) => {
+  const parsed = takeSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
   if (!user.roadmapStartedAt) return res.status(404).json({ error: "Roadmap not activated" });
-  await ensureCurrentVersion(user.id, user.roadmapVersion, user.roadmapStartedAt);
+  const startedAt = user.roadmapStartedAt;
+  await upgradeToSelfPaced(user.id, user.roadmapVersion);
 
-  const days = await prisma.roadmapDay.findMany({ where: { userId: user.id }, include: TASK_INCLUDE });
-  const groups = computeBacklog(days, todayLocal());
-  res.json({ groups, totalOverdueTasks: groups.reduce((n, g) => n + g.tasks.length, 0) });
-});
-
-roadmapRouter.get("/day/:date", async (req, res) => {
-  const parsed = z.iso.date().safeParse(req.params.date);
-  if (!parsed.success) return res.status(400).json({ error: "Invalid date" });
-
-  const day = await prisma.roadmapDay.findFirst({
-    where: { userId: req.userId, date: toDate(parsed.data) },
-    include: TASK_INCLUDE,
+  const result = await prisma.$transaction(async (tx) => {
+    await lockUser(tx, user.id);
+    const queue = await loadQueue(tx, user.id);
+    const id = parsed.data.syllabusItemId ?? queueOrder(queue.open)[0]?.id;
+    if (!id) return { error: "Nothing open to take — pass a topic to open the next one" };
+    if (!queue.open.some((t) => t.id === id)) {
+      return { error: queue.taken.has(id) ? "That topic is already on your ticket" : "That topic isn't open yet" };
+    }
+    const day = await dayFor(tx, user.id, startedAt, todayLocal());
+    const task = await tx.roadmapTask.create({
+      data: { dayId: day.id, sortOrder: await nextSortOrder(tx, day.id), ...topicTaskData(queue.byId.get(id)!) },
+      include: TASK_INCLUDE.tasks.include,
+    });
+    return { task };
   });
-  if (!day) return res.status(404).json({ error: "No roadmap day at that date" });
-  res.json({ day });
+  if ("error" in result) return res.status(409).json({ error: result.error });
+  res.status(201).json(result);
 });
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
@@ -402,99 +380,69 @@ function mondayOf(d: Date): Date {
   return addDaysUTC(d, -dayIdx);
 }
 
-roadmapRouter.get("/calendar", async (req, res) => {
-  const month = z.string().regex(MONTH_RE).safeParse(req.query.month);
-  if (!month.success) return res.status(400).json({ error: "month must be YYYY-MM" });
-
-  const { start: monthStart, end: monthEnd } = monthRange(month.data);
-
-  const days = await prisma.roadmapDay.findMany({
-    where: { userId: req.userId, date: { gte: monthStart, lt: monthEnd } },
-    include: TASK_INCLUDE,
-    orderBy: { date: "asc" },
+/** Plan's per-level Extras (services/learning/extras.ts) with where each stands: done (a completed task with its
+ * title) or on the ticket (an open one). "Add to today" is an ordinary POST /tasks. */
+roadmapRouter.get("/extras", async (req, res) => {
+  const tasks = await prisma.roadmapTask.findMany({
+    where: { day: { userId: req.userId }, droppedAt: null, title: { in: EXTRAS.map((e) => e.title) } },
+    select: { id: true, title: true, completedAt: true },
   });
-  const today = todayLocal();
   res.json({
-    days: days.map((d) => ({
-      date: d.date,
-      dayOffset: d.dayOffset,
-      theme: d.theme,
-      totalTasks: d.tasks.length,
-      completedTasks: d.tasks.filter((t) => t.completedAt !== null).length,
-      status: dayStatus(d, today),
-    })),
+    extras: EXTRAS.map((e) => {
+      const mine = tasks.filter((t) => t.title === e.title);
+      return {
+        ...e,
+        doneAt: mine.find((t) => t.completedAt)?.completedAt ?? null,
+        taskId: mine.find((t) => !t.completedAt)?.id ?? null,
+      };
+    }),
   });
 });
 
-// milestone weeks match roadmap-defaults.ts's buildMilestoneWeek() call sites —
-// these double as "exam week" markers on the month strip / week overview
-const MILESTONE_WEEKS = new Set([8, 16, 25, 26]);
-const TOTAL_WEEKS = Math.ceil(DEFAULT_ROADMAP_DAYS.length / 7);
-
+/**
+ * The Week modal: the last 7 days as they actually went (tasks finished per day, Lernzeit minutes), and what's next
+ * on each line with a projected date from real pace (queue.ts forecastDates).
+ */
 roadmapRouter.get("/week", async (req, res) => {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
   if (!user.roadmapStartedAt) return res.status(404).json({ error: "Roadmap not activated" });
-  await ensureCurrentVersion(user.id, user.roadmapVersion, user.roadmapStartedAt);
+  await upgradeToSelfPaced(user.id, user.roadmapVersion);
 
-  const weekParsed = z.coerce.number().int().min(1).max(TOTAL_WEEKS).safeParse(req.query.week);
   const today = todayLocal();
-  const currentWeek = Math.floor(
-    Math.round((today.getTime() - user.roadmapStartedAt.getTime()) / 86_400_000) / 7,
-  ) + 1;
-  const week = weekParsed.success ? weekParsed.data : Math.min(Math.max(currentWeek, 1), TOTAL_WEEKS);
+  const start = addDaysUTC(today, -6);
+  const [done, minutes, queue] = await Promise.all([
+    prisma.roadmapTask.findMany({
+      where: { day: { userId: user.id }, completedAt: { gte: start } },
+      select: { id: true, title: true, skill: true, completedAt: true },
+      orderBy: { completedAt: "asc" },
+    }),
+    prisma.dailyActiveMinutes.findMany({ where: { userId: user.id, date: { gte: start, lte: today } }, select: { date: true, minutes: true, learningMinutes: true } }),
+    loadQueue(prisma, user.id),
+  ]);
+  const minutesByDate = new Map(minutes.map((m) => [m.date.toISOString().slice(0, 10), m.learningMinutes ?? m.minutes]));
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const key = addDaysUTC(start, i).toISOString().slice(0, 10);
+    const tasks = done.filter((t) => localDateKey(t.completedAt!) === key).map(({ completedAt: _c, ...t }) => t);
+    return { date: key, studyDay: isStudyDay(user.studyDays, addDaysUTC(start, i)), tasks, minutes: minutesByDate.get(key) ?? 0 };
+  });
 
-  const allDays = await prisma.roadmapDay.findMany({ where: { userId: user.id }, include: TASK_INCLUDE });
-  const weekStart = addDaysUTC(user.roadmapStartedAt, (week - 1) * 7);
-  const weekEnd = addDaysUTC(weekStart, 6);
-  const days = allDays
-    .filter((d) => d.date.getTime() >= weekStart.getTime() && d.date.getTime() <= weekEnd.getTime())
-    .sort((a, b) => a.date.getTime() - b.date.getTime())
-    .map((d) => ({
-      date: d.date,
-      dayOffset: d.dayOffset,
-      theme: d.theme,
-      tasks: d.tasks,
-      status: dayStatus(d, today),
-    }));
-
-  const weekTasks = days.flatMap((d) => d.tasks).filter((t) => !t.droppedAt);
-  const thisWeek = { done: weekTasks.filter((t) => t.completedAt !== null).length, total: weekTasks.length };
-
-  const weeksOverview = Array.from({ length: TOTAL_WEEKS }, (_, i) => {
-    const wk = i + 1;
-    const wStart = addDaysUTC(user.roadmapStartedAt as Date, i * 7);
-    const wEnd = addDaysUTC(wStart, 6);
-    const wDays = allDays.filter((d) => d.date.getTime() >= wStart.getTime() && d.date.getTime() <= wEnd.getTime());
-    const wTasks = wDays.flatMap((d) => d.tasks).filter((t) => !t.droppedAt);
+  const projected = forecastDates(queue, user, today);
+  const current = currentByLine(queue);
+  const upNext = current.map((c) => {
+    const lineItems = queue.items
+      .filter((i) => i.level === queue.activeLevel && i.category === c.line && i.masteryState !== "passed" && i.masteryState !== "mastered" && i.skippedAt === null)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .slice(0, 3);
     return {
-      week: wk,
-      taskCount: wTasks.length,
-      doneCount: wTasks.filter((t) => t.completedAt !== null).length,
-      isCurrentWeek: wk === currentWeek,
-      isExamWeek: MILESTONE_WEEKS.has(wk),
+      line: c.line,
+      topics: lineItems.map((i) => ({ id: i.id, title: i.title, theme: i.theme, taken: queue.taken.has(i.id), locked: queue.blocked.has(i.id), projectedDate: projected.get(i.id) ?? null })),
     };
   });
 
-  const allTasks = allDays.flatMap((d) => d.tasks).filter((t) => !t.droppedAt);
-  const pace = computeRoadmapPace({
-    totalDays: DEFAULT_ROADMAP_DAYS.length,
-    totalTasks: allTasks.length,
-    tasksDone: allTasks.filter((t) => t.completedAt !== null).length,
-    daysElapsed: Math.round((today.getTime() - user.roadmapStartedAt.getTime()) / 86_400_000) + 1,
-  });
-
-  const groups = computeBacklog(allDays, today);
   res.json({
-    week,
-    totalWeeks: TOTAL_WEEKS,
-    weekStart,
-    weekEnd,
-    theme: days.find((d) => d.theme)?.theme ?? null,
     days,
-    thisWeek,
-    lateAcrossPlan: groups.reduce((n, g) => n + g.tasks.length, 0),
-    pace,
-    weeksOverview,
+    thisWeek: { done: done.length, minutes: days.reduce((n, d) => n + d.minutes, 0), goalMinutes: user.studyCapacityMinutes * user.studyDays.filter(Boolean).length },
+    upNext,
   });
 });
 
@@ -529,13 +477,6 @@ const toggleSchema = z
     { message: "Nothing to update" },
   );
 
-/** Every dayOffset in [0, DEFAULT_ROADMAP_DAYS.length) always has a materialized
- * RoadmapDay row from activation onward — reschedule/custom-add targets never
- * need to create one, only look it up. */
-async function dayByOffset(userId: string, dayOffset: number) {
-  return prisma.roadmapDay.findUnique({ where: { userId_dayOffset: { userId, dayOffset } } });
-}
-
 /** A single task by id, regardless of which day it's scheduled on — used by
  * the Syllabus station accordion's "Practice" deep link
  * (push("/plan", {state:{openTaskId}})), since a syllabus-linked task can
@@ -569,8 +510,9 @@ roadmapRouter.patch("/tasks/:id", async (req, res) => {
 
   let targetDay = null;
   if (parsed.data.dayOffset !== undefined) {
-    targetDay = await dayByOffset(req.userId, parsed.data.dayOffset);
-    if (!targetDay) return res.status(400).json({ error: "No roadmap day at that offset" });
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId }, select: { roadmapStartedAt: true } });
+    if (!user.roadmapStartedAt) return res.status(404).json({ error: "Roadmap not activated" });
+    targetDay = await dayFor(prisma, req.userId, user.roadmapStartedAt, addDaysUTC(user.roadmapStartedAt, parsed.data.dayOffset));
   }
 
   // Timer fields are folded down to a single new (seconds, runningSince) pair before touching the DB (see
@@ -626,7 +568,7 @@ roadmapRouter.patch("/tasks/:id", async (req, res) => {
   res.json({ task });
 });
 
-// ── custom tasks ("+ Task" on Roadmap, and the inline "+" on a future day) ──
+// ── custom tasks (Today's "+ add", Jobs "Rehearse") — dated, unlike queue topics; unfinished ones roll onto today ──
 
 const createTaskSchema = z.object({
   date: z.iso.date(),
@@ -639,14 +581,16 @@ roadmapRouter.post("/tasks", async (req, res) => {
   const parsed = createTaskSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
 
-  const day = await prisma.roadmapDay.findFirst({ where: { userId: req.userId, date: toDate(parsed.data.date) } });
-  if (!day) return res.status(400).json({ error: "No roadmap day at that date" });
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId }, select: { roadmapStartedAt: true } });
+  if (!user.roadmapStartedAt) return res.status(404).json({ error: "Roadmap not activated" });
+  const date = toDate(parsed.data.date);
+  if (date < user.roadmapStartedAt) return res.status(400).json({ error: "That date is before your roadmap started" });
+  const day = await dayFor(prisma, req.userId, user.roadmapStartedAt, date);
 
-  const maxSort = await prisma.roadmapTask.aggregate({ where: { dayId: day.id }, _max: { sortOrder: true } });
   const task = await prisma.roadmapTask.create({
     data: {
       dayId: day.id,
-      sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
+      sortOrder: await nextSortOrder(prisma, day.id),
       type: "generic",
       skill: parsed.data.skill ?? null,
       title: parsed.data.title,
@@ -655,101 +599,6 @@ roadmapRouter.post("/tasks", async (req, res) => {
     include: { files: true, syllabusItem: { select: { level: true, theme: true, description: true } } },
   });
   res.status(201).json({ task });
-});
-
-// ── backlog bulk actions ──
-
-/** Overdue tasks paired with their originating dayOffset — the "moved" list
- * both bulk endpoints return carries this so the client can offer a real
- * Undo (reschedule each task back to where it came from) without a
- * dedicated undo endpoint. */
-async function overdueTasksWithOrigin(userId: string) {
-  const days = await prisma.roadmapDay.findMany({ where: { userId }, include: TASK_INCLUDE });
-  const groups = computeBacklog(days, todayLocal());
-  const dayOffsetByDayId = new Map(days.map((d) => [d.id, d.dayOffset]));
-  return groups.flatMap((g) => g.tasks.map((t) => ({ task: t, fromDayOffset: dayOffsetByDayId.get(g.dayId)! })));
-}
-
-roadmapRouter.post("/backlog/pull-into-today", async (req, res) => {
-  const overdue = await overdueTasksWithOrigin(req.userId);
-  const today = await prisma.roadmapDay.findFirst({ where: { userId: req.userId, date: todayLocal() } });
-  if (!today) return res.status(404).json({ error: "Roadmap not activated" });
-
-  const maxSort = await prisma.roadmapTask.aggregate({ where: { dayId: today.id }, _max: { sortOrder: true } });
-  let nextSort = (maxSort._max.sortOrder ?? -1) + 1;
-  await prisma.$transaction(
-    overdue.map(({ task }) => prisma.roadmapTask.update({ where: { id: task.id }, data: { dayId: today.id, sortOrder: nextSort++ } })),
-  );
-  res.json({ moved: overdue.map(({ task, fromDayOffset }) => ({ id: task.id, fromDayOffset })) });
-});
-
-const SPREAD_DAYS = 3;
-
-roadmapRouter.post("/backlog/spread", async (req, res) => {
-  const overdue = await overdueTasksWithOrigin(req.userId);
-  const today = todayLocal();
-  const targets = await Promise.all(
-    Array.from({ length: SPREAD_DAYS }, (_, i) => prisma.roadmapDay.findFirst({ where: { userId: req.userId, date: addDaysUTC(today, i) } })),
-  );
-  const validTargets = targets.filter((d): d is NonNullable<typeof d> => d !== null);
-  if (validTargets.length === 0) return res.status(404).json({ error: "Roadmap not activated" });
-
-  const sortCursor = new Map<string, number>();
-  await prisma.$transaction(
-    overdue.map(({ task }, i) => {
-      const target = validTargets[i % validTargets.length];
-      const next = (sortCursor.get(target.id) ?? 1_000_000) + 1;
-      sortCursor.set(target.id, next);
-      return prisma.roadmapTask.update({ where: { id: task.id }, data: { dayId: target.id, sortOrder: next } });
-    }),
-  );
-  res.json({
-    moved: overdue.map(({ task, fromDayOffset }) => ({ id: task.id, fromDayOffset })),
-    overDays: validTargets.length,
-  });
-});
-
-// how many days ahead "keep studying" is willing to reach into to find more
-// tasks — the whole 182-day plan already exists (buildUserRoadmapPlan
-// materializes it at activation), this just bounds how far a single pull
-// looks so an account near the very end of the plan gets a clean "nothing
-// left" instead of an unbounded scan.
-const PULL_FORWARD_LOOKAHEAD_DAYS = 21;
-
-/**
- * "Keep studying past today" — once today's plan is done, pulls the next N
- * not-yet-due tasks from upcoming days into today, same
- * update-dayId-in-a-transaction shape as backlog pull-into-today/spread
- * above (just reaching forward instead of backward), so completing a
- * pulled-forward task logs real minutesSpent/time exactly like any other
- * task — no separate time-tracking model needed. Returns the same
- * `{ moved: [{id, fromDayOffset}] }` shape the backlog routes do, so the
- * client's existing undo-via-reschedule flow (WeekOverview.tsx) works here
- * unchanged.
- */
-roadmapRouter.post("/pull-forward", async (req, res) => {
-  const parsed = z.object({ count: z.number().int().min(1).max(10).default(3) }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "Invalid body" });
-
-  const today = await prisma.roadmapDay.findFirst({ where: { userId: req.userId, date: todayLocal() } });
-  if (!today) return res.status(404).json({ error: "Roadmap not activated" });
-
-  const upcomingDays = await prisma.roadmapDay.findMany({
-    where: { userId: req.userId, dayOffset: { gt: today.dayOffset, lte: today.dayOffset + PULL_FORWARD_LOOKAHEAD_DAYS } },
-    orderBy: { dayOffset: "asc" },
-    include: { tasks: { where: { completedAt: null, droppedAt: null }, orderBy: { sortOrder: "asc" } } },
-  });
-
-  const candidates = upcomingDays.flatMap((d) => d.tasks.map((task) => ({ task, fromDayOffset: d.dayOffset })));
-  const picked = candidates.slice(0, parsed.data.count);
-  if (picked.length === 0) return res.json({ moved: [] });
-
-  const maxSort = await prisma.roadmapTask.aggregate({ where: { dayId: today.id }, _max: { sortOrder: true } });
-  let nextSort = (maxSort._max.sortOrder ?? -1) + 1;
-  await prisma.$transaction(
-    picked.map(({ task }) => prisma.roadmapTask.update({ where: { id: task.id }, data: { dayId: today.id, sortOrder: nextSort++ } })),
-  );
-  res.json({ moved: picked.map(({ task, fromDayOffset }) => ({ id: task.id, fromDayOffset })) });
 });
 
 roadmapRouter.get("/journal/:skill", async (req, res) => {

@@ -1,30 +1,6 @@
 const DAY_MS = 86_400_000;
 const WEEK_MS = DAY_MS * 7;
 
-export interface RoadmapPace {
-  plannedTasksPerDay: number;
-  actualTasksPerDay: number;
-  daysLeft: number;
-}
-
-/** Whole-plan pace for the Roadmap destination's right-column PACE card.
- * `planned` is fixed by the plan's own shape; `actual` reflects real progress
- * so far — neither depends on the exam target date (that's the Syllabus
- * route's job, see computeRoutePace below). */
-export function computeRoadmapPace(params: {
-  totalDays: number;
-  totalTasks: number;
-  tasksDone: number;
-  daysElapsed: number;
-}): RoadmapPace {
-  const elapsed = Math.max(1, Math.min(params.daysElapsed, params.totalDays));
-  return {
-    plannedTasksPerDay: params.totalDays === 0 ? 0 : Math.round((params.totalTasks / params.totalDays) * 10) / 10,
-    actualTasksPerDay: Math.round((params.tasksDone / elapsed) * 10) / 10,
-    daysLeft: Math.max(0, params.totalDays - params.daysElapsed),
-  };
-}
-
 export interface RoutePace {
   itemsPerWeek: number;
   projectedFinishDate: string | null;

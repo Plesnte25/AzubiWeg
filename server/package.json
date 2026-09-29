@@ -18,6 +18,7 @@
     "import:tatoeba": "tsx scripts/import-tatoeba.ts",
     "backfill:source-covers": "tsx scripts/backfill-source-covers.ts",
     "migrate:notes-bento": "tsx scripts/migrate-notes-bento.ts",
+    "migrate:self-paced": "tsx scripts/migrate-self-paced.ts",
     "backfill:ipa": "tsx scripts/backfill-ipa-slashes.ts",
     "typecheck:scripts": "tsc --noEmit -p scripts/tsconfig.json",
     "test": "vitest run",

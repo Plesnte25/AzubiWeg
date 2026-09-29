@@ -6,7 +6,6 @@ import { dayLernzeit, splitActiveMinutes } from "../services/activity/session.js
 import { computeBestStreak, computeDayStreak, localDateKey } from "../services/learning/activity.js";
 import { summarizeMistakes } from "../services/learning/mistakes.js";
 import { levelStatesWithExamGate } from "../services/learning/progress.js";
-import { addDaysUTC, dayStatus } from "../services/learning/roadmap.js";
 import { skillPerformance } from "../services/learning/review.js";
 import { levelMastery, skillMastery } from "../services/learning/stations.js";
 import { pickWeakSpot } from "../services/learning/weak-spot.js";
@@ -22,11 +21,6 @@ function todayUtcFromLocal(): Date {
   return new Date(Date.UTC(y!, m! - 1, d));
 }
 
-/** Monday of the UTC week containing `d` (Monday-aligned, matching the roadmap calendar convention). */
-function mondayOf(d: Date): Date {
-  const dayIdx = (d.getUTCDay() + 6) % 7; // 0 = Monday
-  return addDaysUTC(d, -dayIdx);
-}
 
 export const dashboardRouter = Router();
 dashboardRouter.use(requireAuth);
@@ -42,8 +36,6 @@ dashboardRouter.get("/", async (req, res) => {
   activityHorizon.setDate(activityHorizon.getDate() - 366);
 
   const todayUtc = todayUtcFromLocal();
-  const weekStart = mondayOf(todayUtc);
-  const weekEnd = addDaysUTC(weekStart, 7);
 
   // Bento streak calendar: 32 Monday-aligned weeks ending with this week (the md layout's widest grid; lg shows the
   // last 22, sm the last 17). Lernzeit rows are UTC-midnight @db.Date keys; pings are instants.
@@ -73,7 +65,6 @@ dashboardRouter.get("/", async (req, res) => {
     quizzesCompleted,
     totalLearningMinutesAgg,
     user,
-    weekDays,
   ] = await Promise.all([
     prisma.word.count({ where: { userId: req.userId } }),
     // Same meaning: { not: null } exclusion reviews.ts's own /queue already
@@ -138,19 +129,6 @@ dashboardRouter.get("/", async (req, res) => {
     prisma.user.findUniqueOrThrow({
       where: { id: req.userId },
       select: { roadmapStartedAt: true, examTargetDate: true, studyCapacityMinutes: true, studyDays: true, streakResetAt: true },
-    }),
-    prisma.roadmapDay.findMany({
-      where: { userId: req.userId, date: { gte: weekStart, lt: weekEnd } },
-      select: {
-        date: true,
-        dayOffset: true,
-        theme: true,
-        tasks: {
-          select: { id: true, type: true, skill: true, title: true, description: true, completedAt: true },
-          orderBy: { sortOrder: "asc" },
-        },
-      },
-      orderBy: { date: "asc" },
     }),
   ]);
 
@@ -280,30 +258,8 @@ dashboardRouter.get("/", async (req, res) => {
   };
   for (const g of appsByStatus) applications[g.status] = g._count;
 
-  const roadmapWeekStrip = weekDays.map((d) => ({
-    date: d.date.toISOString().slice(0, 10),
-    dayOffset: d.dayOffset,
-    status: dayStatus(d, todayUtc),
-  }));
-  const todayRow = weekDays.find((d) => d.date.getTime() === todayUtc.getTime());
-  const nextIncomplete = todayRow?.tasks.find((t) => t.completedAt === null) ?? null;
-  const roadmapToday =
-    user.roadmapStartedAt && todayRow
-      ? {
-          theme: todayRow.theme,
-          tasksDone: todayRow.tasks.filter((t) => t.completedAt !== null).length,
-          tasksTotal: todayRow.tasks.length,
-          nextTask: nextIncomplete
-            ? {
-                id: nextIncomplete.id,
-                type: nextIncomplete.type,
-                skill: nextIncomplete.skill,
-                title: nextIncomplete.title,
-                description: nextIncomplete.description,
-              }
-            : null,
-        }
-      : null;
+  // "Day N" in the chrome: days since the roadmap started (self-paced: no calendar rows to read it from)
+  const roadmapDayNumber = user.roadmapStartedAt ? Math.round((todayUtc.getTime() - user.roadmapStartedAt.getTime()) / 86_400_000) + 1 : null;
 
   // Lernzeit per local day: finalized rollups plus any not-yet-finalized pings (today's, at least)
   const lernzeitByDay = new Map<string, number>();
@@ -396,7 +352,6 @@ dashboardRouter.get("/", async (req, res) => {
       streak: computeDayStreak(learningTimestamps, now, user.streakResetAt),
       lastSelfTest,
     },
-    roadmapToday,
-    roadmapWeekStrip,
+    roadmapDayNumber,
   });
 });

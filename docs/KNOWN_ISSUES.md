@@ -244,6 +244,33 @@ Added by the user from phone testing; fixed in the same post-deploy pass (plan
       - A fast connection: still ~1 s.
       - Reduced motion: no wobble.
       - Installed on Android/iOS: no white flash between the OS launch screen and the splash.
+37. **Self-paced queue instead of the 182-day calendar** (feature, agreed 2026-09-29). There's no way to take more
+    work once today's ticket is done: Nocturne's "Keep going → Pull in more tasks" card was cut in Bento, and
+    `POST /roadmap/pull-forward` / `api.pullForward` are now unused. The "+N optional — pull ahead" row only shows
+    today's own overflow. Also, `blockedTopicIds()` orders all categories of a level together, so only one new topic
+    per level is ever open.
+
+    **Agreed:** the syllabus becomes a queue. The daily ticket is built fresh (due reviews → one grammar, one vocab,
+    one skill topic → more until the minutes goal) and "Take another" works any time. Minutes are a goal, not a
+    limit. Locking is per line (grammar / vocab / skills each in their own order), and a topic with exercises opens
+    the next only when passed. Consolidation fillers and milestone-week tests are dropped; the week-themed practice
+    and Deutschland Context tasks move into their stations. Nothing is ever overdue; dates become projections from
+    real pace. Full plan: `~/.claude/plans/self-paced-queue.md`.
+
+    **Built 2026-09-29 on `feature/self-paced` (not merged or deployed yet).** Stations turned out to be single-kind
+    (A1: 1–11 grammar, 12–18 vocab, 19–21 skills, 22 gate), so up to three stations are "you are here" at once (user's
+    choice), and the calendar's resources + Deutschland Context became a per-level **Extras** list instead of
+    station practice (user's choice). Server: `services/learning/{prerequisites,ticket,queue,self-paced,extras}.ts`,
+    `GET /today` builds the ticket, `POST /take`, `GET /week`, `GET /extras`; backlog/spread/pull-forward/calendar/
+    replan routes and the day generator are gone. Upgrade runs lazily per user (ROADMAP_VERSION 7) or via
+    `npm run migrate:self-paced` (dry run, then `--apply`). Remaining before ship: prod dry run on the real account,
+    deploy, demo re-seed with `--reset`.
+38. **Most topic "passes" aren't evidence of learning** (high, found 2026-09-29 reviewing #37 from a student's view).
+    `gradeSyllabusExercise` passes 322 of the 407 topics on any answer of 12+ characters (free_text with no
+    `exerciseAnswer`); 63 writing topics need 20 characters plus 2 of 3 self-checks; only ~15 (multiple choice,
+    correction, audio) are really checked. The self-paced queue unlocks the next topic on a pass, so for most topics
+    progress is honor-system. Options: author an `exerciseAnswer`/accepted-forms list per topic (big content job),
+    turn free_text into short multiple-choice/cloze items, or add graded feedback. Needs a decision.
 
 ## Resolved during the redesign (for reference — no action needed)
 

@@ -25,8 +25,8 @@ tracking applications. This app solves the problems I hit along the way:
 
 ## Today
 
-The home screen: today's route (the tasks due, with a "carried over" row to pull
-in or spread missed work), cards due for review, a weekly-goal ring, your weak
+The home screen: today's route (due reviews and the topics you're on, with
+**Take another** whenever you want more), cards due for review, a weekly-goal ring, your weak
 spot, word count, a streak heatmap, the next job interview, and **Lernzeit** — one
 app-wide task timer that tracks active study time.
 
@@ -74,9 +74,17 @@ each under `Notizen/`.
 
 - **Journey** — each CEFR level (A1, A2, B1) is a route of stations (22–23 per
   level) built from a 407-item syllabus of grammar, vocabulary and skill topics.
-- **Today's ticket** — the day's core tasks sized to your study capacity, with
-  optional extras to pull ahead and a week view with your pace. Each task opens a
+  Grammar, vocabulary and skills run as three parallel lines, so you're at up to
+  three stations at once; a topic opens when you pass the one before it in its line.
+- **Self-paced ticket** — no fixed calendar: each day's ticket is due reviews plus
+  the next open topic from each line, filled up to your daily minutes (a goal, not
+  a limit). **Take another** adds the next topic any time, and nothing is ever
+  overdue — unfinished work just stays on the ticket. The week view shows what you
+  actually did and projects what's next from your real pace. Each task opens a
   workspace with exercises, audio, recording, a timer and notes.
+- **Extras** — each level's curated resources (Nicos Weg, DW, Nachrichtenleicht, …)
+  and Deutschland Context items (transport, appointments, relocation paperwork),
+  one tap to add to today.
 - **Self-tests** — multiple choice and fill-in from a 160-question practice bank,
   a gender drill, and listen & type.
 - **Checkpoints and mock exam** — scoped mixed tests at stations 7, 14 and 21, and a
@@ -205,8 +213,8 @@ cd server && npm test
 
 Covers the vault sync's byte-identical round-trip, SRS scheduling parity with
 the Obsidian plugin, the kaikki.org enrichment pipeline's word resolution,
-and pure-logic suites for applications and the learning plan (roadmap
-generation, exam gating, quizzes, activity tracking). Server-side only — no
+and pure-logic suites for applications and the learning plan (the self-paced
+queue and its locking and projections, exam gating, quizzes, activity tracking). Server-side only — no
 dedicated client test runner; UI changes are verified by driving the app in
 a real browser (`client/scripts/shots.mjs` sweeps every page at each breakpoint
 in light and dark, and flags console errors and overflow).

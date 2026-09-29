@@ -1,14 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeGoalFeasibility, computeRoadmapPace, computeRoutePace } from "../src/services/learning/pace.js";
-
-describe("computeRoadmapPace", () => {
-  it("computes planned/actual tasks per day and days left", () => {
-    const pace = computeRoadmapPace({ totalDays: 100, totalTasks: 200, tasksDone: 20, daysElapsed: 10 });
-    expect(pace.plannedTasksPerDay).toBe(2);
-    expect(pace.actualTasksPerDay).toBe(2);
-    expect(pace.daysLeft).toBe(90);
-  });
-});
+import { computeGoalFeasibility, computeRoutePace } from "../src/services/learning/pace.js";
 
 describe("computeRoutePace", () => {
   it("projects a finish date from recent (last 4 weeks) velocity", () => {
