@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { Fire, FlagPennant, Tag } from "@phosphor-icons/react";
 import type { CefrLevel, Note, StudySource } from "../../../api/types";
@@ -142,6 +142,11 @@ export function NotesTile({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: "notes-tile", disabled: !dragOK });
   const [draft, setDraft] = useState("");
+  const submit = () => {
+    if (!draft.trim() || saving) return;
+    onSave(draft.trim());
+    setDraft("");
+  };
   const lg = bp === "lg";
   return (
     <section
@@ -191,30 +196,53 @@ export function NotesTile({
           </div>
         ))}
       </div>
-      <div className="flex shrink-0 gap-2">
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Write a note while it's fresh…"
-          aria-label="New station note"
-          style={{ flex: 1, minWidth: 0, height: 58, lineHeight: 1.25, resize: "none", padding: "8px 10px", border: "2.5px solid var(--line)", borderRadius: 12, background: "var(--plain)", color: "var(--plainText)", fontSize: 14, boxSizing: "border-box" }}
-        />
+      <div className="flex shrink-0 flex-col gap-2">
+        <NoteInput value={draft} onChange={setDraft} onSubmit={submit} />
         <button
           type="button"
           disabled={!draft.trim() || saving}
-          onClick={() => {
-            onSave(draft.trim());
-            setDraft("");
-          }}
-          className="shrink-0 cursor-pointer disabled:cursor-default disabled:opacity-50"
-          style={{ width: 64, border: "2.5px solid var(--line)", borderRadius: 12, background: "var(--btn)", color: "var(--btnText)", fontWeight: 700, fontSize: 14 }}
+          onClick={submit}
+          className="cursor-pointer self-end disabled:cursor-default disabled:opacity-50"
+          style={{ height: 38, padding: "0 18px", border: "2.5px solid var(--line)", borderRadius: 999, background: "var(--btn)", color: "var(--btnText)", fontWeight: 700, fontSize: 14 }}
         >
-          Save
+          Save note
         </button>
       </div>
     </section>
   );
 }
+
+/** The Notes tile's input: full width, at least four lines, and it grows with what you write instead of showing a
+ * scrollbar (user's request). Ctrl/⌘+Enter saves. */
+function NoteInput({ value, onChange, onSubmit }: { value: string; onChange: (v: string) => void; onSubmit: () => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.max(NOTE_MIN_HEIGHT, el.scrollHeight)}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      rows={4}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          onSubmit();
+        }
+      }}
+      placeholder="Write a note while it's fresh…"
+      aria-label="New station note"
+      style={{ width: "100%", minHeight: NOTE_MIN_HEIGHT, lineHeight: 1.35, resize: "none", overflow: "hidden", padding: "10px 12px", border: "2.5px solid var(--line)", borderRadius: 12, background: "var(--plain)", color: "var(--plainText)", fontSize: 14, boxSizing: "border-box" }}
+    />
+  );
+}
+
+/** Four lines of 14px text at line-height 1.35, plus padding and border. */
+const NOTE_MIN_HEIGHT = 4 * 14 * 1.35 + 20 + 5;
 
 /** Library · N: See all / + Add and the top sources with progress. */
 export function LibraryTile({ sources, bp, onOpenAll, onAdd, onOpenSource }: { sources: StudySource[]; bp: Breakpoint; onOpenAll: () => void; onAdd: () => void; onOpenSource: (s: StudySource) => void }) {
