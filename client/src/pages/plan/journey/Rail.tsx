@@ -4,11 +4,9 @@ import { Fire, FlagPennant, Tag } from "@phosphor-icons/react";
 import type { CefrLevel, Note, StudySource } from "../../../api/types";
 import { DuSticker } from "../../../components/ui/Sticker";
 import { Tile } from "../../../components/ui/Tile";
-import { clock } from "../../../lib/tasks";
 import { stripHtml } from "../../../lib/text";
 import type { Breakpoint } from "../../../lib/useBreakpoint";
 import { SOURCE_COLOR, sourceKind, sourceProgress } from "./model";
-import { RunButton } from "./Stream";
 import { SOURCE_ICON } from "./sourceIcons";
 
 const eyebrow: CSSProperties = { fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase" };
@@ -123,65 +121,6 @@ export function AltitudeStrip({ levels, active, gate, streak, bp, onGate }: { le
         </div>
       </button>
     </section>
-  );
-}
-
-/** Now tile (sky): the running task, else the first open ticket task; clock, run button, estimate bar, +N min. */
-export function NowTile({
-  kind,
-  title,
-  seconds,
-  estimate,
-  running,
-  disabled,
-  onOpen,
-  onRun,
-  onAdd,
-}: {
-  kind: string;
-  title: string;
-  seconds: number;
-  estimate: number;
-  running: boolean;
-  disabled: boolean;
-  onOpen: () => void;
-  onRun: () => void;
-  onAdd: (m: number) => void;
-}) {
-  const over = seconds > estimate * 60;
-  return (
-    <Tile bg="var(--sky)" tilt={-0.8} radius={24} className="flex shrink-0 flex-col gap-2" style={{ padding: "14px 16px" }}>
-      <span style={eyebrow}>Now · {kind}</span>
-      <button type="button" onClick={onOpen} disabled={disabled} className="cursor-pointer truncate border-0 bg-transparent p-0 text-left disabled:cursor-default" style={{ color: "inherit", fontSize: 18, fontWeight: 700, lineHeight: 1.15 }} lang="de">
-        {title}
-      </button>
-      <div className="flex items-center gap-2.5">
-        <span role="timer" className="flex-1" style={{ fontFamily: "var(--font-mono)", fontSize: 32, fontWeight: 600, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
-          {clock(seconds)}
-        </span>
-        <RunButton running={running} onClick={onRun} disabled={disabled} />
-      </div>
-      <div className="overflow-hidden" style={{ height: 10, borderRadius: 999, border: "2px solid var(--line)", background: "var(--plain)", boxSizing: "border-box" }}>
-        <div style={{ width: `${Math.min(100, (seconds / (estimate * 60)) * 100)}%`, height: "100%", background: over ? "var(--tomato)" : "var(--mint)", borderRight: seconds > 0 && !over ? "2px solid var(--line)" : "none" }} />
-      </div>
-      <div className="flex items-center gap-1.5">
-        <span className="flex-1 whitespace-nowrap" style={{ fontSize: 12, fontWeight: 700 }}>
-          of {estimate} min
-        </span>
-        {[5, 10, 15].map((m) => (
-          <button
-            key={m}
-            type="button"
-            disabled={disabled}
-            onClick={() => onAdd(m)}
-            className="cursor-pointer whitespace-nowrap disabled:cursor-default disabled:opacity-50"
-            style={{ height: 30, padding: "0 9px", border: "2px solid var(--line)", borderRadius: 999, background: "var(--plain)", color: "var(--plainText)", fontWeight: 700, fontSize: 12 }}
-          >
-            +{m}
-          </button>
-        ))}
-      </div>
-    </Tile>
   );
 }
 

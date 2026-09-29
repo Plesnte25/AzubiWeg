@@ -16,7 +16,8 @@ import { useLiveSeconds, useTaskTimerActions } from "./useTaskTimer";
 
 /*
  * Task modal (AzubiPlanJourney.dc.html modal k "task"): opens a ticket task or a station topic. A roadmap task gets
- * the stopwatch (the one app-wide timer, +5/+10/+15 min); a topic with no roadmap task has no timer to show. A linked
+ * the stopwatch (the one app-wide timer, +5/+10/+15 min) and a "Time spent" field that's logged with Mark done
+ * (prefilled from the stopwatch, editable when you studied without it); a topic with no roadmap task has no timer. A linked
  * syllabus topic brings its workspace (exercise, audio, rubric). Notes on this task, "Pin to notes" (the keyboard/tap
  * alternative to dragging onto the Notes tile), and Mark done / Reopen.
  */
@@ -99,10 +100,19 @@ export function TaskModal({
     onError,
   });
 
+  // minutes logged with Mark done: the stopwatch's, unless the user typed their own
+  const [spentDraft, setSpentDraft] = useState<string | null>(null);
+  const timerMinutes = Math.round(seconds / 60);
+  const spent = spentDraft !== null && spentDraft.trim() !== "" && Number.isFinite(Number(spentDraft)) ? Math.max(0, Math.min(1440, Math.round(Number(spentDraft)))) : null;
   const toggleDone = useMutation({
-    mutationFn: async (): Promise<unknown> => (task ? api.toggleRoadmapTask(task.id, !done) : api.toggleSyllabusItem(topic!.id, !done)),
+    mutationFn: async (): Promise<unknown> =>
+      task
+        ? !done && spent !== null
+          ? api.updateRoadmapTask(task.id, { completed: true, minutesSpent: spent })
+          : api.toggleRoadmapTask(task.id, !done)
+        : api.toggleSyllabusItem(topic!.id, !done),
     onSuccess: () => {
-      toast.success(done ? "Task reopened" : task && seconds > 0 ? `Done · ${clock(seconds)} logged` : "Done");
+      toast.success(done ? "Task reopened" : task && spent !== null ? `Done · ${spent} min logged` : task && seconds > 0 ? `Done · ${clock(seconds)} logged` : "Done");
       refresh();
       if (!done) onClose();
     },
@@ -184,6 +194,22 @@ export function TaskModal({
             <span style={{ fontSize: 13, fontWeight: 700 }}>
               {clock(seconds)} of {estimate} min{seconds > estimate * 60 ? " · over estimate" : ""}
             </span>
+            {!done && (
+              <label className="flex items-center gap-1.5" style={{ fontSize: 13, fontWeight: 700 }}>
+                Time spent
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={1440}
+                  value={spentDraft ?? String(task.minutesSpent ?? timerMinutes)}
+                  onChange={(e) => setSpentDraft(e.target.value)}
+                  aria-label="Minutes spent, logged when you mark it done"
+                  style={{ width: 64, height: 32, padding: "0 8px", border: "2px solid var(--line)", borderRadius: 10, background: "var(--plain)", color: "var(--plainText)", fontWeight: 700, fontSize: 13, textAlign: "center" }}
+                />
+                min
+              </label>
+            )}
             <div className="flex gap-1.5">
               {[5, 10, 15].map((m) => (
                 <button

@@ -6,7 +6,8 @@ import { liveSeconds } from "../../../lib/tasks";
 
 /**
  * The one app-wide task timer (server enforces one running at a time: starting a task banks whichever other task
- * was running). Shared by the Plan journey's Now tile, the ticket's running dot and the Task modal.
+ * was running). Driven from Today's Lernzeit tile and the Task modal; Plan shows only the running dot on rows (its own
+ * Now tile was removed at the user's request).
  */
 export function useTaskTimerActions() {
   const queryClient = useQueryClient();

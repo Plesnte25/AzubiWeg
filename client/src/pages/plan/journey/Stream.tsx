@@ -8,10 +8,8 @@ import {
   DotsThree,
   Exam,
   FlagPennant,
-  HourglassMedium,
   ListChecks,
   LockSimple,
-  Play,
   Plus,
   SpeakerHigh,
   TextAa,
@@ -21,7 +19,6 @@ import type { RoadmapExtra, StudySource } from "../../../api/types";
 import { DuSticker, Starburst } from "../../../components/ui/Sticker";
 import { Tile } from "../../../components/ui/Tile";
 import { SKILL_COLORS } from "../../../lib/skills";
-import { clock } from "../../../lib/tasks";
 import type { Breakpoint } from "../../../lib/useBreakpoint";
 import { band, isItemDone, LINE_LABEL, SOURCE_COLOR, sourceKind, type Station } from "./model";
 import { SOURCE_ICON } from "./sourceIcons";
@@ -279,43 +276,6 @@ export function Ticket({
         {dragOK && <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.75 }}>Tap a task to open it · drag one onto Notes to pin it</span>}
       </div>
     </section>
-  );
-}
-
-// ── sm Now card ──
-
-export function NowCard({ title, seconds, running, onOpen, onRun }: { title: string; seconds: number; running: boolean; onOpen: () => void; onRun: () => void }) {
-  return (
-    <section
-      className="flex items-center gap-2.5"
-      style={{ padding: "10px 12px", background: "var(--sky)", color: "var(--onTile)", border: "2.5px solid var(--line)", borderRadius: 18, boxShadow: "4px 4px 0 var(--shadow)" }}
-    >
-      <button type="button" onClick={onOpen} className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-left" style={{ color: "inherit" }}>
-        <div style={{ ...eyebrow, fontSize: 11 }}>Now</div>
-        <div className="truncate" style={{ fontSize: 14, fontWeight: 700 }} lang="de">
-          {title}
-        </div>
-      </button>
-      <span role="timer" style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-        {clock(seconds)}
-      </span>
-      <RunButton running={running} onClick={onRun} />
-    </section>
-  );
-}
-
-export function RunButton({ running, onClick, disabled }: { running: boolean; onClick: () => void; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="flex shrink-0 cursor-pointer items-center gap-1.5 disabled:cursor-default disabled:opacity-50"
-      style={{ height: 40, padding: "0 14px", border: "2.5px solid var(--line)", borderRadius: 999, background: running ? "var(--tomato)" : "var(--btn)", color: running ? "var(--onTile)" : "var(--btnText)", fontWeight: 700, fontSize: 14, boxShadow: "2px 2px 0 var(--shadow)" }}
-    >
-      {running ? <HourglassMedium size={14} weight="fill" aria-hidden="true" /> : <Play size={14} weight="fill" aria-hidden="true" />}
-      {running ? "Pause" : "Start"}
-    </button>
   );
 }
 

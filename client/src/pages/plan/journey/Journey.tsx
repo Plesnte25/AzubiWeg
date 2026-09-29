@@ -13,7 +13,7 @@ import { useBreakpoint } from "../../../lib/useBreakpoint";
 import { AddSourceModal, LibraryModal, SourceModal } from "./LibraryModals";
 import { CheckpointModal, GateModal, StationModal, WeekModal } from "./Modals";
 import { CHECKPOINT_AFTER, checkpointAt, deriveStations, isItemDone, type Station } from "./model";
-import { AltitudeRail, AltitudeStrip, LibraryTile, NotesTile, NowTile, type AltLevel } from "./Rail";
+import { AltitudeRail, AltitudeStrip, LibraryTile, NotesTile, type AltLevel } from "./Rail";
 import {
   Behind,
   CheckpointTile,
@@ -21,7 +21,6 @@ import {
   ExtrasTile,
   GateTile,
   LaterToggle,
-  NowCard,
   StationCards,
   Ticket,
   type CheckpointTest,
@@ -29,14 +28,14 @@ import {
   type TicketRow,
 } from "./Stream";
 import { TaskModal } from "./TaskModal";
-import { useLiveSeconds, useTaskTimerActions } from "./useTaskTimer";
 
 /*
  * Plan — the journey scroll (Bento README §4, AzubiPlanJourney.dc.html). One page replaces Plan, Syllabus, Sources,
  * Self-tests and the Exam gate (their old routes redirect here). Stations are derived (level, theme) syllabus groups;
  * the ticket is the self-paced queue (GET /roadmap/today: reviews, then one topic per line up to the minutes goal,
- * Take another past it); up to three stations are "you are here", one per line. The Now tile drives the one app-wide
- * task timer; the Notes tile is the first current station's notes and a drop target for pinning tasks; the Library
+ * Take another past it); up to three stations are "you are here", one per line. No timer tile here: the one app-wide
+ * timer is Today's Lernzeit tile and the Task modal. The Notes tile is the first current station's notes and a drop
+ * target for pinning tasks; the Library
  * holds the study sources that fuel stations; Extras are the level's curated resources and Deutschland Context.
  */
 
@@ -118,7 +117,6 @@ export default function Journey() {
     void queryClient.invalidateQueries({ queryKey: ["notes"] });
   };
   const onError = (e: unknown) => toast.error(e instanceof Error ? e.message : "Something went wrong");
-  const timer = useTaskTimerActions();
 
   const toggleTask = useMutation({
     mutationFn: (v: { id: string; done: boolean }) => api.toggleRoadmapTask(v.id, v.done),
@@ -201,17 +199,9 @@ export default function Journey() {
     else if (r.itemId) setModal({ k: "task", itemId: r.itemId, origin: "Today's ticket" });
   };
 
-  // ── Now ──
+  // the running task's dot on ticket and station rows (the timer itself lives on Today's Lernzeit tile and in the
+  // Task modal — Plan has no timer tile of its own, user's call)
   const running = dash?.bento.runningTask ?? null;
-  const nowTask = running
-    ? { id: running.id, title: running.title, skill: running.skill, timerSeconds: running.timerSeconds, timerRunningSince: running.timerRunningSince as string | null, type: tasks.find((t) => t.id === running.id)?.type ?? "generic" }
-    : (() => {
-        const t = tasks.find((x) => !x.completedAt);
-        return t ? { id: t.id, title: t.title, skill: t.skill, timerSeconds: t.timerSeconds, timerRunningSince: t.timerRunningSince, type: t.type } : null;
-      })();
-  const nowSeconds = useLiveSeconds(nowTask);
-  const nowRunning = !!nowTask?.timerRunningSince;
-  const nowEstimate = nowTask ? taskEstimateMinutes(nowTask.type) : 10;
 
   // ── stations around "you are here" (one per line) ──
   const upcoming = current ? stations.filter((s) => s.index > current.index && s.state === "locked") : [];
@@ -324,16 +314,6 @@ export default function Journey() {
   const stream: ReactNode[] = [
     <Behind key="behind" closed={closed} prevLevels={prevLevels} bp={bp} onOpen={openStation} />,
     <div key="ticket">{ticket}</div>,
-    bp === "sm" && nowTask ? (
-      <NowCard
-        key="now"
-        title={nowTask.title}
-        seconds={nowSeconds}
-        running={nowRunning}
-        onOpen={() => setModal({ k: "task", taskId: nowTask.id, origin: "Today's ticket" })}
-        onRun={() => timer.mutate({ id: nowTask.id, action: nowRunning ? "pause" : "start" })}
-      />
-    ) : null,
     ...(currents.length
       ? currents.map((st) => (
           <CurrentStation
@@ -382,19 +362,6 @@ export default function Journey() {
     gate ? <GateTile key="gate" stationIndex={gate.index} level={level.toUpperCase()} rules={rules} schedule={schedule} bp={bp} onOpen={() => setModal({ k: "gate" })} /> : null,
   ];
 
-  const nowTile = (
-    <NowTile
-      kind={nowTask?.skill ? KIND_LABELS[nowTask.skill] : "Task"}
-      title={nowTask?.title ?? "Nothing open on today's ticket"}
-      seconds={nowSeconds}
-      estimate={nowEstimate}
-      running={nowRunning}
-      disabled={!nowTask || timer.isPending}
-      onOpen={() => nowTask && setModal({ k: "task", taskId: nowTask.id, origin: "Today's ticket" })}
-      onRun={() => nowTask && timer.mutate({ id: nowTask.id, action: nowRunning ? "pause" : "start" })}
-      onAdd={(m) => nowTask && timer.mutate({ id: nowTask.id, setSeconds: nowSeconds + m * 60 })}
-    />
-  );
   const notesTile = (
     <NotesTile stationIndex={current?.index ?? null} notes={notesData?.notes ?? []} bp={bp} dragOK={dragOK} saving={saveNote.isPending} onSave={(text) => saveNote.mutate({ text })} />
   );
@@ -412,7 +379,6 @@ export default function Journey() {
           {stream}
         </div>
         <div className="flex w-[320px] shrink-0 flex-col gap-5" style={{ minHeight: 0 }}>
-          {nowTile}
           {notesTile}
           {libraryTile}
         </div>
@@ -427,7 +393,6 @@ export default function Journey() {
             {stream}
           </div>
           <div className="sticky top-5 flex w-[272px] shrink-0 flex-col gap-5">
-            {nowTile}
             {notesTile}
             {libraryTile}
           </div>
