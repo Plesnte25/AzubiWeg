@@ -26,26 +26,19 @@ import {
 
 /*
  * Today (Bento README §2, AzubiDashSticker2.dc.html variant a). The grid areas come from the prototype's layout
- * table minus its nav row (Layout.tsx renders the chrome). "Busy" vs "light" is derived from the route: more than
- * three open stops is busy (route spans two rows, Lernzeit one); otherwise Lernzeit gets two rows and lists today's
- * sessions.
+ * table minus its nav row (Layout.tsx renders the chrome). Always the prototype's default "busy" layout: the route
+ * spans two rows and Lernzeit one. The prototype's "light" variant (Lernzeit growing to two rows with a sessions
+ * list when the route is short) was dropped at the user's request — tiles keep one size every day.
  */
 
 const LAYOUT = {
-  busy: {
-    lg: '"hero hero review goal plan" "hero hero weak words plan" "streak streak streak jobs timer"',
-    md: ['"hero hero review review" "hero hero goal goal" "plan plan weak weak" "plan plan words words" "timer timer jobs jobs" "streak streak streak streak"', "214px 214px 240px 220px 250px 190px"],
-    sm: ['"hero hero" "review review" "goal words" "plan plan" "timer timer" "weak weak" "streak streak" "jobs jobs"', "330px 190px 200px 460px 190px 230px 190px 270px"],
-  },
-  light: {
-    lg: '"hero hero review goal plan" "hero hero weak words timer" "streak streak streak jobs timer"',
-    md: ['"hero hero review review" "hero hero goal goal" "plan plan timer timer" "weak weak words words" "jobs jobs jobs jobs" "streak streak streak streak"', "214px 214px 300px 220px 220px 190px"],
-    sm: ['"hero hero" "review review" "goal words" "plan plan" "timer timer" "weak weak" "streak streak" "jobs jobs"', "330px 190px 200px 250px 190px 230px 190px 270px"],
-  },
+  lg: '"hero hero review goal plan" "hero hero weak words plan" "streak streak streak jobs timer"',
+  md: ['"hero hero review review" "hero hero goal goal" "plan plan weak weak" "plan plan words words" "timer timer jobs jobs" "streak streak streak streak"', "214px 214px 240px 220px 250px 190px"],
+  sm: ['"hero hero" "review review" "goal words" "plan plan" "timer timer" "weak weak" "streak streak" "jobs jobs"', "330px 190px 200px 460px 190px 230px 190px 270px"],
 } as const;
 
-function gridStyle(bp: Breakpoint, fill: boolean, load: "busy" | "light"): CSSProperties {
-  const L = LAYOUT[load];
+function gridStyle(bp: Breakpoint, fill: boolean): CSSProperties {
+  const L = LAYOUT;
   if (bp === "lg") {
     return {
       gridTemplateColumns: "repeat(4,minmax(0,1fr)) minmax(0,1.3fr)",
@@ -192,7 +185,6 @@ export default function Today() {
     }),
   ];
   const openStops = rows.filter((r) => !r.done).length;
-  const load = openStops > 3 ? "busy" : "light";
   const goal = today?.goal;
   const goalMet = !!goal && rows.length > 0 && (openStops === 0 || goal.doneMinutes >= goal.minutes);
   const next = today?.next ? `${today.next.category === "grammar" ? "Grammar" : today.next.category === "vocab_theme" ? "Vocab" : "Skill"}: ${today.next.title}` : null;
@@ -205,9 +197,6 @@ export default function Today() {
     : firstOpen
       ? { id: firstOpen.id, title: firstOpen.title, seconds: firstOpen.timerSeconds, runningSince: null }
       : null;
-  const sessions = (today?.tasks ?? [])
-    .filter((t) => t.timerSeconds > 0 || t.timerRunningSince)
-    .map((t) => ({ id: t.id, title: t.title, minutes: Math.round(t.timerSeconds / 60), color: taskKind(t).color }));
 
   const firstName = (getUser()?.name ?? "").trim().split(/\s+/)[0] || "du";
   const examDays = dash.examTargetDate ? daysUntil(new Date(`${dash.examTargetDate}T00:00:00`)) : null;
@@ -229,7 +218,7 @@ export default function Today() {
   };
 
   return (
-    <div className="grid min-h-0 flex-1" style={gridStyle(bp, fill, load)}>
+    <div className="grid min-h-0 flex-1" style={gridStyle(bp, fill)}>
       <HeroTile firstName={firstName} dayLabel={dayLabel} heroLine={heroLine} level={b.level} totalWords={b.words.total} bp={bp} />
       <ReviewTile due={dash.dueToday} minutes={reviewMinutes(dash.dueToday)} onGo={() => push("/review")} onBrowse={() => push("/words")} />
       <GoalTile goal={b.weeklyGoal} />
@@ -256,8 +245,6 @@ export default function Today() {
       <TimerTile
         lernzeitToday={b.lernzeitToday}
         target={target}
-        sessions={sessions}
-        showSessions={load === "light" && bp !== "sm"}
         busy={timer.isPending}
         onToggle={() => target && timer.mutate({ id: target.id, action: target.runningSince ? "pause" : "start" })}
         onReset={() => target && timer.mutate({ id: target.id, action: "reset" })}

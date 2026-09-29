@@ -541,16 +541,12 @@ export interface TimerTarget {
 export function TimerTile({
   lernzeitToday,
   target,
-  sessions,
-  showSessions,
   onToggle,
   onReset,
   busy,
 }: {
   lernzeitToday: number;
   target: TimerTarget | null;
-  sessions: { id: string; title: string; minutes: number; color: string }[];
-  showSessions: boolean;
   onToggle: () => void;
   onReset: () => void;
   busy: boolean;
@@ -576,26 +572,6 @@ export function TimerTile({
       <span className="truncate" style={{ fontSize: 13, fontWeight: 600 }} lang="de">
         {target ? (running ? `On: ${target.title}` : `Next: ${target.title}`) : "No open task today"}
       </span>
-      {showSessions && sessions.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <span className="uppercase" style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em" }}>
-            Today's sessions
-          </span>
-          {sessions.map((s) => (
-            <div
-              key={s.id}
-              className="flex items-center gap-2.5"
-              style={{ padding: "7px 10px", background: "var(--plain)", color: "var(--plainText)", border: "2px solid var(--line)", borderRadius: 12 }}
-            >
-              <span aria-hidden="true" className="shrink-0" style={{ width: 10, height: 10, borderRadius: 3, background: s.color, border: "2px solid var(--line)" }} />
-              <span className="min-w-0 flex-1 truncate" style={{ fontSize: 13, fontWeight: 700 }} lang="de">
-                {s.title}
-              </span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--plainMuted)" }}>{s.minutes} min</span>
-            </div>
-          ))}
-        </div>
-      )}
       <div className="flex gap-1.5">
         <button
           type="button"
