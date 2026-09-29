@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, api, getUser } from "../../api/client";
 import type { RoadmapSkill } from "../../api/types";
 import { Chip } from "../../components/ui/Chip";
+import { SkeletonGrid, areasOf } from "../../components/ui/Skeleton";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Modal } from "../../components/ui/Modal";
 import { PillButton } from "../../components/ui/PillButton";
@@ -169,7 +170,7 @@ export default function Today() {
     onError,
   });
 
-  if (!dash) return <div className="flex-1" aria-busy="true" />;
+  if (!dash) return <SkeletonGrid style={gridStyle(bp, fill)} areas={areasOf(bp === "lg" ? LAYOUT.lg : LAYOUT[bp][0])} label="Loading Today" />;
   const b = dash.bento;
 
   // Route rows: due reviews first (a destination, not a checkbox), then everything on today's ticket (the self-paced

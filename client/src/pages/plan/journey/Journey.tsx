@@ -5,11 +5,12 @@ import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, TouchSensor, us
 import { ApiError, api } from "../../../api/client";
 import type { RoadmapSkill, StudySource } from "../../../api/types";
 import { EmptyState } from "../../../components/ui/EmptyState";
+import { SkeletonTile } from "../../../components/ui/Skeleton";
 import { PillButton } from "../../../components/ui/PillButton";
 import { toast } from "../../../components/ui/Toast";
 import { useNavStack } from "../../../lib/navStack";
 import { KIND_LABELS, daysUntil, localDateKey, shortDate, taskEstimateMinutes, taskKind } from "../../../lib/tasks";
-import { useBreakpoint } from "../../../lib/useBreakpoint";
+import { useBreakpoint, type Breakpoint } from "../../../lib/useBreakpoint";
 import { AddSourceModal, LibraryModal, SourceModal } from "./LibraryModals";
 import { CheckpointModal, GateModal, StationModal, WeekModal } from "./Modals";
 import { CHECKPOINT_AFTER, checkpointAt, deriveStations, isItemDone, type Station } from "./model";
@@ -66,6 +67,45 @@ const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;")
 
 function fmtDate(d: Date): string {
   return shortDate(d);
+}
+
+/** Plan's shape while the dashboard and syllabus load (KNOWN_ISSUES #10): rail, ticket and stations, side column. */
+function PlanSkeleton({ bp }: { bp: Breakpoint }) {
+  const stream = (heights: number[]) => (
+    <div className="flex min-w-0 flex-1 flex-col" style={{ gap: 18 }}>
+      {heights.map((h, i) => (
+        <SkeletonTile key={i} style={{ height: h }} />
+      ))}
+    </div>
+  );
+  if (bp === "lg") {
+    return (
+      <div className="flex min-h-0 flex-1 gap-5" aria-busy="true" aria-label="Loading Plan">
+        <SkeletonTile style={{ width: 220, flexShrink: 0 }} />
+        {stream([44, 330, 300, 220])}
+        <div className="flex w-[320px] shrink-0 flex-col gap-5">
+          <SkeletonTile style={{ flex: 1 }} />
+          <SkeletonTile style={{ height: 200 }} />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-5" aria-busy="true" aria-label="Loading Plan">
+      <SkeletonTile style={{ height: bp === "sm" ? 110 : 90 }} />
+      {bp === "md" ? (
+        <div className="flex items-start gap-5">
+          {stream([330, 300])}
+          <div className="flex w-[272px] shrink-0 flex-col gap-5">
+            <SkeletonTile style={{ height: 320 }} />
+            <SkeletonTile style={{ height: 220 }} />
+          </div>
+        </div>
+      ) : (
+        stream([420, 300, 220])
+      )}
+    </div>
+  );
 }
 
 export default function Journey() {
@@ -293,7 +333,7 @@ export default function Journey() {
     }
   };
 
-  if (!dash || !syllabus) return <div className="flex-1" aria-busy="true" />;
+  if (!dash || !syllabus) return <PlanSkeleton bp={bp} />;
 
   const streak = dash.streak;
   const openStation = (s: Station) => setModal({ k: "station", key: s.key });

@@ -2,6 +2,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { Modal } from "../../components/ui/Modal";
+import { SkeletonGrid, areasOf } from "../../components/ui/Skeleton";
 import { localDateKey } from "../../lib/tasks";
 import { useBreakpoint, type Breakpoint } from "../../lib/useBreakpoint";
 import { GenderDrillBody } from "../plan/tests/GenderDrill";
@@ -125,7 +126,7 @@ export default function Stats() {
     return m;
   }, [activity]);
 
-  if (!dash) return <div className="min-h-[60vh]" aria-busy="true" />;
+  if (!dash) return <SkeletonGrid style={gridStyle(bp, fill)} areas={areasOf(bp === "lg" ? LAYOUT.lg : LAYOUT[bp][0])} label="Loading Stats" />;
   const b = dash.bento;
   const series = lernzeitSeries(lernzeitByDay, range, b.weeklyGoal.goalMinutes);
 

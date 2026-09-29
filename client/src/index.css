@@ -294,6 +294,10 @@ details summary::-webkit-details-marker {
     transform: translate(2px, 2px) rotate(var(--tilt, 0deg));
     box-shadow: 0 0 0 var(--shadow) !important;
   }
+  /* loading placeholders (components/ui/Skeleton.tsx) */
+  .skeleton {
+    animation: skeleton-pulse 1.4s ease-in-out infinite;
+  }
   .no-scrollbar {
     scrollbar-width: none;
   }
@@ -301,7 +305,20 @@ details summary::-webkit-details-marker {
     display: none;
   }
 }
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    opacity: 0.4;
+  }
   .lift,
   .lift:hover {
     transform: rotate(var(--tilt, 0deg));

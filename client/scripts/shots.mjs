@@ -208,6 +208,8 @@ async function main() {
         page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
         page.on("pageerror", (e) => errors.push(String(e)));
         await page.goto(`${BASE}${route}`, { waitUntil: "networkidle" });
+        // wait for content, not just the network: loading placeholders carry aria-busy (components/ui/Skeleton.tsx)
+        await page.waitForFunction(() => !document.querySelector('[aria-busy="true"]'), null, { timeout: 15_000 }).catch(() => {});
         await page.evaluate(() => document.fonts.ready);
         await page.waitForTimeout(300);
         if (run) await run(page);

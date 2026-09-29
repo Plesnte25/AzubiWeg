@@ -16,6 +16,7 @@ import {
 import { CalendarCheck, Plus, Target } from "@phosphor-icons/react";
 import { api } from "../../api/client";
 import type { Application, ApplicationStatus, CefrLevel } from "../../api/types";
+import { SkeletonRows } from "../../components/ui/Skeleton";
 import { Eyebrow, Tile } from "../../components/ui/Tile";
 import { toast } from "../../components/ui/Toast";
 import { daysUntil } from "../../lib/tasks";
@@ -166,12 +167,15 @@ function Column({
   apps,
   you,
   sm,
+  loading,
   onOpen,
 }: {
   stage: (typeof STAGES)[number];
   apps: Application[];
   you: CefrLevel | null;
   sm: boolean;
+  /** Applications still loading: placeholder cards, not "Nothing here yet" (KNOWN_ISSUES #10). */
+  loading: boolean;
   onOpen: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id, disabled: sm });
@@ -215,13 +219,14 @@ function Column({
           <Icon size={14} weight="fill" aria-hidden="true" />
           {stage.label}
         </span>
-        <span style={{ fontSize: 13, fontWeight: 700 }}>{apps.length}</span>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>{loading ? "…" : apps.length}</span>
       </div>
       <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto" style={{ gap: 12, padding: "4px 6px 8px 2px" }}>
         {apps.map((a, i) => (
           <Card key={a.id} app={a} index={i} you={you} sm={sm} onOpen={() => onOpen(a.id)} />
         ))}
-        {apps.length === 0 && (
+        {loading && <SkeletonRows count={2} height={110} gap={12} />}
+        {!loading && apps.length === 0 && (
           <div
             className="flex flex-1 items-center justify-center text-center"
             style={{ minHeight: 90, border: "2.5px dashed var(--line)", borderRadius: 16, fontSize: 13, fontWeight: 700, opacity: 0.6, padding: 10 }}
@@ -344,7 +349,7 @@ export default function JobSearch() {
           <Eyebrow>Jobs · Bewerbungen</Eyebrow>
           <div className="flex flex-wrap items-end justify-between" style={{ gap: 12 }}>
             <span style={{ fontSize: k(34), fontWeight: 700, letterSpacing: "-.04em", lineHeight: 1 }}>
-              {open.length} open · {closed} closed
+              {data ? `${open.length} open · ${closed} closed` : "…"}
             </span>
             <button
               type="button"
@@ -449,7 +454,7 @@ export default function JobSearch() {
           }
         >
           {shown.map((s) => (
-            <Column key={s.id} stage={s} apps={open.filter((a) => a.status === s.id)} you={you?.level ?? null} sm={sm} onOpen={setOpenId} />
+            <Column key={s.id} stage={s} apps={open.filter((a) => a.status === s.id)} you={you?.level ?? null} sm={sm} loading={!data} onOpen={setOpenId} />
           ))}
         </div>
         <DragOverlay dropAnimation={null}>

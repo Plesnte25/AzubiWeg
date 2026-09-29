@@ -7,6 +7,7 @@ import { api } from "../../api/client";
 import type { CefrLevel, NoteCategory, WallNote } from "../../api/types";
 import { Chip } from "../../components/ui/Chip";
 import { Tape, Tile } from "../../components/ui/Tile";
+import { SkeletonTile } from "../../components/ui/Skeleton";
 import { toast } from "../../components/ui/Toast";
 import { NOTE_CATEGORIES, NOTE_COLORS, NOTE_LABELS } from "../../lib/noteCategories";
 import { useBreakpoint, type Breakpoint } from "../../lib/useBreakpoint";
@@ -373,7 +374,14 @@ export default function Notes() {
         ))}
       </div>
 
-      {shown.length === 0 ? (
+      {!data ? (
+        // still loading: sticky-shaped placeholders, not "No notes yet" (KNOWN_ISSUES #10)
+        <div className="grid" style={{ gridTemplateColumns: `repeat(${bp === "lg" ? 4 : bp === "md" ? 3 : 2},minmax(0,1fr))`, gap: sm ? 12 : 20 }} aria-busy="true" aria-label="Loading notes">
+          {Array.from({ length: bp === "lg" ? 8 : 6 }, (_, i) => (
+            <SkeletonTile key={i} radius={6} style={{ height: 150 + (i % 3) * 30, borderRadius: "4px 4px 22px 4px" }} />
+          ))}
+        </div>
+      ) : shown.length === 0 ? (
         <div
           className="flex items-center justify-center text-center"
           style={{ minHeight: 160, border: "2.5px dashed var(--line)", borderRadius: 24, padding: 16, fontSize: 14, fontWeight: 700, opacity: 0.7 }}

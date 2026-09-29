@@ -8,6 +8,7 @@ import { BottomSheet } from "../../components/ui/BottomSheet";
 import { Chip } from "../../components/ui/Chip";
 import { RoundSticker } from "../../components/ui/Sticker";
 import { Tile } from "../../components/ui/Tile";
+import { SkeletonRows } from "../../components/ui/Skeleton";
 import { useBreakpoint, type Breakpoint } from "../../lib/useBreakpoint";
 import { articleChipStyle, articleLabel, isNewWord, pipStyles, wordColor } from "../../lib/wordBento";
 import { stripLeadingPosTag } from "../../lib/wordDisplay";
@@ -154,7 +155,7 @@ export default function Words() {
               Wortschatz
             </h1>
             <span style={{ fontSize: 15, fontWeight: 700 }}>
-              {words.length.toLocaleString("en")} words · {shaky} shaky
+              {data ? `${words.length.toLocaleString("en")} words · ${shaky} shaky` : "…"}
             </span>
           </div>
           <button
@@ -202,7 +203,7 @@ export default function Words() {
           sideways off-screen */}
       <Tile tilt={bp === "sm" ? 0 : 0.3} radius={24} className="flex flex-col gap-1.5" style={{ gridArea: "list", padding: "calc(var(--k) * 14px)" }}>
         <div className="flex items-center justify-between uppercase" style={{ padding: "4px 8px 6px", fontSize: 12, fontWeight: 700, letterSpacing: ".08em", color: "var(--plainMuted)" }}>
-          <span>{visible.length} shown</span>
+          <span>{data ? `${visible.length} shown` : "Loading…"}</span>
           <span>Strength</span>
         </div>
         <div className={bp === "sm" ? "flex flex-col gap-0.5" : "no-scrollbar flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden"} role="listbox" aria-label="Words">
@@ -250,7 +251,9 @@ export default function Words() {
               </div>
             );
           })}
-          {visible.length === 0 && (
+          {/* still loading: placeholders, not a "No words yet" that isn't true (KNOWN_ISSUES #10) */}
+          {!data && <SkeletonRows count={7} height={56} />}
+          {data && visible.length === 0 && (
             <div className="flex flex-col items-center gap-2.5 text-center" style={{ padding: "40px 12px" }}>
               <div
                 className="flex items-center justify-center"
@@ -304,6 +307,8 @@ export default function Words() {
         >
           {selected ? (
             <WordDetailPanel key={selected.id} word={selected} onDetails={() => setDetailsOpen(true)} onDeleted={() => setSelectedId(null)} />
+          ) : !data ? (
+            <SkeletonRows count={3} height={90} gap={14} />
           ) : (
             <span style={{ fontSize: 16, fontWeight: 700 }}>Add your first word with “+ Word”.</span>
           )}
@@ -320,7 +325,7 @@ export default function Words() {
           Shaky words
         </span>
         <div className="flex items-baseline gap-2">
-          <span style={{ fontSize: "calc(var(--k) * 60px)", fontWeight: 700, letterSpacing: "-.05em", lineHeight: 0.85 }}>{shaky}</span>
+          <span style={{ fontSize: "calc(var(--k) * 60px)", fontWeight: 700, letterSpacing: "-.05em", lineHeight: 0.85 }}>{data ? shaky : "…"}</span>
           <span style={{ fontSize: 14, fontWeight: 600 }}>strength ≤ 2</span>
         </div>
         <button
@@ -345,7 +350,7 @@ export default function Words() {
         <div className="flex overflow-hidden" style={{ height: 30, border: "2.5px solid var(--line)", borderRadius: 10, color: "var(--onTile)", fontSize: 13, fontWeight: 700 }}>
           {nouns.length === 0 ? (
             <span className="flex flex-1 items-center justify-center" style={{ background: "var(--plain2)", color: "var(--plainText)" }}>
-              no nouns yet
+              {data ? "no nouns yet" : "…"}
             </span>
           ) : (
             dist
