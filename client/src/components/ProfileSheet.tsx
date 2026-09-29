@@ -4,7 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { CaretRight, LockSimple, NotePencil, SlidersHorizontal } from "@phosphor-icons/react";
 import { api, clearSession } from "../api/client";
 import { useNavStack } from "../lib/navStack";
+import { useTheme } from "../lib/theme";
 import { BottomSheet } from "./ui/BottomSheet";
+import { Segmented } from "./ui/Segmented";
 
 const LEVEL_LABELS: Record<string, string> = { a1: "A1", a2: "A2", b1: "B1" };
 
@@ -15,8 +17,9 @@ function initials(name: string | undefined): string {
 }
 
 /**
- * Profile sheet behind the chrome's avatar (undesigned in Bento; Sticker style): avatar, three stat stickers, and
- * Settings / All notes / Log out. Name/level/day/streak come in as props; word and note counts share Words' and the
+ * Profile sheet behind the chrome's avatar (undesigned in Bento; Sticker style): avatar, three stat stickers,
+ * Appearance (System / Light / Dark — the nav toggle only flips light ↔ dark, so this is the way back to following
+ * the OS, KNOWN_ISSUES #16), and Settings / All notes / Log out. Name/level/day/streak come in as props; word and note counts share Words' and the
  * Notes wall's query caches.
  */
 export function ProfileSheet({
@@ -40,6 +43,7 @@ export function ProfileSheet({
   const { push } = useNavStack();
   const { data: wordsData } = useQuery({ queryKey: ["words"], queryFn: api.words, enabled: open });
   const { data: notesData } = useQuery({ queryKey: ["notes", "wall"], queryFn: api.notesWall, enabled: open });
+  const { preference, setPreference } = useTheme();
 
   const stat = (n: number | string, l: string, bg: string, tilt: number) => (
     <div
@@ -97,6 +101,20 @@ export function ProfileSheet({
         {stat(wordsData?.words.length ?? "–", "words", "var(--lemon)", -1)}
         {stat(streak, "day streak", "var(--tomato)", 0.8)}
         {stat(notesData?.notes.length ?? "–", "notes", "var(--lilac)", -0.6)}
+      </div>
+
+      <div className="mt-4 flex items-center justify-between" style={{ gap: 10 }}>
+        <span style={{ fontSize: 14, fontWeight: 700 }}>Appearance</span>
+        <Segmented
+          label="Appearance"
+          options={[
+            ["system", "System"],
+            ["light", "Light"],
+            ["dark", "Dark"],
+          ]}
+          value={preference}
+          onChange={setPreference}
+        />
       </div>
 
       <div className="mt-4 flex flex-col" style={{ gap: 8 }}>
