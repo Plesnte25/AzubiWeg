@@ -22,6 +22,7 @@ const NEW_STAGES: BoardStage[] = ["wishlist", "applied", "interview"];
 export default function NewApplicationModal({ onClose, onAdded }: { onClose: () => void; onAdded: (app: Application) => void }) {
   const queryClient = useQueryClient();
   const { data: cvs } = useQuery({ queryKey: ["cvs"], queryFn: api.cvs });
+  const { data: portalsData } = useQuery({ queryKey: ["portals"], queryFn: api.portals });
   const [url, setUrl] = useState("");
   const [f, setF] = useState({ company: "", role: "", location: "" });
   const [portal, setPortal] = useState<string | null>(null);
@@ -72,6 +73,9 @@ export default function NewApplicationModal({ onClose, onAdded }: { onClose: () 
   });
 
   const levels = level && !BASE_LEVELS.includes(level) ? [...BASE_LEVELS, level] : BASE_LEVELS;
+  // your saved platforms (Jobs → Platforms), plus whatever site the fetched posting named if it isn't one of them
+  const platformLabels = (portalsData?.portals ?? []).map((p) => p.label);
+  const platforms = portal && !platformLabels.some((l) => l.toLowerCase() === portal.toLowerCase()) ? [...platformLabels, portal] : platformLabels;
   const field = (label: string, key: keyof typeof f, ph: string) => (
     <label className="flex min-w-0 flex-col" style={{ gap: 6 }}>
       <span style={eyebrow}>{label}</span>
@@ -147,6 +151,14 @@ export default function NewApplicationModal({ onClose, onAdded }: { onClose: () 
         value={cvId}
         onPick={setCvId}
       />
+      {platforms.length > 0 && (
+        <Pickers
+          label="Found on"
+          options={[...platforms.map((l) => [l, l] as const), [null, "Other"] as const]}
+          value={platforms.find((l) => l.toLowerCase() === portal?.toLowerCase()) ?? null}
+          onPick={setPortal}
+        />
+      )}
       <Pickers label="Stage" options={NEW_STAGES.map((s) => [s, STAGE_LABEL[s]] as const)} value={stage} onPick={setStage} />
     </Modal>
   );

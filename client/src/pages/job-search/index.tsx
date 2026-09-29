@@ -22,6 +22,7 @@ import { daysUntil } from "../../lib/tasks";
 import { useBreakpoint, type Breakpoint } from "../../lib/useBreakpoint";
 import { DetailModal, type YourLevel } from "./DetailModal";
 import NewApplicationModal from "./NewApplicationModal";
+import { PlatformsTile } from "./Platforms";
 import {
   GERMAN_LEVELS,
   STAGES,
@@ -41,8 +42,9 @@ import {
 } from "./model";
 
 /*
- * Jobs — Pinboard (Bento README §6, AzubiJobs.dc.html dir a). Header tiles (title + counts, Next up, B1 nudge),
- * then four cork columns. lg/md: drag a card onto a column to change its stage (dnd-kit; touch works with a short
+ * Jobs — Pinboard (Bento README §6, AzubiJobs.dc.html dir a). Header tiles (title + counts, Next up, B1 nudge), the
+ * Platforms strip (saved job boards, Platforms.tsx — not in the prototype, added at the user's request), then four
+ * cork columns. lg/md: drag a card onto a column to change its stage (dnd-kit; touch works with a short
  * press). sm: stage tabs show one column; cards are tap-only and the stage changes in the detail modal's stepper
  * (also the keyboard alternative everywhere). Rejected isn't a column: it's the "closed" count.
  */
@@ -397,6 +399,7 @@ export default function JobSearch() {
           )}
         </Tile>
         <Nudge apps={open} you={you} finish={pace?.projectedFinishDate ?? null} />
+        <PlatformsTile span={sm ? undefined : "1 / -1"} />
       </div>
 
       {sm && (
