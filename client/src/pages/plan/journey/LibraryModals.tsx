@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowClockwise, ArrowSquareOut, Check, Image, Minus, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowSquareOut, Check, Image, MagnifyingGlass, Minus, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
 import { api, fetchFileBlobUrl, uploadFile } from "../../../api/client";
-import type { StudySource, StudySourceType, StudySourceUnit, StudySourceUnitLabel } from "../../../api/types";
+import type { SourcePreview, StudySource, StudySourceType, StudySourceUnit, StudySourceUnitLabel } from "../../../api/types";
 import { Chip } from "../../../components/ui/Chip";
 import { Modal } from "../../../components/ui/Modal";
 import { PillButton } from "../../../components/ui/PillButton";
@@ -185,6 +185,17 @@ export function SourceModal({ source, stations, pickable, onClose }: { source: S
     },
     onError,
   });
+  // fill what's still empty (author, cover, page count) by looking the source up again — e.g. a book saved before
+  // lookups worked
+  const fetchDetails = useMutation({
+    mutationFn: () => api.updateStudySource(source.id, { refetchDetails: true }),
+    onSuccess: () => {
+      toast.success("Details filled in");
+      refresh();
+    },
+    onError: () => toast.info("Couldn't find details for this one — edit them by hand"),
+  });
+  const missingDetails = !source.provider || (!source.coverImageUrl && !source.coverFileId) || (!source.totalUnits && source.units.length === 0);
   const del = useMutation({
     mutationFn: () => api.deleteStudySource(source.id),
     onSuccess: () => {
@@ -246,6 +257,17 @@ export function SourceModal({ source, stations, pickable, onClose }: { source: S
             aria-label="Fetch the cover from the link again"
           >
             Refresh
+          </PillButton>
+        )}
+        {missingDetails && (source.type === "book" || source.type === "audio" || !!source.url) && (
+          <PillButton
+            height={40}
+            variant="secondary"
+            icon={<MagnifyingGlass size={15} weight="bold" aria-hidden="true" />}
+            disabled={fetchDetails.isPending}
+            onClick={() => fetchDetails.mutate()}
+          >
+            {fetchDetails.isPending ? "Looking…" : "Fetch details"}
           </PillButton>
         )}
         {source.url && (
@@ -374,15 +396,23 @@ function UnitRow({ sourceId, unit, onToggle }: { sourceId: string; unit: StudySo
 
 // ── Add source ──
 
-const TYPES: { k: SourceKind; type: StudySourceType; unit: StudySourceUnitLabel; provider?: string; count?: string; link: "optional" | "only" | "main" | "none" }[] = [
+const TYPES: { k: SourceKind; type: StudySourceType; unit: StudySourceUnitLabel; provider?: string; count?: string; link: "optional" | "only" | "main" | "isbn" }[] = [
   { k: "video", type: "video", unit: "episodes", provider: "Channel / series", count: "Episodes", link: "optional" },
   { k: "audio", type: "audio", unit: "episodes", provider: "Podcast", count: "Episodes", link: "optional" },
-  { k: "book", type: "book", unit: "pages", provider: "Author / publisher", count: "Pages", link: "none" },
+  { k: "book", type: "book", unit: "pages", provider: "Author / publisher", count: "Pages", link: "isbn" },
   { k: "course", type: "course", unit: "lessons", provider: "School / platform", count: "Lessons", link: "optional" },
   { k: "article", type: "article", unit: "chapters", count: "Parts", link: "main" },
   { k: "link", type: "link", unit: "lessons", link: "only" },
 ];
 
+const looksLikeUrl = (s: string) => /^https?:\/\/\S+\.\S+/i.test(s.trim());
+const looksLikeIsbn = (s: string) => /^(97[89])?\d{9}[\dXx]$/.test(s.replace(/[\s-]/g, ""));
+
+/**
+ * Add a source (KNOWN_ISSUES #34): fetch before save. Pasting a link — or, for a book, a link or ISBN — looks it up
+ * right away (debounced); a title search (book, podcast) runs on Fetch, which also retries. The preview shows what
+ * was found and fills only the fields you left empty; everything stays editable, and a failed lookup says so.
+ */
 export function AddSourceModal({ stations, defaultStationKey, onClose }: { stations: Station[]; defaultStationKey: string | null; onClose: () => void }) {
   const refresh = useSourceRefresh();
   const [kind, setKind] = useState<SourceKind>("video");
@@ -391,13 +421,42 @@ export function AddSourceModal({ stations, defaultStationKey, onClose }: { stati
   const [count, setCount] = useState("");
   const [url, setUrl] = useState("");
   const [station, setStation] = useState<string | null>(defaultStationKey);
+  const [found, setFound] = useState<SourcePreview | null>(null);
   const t = TYPES.find((x) => x.k === kind)!;
+  // a book's "Link or ISBN": a link is saved as the source's link, an ISBN only drives the lookup
+  const bookIsbn = t.link === "isbn" && !looksLikeUrl(url) && looksLikeIsbn(url) ? url.trim() : null;
+  const link = t.link === "isbn" ? (looksLikeUrl(url) ? url.trim() : null) : url.trim() || null;
+
+  const preview = useMutation({
+    mutationFn: (withTitle: boolean) => api.previewStudySource({ type: t.type, url: link, isbn: bookIsbn, title: withTitle ? title.trim() || null : null }),
+    onSuccess: (r) => {
+      setFound(r);
+      if (r.outcome === "failed" || r.outcome === "manual") return;
+      // fill only what the user left empty
+      if (!title.trim() && r.title) setTitle(r.title);
+      if (!provider.trim() && r.provider) setProvider(r.provider);
+      const n = r.unitCount || r.totalUnits;
+      if (!count && n) setCount(String(n));
+    },
+    onError: () => setFound({ type: t.type, title: null, provider: null, coverImageUrl: null, totalUnits: null, unitCount: 0, outcome: "failed" }),
+  });
+  // pasting or changing a link (or ISBN) fetches on its own, debounced
+  const lookupKey = `${t.type}|${link ?? ""}|${bookIsbn ?? ""}`;
+  useEffect(() => {
+    if (!link && !bookIsbn) return;
+    const id = setTimeout(() => preview.mutate(false), 700);
+    return () => clearTimeout(id);
+  }, [lookupKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => setFound(null), [kind]);
+
+  const canSearchTitle = (t.type === "book" || t.type === "audio") && title.trim().length > 1;
   const add = useMutation({
     mutationFn: () =>
       api.addStudySource({
         type: t.type,
         title: title.trim(),
-        url: url.trim() || null,
+        url: link,
+        isbn: bookIsbn,
         provider: provider.trim() || null,
         totalUnits: count ? Math.max(1, Number(count)) : null,
         unitLabel: t.unit,
@@ -413,14 +472,15 @@ export function AddSourceModal({ stations, defaultStationKey, onClose }: { stati
   });
   const save = () => {
     // a link can fill the title in by itself (the server fetches it); otherwise a title is required
-    if (!title.trim() && !url.trim()) return toast.error("Give it a title first");
+    if (!title.trim() && !link) return toast.error("Give it a title first");
     add.mutate();
   };
+  const foundCount = found ? found.unitCount || found.totalUnits : null;
   return (
     <Modal
       title="Add a source"
       tag="Library"
-      subtitle="Fetching from a link is best-effort. You can always type the fields."
+      subtitle="Paste a link or search a title — we'll fill in what we can find. Everything stays editable."
       bg="var(--lemon)"
       onClose={onClose}
       footer={
@@ -457,24 +517,58 @@ export function AddSourceModal({ stations, defaultStationKey, onClose }: { stati
           })}
         </div>
       </div>
-      {t.link !== "none" && (
-        <label className="flex shrink-0 flex-col gap-1.5">
-          <span style={eyebrow}>{t.link === "optional" ? "Link (optional — fills in the details)" : "Link"}</span>
-          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" type="url" style={field} />
-        </label>
-      )}
-      {t.link !== "only" && (
-        <label className="flex shrink-0 flex-col gap-1.5">
-          <span style={eyebrow}>Title</span>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={kind === "book" ? "e.g. Menschen A2 (searches Google Books)" : "e.g. Nicos Weg"} style={field} />
-        </label>
-      )}
-      {t.link === "only" && (
-        <label className="flex shrink-0 flex-col gap-1.5">
-          <span style={eyebrow}>Title (optional)</span>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Taken from the page if left empty" style={field} />
-        </label>
-      )}
+      <label className="flex shrink-0 flex-col gap-1.5">
+        <span style={eyebrow}>{t.link === "isbn" ? "Link or ISBN (optional — exact lookup)" : t.link === "optional" ? "Link (optional — fills in the details)" : "Link"}</span>
+        <input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder={t.link === "isbn" ? "ISBN, or an Open Library / Google Books / Amazon link" : "https://…"}
+          type={t.link === "isbn" ? "text" : "url"}
+          style={field}
+        />
+      </label>
+      <div className="flex shrink-0 flex-col gap-1.5">
+        <span style={eyebrow}>{t.link === "only" ? "Title (optional)" : "Title"}</span>
+        <div className="flex gap-2">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && canSearchTitle && preview.mutate(true)}
+            placeholder={t.link === "only" ? "Taken from the page if left empty" : kind === "book" ? "e.g. Menschen A2 Kursbuch" : kind === "audio" ? "e.g. Coffee Break German" : "e.g. Nicos Weg"}
+            aria-label="Title"
+            style={{ ...field, flex: 1, minWidth: 0 }}
+          />
+          {(t.type === "book" || t.type === "audio" || link || bookIsbn) && (
+            <PillButton
+              height={46}
+              variant="secondary"
+              icon={<MagnifyingGlass size={15} weight="bold" aria-hidden="true" />}
+              disabled={preview.isPending || (!canSearchTitle && !link && !bookIsbn)}
+              onClick={() => preview.mutate(canSearchTitle)}
+            >
+              {preview.isPending ? "Looking…" : "Fetch"}
+            </PillButton>
+          )}
+        </div>
+      </div>
+      {found && (found.outcome === "failed" || found.outcome === "manual" ? (
+        <div className="shrink-0" role="status" style={{ padding: "10px 12px", border: "2.5px dashed var(--line)", borderRadius: 14, fontSize: 13, fontWeight: 700 }}>
+          {kind === "book" ? "Couldn't find this book — fill in the details below." : "Couldn't read that — fill in the details below."}
+        </div>
+      ) : (
+        <div className="flex shrink-0 items-center gap-3" role="status" style={{ padding: 10, border: "2.5px solid var(--line)", borderRadius: 14, background: "var(--plain)", color: "var(--plainText)", boxShadow: "3px 3px 0 var(--shadow)" }}>
+          {found.coverImageUrl ? (
+            <img src={found.coverImageUrl} alt="" style={{ width: 52, height: 68, objectFit: "cover", borderRadius: 6, border: "2px solid var(--line)", flexShrink: 0 }} />
+          ) : null}
+          <div className="min-w-0 flex-1" style={{ lineHeight: 1.25 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--plainMuted)" }}>Found</div>
+            <div lang="de" style={{ fontSize: 14, fontWeight: 700 }}>{found.title ?? title}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--plainMuted)" }}>
+              {[found.provider, foundCount ? `${foundCount} ${t.unit}` : null].filter(Boolean).join(" · ") || "Details filled in below"}
+            </div>
+          </div>
+        </div>
+      ))}
       {t.provider && (
         <label className="flex shrink-0 flex-col gap-1.5">
           <span style={eyebrow}>{t.provider}</span>

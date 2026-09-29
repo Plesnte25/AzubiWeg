@@ -27,13 +27,9 @@ import { ensureSyllabusSeeded } from "../services/learning/syllabus-seed.js";
 import { failedReview, isReviewDue, nextMastery } from "../services/learning/mastery.js";
 import { summarizeMistakes } from "../services/learning/mistakes.js";
 import { listeningAudioFor } from "../services/learning/listening-audio.js";
-import { extractCourseId, fetchCourse } from "../services/learning/nicosweg.js";
-import { fetchBook } from "../services/learning/googleBooks.js";
-import { fetchPodcast } from "../services/learning/itunesPodcasts.js";
-import { fetchGenericPreview } from "../services/learning/genericPreview.js";
-import { buildCourseUnits, buildManualUnits, buildPlaylistUnits, type NewUnit, resizeManualUnits, unitProgress } from "../services/learning/units.js";
-import { extractPlaylistId, extractVideoId, fetchPlaylist } from "../services/learning/youtube.js";
-import { fetchCoverUrl, youtubeThumbnail } from "../services/learning/cover.js";
+import { buildManualUnits, type NewUnit, resizeManualUnits, unitProgress } from "../services/learning/units.js";
+import { fetchSourceDetails, fetchSourceDetailsCached } from "../services/learning/sourceFetch.js";
+import { fetchCoverUrl } from "../services/learning/cover.js";
 import { deleteStoredFile } from "./files.js";
 import { gradeSyllabusExercise } from "../services/learning/exercise-grading.js";
 import { examGateForUser, forecastDates, loadQueue } from "../services/learning/queue.js";
@@ -495,99 +491,47 @@ const createSourceSchema = z.object({
   notes: z.string().max(1000).nullish(),
   // Plan journey station this source fuels ("level:theme"); Add-source's "Fuel for station" picker
   stationKey: STATION_KEY.nullish(),
-  // per-type real fetch engine (no API key needed for any of them): a
-  // YouTube playlist URL scrapes its video list; a Nicos Weg course URL
-  // fetches its real lesson list via DW's own GraphQL endpoint; a book/
-  // podcast searches Google Books/iTunes by the given title; a video/
-  // article/link URL scrapes its OpenGraph title+image. Any failure falls
-  // back to the manual totalUnits path — never a hard error.
+  // books: an ISBN typed in "Link or ISBN" (a pasted book link comes as url) — used for the lookup, not stored
+  isbn: z.string().trim().max(20).nullish(),
+  // fill in the details via services/learning/sourceFetch.ts (playlist videos, course lessons, book / podcast
+  // lookup, a page's title and image, a default cover). Any failure falls back to what was typed — never an error.
   autoFetch: z.boolean().default(true),
 });
 
-type FetchOutcome = "playlist" | "course" | "book" | "podcast" | "preview" | "manual" | "failed";
+const previewSourceSchema = z.object({
+  type: SOURCE_TYPE,
+  title: z.string().trim().max(200).nullish(),
+  url: z.url().max(500).nullish(),
+  isbn: z.string().trim().max(20).nullish(),
+});
+
+/** Add source's fetch-before-save: what the link or title turns into, without saving anything (units are only
+ * counted — the create reuses the cached result). */
+learningRouter.post("/sources/preview", async (req, res) => {
+  const parsed = previewSourceSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
+  const { units, ...details } = await fetchSourceDetailsCached(req.userId, parsed.data);
+  res.json({ ...details, unitCount: units.length });
+});
 
 learningRouter.post("/sources", async (req, res) => {
   const parsed = createSourceSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
 
-  const { totalUnits, completedUnits, autoFetch, ...rest } = parsed.data;
+  const { totalUnits, completedUnits, autoFetch, isbn, ...rest } = parsed.data;
 
-  let fetchOutcome: FetchOutcome = "manual";
-  let units: NewUnit[] = [];
-  let scrapedTitle: string | null = null;
-  let scrapedProvider: string | null = null;
-  let scrapedCoverUrl: string | null = null;
-  let scrapedTotalUnits: number | null = null;
-
-  // The Add-source type picker only shows 6 buttons (Video/Audio/Book/
-  // Course/Article/Link, per the literal design mock) — YouTube isn't one
-  // of them, even though it's a first-class type end-to-end elsewhere
-  // (filter chips, cards, its own real fetch engine). Picking "Video" and
-  // pasting a YouTube URL silently upgrades the saved type to "youtube"
-  // here, rather than adding a 7th picker button just for it.
-  const playlistId = autoFetch && (rest.type === "youtube" || rest.type === "video") && rest.url ? extractPlaylistId(rest.url) : null;
-  const courseId = autoFetch && rest.type === "course" && rest.url ? extractCourseId(rest.url) : null;
-
-  if (playlistId) {
-    const playlist = await fetchPlaylist(playlistId);
-    if (playlist) {
-      units = buildPlaylistUnits(playlist.videos);
-      scrapedTitle = playlist.title;
-      rest.type = "youtube";
-      fetchOutcome = "playlist";
-    } else {
-      fetchOutcome = "failed";
-    }
-  } else if (courseId) {
-    const course = await fetchCourse(courseId);
-    if (course) {
-      units = buildCourseUnits(course.lessons);
-      scrapedTitle = course.title;
-      scrapedProvider = "DW"; // Deutsche Welle, the real org behind Nicos Weg
-      fetchOutcome = "course";
-    } else {
-      fetchOutcome = "failed";
-    }
-  } else if (autoFetch && rest.type === "book" && rest.title) {
-    const book = await fetchBook(rest.title);
-    if (book) {
-      scrapedProvider = book.authors.length > 0 ? book.authors.join(", ") : null;
-      scrapedCoverUrl = book.thumbnailUrl;
-      scrapedTotalUnits = book.pageCount;
-      fetchOutcome = "book";
-    } else {
-      fetchOutcome = "failed";
-    }
-  } else if (autoFetch && rest.type === "audio" && rest.title) {
-    const podcast = await fetchPodcast(rest.title);
-    if (podcast) {
-      scrapedTitle = podcast.trackName;
-      scrapedProvider = podcast.artistName;
-      scrapedCoverUrl = podcast.artworkUrl;
-      scrapedTotalUnits = podcast.trackCount;
-      fetchOutcome = "podcast";
-    } else {
-      fetchOutcome = "failed";
-    }
-  } else if (autoFetch && (rest.type === "youtube" || rest.type === "video" || rest.type === "article" || rest.type === "link") && rest.url) {
-    // "youtube" lands here for a single video or a channel (no list= param)
-    const preview = await fetchGenericPreview(rest.url);
-    if (preview) {
-      scrapedTitle = preview.title;
-      scrapedProvider = preview.siteName;
-      scrapedCoverUrl = preview.imageUrl;
-      fetchOutcome = "preview";
-    } else {
-      fetchOutcome = "failed";
-    }
-  }
+  const details = autoFetch
+    ? await fetchSourceDetailsCached(req.userId, { type: rest.type, title: rest.title, url: rest.url, isbn })
+    : null;
+  // a "video" link that is really a playlist is saved as "youtube" (the only type change a fetch makes)
+  if (details?.type === "youtube") rest.type = "youtube";
+  let units: NewUnit[] = details?.units ?? [];
   if (units.length === 0 && totalUnits) units = buildManualUnits(totalUnits);
-  // Every source with a link gets a cover from it by default (a YouTube thumbnail, else the page's og:image):
-  // playlists, courses and pages whose preview had no image included.
-  if (autoFetch && rest.url && !scrapedCoverUrl) scrapedCoverUrl = await fetchCoverUrl(rest.url, units);
-  // a YouTube video's own thumbnail beats the generic og:image the preview returned
-  const videoId = rest.url ? extractVideoId(rest.url) : null;
-  if (autoFetch && videoId) scrapedCoverUrl = youtubeThumbnail(videoId);
+  const fetchOutcome = details?.outcome ?? "manual";
+  const scrapedTitle = details?.title ?? null;
+  const scrapedProvider = details?.provider ?? null;
+  const scrapedCoverUrl = details?.coverImageUrl ?? null;
+  const scrapedTotalUnits = details?.totalUnits ?? null;
 
   const finalTitle = rest.title || scrapedTitle || "";
   if (!finalTitle) {
@@ -640,6 +584,10 @@ const patchSourceSchema = z.object({
   coverFileId: z.string().nullish(),
   // re-fetch the default cover from the link (Library "Refresh cover"); a changed url does this too
   refetchCover: z.boolean().optional(),
+  // Source modal "Fetch details": look the source up again (sourceFetch.ts) and fill only what's still empty —
+  // provider, cover, and the unit count when it has no units yet. `isbn` narrows a book lookup.
+  refetchDetails: z.boolean().optional(),
+  isbn: z.string().trim().max(20).nullish(),
 });
 
 learningRouter.patch("/sources/:id", async (req, res) => {
@@ -652,8 +600,22 @@ learningRouter.patch("/sources/:id", async (req, res) => {
   });
   if (!existing) return res.status(404).json({ error: "Study source not found" });
 
-  const { refetchCover, ...data } = parsed.data;
+  const { refetchCover, refetchDetails, isbn, ...data } = parsed.data;
   const hasUnits = existing.units.length > 0;
+  if (refetchDetails) {
+    const found = await fetchSourceDetails({ type: existing.type, title: existing.title, url: existing.url, isbn });
+    if (found.outcome === "failed" || found.outcome === "manual") return res.status(404).json({ error: "Couldn't find details for this source" });
+    const filled = await prisma.studySource.update({
+      where: { id: existing.id },
+      data: {
+        ...(existing.provider ? {} : { provider: found.provider }),
+        ...(existing.coverImageUrl || existing.coverFileId ? {} : { coverImageUrl: found.coverImageUrl }),
+        ...(hasUnits || existing.totalUnits || !found.totalUnits ? {} : { totalUnits: found.totalUnits }),
+      },
+      include: SOURCE_INCLUDE,
+    });
+    return res.json({ source: withPercent(filled), fetch: found.outcome });
+  }
   const linkChanged = data.url !== undefined && data.url !== existing.url;
   const coverUrl = data.url !== undefined ? data.url : existing.url;
   const fetchedCover =

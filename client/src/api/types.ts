@@ -470,6 +470,18 @@ export interface StudySource {
 
 export type PlaylistFetchOutcome = "playlist" | "course" | "book" | "podcast" | "preview" | "manual" | "failed";
 
+/** POST /sources/preview — what a link or title turns into, before saving (server: services/learning/sourceFetch.ts). */
+export interface SourcePreview {
+  type: StudySourceType;
+  title: string | null;
+  provider: string | null;
+  coverImageUrl: string | null;
+  totalUnits: number | null;
+  /** Playlist videos / course lessons found (the create reuses them). */
+  unitCount: number;
+  outcome: PlaylistFetchOutcome;
+}
+
 export type LevelState = "done" | "active" | "locked";
 
 // mirrors SessionQuestion in server/src/services/learning/engine.ts

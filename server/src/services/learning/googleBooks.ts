@@ -1,7 +1,6 @@
-// Google Books volumes search — no API key required. A key only raises the
-// (already generous) rate quota, it's not required for basic search; same
-// "avoid needing a key at all" convention this project already follows for
-// youtube.ts/nicosweg.ts/kaikki.ts's Google Translate fallback.
+// Google Books volumes search — the fallback after Open Library (openLibrary.ts). Without a key the quota is shared
+// by every anonymous caller and answers 429 from the server (KNOWN_ISSUES #34); set GOOGLE_BOOKS_API_KEY (free,
+// 1,000 requests a day) to make it dependable.
 
 const SEARCH_ENDPOINT = "https://www.googleapis.com/books/v1/volumes";
 
@@ -45,7 +44,8 @@ export function parseBooksResponse(body: unknown): BookResult | null {
 /** null on any network/HTTP/parse/no-results failure — callers fall back to manual. */
 export async function fetchBook(query: string): Promise<BookResult | null> {
   try {
-    const url = `${SEARCH_ENDPOINT}?q=${encodeURIComponent(query)}&maxResults=1`;
+    const key = process.env.GOOGLE_BOOKS_API_KEY;
+    const url = `${SEARCH_ENDPOINT}?q=${encodeURIComponent(query)}&maxResults=1${key ? `&key=${encodeURIComponent(key)}` : ""}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return null;
     return parseBooksResponse(await res.json());
