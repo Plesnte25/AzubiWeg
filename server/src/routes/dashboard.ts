@@ -214,20 +214,23 @@ dashboardRouter.get("/", async (req, res) => {
       : [],
   );
   const skillPerf = skillPerformance(selfTestBreakdownEntries);
+  // a plan reset (User.streakResetAt) clears streak history: activity before it no longer counts toward the streak,
+  // the best streak or the heatmap, even for the history the reset keeps (word reviews, source logs, tests)
+  const sinceReset = (d: Date) => !user.streakResetAt || d >= user.streakResetAt;
   const learningTimestamps = [
     ...syllabusActivity.map((r) => r.completedAt as Date),
     ...sourceActivity.map((r) => r.loggedAt),
     ...testActivity.map((r) => r.takenAt),
     ...roadmapActivity.map((r) => r.completedAt as Date),
     ...recentLogs.map((r) => r.reviewedAt),
-  ];
+  ].filter(sinceReset);
   const streak = computeDayStreak(learningTimestamps, new Date(), user.streakResetAt);
 
   // GitHub-style heatmap: last 15 full weeks of reviews + learning activity,
   // aligned so the grid starts on a Monday and ends today
   const HEATMAP_DAYS = 7 * 15;
   const reviewCounts = new Map<string, number>();
-  for (const log of recentLogs) {
+  for (const log of recentLogs.filter((l) => sinceReset(l.reviewedAt))) {
     const key = localDateKey(log.reviewedAt);
     reviewCounts.set(key, (reviewCounts.get(key) ?? 0) + 1);
   }

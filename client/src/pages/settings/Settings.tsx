@@ -317,7 +317,7 @@ function ResetTile({ bp, style }: { bp: Breakpoint; style: CSSProperties }) {
       void queryClient.invalidateQueries();
       setDone(true);
       const lost = KEEPS.filter(([key]) => !keep[key] && !(key === "keepWords" && vaultLinked)).length;
-      toast.success(lost ? `Fresh route · Day 1 · ${lost} thing${lost > 1 ? "s" : ""} cleared` : "Fresh route · Day 1 · everything kept");
+      toast.success(`Fresh start · Day 1${lost ? ` · ${lost} more thing${lost > 1 ? "s" : ""} cleared` : ""}`);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't reset the plan · try again"),
   });
@@ -348,7 +348,8 @@ function ResetTile({ bp, style }: { bp: Breakpoint; style: CSSProperties }) {
         <Kicker icon={<ArrowCounterClockwise size={16} weight="bold" aria-hidden="true" />}>Reset plan</Kicker>
         <span style={{ fontSize: k(24), fontWeight: 700, letterSpacing: "-.03em", lineHeight: 1.05 }}>Start the route again</span>
         <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.35, color: "var(--plainMuted)" }}>
-          Clears your task history and starts again at Day 1 today. Passed topics stay passed. Your streak goes back to 0.
+          A fresh start at Day 1 today: clears your task history, syllabus progress (every topic back to not started), your
+          streak and study-time history. Test and exam results and your word reviews stay.
         </span>
       </div>
       <div className="flex flex-col" style={{ gap: 6 }}>
