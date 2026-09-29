@@ -83,8 +83,8 @@ export function AltitudeRail({ levels, gate, streak, onGate }: { levels: AltLeve
 export function AltitudeStrip({ levels, active, gate, streak, bp, onGate }: { levels: AltLevel[]; active: AltLevel; gate: GateInfo; streak: number; bp: Breakpoint; onGate: () => void }) {
   return (
     <section
-      className="flex items-center gap-3.5"
-      style={{ background: "var(--plain)", color: "var(--plainText)", border: "2.5px solid var(--line)", borderRadius: 22, boxShadow: "4px 4px 0 var(--shadow)", padding: bp === "sm" ? "12px 12px 12px 14px" : "14px 16px" }}
+      className="lift flex items-center gap-3.5"
+      style={{ background: "var(--plain)", color: "var(--plainText)", border: "2.5px solid var(--line)", borderRadius: 22, boxShadow: "4px 4px 0 var(--shadow)", padding: bp === "sm" ? "12px 12px 12px 14px" : "14px 16px", "--lift": "8px" } as CSSProperties}
     >
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex justify-between gap-2" style={{ fontSize: 13, fontWeight: 700 }}>
@@ -207,8 +207,10 @@ export function NotesTile({
   return (
     <section
       ref={setNodeRef}
-      className="flex flex-col gap-2"
+      className={isOver ? "flex flex-col gap-2" : "lift flex flex-col gap-2"}
       style={{
+        "--tilt": "0.6deg",
+        "--lift": "8px",
         flex: lg ? 1 : "none",
         minHeight: 0,
         background: "var(--mint)",
@@ -216,11 +218,11 @@ export function NotesTile({
         border: "2.5px solid var(--line)",
         borderRadius: 24,
         boxShadow: isOver ? "8px 8px 0 var(--shadow)" : "5px 5px 0 var(--shadow)",
-        transform: isOver ? "rotate(0deg) scale(1.01)" : "rotate(0.6deg)",
+        ...(isOver ? { transform: "rotate(0deg) scale(1.01)" } : {}),
         padding: lg ? 16 : 18,
         boxSizing: "border-box",
         transition: "transform .15s, box-shadow .15s",
-      }}
+      } as CSSProperties}
     >
       <div className="flex items-center justify-between">
         <span style={eyebrow}>Notes · {stationIndex ? `Station ${stationIndex}` : "Plan"}</span>

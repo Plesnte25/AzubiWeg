@@ -314,7 +314,7 @@ export default function Journey() {
       onTake={() => take.mutate()}
     />
   ) : (
-    <div style={{ background: "var(--lemon)", color: "var(--onTile)", border: "2.5px solid var(--line)", borderRadius: 24, boxShadow: "5px 5px 0 var(--shadow)", padding: 18 }}>
+    <div className="lift" style={{ background: "var(--lemon)", color: "var(--onTile)", border: "2.5px solid var(--line)", borderRadius: 24, boxShadow: "5px 5px 0 var(--shadow)", padding: 18, "--lift": "8px" } as CSSProperties}>
       <EmptyState action={<PillButton height={40} disabled={activate.isPending} onClick={() => activate.mutate()}>Start your roadmap</PillButton>}>
         Start your route: today's ticket fills from your syllabus, one topic per line, as fast as you pass them.
       </EmptyState>

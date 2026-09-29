@@ -49,7 +49,9 @@ type TileProps = Omit<HTMLAttributes<HTMLElement>, "children"> & {
   radius?: number | string;
   /** Hard offset shadow size in px: tiles 5, hero/featured 6. */
   shadow?: number;
-  /** Hover lift (dashboard tiles): rotate(0) translate(-2px,-2px) and a bigger shadow — true = 9px, or a number. */
+  /** Hover lift: rotate(0) translate(-2px,-2px) and a bigger shadow. On by default for every bento tile (8px, the
+   * user's call over the prototype, which lifted only some Today tiles); true = 9px, a number sets the size, false
+   * turns it off (e.g. a tile that is a drop zone). */
   lift?: boolean | number;
   /** Adds a Tape strip on top; pass props to position it. */
   tape?: boolean | Parameters<typeof Tape>[0];
@@ -72,7 +74,7 @@ export function Tile({
   children,
   ...rest
 }: TileProps) {
-  const liftPx = lift === true ? 9 : typeof lift === "number" ? lift : null;
+  const liftPx = lift === false ? null : lift === true ? 9 : typeof lift === "number" ? lift : 8;
   return (
     <As
       {...rest}

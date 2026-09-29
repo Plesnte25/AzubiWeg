@@ -70,19 +70,20 @@ function QuickNote({
   });
   return (
     <section
-      className="relative box-border flex min-w-0 flex-col"
+      className="lift relative box-border flex min-w-0 flex-col"
       style={{
         background: NOTE_COLORS[cat],
         color: "var(--onTile)",
         border: "2.5px solid var(--line)",
         borderRadius: 24,
         boxShadow: "5px 5px 0 var(--shadow)",
-        transform: "rotate(-0.4deg)",
+        "--tilt": "-0.4deg",
+        "--lift": "8px",
         padding: sm ? 14 : 18,
         gap: 10,
         minHeight: sm ? 230 : 0,
-        transition: "background .2s",
-      }}
+        transition: "background .2s, transform .18s, box-shadow .18s",
+      } as CSSProperties}
     >
       <Tape left={34} width={84} />
       <div className="flex items-baseline justify-between" style={{ gap: 8 }}>
@@ -228,7 +229,7 @@ function Sticky({ note, index, tape, stations, sm, onOpen }: { note: WallNote; i
     <button
       type="button"
       onClick={onOpen}
-      className="relative box-border flex w-full cursor-pointer flex-col text-left"
+      className="lift relative box-border flex w-full cursor-pointer flex-col text-left"
       style={{
         breakInside: "avoid",
         gap: 6,
@@ -239,8 +240,9 @@ function Sticky({ note, index, tape, stations, sm, onOpen }: { note: WallNote; i
         border: "2.5px solid var(--line)",
         borderRadius: "4px 4px 22px 4px",
         boxShadow: "4px 4px 0 var(--shadow)",
-        transform: `rotate(${STICKY_TILT[index % STICKY_TILT.length]}deg)`,
-      }}
+        "--tilt": `${STICKY_TILT[index % STICKY_TILT.length]}deg`,
+        "--lift": "7px",
+      } as CSSProperties}
     >
       {note.pinned && (
         <span

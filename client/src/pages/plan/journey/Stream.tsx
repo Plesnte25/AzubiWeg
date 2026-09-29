@@ -204,8 +204,8 @@ export function Ticket({
     : { width: bp === "md" ? 80 : 96, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, borderRight: "3px dashed var(--line)", background: "var(--orange)" };
   return (
     <section
-      className="flex shrink-0 overflow-hidden"
-      style={{ flexDirection: sm ? "column" : "row", background: "var(--lemon)", color: "var(--onTile)", border: "2.5px solid var(--line)", borderRadius: 24, boxShadow: "5px 5px 0 var(--shadow)", transform: "rotate(-0.5deg)" }}
+      className="lift flex shrink-0 overflow-hidden"
+      style={{ flexDirection: sm ? "column" : "row", background: "var(--lemon)", color: "var(--onTile)", border: "2.5px solid var(--line)", borderRadius: 24, boxShadow: "5px 5px 0 var(--shadow)", "--tilt": "-0.5deg", "--lift": "8px" } as CSSProperties}
     >
       <button type="button" onClick={onWeek} aria-label="Open this week" className="cursor-pointer border-0 p-0" style={{ ...stub, color: "inherit", font: "inherit" }}>
         <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em" }}>{today.toLocaleDateString("en-GB", { weekday: "short" }).toUpperCase()}</span>
