@@ -220,7 +220,9 @@ function NoteInput({ value, onChange, onSubmit }: { value: string; onChange: (v:
     const el = ref.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.max(NOTE_MIN_HEIGHT, el.scrollHeight)}px`;
+    // scrollHeight leaves out the border, and the box is border-box
+    const border = el.offsetHeight - el.clientHeight;
+    el.style.height = `${Math.max(NOTE_MIN_HEIGHT, el.scrollHeight + border)}px`;
   }, [value]);
   return (
     <textarea
