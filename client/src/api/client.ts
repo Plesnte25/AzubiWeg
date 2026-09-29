@@ -17,7 +17,6 @@ import type {
   Grade,
   GradePreview,
   CefrLevel,
-  MovedTask,
   Note,
   NotebookLinkResult,
   NotesFeedResponse,
@@ -30,9 +29,6 @@ import type {
   JobPreview,
   ReviewHistoryEntry,
   ReviewStats,
-  RoadmapBacklogResponse,
-  RoadmapCalendarDay,
-  RoadmapDayDetail,
   RoadmapJournalTask,
   RoadmapMonthlyReview,
   RoadmapSkill,
@@ -40,6 +36,7 @@ import type {
   CapacityUpdate,
   DailyJournal,
   RoadmapTask,
+  RoadmapExtra,
   RoadmapTodayResponse,
   RoadmapWeeklyReview,
   RoadmapWeekResponse,
@@ -298,8 +295,6 @@ export const api = {
     afterTheme?: string | null;
   }) => request<{ item: SyllabusItem }>("/api/learning/syllabus/item", { method: "POST", body: JSON.stringify(data) }),
   deleteSyllabusItem: (id: string) => request<void>(`/api/learning/syllabus/${id}`, { method: "DELETE" }),
-  replanRoute: (level: CefrLevel) =>
-    request<{ moved: number; studyDays: number }>("/api/learning/syllabus/replan", { method: "POST", body: JSON.stringify({ level }) }),
 
   learningSources: () => request<{ sources: StudySource[] }>("/api/learning/sources"),
   addStudySource: (data: {
@@ -451,13 +446,12 @@ export const api = {
       body: JSON.stringify(keep),
     }),
   roadmapToday: () => request<RoadmapTodayResponse>("/api/learning/roadmap/today"),
-  roadmapBacklog: () => request<RoadmapBacklogResponse>("/api/learning/roadmap/backlog"),
-  roadmapDay: (date: string) => request<{ day: RoadmapDayDetail }>(`/api/learning/roadmap/day/${date}`),
+  /** "Take another": the given open topic, or the next one in queue order. */
+  takeTopic: (syllabusItemId?: string) =>
+    request<{ task: RoadmapTask }>("/api/learning/roadmap/take", { method: "POST", body: JSON.stringify(syllabusItemId ? { syllabusItemId } : {}) }),
+  roadmapExtras: () => request<{ extras: RoadmapExtra[] }>("/api/learning/roadmap/extras"),
   roadmapTask: (id: string) => request<{ task: RoadmapTask }>(`/api/learning/roadmap/tasks/${id}`),
-  roadmapCalendar: (month: string) =>
-    request<{ days: RoadmapCalendarDay[] }>(`/api/learning/roadmap/calendar?month=${month}`),
-  roadmapWeek: (week?: number) =>
-    request<RoadmapWeekResponse>(`/api/learning/roadmap/week${week ? `?week=${week}` : ""}`),
+  roadmapWeek: () => request<RoadmapWeekResponse>("/api/learning/roadmap/week"),
   updateRoadmapTask: (
     id: string,
     data: Partial<{
@@ -486,12 +480,6 @@ export const api = {
     }),
   addRoadmapTask: (data: { date: string; title: string; description?: string | null; skill?: RoadmapSkill | null }) =>
     request<{ task: RoadmapTask }>("/api/learning/roadmap/tasks", { method: "POST", body: JSON.stringify(data) }),
-  pullBacklogIntoToday: () =>
-    request<{ moved: MovedTask[] }>("/api/learning/roadmap/backlog/pull-into-today", { method: "POST" }),
-  spreadBacklog: () =>
-    request<{ moved: MovedTask[]; overDays: number }>("/api/learning/roadmap/backlog/spread", { method: "POST" }),
-  pullTasksForward: (count = 3) =>
-    request<{ moved: MovedTask[] }>("/api/learning/roadmap/pull-forward", { method: "POST", body: JSON.stringify({ count }) }),
   roadmapJournal: (skill: RoadmapSkill) =>
     request<{ tasks: RoadmapJournalTask[] }>(`/api/learning/roadmap/journal/${skill}`),
 

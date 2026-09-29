@@ -3,12 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { ApiError, api } from "../../../api/client";
-import type { StudySource } from "../../../api/types";
+import type { RoadmapSkill, StudySource } from "../../../api/types";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { PillButton } from "../../../components/ui/PillButton";
 import { toast } from "../../../components/ui/Toast";
 import { useNavStack } from "../../../lib/navStack";
-import { KIND_LABELS, daysUntil, reviewMinutes, shortDate, taskEstimateMinutes, taskKind } from "../../../lib/tasks";
+import { KIND_LABELS, daysUntil, localDateKey, shortDate, taskEstimateMinutes, taskKind } from "../../../lib/tasks";
 import { useBreakpoint } from "../../../lib/useBreakpoint";
 import { AddSourceModal, LibraryModal, SourceModal } from "./LibraryModals";
 import { CheckpointModal, GateModal, StationModal, WeekModal } from "./Modals";
@@ -18,6 +18,7 @@ import {
   Behind,
   CheckpointTile,
   CurrentStation,
+  ExtrasTile,
   GateTile,
   LaterToggle,
   NowCard,
@@ -33,8 +34,10 @@ import { useLiveSeconds, useTaskTimerActions } from "./useTaskTimer";
 /*
  * Plan — the journey scroll (Bento README §4, AzubiPlanJourney.dc.html). One page replaces Plan, Syllabus, Sources,
  * Self-tests and the Exam gate (their old routes redirect here). Stations are derived (level, theme) syllabus groups;
- * the ticket is today's roadmap; the Now tile drives the one app-wide task timer; the Notes tile is the current
- * station's notes and a drop target for pinning tasks; the Library holds the study sources that fuel stations.
+ * the ticket is the self-paced queue (GET /roadmap/today: reviews, then one topic per line up to the minutes goal,
+ * Take another past it); up to three stations are "you are here", one per line. The Now tile drives the one app-wide
+ * task timer; the Notes tile is the first current station's notes and a drop target for pinning tasks; the Library
+ * holds the study sources that fuel stations; Extras are the level's curated resources and Deutschland Context.
  */
 
 type ModalState =
@@ -85,11 +88,13 @@ export default function Journey() {
   const { data: quiz } = useQuery({ queryKey: ["learning", "quizResults"], queryFn: api.quizResults });
   const { data: exam } = useQuery({ queryKey: ["learning", "exam", "status"], queryFn: api.examStatus });
   const { data: mistakes } = useQuery({ queryKey: ["learning", "mistakes"], queryFn: api.syllabusMistakes });
+  const { data: extrasData } = useQuery({ queryKey: ["learning", "roadmap", "extras"], queryFn: api.roadmapExtras, enabled: activated });
 
   const level = dash?.bento.level.level ?? "a1";
   const items = useMemo(() => syllabus?.items ?? [], [syllabus]);
   const stations = useMemo(() => deriveStations(items, level), [items, level]);
-  const current = stations.find((s) => s.state === "cur") ?? null;
+  const currents = stations.filter((s) => s.state === "cur");
+  const current = currents[0] ?? null;
   const gate = stations.find((s) => s.state === "gate") ?? stations[stations.length - 1] ?? null;
   const sources = useMemo(() => {
     const all = sourcesData?.sources ?? [];
@@ -131,12 +136,17 @@ export default function Journey() {
     onError: (e, v) => {
       if (e instanceof ApiError && e.status === 409) {
         toast.info("Pass the exercise first — here it is");
-        setModal({ k: "task", itemId: v.id, origin: current ? `Station ${current.index}` : "Station" });
+        const st = stations.find((x) => x.items.some((i) => i.id === v.id));
+        setModal({ k: "task", itemId: v.id, origin: st ? `Station ${st.index}` : "Station" });
       } else onError(e);
     },
   });
-  const pullIn = useMutation({ mutationFn: api.pullBacklogIntoToday, onSuccess: (r) => (toast.success(`Pulled ${r.moved.length} into today`), refresh()), onError });
-  const spread = useMutation({ mutationFn: api.spreadBacklog, onSuccess: (r) => (toast.success(`Spread ${r.moved.length} over ${r.overDays} days`), refresh()), onError });
+  const take = useMutation({ mutationFn: () => api.takeTopic(), onSuccess: (r) => (toast.success(`On your ticket · ${r.task.title}`), refresh()), onError });
+  const addExtra = useMutation({
+    mutationFn: (e: { title: string; description: string | null; skill: RoadmapSkill }) => api.addRoadmapTask({ date: localDateKey(), title: e.title, description: e.description, skill: e.skill }),
+    onSuccess: (r) => (toast.success(`On your ticket · ${r.task.title}`), refresh()),
+    onError,
+  });
   const saveNote = useMutation({
     mutationFn: (v: { title?: string; text: string; pinned?: boolean; roadmapTaskId?: string; syllabusItemId?: string; skill?: string | null }) =>
       api.createNote({
@@ -156,26 +166,31 @@ export default function Journey() {
   });
   const activate = useMutation({ mutationFn: () => api.activateRoadmap(), onSuccess: () => (void queryClient.invalidateQueries({ queryKey: ["roadmap"] }), refresh()), onError });
 
-  // ── ticket rows ──
-  const core = new Set(today?.queues.coreTaskIds ?? []);
-  const accel = new Set(today?.queues.accelerationTaskIds ?? []);
+  // ── ticket rows: due reviews, then everything on today (taken topics, rolled-over and own tasks) ──
   const taskRow = (t: NonNullable<typeof today>["tasks"][number]): TicketRow => {
     const k = taskKind(t);
     return { key: `t:${t.id}`, taskId: t.id, title: t.title, meta: `${k.label} · ${taskEstimateMinutes(t.type)} min`, color: k.color, done: !!t.completedAt, running: !!t.timerRunningSince };
   };
   const tasks = (today?.tasks ?? []).filter((t) => !t.droppedAt);
+  const reviewCards = today?.review.cards ?? 0;
   const rows: TicketRow[] = [
-    ...((dash?.dueToday ?? 0) > 0
-      ? [{ key: "review", review: true, title: `Review ${dash!.dueToday} cards`, meta: `Vocab · ${reviewMinutes(dash!.dueToday)} min`, color: "var(--tomato)", done: false }]
-      : []),
+    ...(reviewCards > 0 ? [{ key: "review", review: true, title: `Review ${reviewCards} cards`, meta: `Vocab · ${today!.review.minutes} min`, color: "var(--tomato)", done: false }] : []),
     ...(today?.queues.topicReviews ?? []).map((r) => ({ key: `r:${r.id}`, itemId: r.id, title: `Review: ${r.title}`, meta: "Topic review · 10 min", color: "var(--lilac)", done: false })),
-    ...tasks.filter((t) => t.completedAt || core.has(t.id)).map(taskRow),
+    ...tasks.map(taskRow),
   ];
-  const optional = tasks.filter((t) => !t.completedAt && accel.has(t.id)).map(taskRow);
   const openRows = rows.filter((r) => !r.done);
   const minutesLeft = openRows.reduce((n, r) => n + Number(r.meta.match(/(\d+) min/)?.[1] ?? 0), 0);
-  const capLine = rows.length === 0 ? "nothing planned" : openRows.length === 0 ? `All ${rows.length} done` : `${rows.length - openRows.length}/${rows.length} · ${minutesLeft} min left`;
-  const carriedOver = (today?.backlog ?? []).reduce((n, g) => n + g.tasks.length, 0);
+  const goal = today?.goal;
+  const goalMet = !!goal && rows.length > 0 && (openRows.length === 0 || goal.doneMinutes >= goal.minutes);
+  const capLine =
+    rows.length === 0
+      ? today?.restDay
+        ? "rest day"
+        : "nothing yet"
+      : openRows.length === 0
+        ? `All ${rows.length} done`
+        : `${rows.length - openRows.length}/${rows.length} · ${minutesLeft} min left${goal ? ` · goal ${goal.minutes} min` : ""}`;
+  const nextLabel = today?.next ? `${today.next.category === "grammar" ? "Grammar" : today.next.category === "vocab_theme" ? "Vocab" : "Skill"}: ${today.next.title}` : null;
 
   const openRow = (r: TicketRow) => {
     if (r.review) push("/review");
@@ -191,29 +206,26 @@ export default function Journey() {
   const nowTask = running
     ? { id: running.id, title: running.title, skill: running.skill, timerSeconds: running.timerSeconds, timerRunningSince: running.timerRunningSince as string | null, type: tasks.find((t) => t.id === running.id)?.type ?? "generic" }
     : (() => {
-        const t = tasks.find((x) => !x.completedAt && core.has(x.id));
+        const t = tasks.find((x) => !x.completedAt);
         return t ? { id: t.id, title: t.title, skill: t.skill, timerSeconds: t.timerSeconds, timerRunningSince: t.timerRunningSince, type: t.type } : null;
       })();
   const nowSeconds = useLiveSeconds(nowTask);
   const nowRunning = !!nowTask?.timerRunningSince;
   const nowEstimate = nowTask ? taskEstimateMinutes(nowTask.type) : 10;
 
-  // ── stations around "you are here" ──
-  const upcoming = current ? stations.filter((s) => s.index > current.index && s.state !== "gate") : [];
+  // ── stations around "you are here" (one per line) ──
+  const upcoming = current ? stations.filter((s) => s.index > current.index && s.state === "locked") : [];
   const cpAfter = current ? (CHECKPOINT_AFTER.find((c) => c >= current.index && c < (gate?.index ?? 99)) ?? null) : null;
   const next = cpAfter ? upcoming.filter((s) => s.index <= cpAfter) : upcoming;
   const later = cpAfter ? upcoming.filter((s) => s.index > cpAfter) : [];
   const closed = stations.filter((s) => s.state === "done");
   const prevLevels = (dash?.bento.level.levels ?? []).filter((l) => l.state === "done").map((l) => l.level.toUpperCase());
 
-  // projected checkpoint date: when the checkpoint station's last topic is scheduled on the roadmap
+  // projected checkpoint date: when the checkpoint station's last topic is projected to pass, at the real pace
   const projected = (stationIndex: number): Date | null => {
     const s = stations.find((x) => x.index === stationIndex);
-    const offsets = (s?.items ?? []).map((i) => i.roadmapDayOffset).filter((o): o is number => o !== null);
-    if (!offsets.length || !status?.startedAt) return null;
-    const d = new Date(status.startedAt);
-    d.setDate(d.getDate() + Math.max(...offsets));
-    return d;
+    const dates = (s?.items ?? []).map((i) => i.projectedDate).filter((d): d is string => !!d);
+    return dates.length ? new Date(`${dates.sort().at(-1)}T00:00:00`) : null;
   };
   const scores = quiz?.scores;
   const tests: CheckpointTest[] = [
@@ -272,7 +284,7 @@ export default function Journey() {
     if (e.over?.id !== "notes-tile") return;
     const id = String(e.active.id);
     if (id.startsWith("ticket:")) {
-      const r = [...rows, ...optional].find((x) => `ticket:${x.key}` === id);
+      const r = rows.find((x) => `ticket:${x.key}` === id);
       const t = tasks.find((x) => x.id === r?.taskId);
       if (r) saveNote.mutate({ title: `Pinned: ${r.title}`, text: `${r.title} (${r.meta})`, pinned: true, roadmapTaskId: r.taskId, syllabusItemId: r.itemId, skill: t?.skill ?? null });
     } else if (id.startsWith("item:")) {
@@ -290,21 +302,21 @@ export default function Journey() {
   const ticket = activated ? (
     <Ticket
       rows={rows}
-      optional={optional}
-      carriedOver={carriedOver}
       capLine={capLine}
+      goalMet={goalMet}
+      next={nextLabel}
+      taking={take.isPending}
       bp={bp}
       dragOK={dragOK}
       onToggle={toggleRow}
       onOpen={openRow}
       onWeek={() => setModal({ k: "week" })}
-      onPullIn={() => pullIn.mutate()}
-      onSpread={() => spread.mutate()}
+      onTake={() => take.mutate()}
     />
   ) : (
     <div style={{ background: "var(--lemon)", color: "var(--onTile)", border: "2.5px solid var(--line)", borderRadius: 24, boxShadow: "5px 5px 0 var(--shadow)", padding: 18 }}>
       <EmptyState action={<PillButton height={40} disabled={activate.isPending} onClick={() => activate.mutate()}>Start your roadmap</PillButton>}>
-        Today's ticket starts when you activate the 26-week roadmap.
+        Start your route: today's ticket fills from your syllabus, one topic per line, as fast as you pass them.
       </EmptyState>
     </div>
   );
@@ -322,28 +334,28 @@ export default function Journey() {
         onRun={() => timer.mutate({ id: nowTask.id, action: nowRunning ? "pause" : "start" })}
       />
     ) : null,
-    current ? (
-      <CurrentStation
-        key="cur"
-        station={current}
-        total={stations.length}
-        fuel={fuelFor(current)}
-        bp={bp}
-        dragOK={dragOK}
-        runningTaskId={running?.id ?? null}
-        onOverview={() => openStation(current)}
-        onOpenItem={(itemId) => setModal({ k: "task", itemId, origin: `Station ${current.index}` })}
-        onToggleItem={(id, done) => {
-          const it = items.find((x) => x.id === id);
-          if (it?.exerciseType && done && !isItemDone(it)) setModal({ k: "task", itemId: id, origin: `Station ${current.index}` });
-          else toggleItem.mutate({ id, done });
-        }}
-        onOpenSource={openSource}
-        onAddFuel={() => setModal({ k: "add" })}
-      />
-    ) : (
-      <EmptyState key="cur">Every station of {level.toUpperCase()} is closed — the gate is next.</EmptyState>
-    ),
+    ...(currents.length
+      ? currents.map((st) => (
+          <CurrentStation
+            key={`cur:${st.key}`}
+            station={st}
+            total={stations.length}
+            fuel={fuelFor(st)}
+            bp={bp}
+            dragOK={dragOK}
+            runningTaskId={running?.id ?? null}
+            onOverview={() => openStation(st)}
+            onOpenItem={(itemId) => setModal({ k: "task", itemId, origin: `Station ${st.index}` })}
+            onToggleItem={(id, done) => {
+              const it = items.find((x) => x.id === id);
+              if (it?.exerciseType && done && !isItemDone(it)) setModal({ k: "task", itemId: id, origin: `Station ${st.index}` });
+              else toggleItem.mutate({ id, done });
+            }}
+            onOpenSource={openSource}
+            onAddFuel={() => setModal({ k: "add" })}
+          />
+        ))
+      : [<EmptyState key="cur">Every station of {level.toUpperCase()} is closed — the gate is next.</EmptyState>]),
     next.length ? <StationCards key="next" stations={next} bp={bp} fuelCount={(s) => fuelFor(s).length} onOpen={openStation} /> : null,
     cpAfter ? (
       <CheckpointTile
@@ -357,6 +369,16 @@ export default function Journey() {
     ) : null,
     later.length ? <LaterToggle key="laterT" count={later.length} first={later[0]!.index} last={later[later.length - 1]!.index} open={laterOpen} onToggle={() => setLaterOpen((v) => !v)} /> : null,
     later.length && laterOpen ? <StationCards key="later" stations={later} bp={bp} fuelCount={(s) => fuelFor(s).length} onOpen={openStation} /> : null,
+    activated ? (
+      <ExtrasTile
+        key="extras"
+        extras={(extrasData?.extras ?? []).filter((e) => e.level === level)}
+        level={level.toUpperCase()}
+        adding={addExtra.isPending}
+        onAdd={(e) => addExtra.mutate(e)}
+        onOpenTask={(taskId) => setModal({ k: "task", taskId, origin: "Extras" })}
+      />
+    ) : null,
     gate ? <GateTile key="gate" stationIndex={gate.index} level={level.toUpperCase()} rules={rules} schedule={schedule} bp={bp} onOpen={() => setModal({ k: "gate" })} /> : null,
   ];
 
@@ -379,7 +401,7 @@ export default function Journey() {
   const libraryTile = <LibraryTile sources={sources} bp={bp} onOpenAll={() => setModal({ k: "lib" })} onAdd={() => setModal({ k: "add" })} onOpenSource={openSource} />;
 
   const page: CSSProperties = { "--k": bp === "lg" ? 1 : bp === "md" ? 0.9 : 0.74 } as CSSProperties;
-  const pickable = current ? [current, ...upcoming.slice(0, 2)] : upcoming.slice(0, 3);
+  const pickable = [...currents, ...upcoming.slice(0, 2)].slice(0, 5);
 
   let layout: ReactNode;
   if (bp === "lg") {

@@ -15,7 +15,6 @@ import {
 import type { BentoDashboard, CefrLevel } from "../../api/types";
 import { Checkbox } from "../../components/ui/Checkbox";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { PillButton } from "../../components/ui/PillButton";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { RoundSticker, Starburst } from "../../components/ui/Sticker";
 import { Tile } from "../../components/ui/Tile";
@@ -198,23 +197,25 @@ export interface RouteRow {
 
 export function RouteTile({
   rows,
-  optionalCount,
-  carriedOver,
+  next,
+  goalMet,
+  taking,
   onToggle,
   onOpen,
   onAdd,
-  onPullIn,
-  onSpread,
+  onTake,
   inactive,
 }: {
   rows: RouteRow[];
-  optionalCount: number;
-  carriedOver: number;
+  /** What "Take another" would add from the self-paced queue; null when nothing more is open. */
+  next: string | null;
+  /** The minutes goal is reached — the pill reads "keep going?". */
+  goalMet: boolean;
+  taking: boolean;
   onToggle: (row: RouteRow) => void;
   onOpen: (row: RouteRow) => void;
   onAdd: () => void;
-  onPullIn: () => void;
-  onSpread: () => void;
+  onTake: () => void;
   /** Roadmap not activated yet: the tile offers to start it instead. */
   inactive?: ReactNode;
 }) {
@@ -252,22 +253,6 @@ export function RouteTile({
               {open.length ? `${open.length} stops · ${minutesLeft} min left` : "Route cleared — schönen Feierabend!"}
             </span>
           </div>
-          {carriedOver > 0 && (
-            <div
-              className="flex flex-wrap items-center justify-between gap-2"
-              style={{ border: "2px dashed var(--line)", borderRadius: 14, padding: "6px 8px 6px 12px", fontSize: 13, fontWeight: 700 }}
-            >
-              <span>carried over · {carriedOver}</span>
-              <span className="flex gap-1.5">
-                <PillButton variant="secondary" height={30} onClick={onPullIn} style={{ fontSize: 13, padding: "0 11px", borderWidth: 2 }}>
-                  Pull in
-                </PillButton>
-                <PillButton variant="secondary" height={30} onClick={onSpread} style={{ fontSize: 13, padding: "0 11px", borderWidth: 2 }}>
-                  Spread
-                </PillButton>
-              </span>
-            </div>
-          )}
           <div className="no-scrollbar -mx-1 flex min-h-0 flex-1 flex-col gap-[7px] overflow-y-auto px-1 py-0.5">
             {rows.length === 0 && <EmptyState>Nothing planned today. Add a task with +.</EmptyState>}
             {rows.map((row) => (
@@ -309,8 +294,20 @@ export function RouteTile({
                 />
               </div>
             ))}
-            {optionalCount > 0 && (
-              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--plainMuted)", padding: "2px 4px" }}>+{optionalCount} optional in Plan</span>
+            {next && (
+              <button
+                type="button"
+                onClick={onTake}
+                disabled={taking}
+                className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 self-start disabled:cursor-default disabled:opacity-60"
+                style={{ minHeight: 30, padding: "3px 11px", border: "2px dashed var(--line)", borderRadius: 999, background: goalMet ? "var(--lemon)" : "transparent", color: goalMet ? "var(--onTile)" : "inherit", fontWeight: 700, fontSize: 13, textAlign: "left" }}
+              >
+                <Plus size={12} weight="bold" aria-hidden="true" />
+                <span>
+                  {goalMet ? "Goal met · keep going? " : "Take another · "}
+                  <span lang="de" style={{ fontWeight: 600 }}>{next}</span>
+                </span>
+              </button>
             )}
           </div>
         </>

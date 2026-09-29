@@ -36,6 +36,7 @@ import { extractPlaylistId, extractVideoId, fetchPlaylist } from "../services/le
 import { fetchCoverUrl, youtubeThumbnail } from "../services/learning/cover.js";
 import { deleteStoredFile } from "./files.js";
 import { gradeSyllabusExercise } from "../services/learning/exercise-grading.js";
+import { examGateForUser, forecastDates, loadQueue } from "../services/learning/queue.js";
 import { checkpointStations, deriveStations, isStationKey } from "../services/learning/stations.js";
 import { checkpointBank } from "../services/learning/checkpoint.js";
 import {
@@ -51,6 +52,8 @@ export const learningRouter = Router();
 learningRouter.use(requireAuth);
 
 const LEVEL = z.enum(["a1", "a2", "b1"]);
+const toDate = (s: string) => new Date(s + "T00:00:00Z");
+const todayLocal = () => toDate(localDateKey(new Date()));
 const SOURCE_TYPE = z.enum(["youtube", "audio", "video", "book", "course", "article", "link"]);
 const UNIT_LABEL = z.enum(["lessons", "episodes", "pages", "chapters", "modules"]);
 const DIRECTION = z.enum(["de_to_meaning", "meaning_to_de"]);
@@ -60,19 +63,8 @@ const CORE_SKILL = z.enum(["grammar", "vocab", "listening", "speaking", "writing
 
 // ── syllabus ──
 
-/** Per-level {hasContent, passed} for levelStatesWithExamGate() — one query,
- * shared by the /syllabus route (real lock enforcement, Phase 11 of the
- * Nocturne redesign) and activeLevelFor() below (so the exam start/status
- * routes agree with what Syllabus shows as locked, instead of a
- * syllabus-only view of "active" that could point at a level the user can't
- * actually enter yet). */
-export async function examGateForUser(userId: string) {
-  const passedRows = await prisma.examAttempt.findMany({ where: { userId, passed: true }, select: { level: true } });
-  const passedLevels = new Set(passedRows.map((r) => r.level));
-  return (["a1", "a2", "b1"] as const).map((level) =>
-    levelHasExamContent(level) ? { hasContent: true as const, passed: passedLevels.has(level) } : { hasContent: false as const },
-  );
-}
+// shared with the self-paced queue (services/learning/queue.ts); re-exported for dashboard.ts
+export { examGateForUser };
 
 /** Route pace for a user's current active level — shared by the Syllabus
  * route's own ROUTE PACE card and Stats' restored "projected" tile (the
@@ -124,21 +116,25 @@ learningRouter.get("/syllabus", async (req, res) => {
       where: { userId: req.userId },
       include: {
         files: true,
-        // just enough to show "Scheduled -> Day N" when this topic is on the
-        // active roadmap, and to let the Syllabus station accordion's
-        // "Practice" action jump straight to that task's Task Detail modal
-        // (push("/plan", {state:{openTaskId}})) — a syllabus item links to
-        // at most one roadmap task
-        roadmapTasks: { select: { id: true, day: { select: { dayOffset: true } } }, take: 1 },
+        // the topic's latest task (taking a topic creates one; see the self-paced queue), so a station row can open it
+        roadmapTasks: { select: { id: true }, orderBy: { day: { date: "desc" } }, take: 1 },
       },
       orderBy: [{ level: "asc" }, { sortOrder: "asc" }],
     }),
     examGateForUser(req.userId),
   ]);
+  const [queue, capacity] = await Promise.all([
+    loadQueue(prisma, req.userId),
+    prisma.user.findUniqueOrThrow({ where: { id: req.userId }, select: { studyCapacityMinutes: true, studyDays: true } }),
+  ]);
+  const projected = forecastDates(queue, capacity, todayLocal());
   const withRoadmapDay = items.map(({ roadmapTasks, ...item }) => ({
     ...item,
     reviewDue: isReviewDue(item.masteryState, item.reviewDueAt),
-    roadmapDayOffset: roadmapTasks[0]?.day.dayOffset ?? null,
+    // projected from real pace per line; null once done, or outside the active level
+    projectedDate: projected.get(item.id) ?? null,
+    locked: queue.blocked.has(item.id),
+    taken: queue.taken.has(item.id),
     roadmapTaskId: roadmapTasks[0]?.id ?? null,
   }));
 
@@ -374,11 +370,10 @@ learningRouter.patch("/syllabus/:id", async (req, res) => {
     }
     return tx.syllabusItem.findUniqueOrThrow({
       where: { id: existing.id },
-      include: { files: true, roadmapTasks: { select: { day: { select: { dayOffset: true } } }, take: 1 } },
+      include: { files: true },
     });
   });
-  const { roadmapTasks, ...rest } = item;
-  res.json({ item: { ...rest, roadmapDayOffset: roadmapTasks[0]?.day.dayOffset ?? null } });
+  res.json({ item });
 });
 
 // A linked RoadmapTask (if any) is detached, not deleted — schema.prisma's
@@ -445,74 +440,10 @@ learningRouter.post("/syllabus/item", async (req, res) => {
     });
     return tx.syllabusItem.create({
       data: { userId: req.userId, sortOrder: insertAt, ...data },
-      include: { files: true, roadmapTasks: { select: { day: { select: { dayOffset: true } } }, take: 1 } },
+      include: { files: true },
     });
   });
-  const { roadmapTasks, ...rest } = item;
-  res.status(201).json({ item: { ...rest, roadmapDayOffset: roadmapTasks[0]?.day.dayOffset ?? null } });
-});
-
-const toDate = (s: string) => new Date(s + "T00:00:00Z");
-const todayLocal = () => toDate(localDateKey(new Date()));
-
-const replanSchema = z.object({ level: LEVEL });
-
-/**
- * Compresses the remaining pace to hit the exam target: takes every
- * still-open (not completed, not skipped) SyllabusItem in the level that
- * already has a linked RoadmapTask, and re-spreads those tasks evenly across
- * the real study days (days with a non-reflection task already scheduled —
- * i.e. not Sundays) between today and the exam target date. This is the same
- * dayId-reassignment mechanism the Roadmap destination's "Spread over 3
- * days" bulk action already uses (routes/roadmap.ts), just windowed to a
- * user-chosen date instead of a fixed 3 days. Doesn't touch the generator or
- * the phase week ranges — a re-plan only moves already-generated tasks
- * earlier/later within the plan, it never invents new ones.
- */
-learningRouter.post("/syllabus/replan", async (req, res) => {
-  const parsed = replanSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
-
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
-  if (!user.examTargetDate) return res.status(400).json({ error: "Set an exam target date first" });
-  const today = todayLocal();
-  if (user.examTargetDate <= today) return res.status(400).json({ error: "Exam target date is in the past" });
-
-  const remainingItems = await prisma.syllabusItem.findMany({
-    where: { userId: req.userId, level: parsed.data.level, completedAt: null, skippedAt: null },
-    select: { id: true },
-    orderBy: { sortOrder: "asc" },
-  });
-  const remainingIds = remainingItems.map((i) => i.id);
-  if (remainingIds.length === 0) return res.json({ moved: 0, studyDays: 0 });
-
-  const linkedTasks = await prisma.roadmapTask.findMany({
-    where: { syllabusItemId: { in: remainingIds }, day: { userId: req.userId } },
-    select: { id: true, syllabusItemId: true },
-  });
-  // preserve the syllabus's own pedagogical order, not whatever order tasks happen to come back in
-  const orderById = new Map(remainingIds.map((id, i) => [id, i]));
-  linkedTasks.sort((a, b) => (orderById.get(a.syllabusItemId!) ?? 0) - (orderById.get(b.syllabusItemId!) ?? 0));
-
-  const windowDays = await prisma.roadmapDay.findMany({
-    where: { userId: req.userId, date: { gte: today, lte: user.examTargetDate } },
-    include: { tasks: { select: { skill: true } } },
-    orderBy: { date: "asc" },
-  });
-  const studyDays = windowDays.filter((d) => d.tasks.some((t) => t.skill !== "reflection"));
-  if (studyDays.length === 0) return res.status(400).json({ error: "No study days left before the exam target" });
-
-  const maxSortByDay = new Map<string, number>();
-  await prisma.$transaction(
-    linkedTasks.map((t, i) => {
-      const target = studyDays[i % studyDays.length]!;
-      const next = (maxSortByDay.get(target.id) ?? 1_000_000) + 1;
-      maxSortByDay.set(target.id, next);
-      return prisma.roadmapTask.update({ where: { id: t.id }, data: { dayId: target.id, sortOrder: next } });
-    }),
-  );
-
-  res.json({ moved: linkedTasks.length, studyDays: studyDays.length });
+  res.status(201).json({ item });
 });
 
 // ── study sources ──
@@ -1303,10 +1234,9 @@ learningRouter.post("/quiz/notebook", async (req, res) => {
   const item = await prisma.syllabusItem.update({
     where: { id: target.id },
     data: { examples },
-    include: { files: true, roadmapTasks: { select: { day: { select: { dayOffset: true } } }, take: 1 } },
+    include: { files: true },
   });
-  const { roadmapTasks, ...rest } = item;
-  res.json({ matched: true, item: { ...rest, roadmapDayOffset: roadmapTasks[0]?.day.dayOffset ?? null } });
+  res.json({ matched: true, item });
 });
 
 // ── exam gate — the real, gating final exam per CEFR level (see

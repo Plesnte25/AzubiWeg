@@ -73,7 +73,6 @@ export interface Word {
   strength?: Strength;
 }
 
-export type RoadmapDayStripStatus = "done" | "overdue" | "today" | "upcoming";
 
 export interface DashboardNextTask {
   id: string;
@@ -136,13 +135,8 @@ export interface DashboardData {
     streak: number;
     lastSelfTest: { score: number; total: number; takenAt: string } | null;
   };
-  roadmapToday: {
-    theme: string | null;
-    tasksDone: number;
-    tasksTotal: number;
-    nextTask: DashboardNextTask | null;
-  } | null;
-  roadmapWeekStrip: { date: string; dayOffset: number; status: RoadmapDayStripStatus }[];
+  /** "Day N" in the chrome: days since the roadmap started; null before activation. */
+  roadmapDayNumber: number | null;
 }
 
 export interface VaultStatus {
@@ -358,13 +352,13 @@ export interface SyllabusItem {
   // across the whole group (see PATCH /syllabus/station)
   skippedAt: string | null;
   files: UploadedFileMeta[];
-  // set when this topic is scheduled on the active roadmap (same fact,
-  // synced via the roadmap/syllabus completion link)
-  roadmapDayOffset: number | null;
-  // the linked RoadmapTask's own id, when scheduled — lets the Syllabus
-  // station accordion's "Practice" action jump straight to that task's
-  // real Task Detail modal instead of just the day it's scheduled on
-  roadmapTaskId: string | null;
+  // self-paced queue (GET /syllabus only): projected from real pace per line, null once done or outside the active
+  // level; locked = an earlier topic in its line isn't passed yet; taken = on the ticket (an open task exists)
+  projectedDate?: string | null;
+  locked?: boolean;
+  taken?: boolean;
+  // the topic's latest task, if it was ever taken — lets a station row open its Task modal
+  roadmapTaskId?: string | null;
 }
 
 export interface ExerciseAttempt {
@@ -703,66 +697,27 @@ export interface DailyJournal {
   updatedAt: string;
 }
 
-export interface RoadmapOverview {
-  totalDays: number;
-  currentDayOffset: number;
-  tasksDone: number;
-  tasksTotal: number;
-  percent: number;
-}
+export type QueueLine = "grammar" | "vocab_theme" | "skill";
 
-export interface RoadmapBacklogGroup {
-  dayId: string;
-  date: string;
-  theme: string | null;
-  daysOverdue: number;
-  tasks: RoadmapTask[];
-}
-
+/** GET /roadmap/today — the self-paced ticket (server: routes/roadmap.ts, services/learning/ticket.ts). */
 export interface RoadmapTodayResponse {
   date: string;
-  theme: string | null;
-  tasks: RoadmapTask[];
-  backlog: RoadmapBacklogGroup[];
-  overview: RoadmapOverview;
-  /** Today is off in Settings → Study days: no ticket, its tasks carry over. */
+  /** Today is off in Settings → Study days: nothing is taken automatically, Take another still works. */
   restDay: boolean;
-  capacity: {
-    minutes: number;
-    revisionMinutes: number;
-    coreMinutes: number;
-    hasMore: boolean;
-  };
-  queues: {
-    revision: { id: string; headword: string; meaning: string | null; example: string | null }[];
-    topicReviews: { id: string; title: string; level: CefrLevel; theme: string | null; reviewDueAt: string | null }[];
-    coreTaskIds: string[];
-    accelerationTaskIds: string[];
-    blockedTaskIds: string[];
-  };
-}
-
-export interface RoadmapBacklogResponse {
-  groups: RoadmapBacklogGroup[];
-  totalOverdueTasks: number;
-}
-
-export interface RoadmapDayDetail {
-  date: string;
-  dayOffset: number;
-  theme: string | null;
+  /** Today's tasks: taken topics, unfinished ones rolled over from earlier days, and the user's own. */
   tasks: RoadmapTask[];
-}
-
-export type RoadmapDayStatus = "done" | "overdue" | "today" | "upcoming";
-
-export interface RoadmapCalendarDay {
-  date: string;
-  dayOffset: number;
-  theme: string | null;
-  totalTasks: number;
-  completedTasks: number;
-  status: RoadmapDayStatus;
+  review: { cards: number; minutes: number };
+  /** Minutes a day is a goal, not a limit. plannedMinutes/doneMinutes use the flat task estimates plus reviews. */
+  goal: { minutes: number; plannedMinutes: number; doneMinutes: number };
+  /** What "Take another" would add; null when every open topic is already on the ticket. */
+  next: { id: string; title: string; category: QueueLine; theme: string | null } | null;
+  /** The topic each line is on — the journey's three "you are here" stations. */
+  lines: { line: QueueLine; id: string; title: string; theme: string | null }[];
+  activeLevel: CefrLevel | null;
+  queues: {
+    topicReviews: { id: string; title: string; level: CefrLevel; theme: string | null; reviewDueAt: string | null }[];
+  };
+  overview: { dayNumber: number; tasksDone: number };
 }
 
 export interface RoadmapSkillTally {
@@ -807,44 +762,27 @@ export interface RoadmapMonthlyReview extends RoadmapReviewSummary {
   monthEnd: string;
 }
 
-export interface MovedTask {
-  id: string;
-  fromDayOffset: number;
-}
-
-export interface RoadmapPace {
-  plannedTasksPerDay: number;
-  actualTasksPerDay: number;
-  daysLeft: number;
-}
-
-export interface RoadmapWeekDay {
-  date: string;
-  dayOffset: number;
-  theme: string | null;
-  tasks: RoadmapTask[];
-  status: RoadmapDayStatus;
-}
-
-export interface RoadmapWeekOverviewEntry {
-  week: number;
-  taskCount: number;
-  doneCount: number;
-  isCurrentWeek: boolean;
-  isExamWeek: boolean;
-}
-
+/** GET /roadmap/week — the Week modal: the last 7 days as they went, and what's next per line. */
 export interface RoadmapWeekResponse {
-  week: number;
-  totalWeeks: number;
-  weekStart: string;
-  weekEnd: string;
-  theme: string | null;
-  days: RoadmapWeekDay[];
-  thisWeek: { done: number; total: number };
-  lateAcrossPlan: number;
-  pace: RoadmapPace;
-  weeksOverview: RoadmapWeekOverviewEntry[];
+  days: { date: string; studyDay: boolean; minutes: number; tasks: { id: string; title: string; skill: RoadmapSkill | null }[] }[];
+  thisWeek: { done: number; minutes: number; goalMinutes: number };
+  upNext: {
+    line: QueueLine;
+    topics: { id: string; title: string; theme: string | null; taken: boolean; locked: boolean; projectedDate: string | null }[];
+  }[];
+}
+
+/** GET /roadmap/extras — Plan's per-level Extras (curated resources + Deutschland Context). */
+export interface RoadmapExtra {
+  id: string;
+  level: CefrLevel;
+  kind: "resource" | "context";
+  skill: RoadmapSkill;
+  title: string;
+  description: string | null;
+  doneAt: string | null;
+  /** The open task when it's on the ticket. */
+  taskId: string | null;
 }
 
 export interface GoetheReadiness {

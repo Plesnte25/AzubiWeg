@@ -109,6 +109,19 @@ export function TaskModal({
     onError: (e) => (e instanceof ApiError && e.status === 409 ? toast.error("Pass the exercise below first") : onError(e)),
   });
 
+  // your own tasks and Extras roll over until done (self-paced queue), so they need a way off the ticket; syllabus
+  // topics don't get one — a topic is its line's only open step, and it would just be taken again tomorrow
+  const remove = useMutation({
+    mutationFn: () => api.updateRoadmapTask(task!.id, { dropped: true }),
+    onSuccess: () => {
+      toast.success("Removed from your ticket");
+      refresh();
+      onClose();
+    },
+    onError,
+  });
+  const removable = !!task && !task.syllabusItemId && !done;
+
   const cta = task ? TYPE_CTA[task.type] : undefined;
   const addMinutes = (m: number) => task && timer.mutate({ id: task.id, setSeconds: seconds + m * 60 });
 
@@ -125,6 +138,11 @@ export function TaskModal({
           <PillButton variant="secondary" style={{ minWidth: 110 }} disabled={saveNote.isPending || (!task && !topic)} onClick={() => saveNote.mutate(true)}>
             Pin to notes
           </PillButton>
+          {removable && (
+            <PillButton variant="secondary" disabled={remove.isPending} onClick={() => remove.mutate()}>
+              Remove
+            </PillButton>
+          )}
           <PillButton className="flex-1" disabled={toggleDone.isPending || (!task && !topic)} onClick={() => toggleDone.mutate()}>
             {done ? "Reopen task" : "Mark done"}
           </PillButton>

@@ -26,7 +26,6 @@ export function useProfileSummary() {
 
   const states = data ? levelStates(data.learning.levels) : [];
   const activeLevel = data ? (data.learning.levels[Math.max(0, states.indexOf("active"))]?.level ?? "a1") : "a1";
-  const todayEntry = data?.roadmapWeekStrip.find((d) => d.status === "today");
 
   return {
     name: user?.name,
@@ -34,7 +33,7 @@ export function useProfileSummary() {
     initials: initials(user?.name),
     shortName: shortName(user?.name),
     activeLevel,
-    dayNumber: todayEntry ? todayEntry.dayOffset + 1 : null,
+    dayNumber: data?.roadmapDayNumber ?? null,
     streak: data?.streak ?? 0,
   };
 }

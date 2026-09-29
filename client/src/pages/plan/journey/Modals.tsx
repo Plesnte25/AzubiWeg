@@ -7,9 +7,9 @@ import { Modal } from "../../../components/ui/Modal";
 import { PillButton } from "../../../components/ui/PillButton";
 import { toast } from "../../../components/ui/Toast";
 import { useNavStack } from "../../../lib/navStack";
-import { taskKind } from "../../../lib/tasks";
+import { localDateKey, shortDate } from "../../../lib/tasks";
 import type { Breakpoint } from "../../../lib/useBreakpoint";
-import { band, isItemDone, type Station } from "./model";
+import { band, isItemDone, LINE_LABEL, type Station } from "./model";
 import { ScheduleGrid, SourceChip, type CheckpointTest, type ScheduleCard } from "./Stream";
 
 const eyebrow: CSSProperties = { fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase" };
@@ -100,11 +100,12 @@ export function StationModal({
     >
       {station.items.map((item) => {
         const d = isItemDone(item);
-        const status = d ? "closed" : station.state === "locked" ? "locked" : "open";
+        // per-topic locking (queue lines): a topic opens once the one before it in its line is passed
+        const status = d ? "closed" : item.locked || station.state === "locked" ? "locked" : item.taken ? "on ticket" : "open";
         return (
           <div key={item.id} style={rowS}>
             <span aria-hidden="true" className="flex shrink-0 items-center justify-center" style={{ width: 22, height: 22, borderRadius: "50%", border: "2.5px solid var(--line)", background: d ? "var(--mint)" : "transparent", color: "var(--onTile)" }}>
-              {d ? <Check size={12} weight="bold" /> : station.state === "locked" ? <LockSimple size={11} weight="fill" /> : null}
+              {d ? <Check size={12} weight="bold" /> : status === "locked" ? <LockSimple size={11} weight="fill" /> : null}
             </span>
             <button type="button" onClick={() => onOpenItem(item.id)} className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-left" style={{ color: "inherit" }}>
               <div lang="de" style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>
@@ -116,7 +117,7 @@ export function StationModal({
                 {item.reviewDue ? " · review due" : ""}
               </div>
             </button>
-            <span style={pill(status === "closed" ? "var(--mint)" : status === "open" ? "var(--lemon)" : "transparent", status === "locked")}>{status}</span>
+            <span style={pill(status === "closed" ? "var(--mint)" : status === "locked" ? "transparent" : "var(--lemon)", status === "locked")}>{status}</span>
             {confirmDelete === item.id ? (
               <button type="button" onClick={() => del.mutate(item.id)} className="cursor-pointer" style={{ ...pill("var(--tomato)"), cursor: "pointer" }}>
                 Delete?
@@ -327,55 +328,59 @@ export function GateModal({ status, stationIndex, schedule, bp, onClose }: { sta
 
 // ── Week ──
 
-const STATUS_BG: Record<string, string> = { done: "var(--mint)", today: "var(--lemon)", overdue: "var(--tomato)", upcoming: "transparent" };
-
+/**
+ * The ticket stub's Week modal (GET /roadmap/week): the last 7 days as they actually went — nothing here is ever
+ * "overdue" in the self-paced queue — and what's next on each line, with dates projected from the real pace.
+ */
 export function WeekModal({ onClose }: { onClose: () => void }) {
   const { data } = useQuery({ queryKey: ["learning", "roadmap", "week"], queryFn: () => api.roadmapWeek() });
-  const todayIdx = data?.days.findIndex((d) => d.status === "today") ?? -1;
-  const tomorrow = data && todayIdx >= 0 ? data.days[todayIdx + 1] : undefined;
+  const todayKey = localDateKey();
   return (
     <Modal
-      title={data ? `Week ${data.week} of ${data.totalWeeks}` : "This week"}
-      tag="Your week"
-      subtitle={
-        data
-          ? `${data.thisWeek.done}/${data.thisWeek.total} tasks done · pace ${data.pace.actualTasksPerDay.toFixed(1)} of ${data.pace.plannedTasksPerDay.toFixed(1)} a day${data.lateAcrossPlan ? ` · ${data.lateAcrossPlan} late across the plan` : ""}`
-          : undefined
-      }
+      title="Your week"
+      tag="Last 7 days"
+      subtitle={data ? `${data.thisWeek.done} tasks done · ${data.thisWeek.minutes} of ${data.thisWeek.goalMinutes} min goal` : undefined}
       bg="var(--lemon)"
       onClose={onClose}
     >
       {!data && <div aria-busy="true" style={{ minHeight: 200 }} />}
       {data?.days.map((d) => {
-        const done = d.tasks.filter((t) => t.completedAt).length;
-        const date = new Date(`${d.date.slice(0, 10)}T00:00:00`);
+        const date = new Date(`${d.date}T00:00:00`);
+        const isToday = d.date === todayKey;
         return (
-          <div key={d.date} style={{ ...rowS, borderStyle: d.status === "upcoming" ? "dashed" : "solid" }}>
+          <div key={d.date} style={{ ...rowS, borderStyle: d.tasks.length || d.minutes ? "solid" : "dashed" }}>
             <div className="flex w-[54px] shrink-0 flex-col" style={{ lineHeight: 1.05 }}>
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em" }}>{date.toLocaleDateString("en-GB", { weekday: "short" }).toUpperCase()}</span>
               <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.04em" }}>{date.getDate()}</span>
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate" style={{ fontSize: 14, fontWeight: 700 }}>
-                {d.theme ?? "Study day"}
+              <div className="truncate" lang="de" style={{ fontSize: 14, fontWeight: 700 }}>
+                {d.tasks.length ? d.tasks.map((t) => t.title.replace(/^[A-Za-z]+: /, "")).join(" · ") : d.studyDay ? "Nothing finished" : "Rest day"}
               </div>
               <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.7 }}>
-                {done}/{d.tasks.length} tasks
+                {d.tasks.length} done · {d.minutes} min
               </div>
             </div>
-            <span style={pill(STATUS_BG[d.status] ?? "transparent", d.status === "upcoming")}>{d.status}</span>
+            {isToday && <span style={pill("var(--lemon)", false)}>today</span>}
           </div>
         );
       })}
-      {tomorrow && tomorrow.tasks.length > 0 && (
-        <div className="flex shrink-0 flex-col gap-1.5">
-          <span style={eyebrow}>Tomorrow</span>
-          {tomorrow.tasks.map((t) => (
-            <div key={t.id} className="flex items-center gap-2" style={{ fontSize: 14, fontWeight: 600 }}>
-              <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 3, border: "2px solid var(--line)", background: taskKind(t).color }} />
-              <span lang="de">{t.title}</span>
+      {data && data.upNext.length > 0 && (
+        <div className="flex shrink-0 flex-col gap-2">
+          <span style={eyebrow}>Next up</span>
+          {data.upNext.map((l) => (
+            <div key={l.line} className="flex flex-col gap-1">
+              <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.75 }}>{LINE_LABEL[l.line]}</span>
+              {l.topics.map((t) => (
+                <div key={t.id} className="flex items-center gap-2" style={{ fontSize: 14, fontWeight: 600 }}>
+                  {t.locked ? <LockSimple size={12} weight="fill" aria-hidden="true" /> : <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 3, border: "2px solid var(--line)", background: t.taken ? "var(--mint)" : "transparent" }} />}
+                  <span lang="de" className="min-w-0 flex-1 truncate">{t.title}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.75 }}>{t.taken ? "on ticket" : t.projectedDate ? `~${shortDate(new Date(`${t.projectedDate}T00:00:00`))}` : ""}</span>
+                </div>
+              ))}
             </div>
           ))}
+          <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.7 }}>Dates are projections from your pace over the last 4 weeks.</span>
         </div>
       )}
     </Modal>

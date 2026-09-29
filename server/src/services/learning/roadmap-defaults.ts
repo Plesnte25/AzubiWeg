@@ -60,7 +60,10 @@ export interface DefaultRoadmapDay {
  * touches the 4 daily slots. Paired with SYLLABUS_VERSION v5, which greatly
  * expanded the category:"skill" pool this reads from.
  */
-export const ROADMAP_VERSION = 6;
+// v7: the self-paced queue. Days are no longer generated; bumping this runs the one-time cleanup
+// (routes/roadmap.ts upgradeToSelfPaced). DEFAULT_ROADMAP_DAYS stays only as the source of the skeleton titles that
+// cleanup recognises, until its practice content moves into stations.
+export const ROADMAP_VERSION = 7;
 
 interface RegularWeek {
   theme: string;

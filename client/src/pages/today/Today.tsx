@@ -150,18 +150,10 @@ export default function Today() {
     onSuccess: refresh,
     onError,
   });
-  const pullIn = useMutation({
-    mutationFn: api.pullBacklogIntoToday,
+  const take = useMutation({
+    mutationFn: () => api.takeTopic(),
     onSuccess: (r) => {
-      toast.success(`Pulled ${r.moved.length} into today`);
-      refresh();
-    },
-    onError,
-  });
-  const spread = useMutation({
-    mutationFn: api.spreadBacklog,
-    onSuccess: (r) => {
-      toast.success(`Spread ${r.moved.length} over ${r.overDays} days`);
+      toast.success(`On your route · ${r.task.title}`);
       refresh();
     },
     onError,
@@ -187,10 +179,9 @@ export default function Today() {
   if (!dash) return <div className="flex-1" aria-busy="true" />;
   const b = dash.bento;
 
-  // Route rows: due reviews first (a destination, not a checkbox), then today's core tasks and anything already
-  // done today. Optional acceleration tasks stay on the Plan ticket.
-  const core = new Set(today?.queues.coreTaskIds ?? []);
-  const todaysTasks = (today?.tasks ?? []).filter((t) => !t.droppedAt && (t.completedAt || core.has(t.id)));
+  // Route rows: due reviews first (a destination, not a checkbox), then everything on today's ticket (the self-paced
+  // queue: taken topics, unfinished ones from earlier days, the user's own). Topic reviews live on the Plan ticket.
+  const todaysTasks = (today?.tasks ?? []).filter((t) => !t.droppedAt);
   const rows: RouteRow[] = [
     ...(dash.dueToday > 0
       ? [{ id: "review", title: `Review ${dash.dueToday} cards`, meta: `Vocab · ${reviewMinutes(dash.dueToday)} min`, color: "var(--tomato)", done: false, review: true }]
@@ -202,7 +193,9 @@ export default function Today() {
   ];
   const openStops = rows.filter((r) => !r.done).length;
   const load = openStops > 3 ? "busy" : "light";
-  const carriedOver = (today?.backlog ?? []).reduce((n, g) => n + g.tasks.length, 0);
+  const goal = today?.goal;
+  const goalMet = !!goal && rows.length > 0 && (openStops === 0 || goal.doneMinutes >= goal.minutes);
+  const next = today?.next ? `${today.next.category === "grammar" ? "Grammar" : today.next.category === "vocab_theme" ? "Vocab" : "Skill"}: ${today.next.title}` : null;
 
   // Lernzeit tile drives the one app-wide task timer: the running task, else the first open task today.
   const running = b.runningTask;
@@ -222,11 +215,13 @@ export default function Today() {
     status && !activated
       ? "Start your roadmap and you'll get a short route here every day."
       : openStops === 0 && rows.length > 0
-      ? "Route cleared for today. Ruh dich aus."
+      ? next
+        ? "Route cleared. Your goal's met — take another if you're in the flow."
+        : "Route cleared for today. Ruh dich aus."
       : `${openStops} stop${openStops === 1 ? "" : "s"} left on today's route.${
           examDays !== null && examDays >= 0 ? ` Your ${b.level.level.toUpperCase()} exam is ${examDays} days away — keep rolling.` : " Keep rolling."
         }`;
-  const dayLabel = today ? `Day ${today.overview.currentDayOffset + 1} / ${today.overview.totalDays}` : null;
+  const dayLabel = today ? `Day ${today.overview.dayNumber}` : null;
 
   const openRow = (row: RouteRow) => {
     if (row.review) push("/review");
@@ -240,17 +235,17 @@ export default function Today() {
       <GoalTile goal={b.weeklyGoal} />
       <RouteTile
         rows={rows}
-        optionalCount={today?.queues.accelerationTaskIds.length ?? 0}
-        carriedOver={carriedOver}
+        next={next}
+        goalMet={goalMet}
+        taking={take.isPending}
         onToggle={(row) => toggle.mutate({ id: row.id, done: !row.done })}
         onOpen={openRow}
         onAdd={() => setAdding(true)}
-        onPullIn={() => pullIn.mutate()}
-        onSpread={() => spread.mutate()}
+        onTake={() => take.mutate()}
         inactive={
           status && !activated ? (
             <EmptyState action={<PillButton height={40} onClick={() => activate.mutate()} disabled={activate.isPending}>Start your roadmap</PillButton>}>
-              Your daily route starts when you activate the 26-week roadmap.
+              Your daily route fills from your syllabus once you start: one topic per line, as fast as you pass them.
             </EmptyState>
           ) : undefined
         }

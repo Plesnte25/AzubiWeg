@@ -17,18 +17,18 @@ import {
   TextAa,
   Timer,
 } from "@phosphor-icons/react";
-import type { StudySource } from "../../../api/types";
+import type { RoadmapExtra, StudySource } from "../../../api/types";
 import { DuSticker, Starburst } from "../../../components/ui/Sticker";
 import { Tile } from "../../../components/ui/Tile";
 import { SKILL_COLORS } from "../../../lib/skills";
 import { clock } from "../../../lib/tasks";
 import type { Breakpoint } from "../../../lib/useBreakpoint";
-import { band, isItemDone, SOURCE_COLOR, sourceKind, type Station } from "./model";
+import { band, isItemDone, LINE_LABEL, SOURCE_COLOR, sourceKind, type Station } from "./model";
 import { SOURCE_ICON } from "./sourceIcons";
 
 /*
- * The journey stream (AzubiPlanJourney.dc.html): behind-you toggle → today's ticket → (sm) Now card → you are here →
- * next stations → checkpoint → later stations → the gate. Literal prototype values; data from the real roadmap and
+ * The journey stream (AzubiPlanJourney.dc.html): behind-you toggle → today's ticket → (sm) Now card → you are here
+ * (one per queue line: grammar, vocab, skills) → next stations → checkpoint → later stations → extras → the gate. Literal prototype values; data from the real roadmap and
  * syllabus.
  */
 
@@ -171,33 +171,33 @@ function RowText({ title, meta, done, onOpen, muted }: { title: string; meta: st
 
 export function Ticket({
   rows,
-  optional,
-  carriedOver,
   capLine,
+  goalMet,
+  next,
+  taking,
   bp,
   dragOK,
   onToggle,
   onOpen,
   onWeek,
-  onPullIn,
-  onSpread,
+  onTake,
 }: {
   rows: TicketRow[];
-  optional: TicketRow[];
-  carriedOver: number;
   capLine: string;
+  /** The minutes goal is reached: the cap line and pill switch to "keep going". */
+  goalMet: boolean;
+  /** What Take another would add ("Vocab: Family"); null when nothing is open. */
+  next: string | null;
+  taking: boolean;
   bp: Breakpoint;
   dragOK: boolean;
   onToggle: (r: TicketRow) => void;
   onOpen: (r: TicketRow) => void;
   onWeek: () => void;
-  onPullIn: () => void;
-  onSpread: () => void;
+  onTake: () => void;
 }) {
-  const [showOptional, setShowOptional] = useState(false);
   const today = new Date();
   const firstOpen = rows.find((r) => !r.done)?.key;
-  const shown = showOptional ? [...rows, ...optional] : rows;
   const sm = bp === "sm";
   const stub: CSSProperties = sm
     ? { display: "flex", alignItems: "baseline", gap: 8, padding: "12px 16px", borderBottom: "3px dashed var(--line)", background: "var(--orange)" }
@@ -222,23 +222,8 @@ export function Ticket({
           <span style={{ fontSize: "calc(var(--k) * 24px)", fontWeight: 700, letterSpacing: "-.03em" }}>Today's ticket</span>
           <span style={{ fontSize: 13, fontWeight: 700 }}>{capLine}</span>
         </div>
-        {carriedOver > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-2" style={{ border: "2px dashed var(--line)", borderRadius: 14, padding: "5px 8px 5px 12px", fontSize: 13, fontWeight: 700 }}>
-            <span>carried over · {carriedOver}</span>
-            <span className="flex gap-1.5">
-              {[
-                ["Pull in", onPullIn],
-                ["Spread", onSpread],
-              ].map(([l, fn]) => (
-                <button key={l as string} type="button" onClick={fn as () => void} className="cursor-pointer" style={{ height: 30, padding: "0 11px", border: "2px solid var(--line)", borderRadius: 999, background: "var(--plain)", color: "var(--plainText)", fontWeight: 700, fontSize: 13 }}>
-                  {l as string}
-                </button>
-              ))}
-            </span>
-          </div>
-        )}
         <div className="grid gap-2" style={{ gridTemplateColumns: bp === "lg" ? "repeat(2,minmax(0,1fr))" : "minmax(0,1fr)" }}>
-          {shown.map((r) => {
+          {rows.map((r) => {
             const c = r.key === firstOpen;
             return (
               <Draggable
@@ -272,16 +257,24 @@ export function Ticket({
             );
           })}
         </div>
-        {optional.length > 0 && (
+        {next ? (
           <button
             type="button"
-            onClick={() => setShowOptional((v) => !v)}
-            aria-expanded={showOptional}
-            className="cursor-pointer self-start"
-            style={{ height: 32, padding: "0 12px", border: "2px dashed var(--line)", borderRadius: 999, background: "transparent", color: "inherit", fontWeight: 700, fontSize: 13 }}
+            onClick={onTake}
+            disabled={taking}
+            className="inline-flex cursor-pointer items-center gap-1.5 self-start disabled:cursor-default disabled:opacity-60"
+            style={{ minHeight: 32, padding: "4px 12px", border: "2px dashed var(--line)", borderRadius: 999, background: goalMet ? "var(--plain)" : "transparent", color: goalMet ? "var(--plainText)" : "inherit", fontWeight: 700, fontSize: 13, textAlign: "left" }}
           >
-            {showOptional ? "Hide optional" : `+${optional.length} optional — pull ahead`}
+            <Plus size={12} weight="bold" aria-hidden="true" />
+            <span>
+              {goalMet ? "Goal met · keep going? " : "Take another · "}
+              <span lang="de" style={{ fontWeight: 600 }}>{next}</span>
+            </span>
           </button>
+        ) : (
+          rows.some((r) => !r.review && !r.itemId) && (
+            <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.75 }}>Every open topic is on your ticket — pass one to open the next.</span>
+          )
         )}
         {dragOK && <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.75 }}>Tap a task to open it · drag one onto Notes to pin it</span>}
       </div>
@@ -328,6 +321,9 @@ export function RunButton({ running, onClick, disabled }: { running: boolean; on
 
 // ── you are here ──
 
+/** Remaining topics a current station shows before "N more in the overview" (skills stations hold 20–40). */
+const CURRENT_ROWS = 4;
+
 export function CurrentStation({
   station,
   total,
@@ -354,13 +350,17 @@ export function CurrentStation({
   onAddFuel: () => void;
 }) {
   const done = station.items.filter(isItemDone).length;
+  // open topics first, then the locked ones that follow in this line
+  const remaining = station.items.filter((i) => !isItemDone(i));
+  const shown = [...remaining.filter((i) => !i.locked), ...remaining.filter((i) => i.locked)].slice(0, CURRENT_ROWS);
+  const hidden = remaining.length - shown.length;
   return (
     <Tile bg="var(--lilac)" tilt={0.4} radius={26} shadow={6} className="flex shrink-0 flex-col gap-3.5" style={{ padding: "calc(var(--k) * 22px)" }}>
       <DuSticker size={54} tilt={-12} style={{ position: "absolute", top: -18, left: -12 }} />
       <div className="flex flex-wrap items-start justify-between gap-3" style={{ paddingLeft: 36 }}>
         <div>
           <div style={eyebrow}>
-            You are here · Station {station.index} of {total}
+            You are here · {LINE_LABEL[station.line]} · Station {station.index} of {total}
           </div>
           <div style={{ fontSize: "calc(var(--k) * 34px)", fontWeight: 700, letterSpacing: "-.04em", lineHeight: 1 }}>{station.theme}</div>
         </div>
@@ -382,17 +382,25 @@ export function CurrentStation({
         </span>
       </div>
       <div className="grid gap-2" style={{ gridTemplateColumns: bp === "lg" ? "repeat(2,minmax(0,1fr))" : "minmax(0,1fr)" }}>
-        {station.items.map((item) => {
+        {shown.map((item) => {
           const d = isItemDone(item);
+          const kind = item.skill ? item.skill[0]!.toUpperCase() + item.skill.slice(1) : "Topic";
+          const meta = item.locked ? `${kind} · opens after the one before` : `${kind}${item.taken ? " · on your ticket" : item.exerciseType ? " · exercise" : ""}`;
           return (
             <Draggable
               key={item.id}
               id={`item:${item.id}`}
               enabled={dragOK}
-              style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", border: "2px solid var(--line)", borderRadius: 14, background: "var(--plain)", color: "var(--plainText)" }}
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", border: `2px ${item.locked ? "dashed" : "solid"} var(--line)`, borderRadius: 14, background: item.locked ? "transparent" : "var(--plain)", color: item.locked ? "var(--onTile)" : "var(--plainText)" }}
             >
-              <RowBox done={d} circle onToggle={() => onToggleItem(item.id, !d)} label={`${item.title} done`} />
-              <RowText title={item.title} meta={`${item.skill ? item.skill[0]!.toUpperCase() + item.skill.slice(1) : "Topic"}${item.exerciseType ? " · exercise" : ""}`} done={d} onOpen={() => onOpenItem(item.id)} muted />
+              {item.locked ? (
+                <span aria-hidden="true" className="flex shrink-0 items-center justify-center" style={{ width: 22, height: 22 }}>
+                  <LockSimple size={15} weight="fill" />
+                </span>
+              ) : (
+                <RowBox done={d} circle onToggle={() => onToggleItem(item.id, !d)} label={`${item.title} done`} />
+              )}
+              <RowText title={item.title} meta={meta} done={d} onOpen={() => onOpenItem(item.id)} muted={!item.locked} />
               {item.roadmapTaskId && item.roadmapTaskId === runningTaskId && (
                 <span aria-label="Timer running" className="shrink-0" style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--tomato)", border: "2px solid var(--line)" }} />
               )}
@@ -400,6 +408,11 @@ export function CurrentStation({
           );
         })}
       </div>
+      {hidden > 0 && (
+        <button type="button" onClick={onOverview} className="cursor-pointer self-start border-0 bg-transparent p-0" style={{ color: "inherit", fontSize: 13, fontWeight: 700, textDecoration: "underline" }}>
+          +{hidden} more in the station overview
+        </button>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <span style={eyebrow}>Fuel</span>
         {fuel.map((s) => (
@@ -543,6 +556,77 @@ export interface ScheduleCard {
   c: string;
   st: "done" | "next" | "soon" | "gate";
   go?: () => void;
+}
+
+// ── extras ──
+
+/**
+ * The level's Extras (GET /roadmap/extras): the curated resources and Deutschland Context items from the old calendar,
+ * which don't belong to any single-kind station. Not part of Level % — "Add to today" makes an ordinary task.
+ */
+export function ExtrasTile({
+  extras,
+  level,
+  adding,
+  onAdd,
+  onOpenTask,
+}: {
+  extras: RoadmapExtra[];
+  level: string;
+  adding: boolean;
+  onAdd: (e: RoadmapExtra) => void;
+  onOpenTask: (taskId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (extras.length === 0) return null;
+  const done = extras.filter((e) => e.doneAt).length;
+  const shown = open ? extras : extras.filter((e) => !e.doneAt).slice(0, 3);
+  return (
+    <Tile bg="var(--plain)" tilt={-0.3} radius={22} shadow={5} className="flex shrink-0 flex-col gap-3" style={{ padding: "calc(var(--k) * 18px)", color: "var(--plainText)" }}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <div style={eyebrow}>{level} extras</div>
+          <div style={{ fontSize: "calc(var(--k) * 22px)", fontWeight: 700, letterSpacing: "-.03em" }}>Resources & Deutschland Context</div>
+        </div>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--plainMuted)" }}>
+          {done}/{extras.length} done · optional
+        </span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {shown.map((e) => (
+          <div key={e.id} className="flex items-center gap-2.5" style={{ padding: "8px 10px", border: "2px solid var(--dash)", borderRadius: 14 }}>
+            <span
+              className="shrink-0"
+              style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999, border: "2px solid var(--line)", background: e.kind === "context" ? "var(--orange)" : SKILL_COLORS[e.skill] ?? "var(--sky)", color: "var(--onTile)" }}
+            >
+              {e.kind === "context" ? "Deutschland" : e.skill === "reading" ? "Reading" : "Listening"}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div lang="de" style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.2, textDecoration: e.doneAt ? "line-through" : "none", opacity: e.doneAt ? 0.55 : 1 }}>
+                {e.title.replace(/^Deutschland Context: /, "")}
+              </div>
+              {e.description && <div style={{ fontSize: 12, fontWeight: 600, color: "var(--plainMuted)" }}>{e.description}</div>}
+            </div>
+            {e.doneAt ? (
+              <Check size={16} weight="bold" aria-label="Done" className="shrink-0" />
+            ) : e.taskId ? (
+              <button type="button" onClick={() => onOpenTask(e.taskId!)} className="shrink-0 cursor-pointer" style={{ height: 30, padding: "0 11px", border: "2px solid var(--line)", borderRadius: 999, background: "var(--lemon)", color: "var(--onTile)", fontWeight: 700, fontSize: 12 }}>
+                On ticket
+              </button>
+            ) : (
+              <button type="button" disabled={adding} onClick={() => onAdd(e)} className="inline-flex shrink-0 cursor-pointer items-center gap-1 disabled:opacity-50" style={{ height: 30, padding: "0 11px", border: "2px dashed var(--line)", borderRadius: 999, background: "transparent", color: "inherit", fontWeight: 700, fontSize: 12 }}>
+                <Plus size={11} weight="bold" aria-hidden="true" />
+                Today
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="cursor-pointer self-start border-0 bg-transparent p-0" style={{ color: "inherit", fontSize: 13, fontWeight: 700, textDecoration: "underline" }}>
+        {open ? "Show fewer" : `Show all ${extras.length}`}
+      </button>
+    </Tile>
+  );
 }
 
 export function GateTile({ stationIndex, level, rules, schedule, bp, onOpen }: { stationIndex: number; level: string; rules: string; schedule: ScheduleCard[]; bp: Breakpoint; onOpen: () => void }) {

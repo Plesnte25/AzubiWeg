@@ -303,7 +303,6 @@ const HOLD_MS = 1500;
 
 function ResetTile({ bp, style }: { bp: Breakpoint; style: CSSProperties }) {
   const queryClient = useQueryClient();
-  const { data: pace } = useQuery({ queryKey: ["learning", "pace"], queryFn: api.learningPace });
   const { data: vault } = useQuery({ queryKey: ["vault-status"], queryFn: api.vaultStatus });
   const vaultLinked = !!vault?.vaultPath;
   const [keep, setKeep] = useState<Record<KeepKey, boolean>>({ keepWords: true, keepNotes: true, keepApplications: true });
@@ -342,7 +341,6 @@ function ResetTile({ bp, style }: { bp: Breakpoint; style: CSSProperties }) {
     setHold((h) => (h < 1 ? 0 : h));
   };
 
-  const examKey = pace?.examTargetDate ?? null;
   const holdL = reset.isPending ? "Resetting…" : hold > 0 ? "Keep holding…" : done ? "Route restarted · hold to redo" : "Hold to reset";
   return (
     <Tile tilt={0.5} className="flex flex-col" style={{ ...tileBox(bp), ...style }}>
@@ -350,7 +348,7 @@ function ResetTile({ bp, style }: { bp: Breakpoint; style: CSSProperties }) {
         <Kicker icon={<ArrowCounterClockwise size={16} weight="bold" aria-hidden="true" />}>Reset plan</Kicker>
         <span style={{ fontSize: k(24), fontWeight: 700, letterSpacing: "-.03em", lineHeight: 1.05 }}>Start the route again</span>
         <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.35, color: "var(--plainMuted)" }}>
-          Builds a new route from today{examKey ? ` to ${fmtDay(fromKey(examKey))}` : ""} using your capacity. Your streak goes back to 0.
+          Clears your task history and starts again at Day 1 today. Passed topics stay passed. Your streak goes back to 0.
         </span>
       </div>
       <div className="flex flex-col" style={{ gap: 6 }}>

@@ -17,7 +17,7 @@ import { randomUUID } from "node:crypto";
 import type { CefrLevel, Grade } from "@prisma/client";
 import { prisma } from "../src/db.js";
 import { activateRoadmapForUser } from "../src/routes/roadmap.js";
-import { setRoadmapTaskCompletion } from "../src/services/learning/completion-sync.js";
+import { topicTaskData, type QueueItem } from "../src/services/learning/queue.js";
 import { ensureSyllabusSeeded } from "../src/services/learning/syllabus-seed.js";
 import { deriveStations } from "../src/services/learning/stations.js";
 
@@ -241,33 +241,12 @@ async function seedRoadmap(userId: string): Promise<void> {
   const alreadyActivated = user.roadmapStartedAt !== null;
 
   if (!alreadyActivated) {
-    const startedAt = new Date(Date.now() - 21 * DAY_MS);
+    // started 45 days ago, so the seeded completions below all fall inside the roadmap
+    const startedAt = new Date(Date.now() - 45 * DAY_MS);
     startedAt.setUTCHours(0, 0, 0, 0);
     await activateRoadmapForUser(userId, startedAt);
   }
-
-  // Mark a realistic chunk of past-dated tasks completed — only worth doing
-  // right after activation (a rerun would otherwise re-toggle tasks the demo
-  // "user" may have since un-completed via the UI, which isn't idempotent
-  // seeding, it's overwriting live state).
-  if (alreadyActivated) return;
-
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const pastDays = await prisma.roadmapDay.findMany({
-    where: { userId, date: { lt: today } },
-    include: { tasks: { select: { id: true } } },
-  });
-
-  await prisma.$transaction(async (tx) => {
-    for (const day of pastDays) {
-      for (const [i, task] of day.tasks.entries()) {
-        // ~70% completion looks like realistic in-progress use, not a
-        // suspiciously perfect 100%
-        if (i % 10 < 7) await setRoadmapTaskCompletion(tx, userId, task.id, true);
-      }
-    }
-  });
+  // No days are generated any more (self-paced queue): the log of taken topics is written by seedSyllabusProgress.
 }
 
 const DEMO_APPLICATIONS: {
@@ -338,20 +317,28 @@ async function seedProfile(userId: string): Promise<void> {
 }
 
 /**
- * Journey progress like the design's demo: A1 stations 1–7 closed (every third item mastered), station 8 half done,
- * a few passed topics due for review, and the matching past route tasks ticked. Completions spread over 45 days.
+ * Journey progress like the design's demo, on all three lines: A1 grammar stations 1–7 closed (every third item
+ * mastered) and station 8 half done, the first vocab station and the first few skill topics passed. A few passed
+ * topics are due for review. Completions spread over 45 days, each logged as a completed task on the day it was
+ * passed (the self-paced queue's history).
  */
 async function seedSyllabusProgress(userId: string): Promise<void> {
   const passedAlready = await prisma.syllabusItem.count({ where: { userId, masteryState: { in: ["passed", "mastered"] } } });
   if (passedAlready > 3) return;
   const items = await prisma.syllabusItem.findMany({
     where: { userId, level: "a1" },
-    select: { id: true, level: true, theme: true, sortOrder: true, masteryState: true, skippedAt: true },
+    select: { id: true, level: true, category: true, theme: true, sortOrder: true, title: true, description: true, skill: true, masteryState: true, skippedAt: true, completedAt: true },
   });
   const stations = deriveStations(items as Parameters<typeof deriveStations>[0], "a1");
   const done = stations.slice(0, 7).flatMap((st) => st.itemIds);
   const half = stations[7] ? stations[7].itemIds.slice(0, Math.ceil(stations[7].itemIds.length / 2)) : [];
-  const passed = [...done, ...half];
+  const inLine = (line: string) => items.filter((i) => i.category === line).sort((a, b) => a.sortOrder - b.sortOrder).map((i) => i.id);
+  const vocab = stations.find((st) => st.itemIds.some((id) => inLine("vocab_theme").includes(id)))?.itemIds ?? [];
+  const skills = inLine("skill").slice(0, 4);
+  // interleave the lines (each spread over the same 45 days) so a day's log mixes them, like real self-paced use
+  const spread = (ids: string[]) => ids.map((id, k) => ({ id, at: (k + 0.5) / ids.length }));
+  const passed = [...spread([...done, ...half]), ...spread(vocab), ...spread(skills)].sort((a, b) => a.at - b.at).map((p) => p.id);
+  const byId = new Map(items.map((i) => [i.id, i]));
   for (const [i, id] of passed.entries()) {
     const completedAt = daysAgo(Math.max(1, 45 - Math.round((i / passed.length) * 44)));
     await prisma.syllabusItem.update({
@@ -366,10 +353,22 @@ async function seedSyllabusProgress(userId: string): Promise<void> {
       },
     });
   }
-  await prisma.roadmapTask.updateMany({
-    where: { syllabusItemId: { in: passed }, day: { userId, date: { lt: utcDay(0) } }, completedAt: null },
-    data: { completedAt: daysAgo(1) },
-  });
+
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { roadmapStartedAt: true } });
+  if (!user.roadmapStartedAt) return;
+  for (const [i, id] of passed.entries()) {
+    const n = Math.max(1, 45 - Math.round((i / passed.length) * 44));
+    const date = utcDay(n);
+    const dayOffset = Math.round((date.getTime() - user.roadmapStartedAt.getTime()) / DAY_MS);
+    const day = await prisma.roadmapDay.upsert({
+      where: { userId_dayOffset: { userId, dayOffset } },
+      create: { userId, dayOffset, date },
+      update: {},
+    });
+    await prisma.roadmapTask.create({
+      data: { dayId: day.id, sortOrder: i, completedAt: daysAgo(n), minutesSpent: 10, ...topicTaskData(byId.get(id)! as QueueItem) },
+    });
+  }
 }
 
 /** Stats/Plan: checkpoint 1 score, a mock exam, and per-type self-test scores. */
