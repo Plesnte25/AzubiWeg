@@ -149,7 +149,7 @@ roadmapRouter.get("/status", async (req, res) => {
 /** Settings → Capacity (saves immediately; any subset of the three). */
 const capacitySchema = z
   .object({
-    minutes: z.number().refine(isValidCapacity, "Minutes a day must be 10–180 in steps of 5").optional(),
+    minutes: z.number().refine(isValidCapacity, "Minutes a day must be 60–720 in steps of 5").optional(),
     studyDays: z.array(z.boolean()).length(7).optional(),
     newWordsPerDay: z.union([z.literal(5), z.literal(10), z.literal(15), z.literal(20)]).optional(),
   })

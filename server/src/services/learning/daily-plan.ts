@@ -1,6 +1,6 @@
-/** Settings → Capacity: minutes a day, 10–180 in steps of 5. */
-export const MIN_CAPACITY = 10;
-export const MAX_CAPACITY = 180;
+/** Settings → Capacity: minutes a day, at least an hour (the user's floor), up to a custom 12 hours, in steps of 5. */
+export const MIN_CAPACITY = 60;
+export const MAX_CAPACITY = 720;
 export const isValidCapacity = (m: number) => Number.isInteger(m) && m >= MIN_CAPACITY && m <= MAX_CAPACITY && m % 5 === 0;
 
 /** Whether the local date is one of the user's study days (`studyDays` runs Monday → Sunday). */

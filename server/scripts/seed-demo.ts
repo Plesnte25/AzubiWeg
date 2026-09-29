@@ -313,7 +313,7 @@ const utcDay = (n: number) => {
 async function seedProfile(userId: string): Promise<void> {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
   if (user.examTargetDate) return;
-  await prisma.user.update({ where: { id: userId }, data: { examTargetDate: utcDay(-148), studyCapacityMinutes: 45 } });
+  await prisma.user.update({ where: { id: userId }, data: { examTargetDate: utcDay(-148), studyCapacityMinutes: 60 } });
 }
 
 /**

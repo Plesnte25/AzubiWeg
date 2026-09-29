@@ -4,9 +4,9 @@ import { failedReview, isReviewDue, nextMastery } from "../src/services/learning
 import { summarizeMistakes } from "../src/services/learning/mistakes.js";
 
 describe("Settings capacity", () => {
-  it("accepts 10–180 minutes in steps of 5 only", () => {
-    expect([10, 45, 95, 180].every(isValidCapacity)).toBe(true);
-    expect([5, 12, 185, 330, 47.5].some(isValidCapacity)).toBe(false);
+  it("accepts 60–720 minutes in steps of 5 only", () => {
+    expect([60, 95, 180, 330, 720].every(isValidCapacity)).toBe(true);
+    expect([10, 45, 55, 62, 725, 1440, 90.5].some(isValidCapacity)).toBe(false);
   });
 
   it("reads study days Monday → Sunday from a local date", () => {

@@ -24,9 +24,12 @@ import { chip, fmtDay, k, label } from "./ui";
 type Capacity = { mins: number; days: boolean[]; newW: NewWordsPerDay };
 
 const DAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
-const PRESETS = [20, 30, 45, 60, 90];
+// minutes a day: an hour at least, custom up to 12 h, in steps of 5 (server: services/learning/daily-plan.ts)
+const MIN_MINS = 60;
+const MAX_MINS = 720;
+const PRESETS = [60, 90, 120, 180];
 const NEW_WORDS: NewWordsPerDay[] = [5, 10, 15, 20];
-const clampMins = (m: number) => Math.max(10, Math.min(180, m));
+const clampMins = (m: number) => Math.max(MIN_MINS, Math.min(MAX_MINS, Math.round(m / 5) * 5));
 
 /** Local capacity state that saves itself (debounced, so stepping 45 → 60 is one request). */
 function useCapacity(status: RoadmapStatus | undefined) {
@@ -101,6 +104,14 @@ function CapacityTile({ bp, c, style }: { bp: Breakpoint; c: ReturnType<typeof u
     flexShrink: 0,
   });
   const dz = bp === "sm" ? 38 : 42;
+  const custom = !!cap && !PRESETS.includes(cap.mins);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const commitDraft = () => {
+    const n = Number(draft);
+    if (draft.trim() && Number.isFinite(n)) c.setMins(n);
+    setEditing(false);
+  };
   return (
     <Tile bg="var(--lemon)" tilt={-0.5} className="flex flex-col" style={{ ...tileBox(bp), ...style }}>
       <Tape left={36} width={84} />
@@ -112,23 +123,55 @@ function CapacityTile({ bp, c, style }: { bp: Breakpoint; c: ReturnType<typeof u
       </div>
       <span style={{ fontSize: k(26), fontWeight: 700, letterSpacing: "-.03em", lineHeight: 1.05 }}>How much time can you give a day?</span>
       <div className="flex items-center" style={{ gap: 14 }}>
-        <button type="button" aria-label="Less time" disabled={!cap || cap.mins <= 10} onClick={() => cap && c.setMins(cap.mins - 5)} style={round(false)}>
+        <button type="button" aria-label="Less time" disabled={!cap || cap.mins <= MIN_MINS} onClick={() => cap && c.setMins(cap.mins - 5)} style={round(false)}>
           −
         </button>
         <div className="flex flex-1 items-baseline justify-center" style={{ gap: 6 }} aria-live="polite">
           <span style={{ fontSize: k(76), fontWeight: 700, letterSpacing: "-.06em", lineHeight: 0.9 }}>{cap?.mins ?? "–"}</span>
           <span style={{ fontSize: 20, fontWeight: 700 }}>min</span>
         </div>
-        <button type="button" aria-label="More time" disabled={!cap || cap.mins >= 180} onClick={() => cap && c.setMins(cap.mins + 5)} style={round(true)}>
+        <button type="button" aria-label="More time" disabled={!cap || cap.mins >= MAX_MINS} onClick={() => cap && c.setMins(cap.mins + 5)} style={round(true)}>
           +
         </button>
       </div>
       <div className="flex flex-wrap justify-center" style={{ gap: 6 }}>
         {PRESETS.map((m) => (
           <button key={m} type="button" aria-pressed={cap?.mins === m} onClick={() => c.setMins(m)} style={chip(cap?.mins === m, { height: 32, padding: "0 11px", fontSize: 12 })}>
-            {m} min
+            {m < 120 ? `${m} min` : `${m / 60} h`}
           </button>
         ))}
+        {editing ? (
+          <input
+            autoFocus
+            type="number"
+            inputMode="numeric"
+            min={MIN_MINS}
+            max={MAX_MINS}
+            step={5}
+            value={draft}
+            aria-label={`Custom minutes a day, ${MIN_MINS}–${MAX_MINS}`}
+            placeholder="min"
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitDraft}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitDraft();
+              if (e.key === "Escape") setEditing(false);
+            }}
+            style={{ ...chip(true, { height: 32, padding: "0 10px", fontSize: 12 }), width: 88, textAlign: "center" }}
+          />
+        ) : (
+          <button
+            type="button"
+            aria-pressed={custom}
+            onClick={() => {
+              setDraft(String(cap?.mins ?? MIN_MINS));
+              setEditing(true);
+            }}
+            style={chip(custom, { height: 32, padding: "0 11px", fontSize: 12 })}
+          >
+            {custom ? `Custom · ${cap!.mins} min` : "Custom"}
+          </button>
+        )}
       </div>
       <div className="flex flex-col" style={{ gap: 6 }}>
         <span style={label}>Study days</span>
@@ -219,8 +262,8 @@ function ExamTile({ bp, c, style }: { bp: Breakpoint; c: ReturnType<typeof useCa
   const slackW = (examDays - needDays) / 7;
   const readyD = new Date(today.getTime() + (Number.isFinite(needDays) ? needDays : 0) * DAY_MS);
   const st = !ex || hoursLeft === 0 ? "ok" : !Number.isFinite(needDays) ? "late" : slackW >= 2 ? "ok" : slackW >= 0 ? "tight" : "late";
-  const needMins = nDays && examDays ? Math.ceil((hoursLeft * 60) / (examDays / 7) / nDays / 5) * 5 : 0;
-  const late = !!ex && st === "late" && needMins > 0 && needMins <= 180;
+  const needMins = nDays && examDays ? Math.max(MIN_MINS, Math.ceil((hoursLeft * 60) / (examDays / 7) / nDays / 5) * 5) : 0;
+  const late = !!ex && st === "late" && needMins > 0 && needMins <= MAX_MINS;
   const statusL = !pace || !cap
     ? "Working it out…"
     : !ex

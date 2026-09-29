@@ -40,7 +40,7 @@ model User {
   // (weeks-behind-pace, route-pace projections) — null = no target set yet
   examTargetDate      DateTime?             @db.Date
   // minutes a day for German, 10–180 in steps of 5 (Settings → Capacity); sizes the daily ticket
-  studyCapacityMinutes Int                  @default(45)
+  studyCapacityMinutes Int                  @default(60)
   // Monday → Sunday; a day off gets no new ticket (its tasks carry over) and doesn't count toward the weekly goal
   studyDays            Boolean[]            @default([true, true, true, true, true, false, true])
   // cap on never-reviewed words a review session introduces per day
