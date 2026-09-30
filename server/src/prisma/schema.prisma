@@ -762,6 +762,8 @@ enum SyllabusExerciseType {
   correction
   listening_audio
   speaking_audio
+  // several checkable items (fill-in with accepted answers / multiple choice) in exerciseOptions.items (KNOWN_ISSUES #38)
+  check_set
 }
 
 enum SyllabusMistakeCategory {

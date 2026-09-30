@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CaretDown } from "@phosphor-icons/react";
 import { api } from "../../../api/client";
-import type { SyllabusItem, SyllabusMistakeCategory } from "../../../api/types";
+import type { CheckItem, SyllabusItem, SyllabusMistakeCategory } from "../../../api/types";
 import AudioRecorder from "../../../components/AudioRecorder";
 import { PillButton } from "../../../components/ui/PillButton";
 
@@ -95,9 +95,82 @@ function Notebook({ item }: { item: SyllabusItem }) {
   );
 }
 
+/**
+ * A check_set exercise (KNOWN_ISSUES #38): fill-ins show their sentence with an input in the gap, choices show their
+ * options. After a check each item is marked right or wrong, and a wrong one shows the answer; editing clears the
+ * marks. Graded on the server (80 % to pass).
+ */
+function CheckSet({ items, answers, onChange, results }: { items: CheckItem[]; answers: string[]; onChange: (i: number, v: string) => void; results: boolean[] | null }) {
+  return (
+    <ol className="m-0 flex list-none flex-col gap-2.5 p-0">
+      {items.map((item, i) => {
+        const r = results?.[i];
+        const mark = r === undefined ? null : r ? "var(--mint)" : "var(--tomato)";
+        return (
+          <li key={i} className="flex flex-col gap-1.5" style={{ padding: "10px 12px", border: `2.5px solid ${mark ? "var(--line)" : "var(--dash)"}`, borderRadius: 12, background: mark ?? "transparent", color: mark ? "var(--onTile)" : "inherit" }}>
+            <div className="flex items-start gap-2">
+              <span style={{ fontWeight: 700, minWidth: 18 }}>{r === undefined ? `${i + 1}.` : r ? "✓" : "✗"}</span>
+              {item.kind === "cloze" ? (
+                <span lang="de" className="flex flex-wrap items-center" style={{ gap: 6, fontSize: 15, fontWeight: 600 }}>
+                  {item.prompt.split("___").map((part, j, all) => (
+                    <span key={j} className="contents">
+                      {part && <span>{part}</span>}
+                      {j < all.length - 1 && (
+                        <input
+                          value={answers[i] ?? ""}
+                          onChange={(e) => onChange(i, e.target.value)}
+                          aria-label={`Gap in item ${i + 1}`}
+                          autoCapitalize="off"
+                          autoCorrect="off"
+                          spellCheck={false}
+                          style={{ width: Math.max(90, Math.max(...item.accepted.map((a) => a.length)) * 11 + 24), height: 34, padding: "0 8px", border: "2px solid var(--line)", borderRadius: 8, background: "var(--plain)", color: "var(--plainText)", fontSize: 15, fontWeight: 700 }}
+                        />
+                      )}
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                <span lang="de" style={{ fontSize: 15, fontWeight: 600 }}>{item.prompt}</span>
+              )}
+            </div>
+            {item.kind === "cloze" && item.hint && <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.75, paddingLeft: 26 }}>{item.hint}</span>}
+            {item.kind === "choice" && (
+              <div role="radiogroup" aria-label={`Item ${i + 1}`} className="flex flex-wrap gap-1.5" style={{ paddingLeft: 26 }}>
+                {item.options.map((o, k) => {
+                  const on = answers[i] === String(k);
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      lang="de"
+                      onClick={() => onChange(i, String(k))}
+                      className="cursor-pointer"
+                      style={{ padding: "6px 12px", borderRadius: 999, border: "2px solid var(--line)", background: on ? "var(--sel)" : "var(--plain)", color: on ? "var(--selText)" : "var(--plainText)", fontWeight: 700, fontSize: 14 }}
+                    >
+                      {o}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {r === false && (
+              <span lang="de" style={{ fontSize: 13, fontWeight: 700, paddingLeft: 26 }}>
+                → {item.kind === "choice" ? item.options[item.correctIndex] : item.accepted.join(" / ")}
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export function TopicWorkspace({ itemId, onCompleted }: { itemId: string; onCompleted: () => void }) {
   const { data, isLoading } = useQuery({ queryKey: ["learning", "workspace", itemId], queryFn: () => api.syllabusWorkspace(itemId) });
   const [answer, setAnswer] = useState("");
+  const [checks, setChecks] = useState<string[]>([]);
   const [mistake, setMistake] = useState<SyllabusMistakeCategory | "">("");
   const [audioUploaded, setAudioUploaded] = useState(false);
   const [rubric, setRubric] = useState({ taskFulfilled: false, grammarChecked: false, understandable: false });
@@ -130,7 +203,7 @@ export function TopicWorkspace({ itemId, onCompleted }: { itemId: string; onComp
     mutationFn: () =>
       api.submitSyllabusExercise(
         itemId,
-        answer || (data?.item.exerciseType === "self_check" ? "self-check" : "audio"),
+        data?.item.exerciseType === "check_set" ? JSON.stringify(checks) : answer || (data?.item.exerciseType === "self_check" ? "self-check" : "audio"),
         mistake || null,
         needsRubric ? rubric : null,
       ),
@@ -142,7 +215,14 @@ export function TopicWorkspace({ itemId, onCompleted }: { itemId: string; onComp
   if (isLoading || !data) return <div aria-busy="true" style={{ ...box, borderStyle: "dashed", opacity: 0.6 }}>Loading the lesson…</div>;
   const { item } = data;
   const isAudioExercise = item.exerciseType === "listening_audio" || item.exerciseType === "speaking_audio";
-  const canSubmit = isAudioExercise ? audioUploaded : item.exerciseType === "self_check" ? Object.values(rubric).every(Boolean) : answer.trim().length > 0;
+  const checkItems = item.exerciseType === "check_set" && item.exerciseOptions && "items" in item.exerciseOptions ? item.exerciseOptions.items : null;
+  const canSubmit = isAudioExercise
+    ? audioUploaded
+    : item.exerciseType === "self_check"
+      ? Object.values(rubric).every(Boolean)
+      : checkItems
+        ? checkItems.every((_, i) => (checks[i] ?? "").trim() !== "")
+        : answer.trim().length > 0;
   const rubricLabels: [keyof typeof rubric, string][] =
     item.exerciseType === "speaking_audio"
       ? [
@@ -214,7 +294,17 @@ export function TopicWorkspace({ itemId, onCompleted }: { itemId: string; onComp
       {item.exercisePrompt && (
         <Section label="Exercise">
           <span lang="de">{item.exercisePrompt}</span>
-          {item.exerciseType === "multiple_choice" && item.exerciseOptions && "options" in item.exerciseOptions && item.exerciseOptions.options.length ? (
+          {checkItems ? (
+            <CheckSet
+              items={checkItems}
+              answers={checks}
+              results={submit.data?.results ?? null}
+              onChange={(i, v) => {
+                if (submit.data) submit.reset();
+                setChecks((c) => Object.assign([...c], { [i]: v }));
+              }}
+            />
+          ) : item.exerciseType === "multiple_choice" && item.exerciseOptions && "options" in item.exerciseOptions && item.exerciseOptions.options.length ? (
             <div role="radiogroup" aria-label="Answer" className="flex flex-col gap-1.5">
               {item.exerciseOptions.options.map((option, index) => {
                 const on = answer === String(index);

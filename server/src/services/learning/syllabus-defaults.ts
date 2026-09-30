@@ -1,4 +1,10 @@
 import type { CefrLevel, RoadmapSkill, SyllabusCategory } from "@prisma/client";
+import { A1_CHECKS } from "./syllabus-checks-a1.js";
+
+/** One item of a check_set exercise: a fill-in (`___` marks the gap) with every accepted answer, or a choice. */
+export type CheckItem =
+  | { kind: "cloze"; prompt: string; accepted: string[]; hint?: string }
+  | { kind: "choice"; prompt: string; options: string[]; correctIndex: number };
 
 export interface DefaultSyllabusItem {
   level: CefrLevel;
@@ -18,11 +24,12 @@ export interface DefaultSyllabusItem {
   resourceTranscript?: string;
   listeningPrompt?: string;
   guidedPractice?: string;
-  exerciseType?: "free_text" | "self_check" | "multiple_choice" | "correction" | "listening_audio" | "speaking_audio";
+  exerciseType?: "free_text" | "self_check" | "multiple_choice" | "correction" | "listening_audio" | "speaking_audio" | "check_set";
   exercisePrompt?: string;
   exerciseAnswer?: string;
-  /** multiple_choice: options + correctIndex. self_check: the three things the learner confirms (`checks`). */
-  exerciseOptions?: { options: string[]; correctIndex: number } | { checks: [string, string, string] };
+  /** multiple_choice: options + correctIndex. self_check: the three things the learner confirms (`checks`).
+   * check_set: the items, all graded (pass at 80 %). */
+  exerciseOptions?: { options: string[]; correctIndex: number } | { checks: [string, string, string] } | { items: CheckItem[] };
 }
 
 /**
@@ -58,8 +65,11 @@ export interface DefaultSyllabusItem {
  * scored comprehension checks.
  * v10: the Exam prep items (task types, full Modellsatz) became self_check activities with their own checklists —
  * they're done away from the app, so the honest pass is a self-report, not a sentence to type.
+ * v11: A1 checked exercises (KNOWN_ISSUES #38, syllabus-checks-a1.ts): every A1 grammar, vocab, reading and
+ * listening topic gets a real lesson and a check_set graded on the server; speaking topics become recordings. Passed
+ * topics stay passed (the reseed keeps mastery/completion).
  */
-export const SYLLABUS_VERSION = 10;
+export const SYLLABUS_VERSION = 11;
 
 type AuthoredActivity = Pick<
   DefaultSyllabusItem,
@@ -291,7 +301,12 @@ const AUTHORED_SELF_CHECKS: Record<string, AuthoredActivity> = {
 };
 
 function activityFor(item: DefaultSyllabusItem) {
-  const authored = AUTHORED_LISTENING_LESSONS[item.title] ?? AUTHORED_EXERCISES[item.title] ?? AUTHORED_SELF_CHECKS[item.title] ?? {};
+  const authored =
+    (item.level === "a1" ? A1_CHECKS[item.title] : undefined) ??
+    AUTHORED_LISTENING_LESSONS[item.title] ??
+    AUTHORED_EXERCISES[item.title] ??
+    AUTHORED_SELF_CHECKS[item.title] ??
+    {};
   const outcome = authored.learningOutcome ?? item.learningOutcome ?? `I can use ${item.title.toLowerCase()} in a practical German situation.`;
   const resourceTitle = authored.resourceTitle ?? item.resourceTitle ?? `Core lesson: ${item.title}`;
   const resourceBody =

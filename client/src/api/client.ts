@@ -263,7 +263,7 @@ export const api = {
     mistakeCategory?: SyllabusMistakeCategory | null,
     rubricAssessment?: { taskFulfilled: boolean; grammarChecked: boolean; understandable: boolean } | null,
   ) =>
-    request<{ passed: boolean; feedback: string; attempt: import("./types").ExerciseAttempt }>(`/api/learning/syllabus/${id}/exercise`, {
+    request<{ passed: boolean; feedback: string; attempt: import("./types").ExerciseAttempt; results?: boolean[] | null }>(`/api/learning/syllabus/${id}/exercise`, {
       method: "POST",
       body: JSON.stringify({ answer, mistakeCategory, rubricAssessment }),
     }),

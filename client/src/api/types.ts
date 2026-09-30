@@ -332,11 +332,11 @@ export interface SyllabusItem {
   resourceTranscript: string | null;
   listeningPrompt: string | null;
   guidedPractice: string | null;
-  exerciseType: "free_text" | "self_check" | "multiple_choice" | "correction" | "listening_audio" | "speaking_audio" | null;
+  exerciseType: "free_text" | "self_check" | "multiple_choice" | "correction" | "listening_audio" | "speaking_audio" | "check_set" | null;
   exercisePrompt: string | null;
   exerciseAnswer: string | null;
-  /** multiple_choice: options + correctIndex; self_check: the three confirmations (`checks`). */
-  exerciseOptions: { options: string[]; correctIndex: number } | { checks: string[] } | null;
+  /** multiple_choice: options + correctIndex; self_check: the three confirmations (`checks`); check_set: the items. */
+  exerciseOptions: { options: string[]; correctIndex: number } | { checks: string[] } | { items: CheckItem[] } | null;
   masteryState: "not_started" | "learning" | "passed" | "mastered";
   reviewDueAt: string | null;
   successfulAttempts: number;
@@ -360,6 +360,11 @@ export interface SyllabusItem {
   // the topic's latest task, if it was ever taken — lets a station row open its Task modal
   roadmapTaskId?: string | null;
 }
+
+/** One item of a check_set exercise (server: services/learning/syllabus-defaults.ts). A cloze's `___` marks the gap. */
+export type CheckItem =
+  | { kind: "cloze"; prompt: string; accepted: string[]; hint?: string }
+  | { kind: "choice"; prompt: string; options: string[]; correctIndex: number };
 
 export interface ExerciseAttempt {
   id: string;

@@ -208,7 +208,7 @@ learningRouter.post("/syllabus/:id/exercise", async (req, res) => {
     })
     : null;
   const rubric = parsed.data.rubricAssessment;
-  const { passed, feedback } = gradeSyllabusExercise({
+  const { passed, feedback, results } = gradeSyllabusExercise({
     exerciseType: item.exerciseType,
     skill: item.skill,
     exerciseAnswer: item.exerciseAnswer,
@@ -266,7 +266,7 @@ learningRouter.post("/syllabus/:id/exercise", async (req, res) => {
     return created;
   });
 
-  res.json({ passed, feedback, attempt });
+  res.json({ passed, feedback, attempt, results: results ?? null });
 });
 
 learningRouter.get("/syllabus/mistakes", async (req, res) => {
