@@ -1,5 +1,6 @@
 import type { CefrLevel, RoadmapSkill, SyllabusCategory } from "@prisma/client";
 import { A1_CHECKS } from "./syllabus-checks-a1.js";
+import { A2_CHECKS } from "./syllabus-checks-a2.js";
 
 /** One item of a check_set exercise: a fill-in (`___` marks the gap) with every accepted answer, or a choice. */
 export type CheckItem =
@@ -68,8 +69,9 @@ export interface DefaultSyllabusItem {
  * v11: A1 checked exercises (KNOWN_ISSUES #38, syllabus-checks-a1.ts): every A1 grammar, vocab, reading and
  * listening topic gets a real lesson and a check_set graded on the server; speaking topics become recordings. Passed
  * topics stay passed (the reseed keeps mastery/completion).
+ * v12: the same for A2 (syllabus-checks-a2.ts).
  */
-export const SYLLABUS_VERSION = 11;
+export const SYLLABUS_VERSION = 12;
 
 type AuthoredActivity = Pick<
   DefaultSyllabusItem,
@@ -302,7 +304,7 @@ const AUTHORED_SELF_CHECKS: Record<string, AuthoredActivity> = {
 
 function activityFor(item: DefaultSyllabusItem) {
   const authored =
-    (item.level === "a1" ? A1_CHECKS[item.title] : undefined) ??
+    (item.level === "a1" ? A1_CHECKS[item.title] : item.level === "a2" ? A2_CHECKS[item.title] : undefined) ??
     AUTHORED_LISTENING_LESSONS[item.title] ??
     AUTHORED_EXERCISES[item.title] ??
     AUTHORED_SELF_CHECKS[item.title] ??
