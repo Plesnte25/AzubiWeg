@@ -82,6 +82,13 @@ each under `Notizen/`.
   overdue — unfinished work just stays on the ticket. The week view shows what you
   actually did and projects what's next from your real pace. Each task opens a
   workspace with exercises, audio, recording, a timer and notes.
+- **Checked topics** — every grammar, vocabulary, reading and listening topic has
+  a short lesson and a set of fill-in and multiple-choice questions graded on the
+  server (80% to pass; case, punctuation and ä/ae, ß/ss are forgiven, and wrong
+  answers show the right one), so a passed station means you can do it: about
+  1,500 questions across A1–B1. Listening scripts are read aloud by TTS. Speaking
+  topics are recordings with useful phrases and a model answer; writing topics
+  use a self-check rubric.
 - **Extras** — each level's curated resources (Nicos Weg, DW, Nachrichtenleicht, …)
   and Deutschland Context items (transport, appointments, relocation paperwork),
   one tap to add to today.
@@ -214,7 +221,8 @@ cd server && npm test
 Covers the vault sync's byte-identical round-trip, SRS scheduling parity with
 the Obsidian plugin, the kaikki.org enrichment pipeline's word resolution,
 and pure-logic suites for applications and the learning plan (the self-paced
-queue and its locking and projections, exam gating, quizzes, activity tracking). Server-side only — no
+queue and its locking and projections, exam gating, quizzes, activity tracking, and the checked exercises: every
+item's shape, answers that must appear in their reading or listening text, and the grader). Server-side only — no
 dedicated client test runner; UI changes are verified by driving the app in
 a real browser (`client/scripts/shots.mjs` sweeps every page at each breakpoint
 in light and dark, and flags console errors and overflow).
@@ -232,10 +240,12 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full ecosystem plan and feature s
 
 - **Shipped** — vocabulary manager with SM-2 review and two-way Obsidian sync;
   the Jobs pinboard with CV shelf; the A1–B1 learning plan with self-tests and
-  exam gates; and the Bento "Sticker Club" redesign (September 2026).
-- **Now** — post-launch bug fixing and the remaining Bento polish (tracked in
-  `docs/KNOWN_ISSUES.md`), vocab PDF export + CLI, GitHub Actions CI, calendar
-  integration, and grammar micro-lessons.
+  exam gates; the Bento "Sticker Club" redesign (September 2026); and the
+  self-paced ticket with checked exercises for every topic (September 2026).
+- **Now** — a launch splash screen and a full PWA (install, offline words and
+  review, notifications for the daily ticket), then vocab PDF export + CLI,
+  GitHub Actions CI, calendar integration and grammar micro-lessons. Open items
+  are tracked in `docs/KNOWN_ISSUES.md`.
 - **Long run, unscheduled** — Ausbildung opportunity discovery (search/
   filters/bookmarks), a cover letter assistant, a Europass CV template,
   automated ATS checks, a salary & cost planner, and a Germany knowledge

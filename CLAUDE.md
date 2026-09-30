@@ -206,6 +206,16 @@ for `Phase ` before assuming a screen is unfinished or a stopgap is permanent.
   actually uses before copying a date-math pattern from a neighboring
   screen** — the two are not interchangeable and mixing them silently
   shifts the displayed day for anyone not at UTC.
+- **Syllabus exercise content** (KNOWN_ISSUES #38) lives per level in
+  `server/src/services/learning/syllabus-checks-{a1,a2,b1}.ts`, built with the
+  helpers in `syllabus-checks-kit.ts` (`gap`/`hintGap`/`pick` items, and the
+  `read`/`listen`/`speak` topic builders). The lookup is per level because
+  titles repeat across levels. Authoring rules are in the A1 file's header:
+  test the topic's own skill, one unambiguous answer per gap (or list every
+  variant), and a cue in the prompt. `tests/syllabus-checks.test.ts` enforces
+  the item shape, and that every reading/listening fill-in answer appears in
+  its text. **Any content change needs a `SYLLABUS_VERSION` bump** (reseeds
+  content, keeps completions).
 - **`cn()` (`client/src/lib/cn.ts`) wraps `tailwind-merge`.** Conflicting
   utilities resolve "last one wins," so overriding a component default
   through `className` is safe.

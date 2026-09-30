@@ -1,11 +1,9 @@
 # Known issues
 
-Bugs and rough edges found while building the Nocturne redesign
-(`~/.claude/plans/so-we-are-going-wondrous-axolotl.md`), tracked here instead
-of fixed inline so the redesign itself doesn't stall — the plan is to clear
-this list in one pass once all 20 phases have landed. Each entry says which
-phase surfaced it, whether it's fixed, and enough detail to act on it without
-re-deriving the investigation.
+The project's backlog: bugs, rough edges and agreed features, logged here instead of fixed mid-task so the work in
+progress doesn't stall. Each entry says where it came from, whether it's fixed (✅ with the commit), and enough detail
+to act on it without re-deriving the investigation. The current round of decided fixes is planned in
+`~/.claude/plans/delightful-crunching-candy.md`. Still open: #12–15 (deferred by the user), #35 PWA, #36 splash.
 
 ## Open — needs a fix
 
@@ -35,11 +33,11 @@ activation, add word, review + grade, timer, exercise submit, G-chords, theme pe
 
 Knowingly shipped without these; pick them up after the Bento deploy.
 
-9. **404 + crash screen** — unknown routes and render errors still show the plain fallback. Needs a Sticker-style
+9. ✅ **Fixed** (`957d2eb`: Sticker-style 404 page inside the app frame and a crash screen (Reload / Back to Today / details; "A new version is out" for a stale chunk after a deploy).) — **404 + crash screen** — unknown routes and render errors still show the plain fallback. Needs a Sticker-style
    not-found page and an error boundary screen.
-10. **Loading states** — pages render nothing while their queries load (Plan is blank for ~1–3 s). Also make
+10. ✅ **Fixed** (`8866c17`: Pages show their shape while loading (placeholder tiles in the page's grid; placeholder rows in Words, Jobs, Notes) and no longer claim "No words yet" / "0 open" mid-load; the sweep waits for content.) — **Loading states** — pages render nothing while their queries load (Plan is blank for ~1–3 s). Also make
     `client/scripts/shots.mjs` wait for content rather than network idle.
-11. **Audio recorder** (`components/AudioRecorder.tsx`) — still the Nocturne-era layout (only its tokens were swapped to
+11. ✅ **Fixed** (`636397a`: Sticker-style recorder: round mic button, live clock with a pulsing dot, auto-stop at 5 min, "Saved · 0:23" sticker, playback, Record again.) — **Audio recorder** (`components/AudioRecorder.tsx`) — still the Nocturne-era layout (only its tokens were swapped to
     Bento ones); needs a proper design.
 12. **Application checklist** — omitted from the Jobs detail modal (plan: deferred, no correct implementation yet).
 13. **Valency tab** — hidden in the word details modal; no data source.
@@ -47,7 +45,7 @@ Knowingly shipped without these; pick them up after the Bento deploy.
     and hours left, and the "Next sessions" chips are left out.
 15. **Settings: Obsidian "Plan log" / "Applications" writes** — only Words (two-way) and Notes (one-way to /Notizen)
     are written; the other two chips are left out until there's a writer for them.
-16. **Settings: "follow system" theme** — the old Appearance tile is gone (the design has none), so once the nav
+16. ✅ **Fixed** (`81435dc`: System / Light / Dark in the profile menu (avatar); System clears the stored override.) — **Settings: "follow system" theme** — the old Appearance tile is gone (the design has none), so once the nav
     toggle is used there's no way back to following the OS.
 
 ### Found on the live site after the Bento ship (2026-09-25)
@@ -107,15 +105,15 @@ Added by the user from phone testing; fixed in the same post-deploy pass (plan
 
 ### Found while fixing the above (2026-09-26)
 
-32. **No per-user timezone** (medium). The server's day boundaries (`dashboard.ts`, `activity.ts`, `reviews.ts`,
+32. ✅ **Fixed** (`d84a302`: The server runs in the learner's zone (`TZ=Asia/Kolkata` in the systemd unit; switch to Europe/Berlin after the move) — the user's choice while there's one real learner. True per-user zones (~90 date calculations in 14 files) stay open if the app gets other users.) — **No per-user timezone** (medium). The server's day boundaries (`dashboard.ts`, `activity.ts`, `reviews.ts`,
     `reviews/history.ts`) use the server's zone, which is UTC in prod, and the client shows times in the browser's
     zone. So "today" rolls over at 05:30 IST, and times entered or seeded for Germany show shifted for a viewer in
     India (the demo interview at 10:30 Berlin shows as 14:00 IST). Needs a `User.timeZone` and zone-aware day math.
-33. **Sources: YouTube gaps** (low). A YouTube *channel* link gets no cover (the channel page has no usable og:image
+33. ✅ **Fixed** (`3cbbcbc`: Playlist lessons get their video's cleaned description in the background (boilerplate found by comparing the playlist's videos); `backfill:source-covers` fills existing playlists. Channel covers were missing because YouTube's og:image sits ~750 KB into the page, past the 300 KB read — YouTube pages now get 1.5 MB.) — **Sources: YouTube gaps** (low). A YouTube *channel* link gets no cover (the channel page has no usable og:image
     for the fetcher), and playlist units get no description (the playlist page has no per-video descriptions). Both
     fall back to the placeholder / "Add a description".
 
-    **Solution (agreed 2026-09-26, not built yet).** Each watch page (`youtube.com/watch?v=<id>`) embeds the full
+    **Solution (agreed 2026-09-26, built 2026-09-29 — see the fix note above).** Each watch page (`youtube.com/watch?v=<id>`) embeds the full
     description as `"shortDescription"` in its player JSON; confirmed with no API key. Example: the user's "A1 (Free
     Course) | Learn German" playlist, Lesson 9's description has a "you will learn…" part and bullets (verb
     placement, subject, W-questions, yes/no questions) under a promo block.
@@ -138,14 +136,14 @@ Added by the user from phone testing; fixed in the same post-deploy pass (plan
     - **Risk:** this relies on YouTube's page internals, not a supported API. If the format changes, descriptions
       stay empty and nothing breaks, the same failure mode as the playlist scraper.
       Parsing and the boilerplate filter are pure functions, so they get unit tests.
-34. **Sources: book lookup never works, and fetching is invisible** (medium). The user added "Complete German" (Paul
+34. ✅ **Fixed** (`a07f67d`: Open Library first (ranked title search, exact ISBN / book-link lookup), Google Books fallback (optional `GOOGLE_BOOKS_API_KEY`); every type's fetch in `services/learning/sourceFetch.ts`; Add source previews before saving and says when a lookup fails; saved sources get Fetch details.) — **Sources: book lookup never works, and fetching is invisible** (medium). The user added "Complete German" (Paul
     Coggle & Heiner Schenke) on the live site on 2026-09-26. It was saved exactly as typed: no cover, no page count.
     - **Cause:** the book branch of `POST /sources` only queries Google Books without an API key. That anonymous
       quota is shared by everyone, and from the server it returns **429**, so `fetchBook()` returns null and the
       source is saved as typed. The failure isn't shown, and fetching only happens on save, so it looks like there is
       no fetching at all. Books also have no link field (`TYPES` in `LibraryModals.tsx` has `link: "none"`).
 
-    **Solution (agreed 2026-09-26, not built yet):**
+    **Solution (agreed 2026-09-26, built 2026-09-29 — see the fix note above):**
     - **Open Library first** (`openlibrary.org/search.json`, no key, no shared quota; tested from the server):
       - "Complete German Coggle" found Coggle & Schenke, 408 pages, `cover_i`, Hodder & Stoughton.
       - "Menschen A1.1 Kursbuch" found Evans/Pude/Specht (Hueber) with a cover.
@@ -206,8 +204,16 @@ Added by the user from phone testing; fixed in the same post-deploy pass (plan
     - **Later, if wanted:** offline reading (read-only cached words/notes/plan); offline review with queued grades
       (needs conflict handling against the vault SR schedule); daily "N cards due" push (VAPID keys, per-device
       subscriptions, a scheduler; iOS only when installed, 16.4+).
+    **Scope change (user, 2026-09-29):** a complete PWA, not just installable — offline data and offline review, plus
+    notifications for the daily ticket, overdue reviews and similar. Planned in stages: (a) installable + fast as
+    above, (b) offline reading and review with queued grades, (c) push notifications.
 36. **Splash screen on every screen size** (feature, requested 2026-09-26). None today: a cold open shows a blank page
     until React mounts, then empty pages while queries load (#10).
+
+    **Design handoff received 2026-09-30** (`~/Downloads/Personal German Learning Companion (3)/design_handoff_azubiweg_splash/`):
+    an animated flashcard-flip splash with a first-launch and a returning mode (~3.75 s sequence, skippable). It
+    replaces the "Look" below, and the "How" needs revising around it. Open questions are with the user; nothing
+    is built yet.
 
     **Agreed design:**
     - **When:** every cold open (a full page load or refresh, in the browser or the installed app), for at least
@@ -244,7 +250,7 @@ Added by the user from phone testing; fixed in the same post-deploy pass (plan
       - A fast connection: still ~1 s.
       - Reduced motion: no wobble.
       - Installed on Android/iOS: no white flash between the OS launch screen and the splash.
-37. **Self-paced queue instead of the 182-day calendar** (feature, agreed 2026-09-29). There's no way to take more
+37. ✅ **Shipped** (`8d51107`, see below) — **Self-paced queue instead of the 182-day calendar** (feature, agreed 2026-09-29). There's no way to take more
     work once today's ticket is done: Nocturne's "Keep going → Pull in more tasks" card was cut in Bento, and
     `POST /roadmap/pull-forward` / `api.pullForward` are now unused. The "+N optional — pull ahead" row only shows
     today's own overflow. Also, `blockedTopicIds()` orders all categories of a level together, so only one new topic
@@ -257,20 +263,60 @@ Added by the user from phone testing; fixed in the same post-deploy pass (plan
     and Deutschland Context tasks move into their stations. Nothing is ever overdue; dates become projections from
     real pace. Full plan: `~/.claude/plans/self-paced-queue.md`.
 
-    **Built 2026-09-29 on `feature/self-paced` (not merged or deployed yet).** Stations turned out to be single-kind
+    **✅ Shipped 2026-09-29** (`ad73ddf`, merged as `8d51107`, tag `self-paced-v1`). Prod backup
+    `/opt/azubiweg/backups/pre-selfpaced-2026-09-29.dump`; migration applied (real account kept its 6 completed tasks,
+    887 untouched generated ones deleted); demo re-seeded. Built on `feature/self-paced`: Stations turned out to be single-kind
     (A1: 1–11 grammar, 12–18 vocab, 19–21 skills, 22 gate), so up to three stations are "you are here" at once (user's
     choice), and the calendar's resources + Deutschland Context became a per-level **Extras** list instead of
     station practice (user's choice). Server: `services/learning/{prerequisites,ticket,queue,self-paced,extras}.ts`,
     `GET /today` builds the ticket, `POST /take`, `GET /week`, `GET /extras`; backlog/spread/pull-forward/calendar/
     replan routes and the day generator are gone. Upgrade runs lazily per user (ROADMAP_VERSION 7) or via
-    `npm run migrate:self-paced` (dry run, then `--apply`). Remaining before ship: prod dry run on the real account,
-    deploy, demo re-seed with `--reset`.
-38. **Most topic "passes" aren't evidence of learning** (high, found 2026-09-29 reviewing #37 from a student's view).
+    `npm run migrate:self-paced` (dry run, then `--apply`). Also in the ship: a study day always gets at least one new
+    topic even when reviews fill the goal, and own tasks/Extras can be removed from the ticket. `DEFAULT_ROADMAP_DAYS`
+    can now be trimmed to what `extras.ts` and the cleanup's skeleton titles need (every account is on v7).
+38. ✅ **Fixed** (`5eab70a` A1, `5932489` A2, `f48a2c6` B1; deployed 2026-09-30) — every grammar, vocabulary, reading
+    and listening topic has a real lesson and a `check_set` graded on the server (80 % to pass, tolerant matching of
+    case, punctuation and ä/ae, ß/ss; wrong items show the answer): A1 87 sets / 484 items, A2 81 / 480, B1 91 / 540.
+    Speaking topics are recordings with phrases and a model answer. Content lives per level in
+    `services/learning/syllabus-checks-{a1,a2,b1}.ts` (shared helpers in `syllabus-checks-kit.ts`); tests check every
+    item's shape and that every reading/listening answer appears in its text. **Still honor-system:** speaking can't
+    be scored (a recording + self-checks passes), and the 20–23 writing topics per level pass on 20+ characters plus
+    2 of 3 rubric self-checks. — **Most topic "passes" aren't evidence of learning** (high, found 2026-09-29 reviewing #37 from a student's view).
     `gradeSyllabusExercise` passes 322 of the 407 topics on any answer of 12+ characters (free_text with no
     `exerciseAnswer`); 63 writing topics need 20 characters plus 2 of 3 self-checks; only ~15 (multiple choice,
     correction, audio) are really checked. The self-paced queue unlocks the next topic on a pass, so for most topics
     progress is honor-system. Options: author an `exerciseAnswer`/accepted-forms list per topic (big content job),
     turn free_text into short multiple-choice/cloze items, or add graded feedback. Needs a decision.
+
+### Found by the user in daily use (2026-09-29)
+
+Fixed as batch 1 of the 2026-09-29 backlog round (plan: `~/.claude/plans/delightful-crunching-candy.md`).
+
+39. ✅ **Fixed** (`b3c2c9b`) — **Not every bento tile lifts on hover.** Streak, route and Lernzeit didn't (the prototype
+    only lifted some Today tiles), and no tile outside Today did. `Tile` now lifts by default (8px, `lift={false}` opts
+    out); hand-built tile surfaces (Plan ticket, Notes tile, altitude strip, Notes page cards) use the same `.lift`
+    class with their tilt in `--tilt`. Jobs kanban columns stay still (they're drop zones).
+40. ✅ **Fixed** (`d32ebd9`) — **Today's route and Lernzeit tiles change size with the day's load.** Today always uses
+    the prototype's default busy layout; the light variant and its sessions list are gone.
+41. ✅ **Fixed** (`d7dfb23`) — **Stats' gender drill doesn't show all three articles like Words does.** The two tiles
+    measured different things (Words: share of your nouns; Stats: drill accuracy, "–" until drilled). Stats now shows
+    every article: accuracy once drilled, otherwise your noun share labelled "of nouns"; Words says what it shows.
+42. ✅ **Fixed** (`adc4b2d`) — **"Begrüßungen" means only "plural of Begrüßung".** An old (pre-kaikki) card. Words now
+    shows a card's form note under the meaning, and `npm run backfill:form-meanings` (dry run, then `--apply`) refiles
+    cards whose meaning is nothing but a cross-reference under the base word they name, through the add-word path
+    (real meaning + "Begrüßungen = plural of Begrüßung", review history kept). Ambiguous ones ("Zahlen") are left.
+43. ✅ **Fixed** (`bc702e5`) — **Jobs can't hold job platforms.** A Platforms strip on the existing `/api/portals`
+    backend: chips open the site (and show days since you last did), presets (Make it in Germany, Bundesagentur
+    Jobbörse, ausbildung.de, AZUBIYO, Goethe-Institut, LinkedIn, StepStone, Indeed) or custom; New application gets a
+    "Found on" picker.
+44. ✅ **Fixed** (`516be96`) — **Capacity too low / capped.** Minutes a day are now 60–720 (presets 60 / 90 min / 2 h /
+    3 h + Custom); a migration moves the default and anything below an hour to 60.
+45. ✅ **Fixed** (`35bfe14`) — **Plan has its own timer.** The Now tile/card is gone; Today's Lernzeit tile and the Task
+    modal are the one timer, and the Task modal logs a "Time spent" (from the stopwatch, editable) with Mark done.
+46. ✅ **Fixed** (`df576ff`) — **Notes drag & drop doesn't work.** Only a faded dots handle started a drag and the
+    dragged row was clipped out of view. The whole row drags now, with a DragOverlay and keyboard support.
+47. ✅ **Fixed** (`6599100`, `2f98905`) — **Notes input is tiny and scrolls.** Full width, at least four lines, grows
+    with the text, no scrollbar; Save below, Ctrl/⌘+Enter saves.
 
 ## Resolved during the redesign (for reference — no action needed)
 
