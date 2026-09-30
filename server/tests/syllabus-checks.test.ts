@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { A1_CHECKS } from "../src/services/learning/syllabus-checks-a1.js";
 import { A2_CHECKS } from "../src/services/learning/syllabus-checks-a2.js";
+import { B1_CHECKS } from "../src/services/learning/syllabus-checks-b1.js";
 import { DEFAULT_SYLLABUS_ITEMS, syllabusItemSeed, type CheckItem } from "../src/services/learning/syllabus-defaults.js";
 
 const LEVELS = [
   ["a1", A1_CHECKS],
   ["a2", A2_CHECKS],
+  ["b1", B1_CHECKS],
 ] as const;
 
 describe.each(LEVELS)("%s checked exercises (#38)", (level, CHECKS) => {

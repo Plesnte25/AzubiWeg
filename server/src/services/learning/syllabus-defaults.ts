@@ -1,6 +1,10 @@
 import type { CefrLevel, RoadmapSkill, SyllabusCategory } from "@prisma/client";
 import { A1_CHECKS } from "./syllabus-checks-a1.js";
 import { A2_CHECKS } from "./syllabus-checks-a2.js";
+import { B1_CHECKS } from "./syllabus-checks-b1.js";
+
+// checked exercises per level (#38) — looked up by level, since some titles repeat across levels
+const CHECKS_BY_LEVEL: Partial<Record<string, typeof A1_CHECKS>> = { a1: A1_CHECKS, a2: A2_CHECKS, b1: B1_CHECKS };
 
 /** One item of a check_set exercise: a fill-in (`___` marks the gap) with every accepted answer, or a choice. */
 export type CheckItem =
@@ -70,8 +74,9 @@ export interface DefaultSyllabusItem {
  * listening topic gets a real lesson and a check_set graded on the server; speaking topics become recordings. Passed
  * topics stay passed (the reseed keeps mastery/completion).
  * v12: the same for A2 (syllabus-checks-a2.ts).
+ * v13: the same for B1 (syllabus-checks-b1.ts).
  */
-export const SYLLABUS_VERSION = 12;
+export const SYLLABUS_VERSION = 13;
 
 type AuthoredActivity = Pick<
   DefaultSyllabusItem,
@@ -304,7 +309,7 @@ const AUTHORED_SELF_CHECKS: Record<string, AuthoredActivity> = {
 
 function activityFor(item: DefaultSyllabusItem) {
   const authored =
-    (item.level === "a1" ? A1_CHECKS[item.title] : item.level === "a2" ? A2_CHECKS[item.title] : undefined) ??
+    CHECKS_BY_LEVEL[item.level]?.[item.title] ??
     AUTHORED_LISTENING_LESSONS[item.title] ??
     AUTHORED_EXERCISES[item.title] ??
     AUTHORED_SELF_CHECKS[item.title] ??
