@@ -56,6 +56,10 @@ export function cleanDescriptions(raw: (string | null)[]): (string | null)[] {
         const key = norm(l);
         if (!key) return true; // blank: kept for paragraph breaks, collapsed below
         if ((counts.get(key) ?? 0) >= threshold) return false;
+        // a line that joins several boilerplate sentences ("Complement your learning … *Use Code A1LG10 …*") is
+        // boilerplate too, even though that exact line appears only once
+        const parts = l.split(/(?<=[.!?*])\s+(?=[*A-ZÄÖÜ])/).map(norm).filter(Boolean);
+        if (parts.length > 1 && parts.every((p) => (counts.get(p) ?? 0) >= threshold)) return false;
         if (URL_RE.test(l)) return false;
         return !JUNK_RE.some((re) => re.test(key));
       });

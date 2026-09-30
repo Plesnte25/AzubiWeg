@@ -27,6 +27,16 @@ describe("cleanDescriptions", () => {
     expect(first).toBe("Learn German Lesson 9 - Topic 9\n\nThe main things covered are:\n• Correct placement of the verb.\n• What is a Subject?");
   });
 
+  it("drops a line that joins boilerplate sentences, even if that exact line appears once", () => {
+    const promo = "Complement your learning with our NEW A1 Coursebook.\n*Use Code A1LG10 and get 10% off*";
+    const cleaned = cleanDescriptions([
+      `${promo}\n\nLesson 1 is about greetings in German.`,
+      `${promo}\n\nLesson 2 is about common phrases.`,
+      `Complement your learning with our NEW A1 Coursebook. *Use Code A1LG10 and get 10% off*\n\nLesson 6 is about introducing yourself.`,
+    ]);
+    expect(cleaned[2]).toBe("Lesson 6 is about introducing yourself.");
+  });
+
   it("cuts at Related Videos and drops link, hashtag and download lines even with nothing to compare", () => {
     const [only] = cleanDescriptions([`#German #A1\nLesson 3 covers numbers from 1 to 20.\nSee https://example.com/x\nDownload TRANSCRIPT here:\n\nRelated Videos:\nLesson 4: https://youtu.be/abc`]);
     expect(only).toBe("Lesson 3 covers numbers from 1 to 20.");
