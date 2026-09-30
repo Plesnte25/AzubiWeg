@@ -159,6 +159,13 @@ sudo chmod 600 /opt/azubiweg/.env
 sudo -u azubiweg bash -c 'cd /opt/azubiweg/repo/server && set -a && source /opt/azubiweg/.env && set +a && npx prisma migrate deploy'
 ```
 
+**Optional keys** (append to `/opt/azubiweg/.env`, then `sudo systemctl restart azubiweg`):
+- `YOUTUBE_API_KEY` — YouTube Data API v3, for YouTube playlist lesson descriptions. YouTube answers the VPS's
+  watch-page requests with "Sign in to confirm you're not a bot", so without it those lessons get no description.
+  Google Cloud Console → new project → enable "YouTube Data API v3" → Credentials → API key (restrict it to that
+  API). Free quota: 10,000 units a day; one request covers 50 videos.
+- `GOOGLE_BOOKS_API_KEY` — Books API, the fallback after Open Library for book lookups.
+
 ## 6. rclone: bridge the Obsidian vault over OneDrive
 
 The Obsidian "Remotely Save" plugin already syncs your vault to OneDrive

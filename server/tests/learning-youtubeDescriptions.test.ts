@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanDescriptions, parseShortDescription } from "../src/services/learning/youtubeDescriptions.js";
+import { cleanDescriptions, parseShortDescription, parseVideosResponse } from "../src/services/learning/youtubeDescriptions.js";
 
 // the shape of the "A1 (Free Course) | Learn German" playlist's descriptions (2026-09-29)
 const PROMO = `#LearnGermanOriginal #LearnGerman #germanlevela1
@@ -42,5 +42,13 @@ describe("parseShortDescription", () => {
     const html = `…"videoId":"abc","shortDescription":"Lesson 1 \\u2014 Greetings\\nBegr\\u00fc\\u00dfungen \\"hi\\"","isCrawlable":true…`;
     expect(parseShortDescription(html)).toBe('Lesson 1 — Greetings\nBegrüßungen "hi"');
     expect(parseShortDescription("<html>no player</html>")).toBeNull();
+  });
+});
+
+describe("parseVideosResponse", () => {
+  it("maps video ids to their descriptions, skipping empty ones", () => {
+    const body = { items: [{ id: "n6db5VSUm2o", snippet: { description: "Lesson 9 …" } }, { id: "x", snippet: { description: "  " } }, { snippet: {} }] };
+    expect([...parseVideosResponse(body)]).toEqual([["n6db5VSUm2o", "Lesson 9 …"]]);
+    expect(parseVideosResponse({ error: { code: 403 } }).size).toBe(0);
   });
 });

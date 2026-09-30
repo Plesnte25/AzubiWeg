@@ -4,9 +4,12 @@
  * the useful part — the lesson heading, an overview paragraph, its bullets — in the same promo block, sign-off and
  * link lists on every video, so the boilerplate is found by comparing the playlist's videos, not by a hand-kept
  * blocklist: a line that appears in most of them is dropped. Parsing and cleaning are pure; the fetch runs in the
- * background after a playlist is added (one video at a time — a watch page is ~1.5 MB), and never overwrites a
- * description the user already has or typed. Relies on YouTube's page internals: if they change, descriptions stay
- * empty and nothing breaks.
+ * background after a playlist is added, and never overwrites a description the user already has or typed.
+ *
+ * Where the text comes from: with YOUTUBE_API_KEY set (free, Google Cloud → YouTube Data API v3), `videos.list`
+ * returns 50 descriptions per request — the only way from the VPS, because YouTube answers a data-center IP's watch
+ * page with "Sign in to confirm you're not a bot". Without a key it reads each watch page (~1.5 MB, one at a time),
+ * which works from a home connection (local dev). Either way a failure leaves descriptions empty and nothing breaks.
  */
 import { prisma } from "../../db.js";
 
@@ -62,6 +65,37 @@ export function cleanDescriptions(raw: (string | null)[]): (string | null)[] {
   });
 }
 
+/** `videos.list?part=snippet` → description per video id. */
+export function parseVideosResponse(body: unknown): Map<string, string> {
+  const out = new Map<string, string>();
+  const items = (body as { items?: unknown })?.items;
+  if (!Array.isArray(items)) return out;
+  for (const item of items as { id?: unknown; snippet?: { description?: unknown } }[]) {
+    if (typeof item.id === "string" && typeof item.snippet?.description === "string" && item.snippet.description.trim()) {
+      out.set(item.id, item.snippet.description);
+    }
+  }
+  return out;
+}
+
+/** Descriptions via the YouTube Data API, 50 ids a request (1 quota unit each). */
+async function fetchDescriptionsViaApi(videoIds: string[], key: string): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  for (let i = 0; i < videoIds.length; i += 50) {
+    const ids = videoIds.slice(i, i + 50).join(",");
+    try {
+      const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${ids}&key=${encodeURIComponent(key)}`, {
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!res.ok) continue;
+      for (const [id, d] of parseVideosResponse(await res.json())) out.set(id, d);
+    } catch {
+      // leave this batch empty
+    }
+  }
+  return out;
+}
+
 async function fetchVideoDescription(videoId: string): Promise<string | null> {
   try {
     // a fixed youtube.com URL built from an 11-char id, never a user-supplied one
@@ -92,10 +126,16 @@ export async function fillPlaylistDescriptions(sourceId: string, pauseMs = 800):
     });
     const todo = units.filter((u) => !u.description?.trim());
     if (todo.length === 0) return 0;
+    const key = process.env.YOUTUBE_API_KEY?.trim();
     const raw: (string | null)[] = [];
-    for (const u of todo) {
-      raw.push(await fetchVideoDescription(u.videoId!));
-      await new Promise((r) => setTimeout(r, pauseMs));
+    if (key) {
+      const byId = await fetchDescriptionsViaApi(todo.map((u) => u.videoId!), key);
+      for (const u of todo) raw.push(byId.get(u.videoId!) ?? null);
+    } else {
+      for (const u of todo) {
+        raw.push(await fetchVideoDescription(u.videoId!));
+        await new Promise((r) => setTimeout(r, pauseMs));
+      }
     }
     const cleaned = cleanDescriptions(raw);
     let filled = 0;
