@@ -19,6 +19,10 @@ import { useReviewSession, type CardTag, type GradedEntry, type QueueItem } from
  * scroll at any size. Session bar · (lg) Stack tile | card + grade row | Session + Keys tiles · (md) card, then Stack +
  * Session · (sm) mode row, card, grades.
  *
+ * Short viewports (landscape phones, ≤ 560px tall) aren't in the handoff: the md layout would squeeze the card to
+ * nothing under its Stack/Session tiles and bury Show answer. There the tiles are dropped (as on sm), the spacing is
+ * tightened, the card keeps a minimum height, and the screen scrolls if it still doesn't fit.
+ *
  * Real-data notes: grades are this app's scheduler (again is a lapse: 1 day, and the card comes back 4 places later
  * this session); the interval under each button is the real preview (GET /reviews/:id/preview), with Again reading
  * "again today" since the scheduler works in days. Undo reverts the grade on the server. The rule sticker is the
@@ -26,6 +30,23 @@ import { useReviewSession, type CardTag, type GradedEntry, type QueueItem } from
  */
 
 type Mode = "word" | "meaning" | "article";
+
+const SHORT = "(max-height: 560px)";
+
+/** True on a short viewport (a phone in landscape); see the header comment. */
+function useShortViewport(): boolean {
+  const [short, setShort] = useState(() => window.matchMedia(SHORT).matches);
+  useEffect(() => {
+    const q = window.matchMedia(SHORT);
+    const onChange = () => setShort(q.matches);
+    q.addEventListener("change", onChange);
+    return () => q.removeEventListener("change", onChange);
+  }, []);
+  return short;
+}
+
+/** The card's floor on a short viewport, so it can't be squeezed below its own content. */
+const SHORT_CARD_MIN = 220;
 type Article = "der" | "die" | "das";
 
 const TAG_COLOR: Record<CardTag, string> = { New: "var(--lilac)", Due: "var(--sky)", Shaky: "var(--tomato)" };
@@ -309,6 +330,7 @@ function FlashCard({
   onPick,
   onFlip,
   bp,
+  short,
 }: {
   item: QueueItem;
   mode: Mode;
@@ -317,6 +339,7 @@ function FlashCard({
   onPick: (a: Article) => void;
   onFlip: () => void;
   bp: Breakpoint;
+  short: boolean;
 }) {
   const w = item.word;
   const sm = bp === "sm";
@@ -335,11 +358,13 @@ function FlashCard({
     border: "2.5px solid var(--line)",
     borderRadius: "8px 8px 34px 8px",
     boxShadow: "8px 8px 0 var(--shadow)",
-    padding: sm ? 18 : 26,
+    padding: sm || short ? 18 : 26,
     display: "flex",
     flexDirection: "column",
-    gap: sm ? 12 : 16,
+    gap: sm || short ? 12 : 16,
     boxSizing: "border-box",
+    // a short viewport caps the card's height, so a long back (example, form note) scrolls inside it
+    overflowY: short ? "auto" : undefined,
   };
   const right = pick !== null && pick === w.genus;
   const prompt = mode === "word" ? "What does it mean?" : mode === "meaning" ? "Say it in German" : "Which article?";
@@ -354,7 +379,7 @@ function FlashCard({
         if (e.key === "Enter") onFlip();
       }}
       className="relative min-h-0 w-full flex-1 cursor-pointer"
-      style={{ maxWidth: bp === "lg" ? 660 : "none", maxHeight: bp === "lg" ? 520 : bp === "md" ? 600 : "none", perspective: 1800, transform: "rotate(-0.8deg)" }}
+      style={{ maxWidth: bp === "lg" ? 660 : "none", maxHeight: bp === "lg" ? 520 : bp === "md" ? 600 : "none", minHeight: short ? SHORT_CARD_MIN : undefined, perspective: 1800, transform: "rotate(-0.8deg)" }}
     >
       <div
         className="absolute inset-0"
@@ -435,7 +460,7 @@ function FlashCard({
         </div>
 
         {/* back */}
-        <div aria-hidden={!flipped} style={{ ...face, background: tint, color: "var(--onTile)", transform: "rotateY(180deg)", overflow: "hidden" }}>
+        <div aria-hidden={!flipped} style={{ ...face, background: tint, color: "var(--onTile)", transform: "rotateY(180deg)", overflowX: "hidden", overflowY: short ? "auto" : "hidden" }}>
           <div className="flex items-center justify-between" style={{ gap: 8 }}>
             <span style={{ padding: "4px 11px", border: "2.5px solid var(--line)", borderRadius: 999, background: "var(--plain)", color: "var(--plainText)", fontSize: 12, fontWeight: 700 }}>
               {item.tag} · {kindLabel(w)}
@@ -632,11 +657,14 @@ function DoneCard({
 function ReviewSessionInner({ words, deckLabel }: { words?: Word[]; deckLabel?: string }) {
   const { goBack, backLabel } = useNavStack();
   const { bp } = useBreakpoint();
+  const short = useShortViewport();
   const s = useReviewSession({ words });
   const [mode, setMode] = useState<Mode>("word");
   const [pick, setPick] = useState<Article | null>(null);
   const sm = bp === "sm";
-  const lg = bp === "lg";
+  // a short viewport gets the compact single-column body at any width (see the header comment)
+  const lg = bp === "lg" && !short;
+  const compact = sm || short;
   const current = s.current;
   // article mode needs a noun; anything else falls back to word mode for that card
   const cardMode: Mode = mode === "article" && !current?.word.genus ? "word" : mode;
@@ -673,7 +701,7 @@ function ReviewSessionInner({ words, deckLabel }: { words?: Word[]; deckLabel?: 
   // nothing to review at all: say when the next card is due (not an empty "Stack cleared")
   if (s.done && s.graded.length === 0) {
     return (
-      <div className="flex h-full min-h-0 flex-col justify-center overflow-hidden" style={{ padding: sm ? 14 : 24 }}>
+      <div className={`flex h-full min-h-0 flex-col justify-center ${short ? "overflow-y-auto" : "overflow-hidden"}`} style={{ padding: compact ? 14 : 24 }}>
         <NothingDue onBack={goBack} />
       </div>
     );
@@ -685,7 +713,7 @@ function ReviewSessionInner({ words, deckLabel }: { words?: Word[]; deckLabel?: 
   const deck = deckLabel ?? (words ? "Words · drill" : "Words · today's stack");
 
   const center = (
-    <div className="flex min-h-0 min-w-0 flex-col items-center justify-center" style={{ gap: sm ? 14 : 20, flex: lg ? "none" : 1, height: lg ? "100%" : undefined }}>
+    <div className="flex min-h-0 min-w-0 flex-col items-center justify-center" style={{ gap: compact ? 14 : 20, flex: lg ? "none" : 1, height: lg ? "100%" : undefined, minHeight: short ? "auto" : undefined }}>
       {s.loading ? (
         <div aria-busy="true" className="w-full flex-1" style={{ maxWidth: 660, maxHeight: 520, border: "2.5px dashed var(--line)", borderRadius: "8px 8px 34px 8px", opacity: 0.4 }} />
       ) : s.done || !current ? (
@@ -712,6 +740,7 @@ function ReviewSessionInner({ words, deckLabel }: { words?: Word[]; deckLabel?: 
             }}
             onFlip={flip}
             bp={bp}
+            short={short}
           />
           {s.flipped ? (
             <GradeRow wordId={current.word.id} suggested={suggested} onGrade={s.grade} busy={s.busy} bp={bp} />
@@ -720,7 +749,7 @@ function ReviewSessionInner({ words, deckLabel }: { words?: Word[]; deckLabel?: 
               type="button"
               onClick={flip}
               className="press flex w-full shrink-0 cursor-pointer items-center justify-center"
-              style={{ maxWidth: lg ? 660 : "none", height: sm ? 60 : 68, gap: 10, border: "2.5px solid var(--line)", borderRadius: 999, background: "var(--btn)", color: "var(--btnText)", fontWeight: 700, fontSize: 18, boxShadow: "4px 4px 0 var(--shadow)" }}
+              style={{ maxWidth: lg ? 660 : "none", height: compact ? 60 : 68, gap: 10, border: "2.5px solid var(--line)", borderRadius: 999, background: "var(--btn)", color: "var(--btnText)", fontWeight: 700, fontSize: 18, boxShadow: "4px 4px 0 var(--shadow)" }}
             >
               Show answer
               {lg && <span style={{ padding: "2px 8px", border: "2px solid var(--btnText)", borderRadius: 6, fontSize: 12, opacity: 0.8 }}>Space</span>}
@@ -732,10 +761,13 @@ function ReviewSessionInner({ words, deckLabel }: { words?: Word[]; deckLabel?: 
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden" style={{ gap: sm ? 14 : 22, padding: sm ? 14 : bp === "md" ? 22 : 24, "--k": lg ? 1 : bp === "md" ? 0.95 : 0.78 } as CSSProperties}>
+    <div
+      className={`flex h-full min-h-0 flex-col ${short ? "overflow-y-auto" : "overflow-hidden"}`}
+      style={{ gap: compact ? 14 : 22, padding: compact ? 14 : bp === "md" ? 22 : 24, "--k": lg ? 1 : bp === "md" ? 0.95 : 0.78 } as CSSProperties}
+    >
       <header
         className="flex shrink-0 items-center"
-        style={{ height: sm ? 58 : 72, gap: sm ? 8 : 12, padding: sm ? "0 8px" : "0 12px", background: "var(--plain)", color: "var(--plainText)", border: "2.5px solid var(--line)", borderRadius: 999, boxShadow: "5px 5px 0 var(--shadow)", boxSizing: "border-box" }}
+        style={{ height: compact ? 58 : 72, gap: sm ? 8 : 12, padding: sm ? "0 8px" : "0 12px", background: "var(--plain)", color: "var(--plainText)", border: "2.5px solid var(--line)", borderRadius: 999, boxShadow: "5px 5px 0 var(--shadow)", boxSizing: "border-box" }}
       >
         <button type="button" onClick={close} aria-label="Close review" style={roundBtn(sm ? 38 : 44)}>
           <X size={16} weight="bold" aria-hidden="true" />
@@ -802,9 +834,9 @@ function ReviewSessionInner({ words, deckLabel }: { words?: Word[]; deckLabel?: 
           </div>
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col" style={{ gap: sm ? 14 : 22 }}>
+        <div className="flex min-h-0 flex-1 flex-col" style={{ gap: compact ? 14 : 22, minHeight: short ? "auto" : undefined }}>
           {center}
-          {bp === "md" && (
+          {bp === "md" && !short && (
             <div className="flex shrink-0" style={{ gap: 20 }}>
               <StackTile rest={rest} bp={bp} />
               <SessionTile graded={s.graded} bp={bp} />
