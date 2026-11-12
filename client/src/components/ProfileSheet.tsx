@@ -1,8 +1,11 @@
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { CaretRight, LockSimple, NotePencil, SlidersHorizontal } from "@phosphor-icons/react";
-import { api, clearSession } from "../api/client";
+import { CaretRight, DeviceMobileSlash, LockSimple, NotePencil, ShieldSlash, SlidersHorizontal } from "@phosphor-icons/react";
+import { api, clearSession, getUser } from "../api/client";
+import { trustedAccounts } from "../lib/trustedAccounts";
+import { initials } from "./chrome/useProfileSummary";
+import { toast } from "./ui/Toast";
 import { useNavStack } from "../lib/navStack";
 import { useTheme } from "../lib/theme";
 import { BottomSheet } from "./ui/BottomSheet";
@@ -10,17 +13,13 @@ import { Segmented } from "./ui/Segmented";
 
 const LEVEL_LABELS: Record<string, string> = { a1: "A1", a2: "A2", b1: "B1" };
 
-function initials(name: string | undefined): string {
-  if (!name) return "?";
-  const parts = name.trim().split(/\s+/);
-  return parts.length === 1 ? parts[0]!.slice(0, 2).toUpperCase() : (parts[0]![0]! + parts[1]![0]!).toUpperCase();
-}
-
 /**
  * Profile sheet behind the chrome's avatar (undesigned in Bento; Sticker style): avatar, three stat stickers,
  * Appearance (System / Light / Dark — the nav toggle only flips light ↔ dark, so this is the way back to following
- * the OS, KNOWN_ISSUES #16), and Settings / All notes / Log out. Name/level/day/streak come in as props; word and note counts share Words' and the
- * Notes wall's query caches.
+ * the OS, KNOWN_ISSUES #16), and Settings / All notes / Log out. Log out keeps this device trusted (the sign-in page
+ * then offers one-click entry); "Forget this device" and "Forget all trusted devices" end that trust
+ * (lib/trustedAccounts.ts). That only removes one-click sign-in: sessions are JWTs and stay valid until they expire.
+ * Name/level/day/streak come in as props; word and note counts share Words' and the Notes wall's query caches.
  */
 export function ProfileSheet({
   open,
@@ -44,6 +43,9 @@ export function ProfileSheet({
   const { data: wordsData } = useQuery({ queryKey: ["words"], queryFn: api.words, enabled: open });
   const { data: notesData } = useQuery({ queryKey: ["notes", "wall"], queryFn: api.notesWall, enabled: open });
   const { preference, setPreference } = useTheme();
+  // read on each open: the sheet stays mounted (BottomSheet), and trust changes at sign-in
+  const userId = getUser()?.id;
+  const trusted = open && userId ? trustedAccounts.get(userId) : null;
 
   const stat = (n: number | string, l: string, bg: string, tilt: number) => (
     <div
@@ -133,6 +135,34 @@ export function ProfileSheet({
             onClose();
             clearSession();
             navigate("/login");
+          },
+          true,
+        )}
+        {trusted &&
+          row(
+            <DeviceMobileSlash size={18} weight="fill" aria-hidden="true" />,
+            "Forget this device",
+            () => {
+              onClose();
+              api.forgetDevice(trusted.deviceToken).catch(() => {});
+              trustedAccounts.remove(trusted.userId);
+              clearSession();
+              navigate("/login");
+            },
+            true,
+          )}
+        {row(
+          <ShieldSlash size={18} weight="fill" aria-hidden="true" />,
+          "Forget all trusted devices",
+          () => {
+            api
+              .revokeAllDevices()
+              .then(({ revoked }) => {
+                if (userId) trustedAccounts.remove(userId);
+                toast.success(revoked ? `${revoked} device${revoked === 1 ? "" : "s"} will ask for the password again` : "No trusted devices");
+                onClose();
+              })
+              .catch(() => toast.error("Couldn't forget your devices"));
           },
           true,
         )}

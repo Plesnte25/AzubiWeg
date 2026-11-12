@@ -139,18 +139,28 @@ async function requestBlob(path: string): Promise<Blob> {
 }
 
 export const api = {
-  register: (data: { email: string; password: string; name: string }) =>
-    request<{ token: string; user: User }>("/api/auth/register", {
+  // trustDevice: "Trust this device" was ticked; the response then carries a deviceToken (lib/trustedAccounts.ts)
+  register: (data: { email: string; password: string; name: string; trustDevice?: boolean }) =>
+    request<{ token: string; user: User; deviceToken?: string }>("/api/auth/register", {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  login: (data: { email: string; password: string }) =>
-    request<{ token: string; user: User }>("/api/auth/login", {
+  login: (data: { email: string; password: string; trustDevice?: boolean }) =>
+    request<{ token: string; user: User; deviceToken?: string }>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  // 404s when the server isn't running in temporary public demo mode — see
-  // RequireAuth in main.tsx, which is the only caller.
+  // One-click sign-in on a trusted device; the server rotates the token, so store the returned one.
+  deviceLogin: (deviceToken: string) =>
+    request<{ token: string; user: User; deviceToken: string }>("/api/auth/device-login", {
+      method: "POST",
+      body: JSON.stringify({ deviceToken }),
+    }),
+  forgetDevice: (deviceToken: string) =>
+    request<void>("/api/auth/device-forget", { method: "POST", body: JSON.stringify({ deviceToken }) }),
+  revokeAllDevices: () => request<{ revoked: number }>("/api/auth/devices/revoke-all", { method: "POST" }),
+  // 404s unless the server runs in (local-only) demo mode — see RequireAuth in
+  // main.tsx, which is the only caller and only in dev builds.
   demoLogin: () =>
     request<{ token: string; user: User; isDemo: true }>("/api/auth/demo-login", { method: "POST" }),
   syllabusAudio: (id: string) => requestBlob(`/api/learning/syllabus/${id}/audio`),
