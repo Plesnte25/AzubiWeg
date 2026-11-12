@@ -318,6 +318,24 @@ Fixed as batch 1 of the 2026-09-29 backlog round (plan: `~/.claude/plans/delight
 47. ✅ **Fixed** (`6599100`, `2f98905`) — **Notes input is tiny and scrolls.** Full width, at least four lines, grows
     with the text, no scrollbar; Save below, Ctrl/⌘+Enter saves.
 
+### Found by the browser cross-check (2026-11-12)
+
+Playwright sweep of every route and sheet at 360/390/844×390/834/1024/1366/1440, light and dark, plus scripted
+checks of each open and fixed entry above (all fixed entries still hold).
+
+48. ✅ **Fixed** (`ff788e3`) — **Microsoft Clarity on every page.** Added for testing (`599af20`); it recorded sessions
+    with no consent step and its beacon kept local pages from going network-idle (the shot script timed out). Removed.
+49. ✅ **Fixed** (`b94cdcd`) — **Review unusable on landscape phones** (high). At 844×390 the md layout squeezed the card
+    under the Stack/Session tiles and covered Show answer, with no scroll. Short viewports (≤ 560px tall) now drop
+    the tiles, keep a 220px card that scrolls inside, and let the screen scroll.
+50. ✅ **Fixed** (`04e4944`) — **Demo shows "pl. die die Bahnhöfe".** The demo seed stored noun forms with articles;
+    real (kaikki) data is bare and every screen adds the article. Demo-only.
+51. ✅ **Fixed** (`6a5d129`) — **Demo mode was live on the production site** (any visitor got the demo account).
+    Production builds no longer request it; the VPS flag must stay off (DEPLOYMENT.md §14).
+52. ✅ **Done** (`c741907`) — **Trusted devices** (feature, requested 2026-11-12). Opt-in "Trust this device" on sign-in;
+    the sign-in page then shows the account's avatar for one-click entry. 90 days, renewed on use, revocable from
+    the avatar's ×, "Forget this device" and "Forget all trusted devices" in the profile sheet.
+
 ## Resolved during the redesign (for reference — no action needed)
 
 - **2026-09-24 (Bento Phase 3.2)** — the review session invalidated `["reviews", "weak-words"]` while Stats cached

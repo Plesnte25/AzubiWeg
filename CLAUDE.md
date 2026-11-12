@@ -186,7 +186,11 @@ for `Phase ` before assuming a screen is unfinished or a stopgap is permanent.
   DB is `cd server && npm run db:start` (embedded Postgres on 5433, no
   Docker). `DEMO_MODE_ENABLED=true`
   in `server/.env` + `npm run seed:demo` gives a fast login path for local
-  testing — toggle it back off afterward, it's meant to be temporary.
+  testing (the Vite dev server signs in as the demo account automatically).
+  Demo mode is **local-only**: production client builds never request it
+  (`main.tsx`) and the VPS keeps the flag off (DEPLOYMENT.md §14).
+  `npm run seed:demo -- --reset` rebuilds the demo account — a plain re-run
+  only fills empty tables, so it won't undo cards graded while testing.
   Real bugs this has actually caught: a date-math bug in a "next review"
   display (mixing UTC-anchored `@db.Date` values with local-timezone
   formatting — see the Date arithmetic gotcha below) and a same-route
@@ -216,6 +220,14 @@ for `Phase ` before assuming a screen is unfinished or a stopgap is permanent.
   the item shape, and that every reading/listening fill-in answer appears in
   its text. **Any content change needs a `SYLLABUS_VERSION` bump** (reseeds
   content, keeps completions).
+- **Trusted devices** (one-click sign-in): "Trust this device" on the
+  sign-in form stores a device token in `localStorage["azubiweg-trusted-accounts"]`
+  (`client/src/lib/trustedAccounts.ts`); the server keeps only its SHA-256
+  (`TrustedDevice`, `server/src/services/auth/trusted-device.ts`), rotates
+  it on every `POST /api/auth/device-login`, and drops it after 90 days
+  unused. The key is deliberately separate from the session keys:
+  `clearSession()` must never touch it, or logging out/session expiry would
+  forget the device. Always `trustedAccounts.save()` the *returned* token.
 - **`cn()` (`client/src/lib/cn.ts`) wraps `tailwind-merge`.** Conflicting
   utilities resolve "last one wins," so overriding a component default
   through `className` is safe.
