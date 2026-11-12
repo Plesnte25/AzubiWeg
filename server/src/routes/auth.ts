@@ -56,10 +56,10 @@ authRouter.post("/login", async (req, res) => {
   });
 });
 
-// Temporary public "demo mode" for external site-analysis tools (PageSpeed
-// Insights, GTmetrix) that crawl unauthenticated — see DEPLOYMENT.md. Only
-// live when DEMO_MODE_ENABLED=true on the server; otherwise 404s exactly
-// like a route that doesn't exist, rather than a deliberate-looking reject.
+// Demo mode, for local development only (DEPLOYMENT.md §14): a short-lived
+// session for the seeded demo account. Only live when DEMO_MODE_ENABLED=true;
+// otherwise 404s exactly like a route that doesn't exist. Keep it off on the
+// VPS; production client builds never call it anyway (main.tsx).
 authRouter.post("/demo-login", async (req, res) => {
   if (!config.demoModeEnabled) return res.status(404).end();
 

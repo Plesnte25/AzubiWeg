@@ -42,18 +42,20 @@ const queryClient = new QueryClient({
 });
 
 // Real users with a stored token skip straight to "authed" — no network
-// round-trip, no behavior change. A visitor with no token at all (including
-// an external crawler like PageSpeed Insights/GTmetrix hitting the site
-// fresh) gets one attempt at the temporary public demo-login endpoint before
-// falling back to the normal /login redirect; see api.demoLogin and
-// DEPLOYMENT.md for how that's toggled server-side.
+// round-trip. In local development only (Vite dev server), a visitor with no
+// token gets one attempt at the demo-login endpoint (DEMO_MODE_ENABLED=true in
+// server/.env) before falling back to /login. A production build never tries
+// it, so the live site can't hand out demo sessions even if the server flag
+// were switched on by mistake; see DEPLOYMENT.md §14.
+const DEMO_AUTO_LOGIN = import.meta.env.DEV;
+
 function RequireAuth() {
   const [status, setStatus] = useState<"checking" | "authed" | "unauthed">(
-    getToken() ? "authed" : "checking",
+    getToken() ? "authed" : DEMO_AUTO_LOGIN ? "checking" : "unauthed",
   );
 
   useEffect(() => {
-    if (getToken()) return;
+    if (getToken() || !DEMO_AUTO_LOGIN) return;
     let cancelled = false;
     api
       .demoLogin()
