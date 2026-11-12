@@ -58,10 +58,10 @@ const DEMO_WORDS: {
     headword: "Haus", meaning: "(Noun) house", grammar: "das; Plural: die Häuser",
     example: "Das Haus ist groß.", exampleTranslation: "The house is big.", level: "a1", state: "mastered",
     declension: {
-      nom: { sg: "das Haus", pl: "die Häuser" },
-      akk: { sg: "das Haus", pl: "die Häuser" },
-      dat: { sg: "dem Haus", pl: "den Häusern" },
-      gen: { sg: "des Hauses", pl: "der Häuser" },
+      nom: { sg: "Haus", pl: "Häuser" },
+      akk: { sg: "Haus", pl: "Häuser" },
+      dat: { sg: "Haus", pl: "Häusern" },
+      gen: { sg: "Hauses", pl: "Häuser" },
     },
   },
   {
@@ -81,10 +81,10 @@ const DEMO_WORDS: {
     headword: "Ausbildung", meaning: "(Noun) vocational training", grammar: "die; Plural: die Ausbildungen",
     example: "Sie macht eine Ausbildung als Krankenschwester.", exampleTranslation: "She is training as a nurse.", level: "a1", state: "mastered",
     declension: {
-      nom: { sg: "die Ausbildung", pl: "die Ausbildungen" },
-      akk: { sg: "die Ausbildung", pl: "die Ausbildungen" },
-      dat: { sg: "der Ausbildung", pl: "den Ausbildungen" },
-      gen: { sg: "der Ausbildung", pl: "der Ausbildungen" },
+      nom: { sg: "Ausbildung", pl: "Ausbildungen" },
+      akk: { sg: "Ausbildung", pl: "Ausbildungen" },
+      dat: { sg: "Ausbildung", pl: "Ausbildungen" },
+      gen: { sg: "Ausbildung", pl: "Ausbildungen" },
     },
   },
   {
@@ -112,10 +112,10 @@ const DEMO_WORDS: {
     headword: "Bahnhof", meaning: "(Noun) train station", grammar: "der; Plural: die Bahnhöfe",
     example: "Der Bahnhof ist nicht weit.", exampleTranslation: "The train station isn't far.", level: "a1", state: "due",
     declension: {
-      nom: { sg: "der Bahnhof", pl: "die Bahnhöfe" },
-      akk: { sg: "den Bahnhof", pl: "die Bahnhöfe" },
-      dat: { sg: "dem Bahnhof", pl: "den Bahnhöfen" },
-      gen: { sg: "des Bahnhofs", pl: "der Bahnhöfe" },
+      nom: { sg: "Bahnhof", pl: "Bahnhöfe" },
+      akk: { sg: "Bahnhof", pl: "Bahnhöfe" },
+      dat: { sg: "Bahnhof", pl: "Bahnhöfen" },
+      gen: { sg: "Bahnhofs", pl: "Bahnhöfe" },
     },
   },
   {
