@@ -81,6 +81,15 @@ async function throwApiError(res: Response): Promise<never> {
   throw new ApiError(res.status, body.error ?? `Request failed (${res.status})`);
 }
 
+/**
+ * Random per-tab id, sent with every write (X-Client-Id) and when opening the
+ * live-sync stream, so the server doesn't echo a tab's own changes back to it.
+ * See hooks/useLiveSync.ts.
+ */
+// crypto.randomUUID only exists in secure contexts; the plain-HTTP IP mirror
+// (deploy/Caddyfile) isn't one, and this only needs to be unique per user.
+export const CLIENT_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
+
 export function getToken(): string | null {
   return localStorage.getItem("token");
 }
@@ -116,6 +125,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      "X-Client-Id": CLIENT_ID,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init.headers,
     },
@@ -596,7 +606,7 @@ export async function uploadFile(
   if (opts.noteId) form.append("noteId", opts.noteId);
   const res = await fetch("/api/files", {
     method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: { "X-Client-Id": CLIENT_ID, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: form,
   });
   if (res.status === 401 && getToken()) {

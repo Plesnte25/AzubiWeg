@@ -6,6 +6,15 @@
 	# larger of the two wins. Declared inside each handle block (not once at
 	# the top level) since encode only reliably applies to the block it's
 	# matched into.
+	# Live-sync stream (server/src/routes/events.ts). Its own block, ahead of
+	# /api/*, because encode buffers output until it has enough to compress,
+	# which would hold back events; flush_interval -1 sends each one at once.
+	handle /api/events {
+		reverse_proxy localhost:3000 {
+			flush_interval -1
+		}
+	}
+
 	handle /api/* {
 		encode zstd gzip
 		reverse_proxy localhost:3000

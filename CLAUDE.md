@@ -228,6 +228,17 @@ for `Phase ` before assuming a screen is unfinished or a stopgap is permanent.
   unused. The key is deliberately separate from the session keys:
   `clearSession()` must never touch it, or logging out/session expiry would
   forget the device. Always `trustedAccounts.save()` the *returned* token.
+- **Live sync across devices**: each tab holds an SSE stream (`GET /api/events`,
+  `server/src/routes/events.ts`, hub in `server/src/services/live/hub.ts`).
+  `broadcastChanges` middleware sends "change" to the user's other tabs after
+  any successful POST/PUT/PATCH/DELETE (except `/api/auth`, `/api/activity`);
+  the origin tab is skipped via `X-Client-Id` (`CLIENT_ID` in `api/client.ts`;
+  raw `fetch` writes must send it too). `client/src/hooks/useLiveSync.ts`
+  then invalidates every query **except `staleTime: Infinity` ones**, which
+  are frozen session snapshots (review queue, drill rounds), so give any new
+  must-not-reshuffle query `staleTime: Infinity`. The hub is in-memory: fine
+  for the single production process, not for multiple instances. Caddy has a
+  dedicated `/api/events` block without `encode` (it buffers streams).
 - **`cn()` (`client/src/lib/cn.ts`) wraps `tailwind-merge`.** Conflicting
   utilities resolve "last one wins," so overriding a component default
   through `className` is safe.

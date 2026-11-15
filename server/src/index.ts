@@ -6,6 +6,7 @@ import { authRouter } from "./routes/auth.js";
 import { applicationsRouter } from "./routes/applications.js";
 import { cvsRouter } from "./routes/cvs.js";
 import { dashboardRouter } from "./routes/dashboard.js";
+import { broadcastChanges, eventsRouter } from "./routes/events.js";
 import { filesRouter } from "./routes/files.js";
 import { learningRouter } from "./routes/learning.js";
 import { notesRouter } from "./routes/notes.js";
@@ -36,6 +37,8 @@ app.get("/api/health", async (_req, res) => {
     });
   }
 });
+app.use(broadcastChanges);
+app.use("/api/events", eventsRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/words", wordsRouter);
 app.use("/api/reviews", reviewsRouter);
