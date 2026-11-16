@@ -151,8 +151,13 @@ mark them as known.
   vault link and sync, plan reset, and the CV shelf.
 - **Command palette** — ⌘K / Ctrl+K search, plus G-letter shortcuts to jump
   between tabs.
-- **Accounts** — email + password, JWT sessions, and a demo account for portfolio
-  visitors.
+- **Accounts** — email + password and JWT sessions. Tick **Trust this device** when
+  signing in and the sign-in page shows your avatar next time: one tap and you're in
+  (90 days, renewed on use, revocable per device or all at once). New devices still
+  need the password.
+- **Live sync** — keep the app open on your laptop and your phone: a change on one
+  shows up on the other within a second, no reload. A review session in progress
+  keeps its queue.
 
 ## Stack
 
@@ -162,7 +167,8 @@ mark them as known.
 | UI | Phosphor icons, Space Grotesk, TipTap (notes), @dnd-kit (drag and drop) |
 | Backend | Node.js, Express 5, TypeScript |
 | Database | PostgreSQL, Prisma 7 |
-| Auth | JWT (jsonwebtoken) + bcrypt |
+| Auth | JWT (jsonwebtoken) + bcrypt, hashed rotating trusted-device tokens |
+| Live sync | Server-Sent Events → TanStack Query invalidation |
 | Vault sync | chokidar file watcher, custom markdown parser/writer |
 | Enrichment | kaikki.org (German Wiktionary dump) + Tatoeba + DErivBase, ffmpeg, msedge-tts |
 | Uploads | multer → per-user disk storage, auth-checked streaming |
@@ -210,7 +216,9 @@ npm run dev                        # http://localhost:5173 (proxies /api)
 
 Then register, and (optionally) link your Obsidian vault under **Settings** —
 point it at the vault root, the folder containing `Vocab/master.md`. For sample
-data, set `DEMO_MODE_ENABLED=true` and run `npm run seed:demo` in `server/`.
+data, set `DEMO_MODE_ENABLED=true` and run `npm run seed:demo` in `server/`. Demo
+mode is for local development only: production builds never request it, and the
+live site keeps it off.
 
 ## Tests
 
@@ -221,7 +229,8 @@ cd server && npm test
 Covers the vault sync's byte-identical round-trip, SRS scheduling parity with
 the Obsidian plugin, the kaikki.org enrichment pipeline's word resolution,
 and pure-logic suites for applications and the learning plan (the self-paced
-queue and its locking and projections, exam gating, quizzes, activity tracking, and the checked exercises: every
+queue and its locking and projections, exam gating, quizzes, activity tracking, trusted-device tokens, live-sync
+fan-out, and the checked exercises: every
 item's shape, answers that must appear in their reading or listening text, and the grader). Server-side only — no
 dedicated client test runner; UI changes are verified by driving the app in
 a real browser (`client/scripts/shots.mjs` sweeps every page at each breakpoint
@@ -241,7 +250,8 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full ecosystem plan and feature s
 - **Shipped** — vocabulary manager with SM-2 review and two-way Obsidian sync;
   the Jobs pinboard with CV shelf; the A1–B1 learning plan with self-tests and
   exam gates; the Bento "Sticker Club" redesign (September 2026); and the
-  self-paced ticket with checked exercises for every topic (September 2026).
+  self-paced ticket with checked exercises for every topic (September 2026); and
+  one-tap sign-in on trusted devices plus live sync across devices (November 2026).
 - **Now** — a launch splash screen and a full PWA (install, offline words and
   review, notifications for the daily ticket), then vocab PDF export + CLI,
   GitHub Actions CI, calendar integration and grammar micro-lessons. Open items

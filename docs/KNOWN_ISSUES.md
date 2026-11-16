@@ -336,6 +336,20 @@ checks of each open and fixed entry above (all fixed entries still hold).
     the sign-in page then shows the account's avatar for one-click entry. 90 days, renewed on use, revocable from
     the avatar's ×, "Forget this device" and "Forget all trusted devices" in the profile sheet.
 
+### Found by the user in daily use (2026-11-15)
+
+53. ✅ **Fixed** (`95ad020`) — **No live sync between devices** (medium). A change on the laptop only reached the phone
+    after a reload or tab switch: the client had no push channel, and TanStack Query only refetches on mount and window
+    focus. Each tab now holds a Server-Sent Events stream (`GET /api/events`); after any successful write the server
+    tells the user's other tabs, which refetch what's on screen (the writing tab is skipped via `X-Client-Id`). Frozen
+    `staleTime: Infinity` snapshots (review queue, drill rounds) aren't touched mid-session; a reconnect after a gap
+    (phone waking from sleep) refetches once. Caddy has its own uncompressed `/api/events` block (`encode` buffers
+    streams), so a Caddyfile change needs `systemctl reload caddy`.
+
+**Deployed 2026-11-15** (VPS at `95ad020`, #48–53): checked against the live site afterwards — demo login 404,
+`trusted_devices` migration applied, no Clarity in the page, the live bundle matches the local build, and live sync
+confirmed by the user on laptop + phone.
+
 ## Resolved during the redesign (for reference — no action needed)
 
 - **2026-09-24 (Bento Phase 3.2)** — the review session invalidated `["reviews", "weak-words"]` while Stats cached
