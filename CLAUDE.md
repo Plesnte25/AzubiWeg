@@ -228,6 +228,12 @@ for `Phase ` before assuming a screen is unfinished or a stopgap is permanent.
   unused. The key is deliberately separate from the session keys:
   `clearSession()` must never touch it, or logging out/session expiry would
   forget the device. Always `trustedAccounts.save()` the *returned* token.
+- **Source lessons on the ticket** (`services/learning/source-lessons.ts`): `/today` creates one `study_source`
+  task per source with `dailyLesson` for its next unit *before* topics, so topics fill the rest of the goal.
+  `RoadmapTask.studySourceUnitId` links it; `estimateMinutes` holds its budget — always estimate via
+  `taskEstimateMinutes(task)`, never by type. Completion is mirrored both ways (`setUnitCompletion`, and the unit
+  PATCH updates linked tasks). What a lesson teaches is matched at read time (`topic-match.ts`, conservative:
+  tune it against real DW tags, never loosen to "match more").
 - **Live sync across devices**: each tab holds an SSE stream (`GET /api/events`,
   `server/src/routes/events.ts`, hub in `server/src/services/live/hub.ts`).
   `broadcastChanges` middleware sends "change" to the user's other tabs after

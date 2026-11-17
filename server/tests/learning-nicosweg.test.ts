@@ -26,6 +26,11 @@ describe("parseCourseResponse", () => {
             id: 37250531,
             namedUrl: "/en/hallo/l-37250531",
             teaser: "A1 German for beginners: How do you introduce yourself in German? Learn formal and informal greetings.",
+            knowledges: [
+              { name: "Informal and formal (1)", knowledgeType: "GRAMMAR" },
+              { name: "Greetings in German", knowledgeType: "REGIONAL_STUDIES" },
+              { name: "Guten Tag.", knowledgeType: "VOCABULARY" },
+            ],
           },
           { name: "broken lesson", id: 1 }, // missing namedUrl — skipped
           { name: "Tschüss!", id: 37251033, namedUrl: "/en/tschüss/l-37251033" },
@@ -42,8 +47,18 @@ describe("parseCourseResponse", () => {
         title: "Hallo!",
         url: "https://learngerman.dw.com/en/hallo/l-37250531",
         description: "How do you introduce yourself in German? Learn formal and informal greetings.",
+        grammarPoints: ["Informal and formal (1)"],
+        culturePoints: ["Greetings in German"],
+        vocabCount: 1,
       },
-      { title: "Tschüss!", url: "https://learngerman.dw.com/en/tschüss/l-37251033", description: null },
+      {
+        title: "Tschüss!",
+        url: "https://learngerman.dw.com/en/tschüss/l-37251033",
+        description: null,
+        grammarPoints: [],
+        culturePoints: [],
+        vocabCount: null,
+      },
     ]);
   });
 

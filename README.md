@@ -155,6 +155,10 @@ mark them as known.
   signing in and the sign-in page shows your avatar next time: one tap and you're in
   (90 days, renewed on use, revocable per device or all at once). New devices still
   need the password.
+- **Source lessons on your ticket** — every study day, your ticket gets the next lesson of each
+  source (e.g. Nicos Weg), with what it teaches: the grammar points, which of your syllabus topics
+  they cover, culture pieces and new words. The Library dates every upcoming lesson, shows when
+  you'll finish, and keeps a "topics covered so far" list. Switch it off per source.
 - **Live sync** — keep the app open on your laptop and your phone: a change on one
   shows up on the other within a second, no reload. A review session in progress
   keeps its queue.

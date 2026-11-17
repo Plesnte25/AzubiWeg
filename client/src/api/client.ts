@@ -375,6 +375,10 @@ export const api = {
       // look the source up again and fill only what's still empty (provider, cover, unit count)
       refetchDetails: boolean;
       isbn: string | null;
+      // Today's ticket takes the next lesson every study day
+      dailyLesson: boolean;
+      // minutes a lesson is budgeted at; null = the type's default
+      minutesPerUnit: number | null;
     }>,
   ) =>
     request<{ source: StudySource; fetch?: PlaylistFetchOutcome }>(`/api/learning/sources/${id}`, {

@@ -10,14 +10,20 @@ import { toast } from "../../../components/ui/Toast";
 import type { Breakpoint } from "../../../lib/useBreakpoint";
 import { SOURCE_COLOR, sourceKind, sourceProgress, type SourceKind, type Station } from "./model";
 import { SOURCE_ICON } from "./sourceIcons";
+import { lessonDateLabel } from "../../../lib/tasks";
+import { TeachesSummary, TopicPill } from "./LessonTeaches";
 
 const eyebrow: CSSProperties = { fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase" };
 const field: CSSProperties = { height: 44, padding: "0 12px", border: "2.5px solid var(--line)", borderRadius: 12, background: "var(--plain)", color: "var(--plainText)", fontSize: 15, fontWeight: 600, boxSizing: "border-box", width: "100%" };
 const onError = (e: unknown) => toast.error(e instanceof Error ? e.message : "Something went wrong");
 
+/** Sources feed Today's ticket (a lesson ticked here completes its ticket task), so the ticket and Today refresh too. */
 function useSourceRefresh() {
   const queryClient = useQueryClient();
-  return () => void queryClient.invalidateQueries({ queryKey: ["learning", "sources"] });
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: ["learning"] });
+    void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+  };
 }
 
 /** A user-uploaded cover (auth-fetched) wins over the auto-fetched thumbnail URL. */
@@ -206,6 +212,14 @@ export function SourceModal({ source, stations, pickable, onClose }: { source: S
     onError,
   });
   const choices = [...new Map([...pickable, ...stations.filter((s) => s.key === source.stationKey)].map((s) => [s.key, s])).values()];
+  const daily = useMutation({
+    mutationFn: (data: { dailyLesson?: boolean; minutesPerUnit?: number | null }) => api.updateStudySource(source.id, data),
+    onSuccess: (_, data) => {
+      if (data.dailyLesson !== undefined) toast.success(data.dailyLesson ? "A lesson goes on your ticket every study day" : "Off your daily ticket");
+      refresh();
+    },
+    onError,
+  });
 
   return (
     <Modal
@@ -290,11 +304,29 @@ export function SourceModal({ source, stations, pickable, onClose }: { source: S
           </Chip>
         </div>
       </div>
+      {source.units.length > 0 && <DailyLesson source={source} pending={daily.isPending} onChange={(d) => daily.mutate(d)} />}
+      {source.plan.covered.length > 0 && (
+        <div className="flex shrink-0 flex-col gap-2">
+          <span style={eyebrow}>Topics covered so far · {source.plan.covered.length}</span>
+          <div className="flex flex-wrap gap-1">
+            {source.plan.covered.map((t) => (
+              <TopicPill key={t.id} topic={t} suffix={t.lessons > 1 ? ` · ${t.lessons} lessons` : undefined} />
+            ))}
+          </div>
+        </div>
+      )}
       {source.units.length > 0 && (
         <div className="flex shrink-0 flex-col gap-1.5">
           <span style={eyebrow}>Units · {source.units.filter((u) => u.completedAt).length}/{source.units.length}</span>
           {source.units.map((u) => (
-            <UnitRow key={u.id} sourceId={source.id} unit={u} onToggle={(done) => unit.mutate({ id: u.id, done })} />
+            <UnitRow
+              key={u.id}
+              sourceId={source.id}
+              unit={u}
+              date={source.plan.dates[u.id] ?? null}
+              next={source.plan.nextUnitId === u.id}
+              onToggle={(done) => unit.mutate({ id: u.id, done })}
+            />
           ))}
         </div>
       )}
@@ -303,10 +335,63 @@ export function SourceModal({ source, stations, pickable, onClose }: { source: S
 }
 
 /**
- * One lesson: its own checkbox (completion), then the title and a short description of what it covers. Tapping the
- * text expands the description; the pencil edits it (fetched descriptions can be corrected, others written).
+ * The source's place on Today's ticket: the Daily lesson switch, minutes per lesson, and what's next — the next
+ * lesson's date and when the source is finished at one lesson per study day.
  */
-function UnitRow({ sourceId, unit, onToggle }: { sourceId: string; unit: StudySourceUnit; onToggle: (done: boolean) => void }) {
+function DailyLesson({ source, pending, onChange }: { source: StudySource; pending: boolean; onChange: (d: { dailyLesson?: boolean; minutesPerUnit?: number | null }) => void }) {
+  const { plan } = source;
+  const [minutes, setMinutes] = useState<string | null>(null);
+  const next = source.units.find((u) => u.id === plan.nextUnitId) ?? null;
+  const commitMinutes = () => {
+    if (minutes === null) return;
+    const n = Math.round(Number(minutes));
+    setMinutes(null);
+    if (!minutes.trim()) return onChange({ minutesPerUnit: null });
+    if (Number.isFinite(n) && n >= 1 && n <= 600 && n !== plan.minutesPerUnit) onChange({ minutesPerUnit: n === plan.defaultMinutesPerUnit ? null : n });
+  };
+  return (
+    <div className="flex shrink-0 flex-col gap-2">
+      <span style={eyebrow}>Daily lesson</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <Chip size="sm" selected={source.dailyLesson} disabled={pending} onClick={() => onChange({ dailyLesson: true })}>
+          On my ticket
+        </Chip>
+        <Chip size="sm" selected={!source.dailyLesson} disabled={pending} onClick={() => onChange({ dailyLesson: false })}>
+          Off
+        </Chip>
+        <label className="flex items-center gap-1.5" style={{ fontSize: 13, fontWeight: 700 }}>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={600}
+            value={minutes ?? String(plan.minutesPerUnit)}
+            onChange={(e) => setMinutes(e.target.value)}
+            onBlur={commitMinutes}
+            onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+            aria-label={`Minutes per ${source.unitLabel.replace(/s$/, "")}`}
+            style={{ width: 60, height: 30, padding: "0 6px", border: "2px solid var(--line)", borderRadius: 10, background: "var(--plain)", color: "var(--plainText)", fontWeight: 700, fontSize: 13, textAlign: "center" }}
+          />
+          min per {source.unitLabel.replace(/s$/, "")}
+        </label>
+      </div>
+      <span style={{ fontSize: 13, fontWeight: 600 }}>
+        {!next
+          ? "Every lesson is done."
+          : source.dailyLesson && plan.dates[next.id]
+            ? `Next: ${next.position + 1}. ${next.title} · ${lessonDateLabel(plan.dates[next.id]!)}. One a study day, finished by ${lessonDateLabel(plan.finishDate!)}.`
+            : `Next: ${next.position + 1}. ${next.title}. Switch on to get one on your ticket every study day.`}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * One lesson: its own checkbox (completion), then the title, when it comes up on the ticket, a short description of
+ * what it covers and the syllabus topics it teaches. Tapping the text expands everything (grammar points, culture,
+ * new words); the pencil edits the description (fetched descriptions can be corrected, others written).
+ */
+function UnitRow({ sourceId, unit, date, next, onToggle }: { sourceId: string; unit: StudySourceUnit; date: string | null; next: boolean; onToggle: (done: boolean) => void }) {
   const refresh = useSourceRefresh();
   const done = !!unit.completedAt;
   const [open, setOpen] = useState(false);
@@ -343,8 +428,18 @@ function UnitRow({ sourceId, unit, onToggle }: { sourceId: string; unit: StudySo
           className="flex cursor-pointer flex-col gap-0.5 border-0 bg-transparent p-0 text-left"
           style={{ color: "inherit", font: "inherit" }}
         >
-          <span className={open ? undefined : "truncate"} style={{ fontSize: 14, fontWeight: 600, textDecoration: done ? "line-through" : "none", opacity: done ? 0.55 : 1, maxWidth: "100%" }}>
-            {unit.position + 1}. {unit.title}
+          <span className="flex min-w-0 items-center gap-2" style={{ maxWidth: "100%" }}>
+            <span className={open ? "min-w-0" : "min-w-0 truncate"} style={{ fontSize: 14, fontWeight: 600, textDecoration: done ? "line-through" : "none", opacity: done ? 0.55 : 1 }}>
+              {unit.position + 1}. {unit.title}
+            </span>
+            {date && !done && (
+              <span
+                className="shrink-0"
+                style={{ padding: "1px 7px", borderRadius: 999, border: "2px solid var(--line)", background: next ? "var(--lemon)" : "transparent", color: next ? "var(--onTile)" : "inherit", fontSize: 11.5, fontWeight: 700 }}
+              >
+                {lessonDateLabel(date)}
+              </span>
+            )}
           </span>
           {unit.description && draft === null && (
             <span className={open ? undefined : "line-clamp-2"} style={{ fontSize: 12.5, fontWeight: 500, lineHeight: 1.35, color: "var(--plainMuted)", whiteSpace: "pre-line" }}>
@@ -352,6 +447,9 @@ function UnitRow({ sourceId, unit, onToggle }: { sourceId: string; unit: StudySo
             </span>
           )}
         </button>
+        <div style={{ marginTop: 3 }}>
+          <TeachesSummary teaches={unit.teaches} full={open} />
+        </div>
         {draft !== null ? (
           <div className="flex flex-col gap-1.5" style={{ marginTop: 4 }}>
             <textarea

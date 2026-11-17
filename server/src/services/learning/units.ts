@@ -7,6 +7,9 @@ export interface NewUnit {
   videoId?: string;
   url?: string;
   description?: string | null;
+  grammarPoints?: string[];
+  culturePoints?: string[];
+  vocabCount?: number | null;
 }
 
 /** "Lesson 1..N" placeholders for manual sources with a known total. */
@@ -22,7 +25,15 @@ export function buildPlaylistUnits(videos: PlaylistVideo[]): NewUnit[] {
 }
 
 export function buildCourseUnits(lessons: CourseLesson[]): NewUnit[] {
-  return lessons.map((l, i) => ({ position: i, title: l.title, url: l.url, description: l.description }));
+  return lessons.map((l, i) => ({
+    position: i,
+    title: l.title,
+    url: l.url,
+    description: l.description,
+    grammarPoints: l.grammarPoints,
+    culturePoints: l.culturePoints,
+    vocabCount: l.vocabCount,
+  }));
 }
 
 export interface UnitLike {

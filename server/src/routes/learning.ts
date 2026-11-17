@@ -6,6 +6,7 @@ import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { localDateKey } from "../services/learning/activity.js";
 import { setSyllabusItemCompletion } from "../services/learning/completion-sync.js";
+import { fillMissingCourseTopics, sourceViews } from "../services/learning/source-topics.js";
 import { buildSession } from "../services/learning/engine.js";
 import { MINUTES_PER_ITEM, computeGoalFeasibility, computeRoutePace } from "../services/learning/pace.js";
 import { levelProgress, levelStates, levelStatesWithExamGate, sourcePercent } from "../services/learning/progress.js";
@@ -445,10 +446,10 @@ learningRouter.post("/syllabus/item", async (req, res) => {
 
 // ── study sources ──
 
-const withPercent = <T extends { completedUnits: number; totalUnits: number | null }>(s: T) => ({
-  ...s,
-  percent: sourcePercent(s.completedUnits, s.totalUnits),
-});
+/** A source as the Library shows it: percent, per-lesson `teaches`, and the ticket `plan` (source-topics.ts). */
+async function sourceView<S extends Parameters<typeof sourceViews>[1][number]>(userId: string, source: S) {
+  return (await sourceViews(userId, [source], todayLocal(), sourcePercent))[0]!;
+}
 
 /** Deletes an UploadedFile's bytes + row outright — used when a cover image
  * is replaced or cleared, so the old one doesn't linger unreferenced. */
@@ -470,7 +471,8 @@ learningRouter.get("/sources", async (req, res) => {
     include: SOURCE_INCLUDE,
     orderBy: { createdAt: "asc" },
   });
-  res.json({ sources: sources.map(withPercent) });
+  void fillMissingCourseTopics(req.userId).catch(() => {});
+  res.json({ sources: await sourceViews(req.userId, sources, todayLocal(), sourcePercent) });
 });
 
 const STATION_KEY = z.string().refine(isStationKey, "Invalid station key (expected level:theme)");
@@ -554,13 +556,15 @@ learningRouter.post("/sources", async (req, res) => {
       stationKey: rest.stationKey ?? null,
       totalUnits: total,
       completedUnits: completed,
+      // DW course lessons arrive tagged; anything else has nothing to fetch later either
+      topicsFetchedAt: fetchOutcome === "course" || !rest.url?.includes("learngerman.dw.com") ? new Date() : null,
       units: { create: units },
     },
     include: SOURCE_INCLUDE,
   });
   // lesson descriptions come from each video's own page: one at a time, in the background (KNOWN_ISSUES #33)
   if (fetchOutcome === "playlist") void fillPlaylistDescriptions(source.id).catch(() => {});
-  res.status(201).json({ source: withPercent(source), fetch: fetchOutcome });
+  res.status(201).json({ source: await sourceView(req.userId, source), fetch: fetchOutcome });
 });
 
 // Deliberately NOT createSourceSchema.omit({autoFetch:true}).partial():
@@ -591,6 +595,10 @@ const patchSourceSchema = z.object({
   // provider, cover, and the unit count when it has no units yet. `isbn` narrows a book lookup.
   refetchDetails: z.boolean().optional(),
   isbn: z.string().trim().max(20).nullish(),
+  // Today's ticket takes this source's next lesson every study day (source-lessons.ts)
+  dailyLesson: z.boolean().optional(),
+  // minutes a lesson is budgeted at; null = the type's default
+  minutesPerUnit: z.int().min(1).max(600).nullish(),
 });
 
 learningRouter.patch("/sources/:id", async (req, res) => {
@@ -605,6 +613,20 @@ learningRouter.patch("/sources/:id", async (req, res) => {
 
   const { refetchCover, refetchDetails, isbn, ...data } = parsed.data;
   const hasUnits = existing.units.length > 0;
+  if (data.dailyLesson === false && existing.dailyLesson) {
+    // switched off: its lesson leaves the ticket, unless it's done or already worked on (that's history)
+    await prisma.roadmapTask.updateMany({
+      where: {
+        day: { userId: req.userId },
+        studySourceUnit: { sourceId: existing.id },
+        completedAt: null,
+        droppedAt: null,
+        timerSeconds: 0,
+        timerRunningSince: null,
+      },
+      data: { droppedAt: new Date() },
+    });
+  }
   if (refetchDetails) {
     const found = await fetchSourceDetails({ type: existing.type, title: existing.title, url: existing.url, isbn });
     if (found.outcome === "failed" || found.outcome === "manual") return res.status(404).json({ error: "Couldn't find details for this source" });
@@ -617,7 +639,7 @@ learningRouter.patch("/sources/:id", async (req, res) => {
       },
       include: SOURCE_INCLUDE,
     });
-    return res.json({ source: withPercent(filled), fetch: found.outcome });
+    return res.json({ source: await sourceView(req.userId, filled), fetch: found.outcome });
   }
   const linkChanged = data.url !== undefined && data.url !== existing.url;
   const coverUrl = data.url !== undefined ? data.url : existing.url;
@@ -673,7 +695,7 @@ learningRouter.patch("/sources/:id", async (req, res) => {
       return [updated];
     });
     if (oldCoverFileId) await deleteUploadedFile(req.userId, oldCoverFileId);
-    return res.json({ source: withPercent(source) });
+    return res.json({ source: await sourceView(req.userId, source) });
   }
 
   const total = data.totalUnits !== undefined ? data.totalUnits ?? null : existing.totalUnits;
@@ -691,7 +713,7 @@ learningRouter.patch("/sources/:id", async (req, res) => {
     include: SOURCE_INCLUDE,
   });
   if (oldCoverFileId) await deleteUploadedFile(req.userId, oldCoverFileId);
-  res.json({ source: withPercent(source) });
+  res.json({ source: await sourceView(req.userId, source) });
 });
 
 const unitPatchSchema = z
@@ -727,6 +749,13 @@ learningRouter.patch("/sources/:id/units/:unitId", async (req, res) => {
         ...(parsed.data.description !== undefined ? { description: parsed.data.description || null } : {}),
       },
     });
+    if (parsed.data.done !== undefined) {
+      // the lesson's ticket task is the same fact (completion-sync.ts): ticking it here completes it there too
+      await tx.roadmapTask.updateMany({
+        where: { studySourceUnitId: unit.id, droppedAt: null },
+        data: { completedAt: parsed.data.done ? new Date() : null },
+      });
+    }
     const units = await tx.studySourceUnit.findMany({ where: { sourceId: unit.sourceId } });
     const progress = unitProgress(units);
     if (turningDone) {
@@ -739,7 +768,7 @@ learningRouter.patch("/sources/:id/units/:unitId", async (req, res) => {
       include: SOURCE_INCLUDE,
     });
   });
-  res.json({ source: withPercent(source) });
+  res.json({ source: await sourceView(req.userId, source) });
 });
 
 const progressSchema = z.object({ delta: z.int().min(-50).max(50).default(1) });
@@ -773,7 +802,7 @@ learningRouter.post("/sources/:id/progress", async (req, res) => {
       ? [prisma.studySourceLog.create({ data: { sourceId: existing.id, delta } })]
       : []),
   ]);
-  res.json({ source: withPercent(source) });
+  res.json({ source: await sourceView(req.userId, source) });
 });
 
 learningRouter.delete("/sources/:id", async (req, res) => {

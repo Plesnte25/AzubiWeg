@@ -346,6 +346,18 @@ checks of each open and fixed entry above (all fixed entries still hold).
     (phone waking from sleep) refetches once. Caddy has its own uncompressed `/api/events` block (`encode` buffers
     streams), so a Caddyfile change needs `systemctl reload caddy`.
 
+54. ✅ **Done** — **Source lessons on Today's ticket** (feature, requested 2026-11-17). The ticket only held syllabus
+    topics; attached sources (Nicos Weg, playlists, books) never came up. Now every study day takes the next unfinished
+    lesson of each source with **Daily lesson** on (default; switch per source in its modal), budgeted at the source's
+    minutes per lesson (type default: course 25, video 15, audio 20, book 30, pages 10) and counted toward the goal.
+    The lesson task and the Library checkbox are one fact (`completion-sync.ts`). Nicos Weg lessons carry DW's own
+    tags (grammar / culture / vocab count, `nicosweg.ts`), matched to syllabus topics by concept (`topic-match.ts`:
+    89 of 128 A1 grammar points; ties of three or more show nothing rather than guess). The Library shows each
+    lesson's date and topics, the finish date, and "Topics covered so far"; the task modal shows "What you'll learn"
+    and Open the lesson. Matches are shown only — topic progress still comes from its checked exercises. Sources
+    added before this are tagged lazily (`fillMissingCourseTopics`). Non-DW sources have no tags yet (their
+    description only); YouTube durations aren't fetched.
+
 **Deployed 2026-11-15** (VPS at `95ad020`, #48–53): checked against the live site afterwards — demo login 404,
 `trusted_devices` migration applied, no Clarity in the page, the live bundle matches the local build, and live sync
 confirmed by the user on laptop + phone.

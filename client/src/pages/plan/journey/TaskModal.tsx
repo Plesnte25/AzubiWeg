@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { HourglassMedium, Play } from "@phosphor-icons/react";
+import { ArrowSquareOut, HourglassMedium, Play } from "@phosphor-icons/react";
 import { ApiError, api } from "../../../api/client";
 import type { RoadmapTask, SyllabusItem } from "../../../api/types";
 import { Modal } from "../../../components/ui/Modal";
@@ -10,6 +10,7 @@ import { useNavStack } from "../../../lib/navStack";
 import { SKILL_COLORS } from "../../../lib/skills";
 import { KIND_LABELS, clock, taskEstimateMinutes, taskKind } from "../../../lib/tasks";
 import { stripHtml } from "../../../lib/text";
+import { TeachesSummary } from "./LessonTeaches";
 import { stationKey } from "./model";
 import { TopicWorkspace } from "./TopicWorkspace";
 import { useLiveSeconds, useTaskTimerActions } from "./useTaskTimer";
@@ -59,7 +60,7 @@ export function TaskModal({
   const timer = useTaskTimerActions();
   const seconds = useLiveSeconds(task);
   const running = !!task?.timerRunningSince;
-  const estimate = task ? taskEstimateMinutes(task.type) : 10;
+  const estimate = task ? taskEstimateMinutes(task) : 10;
   const kind = task ? taskKind(task) : topic?.skill ? { label: KIND_LABELS[topic.skill], color: SKILL_COLORS[topic.skill] } : { label: "Topic", color: "var(--lilac)" };
   const title = task?.title ?? topic?.title ?? "Task";
   const done = task ? !!task.completedAt : topic ? topic.masteryState === "passed" || topic.masteryState === "mastered" || !!topic.completedAt : false;
@@ -233,7 +234,40 @@ export function TaskModal({
           {cta.label}
         </PillButton>
       )}
-      {task?.type === "study_source" && (
+      {task?.lesson && (
+        <div
+          className="flex shrink-0 flex-col gap-2.5"
+          style={{ padding: 14, border: "2.5px solid var(--line)", borderRadius: 18, background: "var(--plain)", color: "var(--plainText)", boxShadow: "3px 3px 0 var(--shadow)" }}
+        >
+          <span className="uppercase" style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em" }}>
+            {task.lesson.sourceTitle} · lesson {task.lesson.number}
+            {task.lesson.of ? ` of ${task.lesson.of}` : ""}
+          </span>
+          <span style={{ fontSize: 13, fontWeight: 700 }}>What you'll learn</span>
+          <TeachesSummary teaches={task.lesson.teaches} full />
+          {task.lesson.teaches.grammar.length === 0 && task.lesson.teaches.culture.length === 0 && !task.lesson.teaches.vocabCount && !task.lesson.description && (
+            <span style={{ fontSize: 13, color: "var(--plainMuted)" }}>No description for this lesson yet. Add one from the Library.</span>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {task.lesson.url && (
+              <a
+                href={task.lesson.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5"
+                style={{ height: 42, padding: "0 16px", border: "2.5px solid var(--line)", borderRadius: 999, background: "var(--btn)", color: "var(--btnText)", fontWeight: 700, fontSize: 14, boxShadow: "2px 2px 0 var(--shadow)" }}
+              >
+                <ArrowSquareOut size={15} weight="bold" aria-hidden="true" />
+                Open the lesson
+              </a>
+            )}
+            <PillButton height={42} variant="secondary" onClick={onOpenLibrary}>
+              Open the Library
+            </PillButton>
+          </div>
+        </div>
+      )}
+      {task?.type === "study_source" && !task.lesson && (
         <PillButton height={42} variant="secondary" className="self-start" onClick={onOpenLibrary}>
           Open the Library
         </PillButton>

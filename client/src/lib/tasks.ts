@@ -1,9 +1,11 @@
 import type { RoadmapSkill, RoadmapTask, RoadmapTaskType } from "../api/types";
 import { SKILL_COLORS } from "./skills";
 
-/** Minutes a roadmap task is budgeted at — mirror of server services/learning/daily-plan.ts taskEstimateMinutes(). */
-export function taskEstimateMinutes(type: RoadmapTaskType): number {
-  return type === "study_source" ? 20 : type === "milestone_test" ? 15 : 10;
+/** Minutes a roadmap task is budgeted at — mirror of server services/learning/daily-plan.ts taskEstimateMinutes(): its
+ * own estimate (a source lesson's minutes per lesson) or the type's default. */
+export function taskEstimateMinutes(task: { type: RoadmapTaskType; estimateMinutes?: number | null }): number {
+  if (task.estimateMinutes) return task.estimateMinutes;
+  return task.type === "study_source" ? 20 : task.type === "milestone_test" ? 15 : 10;
 }
 
 /** Bento task-kind label (README §1.2): the skill, with milestone tests shown as "Self-test" and bureaucracy as
@@ -51,6 +53,13 @@ export function daysUntil(d: Date): number {
   const b = new Date(d);
   b.setHours(0, 0, 0, 0);
   return Math.round((b.getTime() - a.getTime()) / 86_400_000);
+}
+
+/** "Today", "Tomorrow" or "Thu · 19 Nov" for a YYYY-MM-DD date (source lesson schedules). */
+export function lessonDateLabel(key: string): string {
+  const d = new Date(`${key}T00:00:00`);
+  const n = daysUntil(d);
+  return n <= 0 ? "Today" : n === 1 ? "Tomorrow" : shortDate(d);
 }
 
 /** mm:ss (or h:mm:ss past an hour) for timers. */

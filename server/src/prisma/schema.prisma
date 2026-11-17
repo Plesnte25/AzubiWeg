@@ -539,6 +539,13 @@ model StudySource {
   coverImageUrl  String?
   // Plan journey station this source fuels, as "level:theme" (see services/learning/stations.ts); null = none
   stationKey     String?
+  // Today's ticket takes this source's next lesson every study day (services/learning/source-lessons.ts); off for
+  // reference material you dip into rather than work through
+  dailyLesson    Boolean              @default(true)
+  // minutes a lesson is budgeted at on the ticket; null = the default for the source's type
+  minutesPerUnit Int?
+  // when the per-lesson grammar/culture/vocab tags were last fetched (Nicos Weg); null = not yet (filled lazily)
+  topicsFetchedAt DateTime?
   logs           StudySourceLog[]
   units          StudySourceUnit[]
   files          UploadedFile[]
@@ -570,8 +577,14 @@ model StudySourceUnit {
   notes       String?
   // what the lesson covers: fetched where the source has one (Nicos Weg lesson teasers), editable by the user
   description String?
+  // what the lesson teaches, as the source tags it (Nicos Weg: DW's GRAMMAR / REGIONAL_STUDIES knowledge items, and
+  // how many VOCABULARY items); matched to the user's syllabus topics at read time (services/learning/topic-match.ts)
+  grammarPoints String[]  @default([])
+  culturePoints String[]  @default([])
+  vocabCount  Int?
   // null = not done
   completedAt DateTime?
+  tasks       RoadmapTask[]
 
   @@unique([sourceId, position])
 }
@@ -765,9 +778,16 @@ model RoadmapTask {
   // services/learning/completion-sync.ts, never independently toggled.
   syllabusItemId    String?
   syllabusItem      SyllabusItem?   @relation(fields: [syllabusItemId], references: [id], onDelete: SetNull)
+  // a source lesson on the ticket (type study_source): completedAt here and on the unit are the same fact, kept in
+  // sync by completion-sync.ts. SetNull: deleting a source keeps the history of time spent on it
+  studySourceUnitId String?
+  studySourceUnit   StudySourceUnit? @relation(fields: [studySourceUnitId], references: [id], onDelete: SetNull)
+  // minutes this task is budgeted at, when not the type's default (a source's minutes per lesson)
+  estimateMinutes   Int?
   notes             Note[]
 
   @@index([dayId])
+  @@index([studySourceUnitId])
   @@index([skill])
   @@index([syllabusItemId])
 }

@@ -42,8 +42,27 @@ export async function setSyllabusItemCompletion(tx: Tx, userId: string, itemId: 
 }
 
 /**
- * Toggles a RoadmapTask's completion and, if it's linked to a syllabus item,
- * mirrors it there too. Never calls setSyllabusItemCompletion (no
+ * Sets a source lesson's completion and recomputes the source's counters. A lesson turning done counts as streak
+ * activity (a StudySourceLog row), as when it's ticked in the Library.
+ */
+export async function setUnitCompletion(tx: Tx, unitId: string, completedAt: Date | null) {
+  const unit = await tx.studySourceUnit.findUnique({ where: { id: unitId } });
+  if (!unit) return null;
+  const turningDone = completedAt !== null && unit.completedAt === null;
+  if ((unit.completedAt === null) === (completedAt === null)) return unit;
+  await tx.studySourceUnit.update({ where: { id: unit.id }, data: { completedAt } });
+  const [total, done] = await Promise.all([
+    tx.studySourceUnit.count({ where: { sourceId: unit.sourceId } }),
+    tx.studySourceUnit.count({ where: { sourceId: unit.sourceId, completedAt: { not: null } } }),
+  ]);
+  await tx.studySource.update({ where: { id: unit.sourceId }, data: { totalUnits: total, completedUnits: done } });
+  if (turningDone) await tx.studySourceLog.create({ data: { sourceId: unit.sourceId, delta: 1 } });
+  return unit;
+}
+
+/**
+ * Toggles a RoadmapTask's completion and, if it's linked to a syllabus item
+ * or a source lesson, mirrors it there too. Never calls setSyllabusItemCompletion (no
  * recursion) — both setters write the same two tables directly.
  */
 export async function setRoadmapTaskCompletion(tx: Tx, userId: string, taskId: string, completed: boolean) {
@@ -63,6 +82,7 @@ export async function setRoadmapTaskCompletion(tx: Tx, userId: string, taskId: s
         })
       : Promise.resolve(),
   ]);
+  if (task.studySourceUnitId) await setUnitCompletion(tx, task.studySourceUnitId, completedAt);
 
   return tx.roadmapTask.findUniqueOrThrow({ where: { id: task.id }, include: { files: true } });
 }

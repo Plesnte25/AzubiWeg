@@ -213,7 +213,7 @@ export default function Journey() {
   // ── ticket rows: due reviews, then everything on today (taken topics, rolled-over and own tasks) ──
   const taskRow = (t: NonNullable<typeof today>["tasks"][number]): TicketRow => {
     const k = taskKind(t);
-    return { key: `t:${t.id}`, taskId: t.id, title: t.title, meta: `${k.label} · ${taskEstimateMinutes(t.type)} min`, color: k.color, done: !!t.completedAt, running: !!t.timerRunningSince };
+    return { key: `t:${t.id}`, taskId: t.id, title: t.title, meta: `${k.label} · ${taskEstimateMinutes(t)} min`, color: k.color, done: !!t.completedAt, running: !!t.timerRunningSince };
   };
   const tasks = (today?.tasks ?? []).filter((t) => !t.droppedAt);
   const reviewCards = today?.review.cards ?? 0;

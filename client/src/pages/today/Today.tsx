@@ -182,7 +182,7 @@ export default function Today() {
       : []),
     ...todaysTasks.map((t) => {
       const kind = taskKind(t);
-      return { id: t.id, title: t.title, meta: `${kind.label} · ${taskEstimateMinutes(t.type)} min`, color: kind.color, done: !!t.completedAt };
+      return { id: t.id, title: t.title, meta: `${kind.label} · ${taskEstimateMinutes(t)} min`, color: kind.color, done: !!t.completedAt };
     }),
   ];
   const openStops = rows.filter((r) => !r.done).length;

@@ -8,7 +8,12 @@ export function isStudyDay(studyDays: boolean[], date: Date): boolean {
   return studyDays[(date.getDay() + 6) % 7] ?? true;
 }
 
-/** Minutes a roadmap task is budgeted at (tickets and the Today route show "Kind · N min"). */
-export function taskEstimateMinutes(type: "generic" | "vocab" | "study_source" | "milestone_test"): number {
-  return type === "study_source" ? 20 : type === "milestone_test" ? 15 : 10;
+/** Minutes a roadmap task is budgeted at (tickets and the Today route show "Kind · N min"): its own estimate (a
+ * source lesson's minutes per lesson) or the type's default. */
+export function taskEstimateMinutes(task: {
+  type: "generic" | "vocab" | "study_source" | "milestone_test";
+  estimateMinutes?: number | null;
+}): number {
+  if (task.estimateMinutes) return task.estimateMinutes;
+  return task.type === "study_source" ? 20 : task.type === "milestone_test" ? 15 : 10;
 }

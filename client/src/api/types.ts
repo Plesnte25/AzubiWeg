@@ -446,7 +446,41 @@ export interface StudySourceUnit {
   notes: string | null;
   /** What the lesson covers: fetched (Nicos Weg) or written by the user. */
   description: string | null;
+  /** The source's own tags (Nicos Weg: DW's grammar and culture items, vocab count). */
+  grammarPoints: string[];
+  culturePoints: string[];
+  vocabCount: number | null;
+  teaches: LessonTeaches;
   completedAt: string | null;
+}
+
+/** A syllabus topic a source lesson covers (server: services/learning/source-topics.ts). */
+export interface TeachesTopic {
+  id: string;
+  title: string;
+  level: CefrLevel;
+  theme: string | null;
+  masteryState: string;
+}
+
+/** What a lesson teaches, its grammar points matched to the user's topics (server: services/learning/topic-match.ts). */
+export interface LessonTeaches {
+  grammar: { point: string; topicIds: string[] }[];
+  culture: string[];
+  vocabCount: number | null;
+  topics: TeachesTopic[];
+}
+
+/** A source's place on Today's ticket: one lesson per study day (server: services/learning/source-lessons.ts). */
+export interface SourcePlan {
+  minutesPerUnit: number;
+  defaultMinutesPerUnit: number;
+  nextUnitId: string | null;
+  /** YYYY-MM-DD each unfinished lesson comes up; empty when daily lessons are off. */
+  dates: Record<string, string>;
+  finishDate: string | null;
+  /** Topics the finished lessons covered, with how many lessons touched each. */
+  covered: (TeachesTopic & { lessons: number })[];
 }
 
 export interface StudySource {
@@ -469,6 +503,11 @@ export interface StudySource {
   coverImageUrl: string | null;
   /** Plan journey station this source fuels ("level:theme"), or null. */
   stationKey: string | null;
+  /** Today's ticket takes its next lesson every study day. */
+  dailyLesson: boolean;
+  /** Minutes a lesson is budgeted at; null = the type's default (plan.minutesPerUnit is the effective value). */
+  minutesPerUnit: number | null;
+  plan: SourcePlan;
   createdAt: string;
   updatedAt: string;
 }
@@ -622,6 +661,25 @@ export interface RoadmapTask {
   // same fact as that SyllabusItem's completion, kept in sync
   syllabusItemId: string | null;
   syllabusItem: { level: CefrLevel; theme: string | null; description: string | null } | null;
+  /** Minutes this task is budgeted at when not the type's default (a source lesson's). */
+  estimateMinutes: number | null;
+  /** Set for a source lesson on the ticket; its completion and the lesson's are the same fact. */
+  studySourceUnitId: string | null;
+  /** Only on GET /tasks/:id: the lesson, and what it teaches. */
+  lesson?: TaskLesson | null;
+}
+
+export interface TaskLesson {
+  unitId: string;
+  sourceId: string;
+  sourceTitle: string;
+  sourceType: StudySourceType;
+  number: number;
+  of: number | null;
+  title: string;
+  url: string | null;
+  description: string | null;
+  teaches: LessonTeaches;
 }
 
 export interface RoadmapJournalTask extends RoadmapTask {

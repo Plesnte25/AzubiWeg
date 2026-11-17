@@ -15,6 +15,12 @@ export interface CourseLesson {
   url: string;
   /** DW's lesson teaser, trimmed of its marketing lines; null when there's none. */
   description: string | null;
+  /** The lesson's grammar points as DW tags them ("Conjugation: present tense (2)"), in lesson order. */
+  grammarPoints: string[];
+  /** Its culture ("Landeskunde") pieces ("Celebrating birthdays in the office"). */
+  culturePoints: string[];
+  /** How many vocabulary items it introduces; null when DW sent no tags at all. */
+  vocabCount: number | null;
 }
 
 // DW teasers are part summary, part SEO copy: "A1 German: Learn the alphabet… Click here to learn with DW's free
@@ -51,6 +57,23 @@ interface GraphQlLesson {
   name?: unknown;
   namedUrl?: unknown;
   teaser?: unknown;
+  knowledges?: unknown;
+}
+
+/** DW knowledge items → grammar / culture names (trimmed, de-duplicated, order kept) and a vocab count. */
+export function parseKnowledges(raw: unknown): Pick<CourseLesson, "grammarPoints" | "culturePoints" | "vocabCount"> {
+  if (!Array.isArray(raw)) return { grammarPoints: [], culturePoints: [], vocabCount: null };
+  const grammar = new Set<string>();
+  const culture = new Set<string>();
+  let vocab = 0;
+  for (const k of raw as { name?: unknown; knowledgeType?: unknown }[]) {
+    const name = typeof k?.name === "string" ? k.name.replace(/\s+/g, " ").trim() : "";
+    if (!name) continue;
+    if (k.knowledgeType === "GRAMMAR") grammar.add(name);
+    else if (k.knowledgeType === "REGIONAL_STUDIES") culture.add(name);
+    else if (k.knowledgeType === "VOCABULARY") vocab++;
+  }
+  return { grammarPoints: [...grammar], culturePoints: [...culture], vocabCount: raw.length > 0 ? vocab : null };
 }
 
 /** Pure response parsing, split out for tests. */
@@ -65,7 +88,12 @@ export function parseCourseResponse(body: unknown): { title: string | null; less
   const lessons: CourseLesson[] = [];
   for (const lesson of course.lessons as GraphQlLesson[]) {
     if (typeof lesson?.name !== "string" || typeof lesson?.namedUrl !== "string") continue;
-    lessons.push({ title: lesson.name, url: BASE_URL + lesson.namedUrl, description: cleanTeaser(lesson.teaser) });
+    lessons.push({
+      title: lesson.name.trim(),
+      url: BASE_URL + lesson.namedUrl,
+      description: cleanTeaser(lesson.teaser),
+      ...parseKnowledges(lesson.knowledges),
+    });
   }
   return { title: typeof course.name === "string" ? course.name : null, lessons };
 }
@@ -79,9 +107,9 @@ export async function fetchCourse(
       method: "POST",
       headers: { "Content-Type": "application/json", "User-Agent": BROWSER_UA },
       body: JSON.stringify({
-        query: `{ content(id: ${courseId}, lang: ENGLISH) { ... on Course { name lessons { name namedUrl teaser } } } }`,
+        query: `{ content(id: ${courseId}, lang: ENGLISH) { ... on Course { name lessons { name namedUrl teaser knowledges { name knowledgeType } } } } }`,
       }),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(30_000),
     });
     if (!res.ok) return null;
     const parsed = parseCourseResponse(await res.json());

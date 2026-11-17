@@ -19,6 +19,8 @@ import { planSelfPacedCleanup } from "../services/learning/self-paced.js";
 import { currentByLine, forecastDates, loadQueue, topicTaskData } from "../services/learning/queue.js";
 import { TOPIC_MINUTES, planTicket, queueOrder } from "../services/learning/ticket.js";
 import { EXTRAS } from "../services/learning/extras.js";
+import { lessonSkill, lessonTitle, planSourceLessons, unitMinutes } from "../services/learning/source-lessons.js";
+import { fillMissingCourseTopics, teachesFor } from "../services/learning/source-topics.js";
 
 export const roadmapRouter = Router();
 roadmapRouter.use(requireAuth);
@@ -297,6 +299,7 @@ roadmapRouter.get("/today", async (req, res) => {
 
   const today = todayLocal();
   const restDay = !isStudyDay(user.studyDays, today);
+  void fillMissingCourseTopics(user.id).catch(() => {});
   const [review, topicReviews] = await Promise.all([
     dueReview(user.id),
     prisma.syllabusItem.findMany({
@@ -317,15 +320,53 @@ roadmapRouter.get("/today", async (req, res) => {
       data: { dayId: day.id },
     });
     const queue = await loadQueue(tx, user.id);
-    const onToday = await tx.roadmapTask.findMany({ where: { dayId: day.id, droppedAt: null }, select: { type: true, syllabusItemId: true } });
+    let sortOrder = await nextSortOrder(tx, day.id);
+
+    // source lessons first: a source's daily lesson is a fixed commitment, and topics fill what's left of the goal
+    const [sources, lessonTasks] = await Promise.all([
+      tx.studySource.findMany({
+        where: { userId: user.id, dailyLesson: true },
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true, title: true, type: true, unitLabel: true, minutesPerUnit: true, dailyLesson: true,
+          units: { where: { completedAt: null }, select: { id: true, position: true, title: true, description: true, completedAt: true } },
+        },
+      }),
+      tx.roadmapTask.findMany({
+        where: { day: { userId: user.id }, studySourceUnitId: { not: null } },
+        select: { dayId: true, completedAt: true, droppedAt: true, studySourceUnit: { select: { sourceId: true } } },
+      }),
+    ]);
+    const onTodaySourceIds = new Set(lessonTasks.filter((t) => t.dayId === day.id).map((t) => t.studySourceUnit!.sourceId));
+    const openSourceIds = new Set(lessonTasks.filter((t) => !t.completedAt && !t.droppedAt).map((t) => t.studySourceUnit!.sourceId));
+    for (const pick of planSourceLessons({ sources, restDay, onTodaySourceIds, openSourceIds })) {
+      const source = sources.find((x) => x.id === pick.sourceId)!;
+      const unit = source.units.find((u) => u.id === pick.unitId)!;
+      await tx.roadmapTask.create({
+        data: {
+          dayId: day.id,
+          sortOrder: sortOrder++,
+          type: "study_source",
+          skill: lessonSkill(source.type),
+          title: lessonTitle(source.title, unit),
+          description: unit.description,
+          studySourceUnitId: unit.id,
+          estimateMinutes: unitMinutes(source),
+        },
+      });
+    }
+
+    const onToday = await tx.roadmapTask.findMany({
+      where: { dayId: day.id, droppedAt: null },
+      select: { type: true, syllabusItemId: true, estimateMinutes: true },
+    });
     const plan = planTicket({
       open: queue.open,
-      plannedMinutes: reviewMinutes + onToday.reduce((n, t) => n + taskEstimateMinutes(t.type), 0),
+      plannedMinutes: reviewMinutes + onToday.reduce((n, t) => n + taskEstimateMinutes(t), 0),
       goalMinutes: user.studyCapacityMinutes,
       restDay,
       hasTopicToday: onToday.some((t) => t.syllabusItemId !== null),
     });
-    let sortOrder = await nextSortOrder(tx, day.id);
     for (const id of plan.autoTake) {
       await tx.roadmapTask.create({ data: { dayId: day.id, sortOrder: sortOrder++, ...topicTaskData(queue.byId.get(id)!) } });
       queue.taken.add(id);
@@ -346,8 +387,8 @@ roadmapRouter.get("/today", async (req, res) => {
     review,
     goal: {
       minutes: user.studyCapacityMinutes,
-      plannedMinutes: reviewMinutes + live.reduce((n, t) => n + taskEstimateMinutes(t.type), 0),
-      doneMinutes: live.filter((t) => t.completedAt).reduce((n, t) => n + taskEstimateMinutes(t.type), 0),
+      plannedMinutes: reviewMinutes + live.reduce((n, t) => n + taskEstimateMinutes(t), 0),
+      doneMinutes: live.filter((t) => t.completedAt).reduce((n, t) => n + taskEstimateMinutes(t), 0),
     },
     next: next ? { id: next.id, title: next.title, category: next.category, theme: next.theme } : null,
     lines: currentByLine(queue),
@@ -506,10 +547,31 @@ const toggleSchema = z
 roadmapRouter.get("/tasks/:id", async (req, res) => {
   const task = await prisma.roadmapTask.findFirst({
     where: { id: req.params.id, day: { userId: req.userId } },
-    include: { files: true, syllabusItem: { select: { level: true, theme: true, description: true } } },
+    include: {
+      files: true,
+      syllabusItem: { select: { level: true, theme: true, description: true } },
+      studySourceUnit: { include: { source: { select: { id: true, title: true, type: true, url: true, level: true, totalUnits: true } } } },
+    },
   });
   if (!task) return res.status(404).json({ error: "Task not found" });
-  res.json({ task });
+  // a source lesson: what it teaches, matched to the user's topics (topic-match.ts)
+  const unit = task.studySourceUnit;
+  const lesson = unit
+    ? {
+        unitId: unit.id,
+        sourceId: unit.source.id,
+        sourceTitle: unit.source.title,
+        sourceType: unit.source.type,
+        number: unit.position + 1,
+        of: unit.source.totalUnits,
+        title: unit.title,
+        url: unit.url ?? (unit.videoId ? `https://www.youtube.com/watch?v=${unit.videoId}` : unit.source.url),
+        description: unit.description,
+        teaches: await teachesFor(req.userId, unit, unit.source.level),
+      }
+    : null;
+  const { studySourceUnit: _unit, ...rest } = task;
+  res.json({ task: { ...rest, lesson } });
 });
 
 roadmapRouter.patch("/tasks/:id", async (req, res) => {
