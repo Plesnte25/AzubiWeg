@@ -481,6 +481,38 @@ const CASE_TAGS: Record<CaseKey, string> = {
   gen: "genitive",
 };
 
+const NOUN_LIKE = /^[A-ZÄÖÜ][\p{L}-]*$/u;
+
+/** The single gender the dictionary gives an exact-case noun spelling, or null when it has none or several
+ * ("Schild": der shield / das sign). */
+async function onlyNounGender(word: string): Promise<string | null> {
+  const nouns = selectExactCaseEntries(await findEntriesByHeadword(word.toLowerCase()), word).filter((e) => e.pos === "noun" && e.gender);
+  const genders = new Set(nouns.map((e) => e.gender));
+  return genders.size === 1 ? [...genders][0]! : null;
+}
+
+/**
+ * Gender of a compound the dictionary lacks, from its head (the last part decides German gender: Radiomoderatorin ->
+ * Moderatorin -> die, Redemittel -> Mittel -> das). Hyphenated compounds use the part after the last hyphen. Otherwise
+ * the longest dictionary-noun suffix of 4+ letters wins; if that suffix has two genders, gives up rather than guess
+ * a shorter one. Never for a word the dictionary knows as a proper name (Nürnberg isn't "der" because of Berg).
+ */
+export async function compoundGender(headword: string): Promise<string | null> {
+  if (!NOUN_LIKE.test(headword)) return null;
+  const own = selectExactCaseEntries(await findEntriesByHeadword(headword.toLowerCase()), headword);
+  if (own.some((e) => e.pos === "name")) return null;
+  const tail = headword.slice(headword.lastIndexOf("-") + 1);
+  if (tail !== headword) return NOUN_LIKE.test(tail) && tail.length >= 3 ? ((await onlyNounGender(tail)) ?? compoundGender(tail)) : null;
+  for (let i = 1; i <= headword.length - 4; i++) {
+    const suffix = headword[i]!.toUpperCase() + headword.slice(i + 1);
+    const nouns = selectExactCaseEntries(await findEntriesByHeadword(suffix.toLowerCase()), suffix).filter((e) => e.pos === "noun" && e.gender);
+    if (nouns.length === 0) continue;
+    const genders = new Set(nouns.map((e) => e.gender));
+    return genders.size === 1 ? [...genders][0]! : null;
+  }
+  return null;
+}
+
 /** Nom/Akk/Dat/Gen x Sg/Pl table from forms tagged `source: "declension"`.
  * Multiple forms can share a cell (e.g. dative singular "Haus"/"Hause") —
  * first one seen wins, same convention the old wikitext extractors used. */

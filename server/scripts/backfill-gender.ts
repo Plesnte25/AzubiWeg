@@ -13,18 +13,20 @@
 import "dotenv/config";
 import { prisma } from "../src/db.js";
 import { buildGrammarNote } from "../src/services/enrichment/index.js";
-import { findEntriesByHeadword, selectExactCaseEntries } from "../src/services/enrichment/kaikki.js";
+import { compoundGender, findEntriesByHeadword, selectExactCaseEntries } from "../src/services/enrichment/kaikki.js";
 import { deriveGenus } from "../src/services/vocab/classify.js";
 import { formatCardLine } from "../src/services/vault/format.js";
 import { vaultSync } from "../src/services/vault/sync.js";
 
 const dryRun = process.argv.includes("--dry-run");
 
+// The dictionary noun's gender; else plural-only "die (nur Plural)"; else a compound's head (Radiomoderatorin -> die).
 async function nounGrammar(headword: string): Promise<string | null> {
   if (!/^[A-ZÄÖÜ]/.test(headword)) return null;
   const entries = selectExactCaseEntries(await findEntriesByHeadword(headword.toLowerCase()), headword);
-  const noun = entries.find((e) => e.pos === "noun" && e.gender);
-  return noun ? buildGrammarNote({ ...noun, conjugation: null }) : null;
+  const noun = entries.find((e) => e.pos === "noun" && e.gender) ?? entries.find((e) => e.pos === "noun");
+  const note = noun ? buildGrammarNote({ ...noun, conjugation: null }) : null;
+  return note ?? compoundGender(headword);
 }
 
 async function main() {

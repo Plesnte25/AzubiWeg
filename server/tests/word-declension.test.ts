@@ -13,6 +13,12 @@ describe("buildGrammarNote", () => {
     expect(buildGrammarNote(null)).toBeNull();
   });
 
+  it("gives a plural-only noun (no gender, plural cells only) the article die", () => {
+    const declension = { nom: { pl: "Eltern" }, akk: { pl: "Eltern" }, dat: { pl: "Eltern" }, gen: { pl: "Eltern" } };
+    expect(buildGrammarNote({ gender: null, declension, conjugation: null })).toBe("die (nur Plural)");
+    expect(buildGrammarNote({ gender: null, declension: { nom: { sg: "X", pl: "Xe" } }, conjugation: null })).toBeNull();
+  });
+
   it("joins present/past/perfect for a verb entry", () => {
     const note = buildGrammarNote({
       gender: null,

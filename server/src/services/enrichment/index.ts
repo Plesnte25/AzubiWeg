@@ -4,6 +4,7 @@ import {
   type Resolution,
   TransientLookupError,
   cleanExampleTranslation,
+  compoundGender,
   findEntryById,
   findPrimaryEntry,
   isEnglishCognate,
@@ -102,12 +103,24 @@ export function buildGrammarNote(
     const parts = [conj.present?.er, conj.past, conj.perfect].filter(Boolean);
     if (parts.length) return parts.join(", ");
   }
+  const decl = entry.declension as Record<string, { sg?: string; pl?: string }> | null;
   if (entry.gender) {
-    const decl = entry.declension as { nom?: { pl?: string } } | null;
     const plural = decl?.nom?.pl;
     return plural ? `${entry.gender}; Plural: die ${plural}` : entry.gender;
   }
+  // plural-only nouns (die Eltern, die Leute): no gender, but the article is always "die"
+  if (decl && Object.values(decl).some((c) => c.pl) && !Object.values(decl).some((c) => c.sg)) return "die (nur Plural)";
   return null;
+}
+
+/** buildGrammarNote, plus the compound-head gender for a noun the dictionary doesn't have a gender for. */
+export async function nounGrammarNote(
+  headword: string,
+  entry: { pos?: string; gender: string | null; declension: unknown; conjugation: unknown } | null,
+): Promise<string | null> {
+  const note = buildGrammarNote(entry);
+  if (note || (entry && entry.pos !== "noun")) return note;
+  return compoundGender(headword);
 }
 
 /**
@@ -180,6 +193,8 @@ export async function enrichResolved(
     return { ...empty, meaning: null, found: false, rejected: "not-german" };
   }
 
+  const grammar = await nounGrammarNote(res.headword, entry);
+
   let audioPath: string | null = null;
   if (entry?.audioFilename) {
     audioPath = await downloadCommonsAudio(entry.audioFilename, audioDir);
@@ -214,7 +229,7 @@ export async function enrichResolved(
   if (!isPedagogicalExample(example) || !isSimpleExample(example) || !exampleTranslation) {
     const tatoeba = await findTatoebaExample(
       res.headword,
-      wordForms(res.headword, { grammar: buildGrammarNote(entry), declension: entry?.declension, conjugation: entry?.conjugation }),
+      wordForms(res.headword, { grammar, declension: entry?.declension, conjugation: entry?.conjugation }),
     );
     if (tatoeba) ({ de: example, en: exampleTranslation } = tatoeba);
   }
@@ -245,7 +260,7 @@ export async function enrichResolved(
   return {
     meaning: res.meaning,
     ipa: entry?.ipa ?? null,
-    grammar: buildGrammarNote(entry),
+    grammar,
     form: res.formNote,
     example,
     audioPath,

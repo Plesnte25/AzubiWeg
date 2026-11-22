@@ -379,7 +379,12 @@ checks of each open and fixed entry above (all fixed entries still hold).
     before the first comma, missing ~25% of nouns (`m.weak` Kollege, `f.sg` Schadenfreude, `f:n` SMS). Now reads
     every template shape, then sense gender tags, then the head line: misses fell to ~6.5% on a 5.6k-noun sample,
     nearly all letters/abbreviations (A, NB, PS). Needs `npm run import:kaikki` then `npm run backfill:gender`
-    (fills empty `grammar` only, through the vault for vault users; lists words it left alone).
+    (fills empty `grammar` only, through the vault for vault users; lists words it left alone). First production
+    run (2026-11-22) filled 10 and left real nouns *Eltern*, *Radiomoderatorin*, *Redemittel*: plural-only nouns now
+    get "die (nur Plural)", and a compound the dictionary lacks takes its head's gender (`compoundGender`: the last
+    hyphen part, else the longest dictionary-noun suffix; never for a proper name, so Nürnberg/Frankreich stay bare;
+    gives up on a two-gender head like *Schild*). Phrases and place names on that list correctly have no article;
+    *Zahlen* (das Zahlen / die Zahlen) is ambiguous and is for the user to edit.
 
 58. ✅ **Fixed** — **Inflected forms stored with a label as their meaning** (user, 2026-11-22: *werde* =
     "first-person singular present" instead of "to become"). Wiktionary writes these senses as
