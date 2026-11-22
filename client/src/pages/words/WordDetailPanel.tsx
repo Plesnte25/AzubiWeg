@@ -219,7 +219,7 @@ export function WordDetailPanel({
   const badge =
     word.enrichmentStatus === "published_review" ? "needs review" : word.enrichmentStatus === "incomplete" || word.enrichmentStatus === "unresolved" ? "incomplete" : null;
 
-  const play = () => void playWordAudio(word.id).catch(() => toast.error("Audio isn't available right now"));
+  const play = () => void playWordAudio(word.id).catch((err: Error) => toast.error(err.message));
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" style={{ gap: compact ? 14 : 16 }}>

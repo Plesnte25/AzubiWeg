@@ -91,6 +91,8 @@ export function sanitizeStem(name: string): string {
   return name.replace(/[^\p{L}\p{N}_.-]/gu, "_");
 }
 
+let warnedFfmpeg = false;
+
 /**
  * Downloads a pronunciation recording from Wikimedia Commons into audioDir,
  * converting to MP3 (iOS/WebKit can't play Commons' OGG). Returns the
@@ -138,7 +140,13 @@ export async function downloadCommonsAudio(
       "4",
       mp3Path,
     ]);
-  } catch {
+  } catch (err) {
+    // Usually ffmpeg missing on the host (it isn't a Node dependency): every Commons recording then silently falls
+    // back to TTS, so say so once.
+    if (!warnedFfmpeg) {
+      warnedFfmpeg = true;
+      console.warn(`Commons audio: ffmpeg conversion failed (${(err as Error).message.split("\n")[0]}); is ffmpeg installed? Falling back to TTS`);
+    }
     await unlink(srcPath).catch(() => {});
     return null;
   }

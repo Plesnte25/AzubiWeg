@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { Prisma } from "@prisma/client";
 import { Router } from "express";
@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { BATCH_DELAY_MS, createPonsBudget, delay, enrichResolved, resolveWordSafe } from "../services/enrichment/index.js";
+import { isPlausibleAudioSize } from "../services/enrichment/audio.js";
 import { translateText } from "../services/enrichment/kaikki.js";
 import { classifyLevel, strength, withComputedFields } from "../services/vocab/classify.js";
 import { firstProtected, formatCardLine } from "../services/vault/format.js";
@@ -383,7 +384,11 @@ wordsRouter.get("/:id/audio", async (req, res) => {
     const baseDir = user.vaultPath ? path.join(vaultFiles(user.vaultPath).audioDir, "..") : path.join(appAudioDir(user.id), "..");
     const resolved = path.resolve(baseDir, word.audioPath);
     // audioPath comes from vault markdown — never let it escape the audio root
-    if (resolved.startsWith(path.resolve(baseDir) + path.sep) && existsSync(resolved)) recording = resolved;
+    // A truncated/empty file (an interrupted download or synthesis) "plays" as an error in the browser; treat it as
+    // missing so the TTS fallback answers instead. 1 KB, not the TTS floor: a short Commons recording can be small.
+    if (resolved.startsWith(path.resolve(baseDir) + path.sep) && existsSync(resolved) && isPlausibleAudioSize(statSync(resolved).size, 1024)) {
+      recording = resolved;
+    }
   }
   if (recording) return res.sendFile(recording);
 

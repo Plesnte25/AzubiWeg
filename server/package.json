@@ -13,6 +13,7 @@
     "import:kaikki": "tsx scripts/import-kaikki.ts",
     "import:derivbase": "tsx scripts/import-derivbase.ts",
     "backfill:kaikki": "tsx scripts/backfill-kaikki.ts",
+    "backfill:gender": "tsx scripts/backfill-gender.ts",
     "backfill:example-translation": "tsx scripts/backfill-example-translation.ts",
     "backfill:examples": "tsx scripts/backfill-examples.ts",
     "backfill:form-meanings": "tsx scripts/backfill-form-meanings.ts",
@@ -38,7 +39,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "msedge-tts": "^2.0.7",
+    "msedge-tts": "^2.1.1",
     "multer": "^2.2.0",
     "pg": "^8.22.0",
     "zod": "^4.4.3"

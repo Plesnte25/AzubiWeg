@@ -1,3 +1,4 @@
+import { playAuthedAudio, preloadAuthedAudio } from "../lib/playAudio";
 import type {
   ActivityFeedResponse,
   ActivitySummary,
@@ -644,16 +645,12 @@ export async function downloadFile(fileId: string, name: string): Promise<void> 
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-/** Fetches word audio with auth and plays it (audio tags can't send headers). */
-/** Plays a word's recording; words without one fall back to the server's cached Edge TTS of the headword. */
-export async function playWordAudio(wordId: string): Promise<void> {
-  const token = getToken();
-  const res = await fetch(`/api/words/${wordId}/audio?fallback=tts`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!res.ok) throw new ApiError(res.status, "Audio not available");
-  const url = URL.createObjectURL(await res.blob());
-  const audio = new Audio(url);
-  audio.addEventListener("ended", () => URL.revokeObjectURL(url));
-  await audio.play();
+/** Plays a word's recording; words without one fall back to the server's cached Edge TTS of the headword. Call from
+ * the click handler itself (see playAuthedAudio). */
+export function playWordAudio(wordId: string): Promise<void> {
+  return playAuthedAudio(`/api/words/${wordId}/audio?fallback=tts`);
+}
+
+export function preloadWordAudio(wordId: string): void {
+  preloadAuthedAudio(`/api/words/${wordId}/audio?fallback=tts`);
 }

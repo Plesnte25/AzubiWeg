@@ -66,7 +66,8 @@ Identical regardless of provider — apt resolves the correct arm64 packages
 automatically:
 
 ```bash
-sudo apt update && sudo apt install -y git rclone
+# ffmpeg: converts Wikimedia Commons pronunciations (OGG) to MP3; without it every word falls back to TTS
+sudo apt update && sudo apt install -y git rclone ffmpeg
 
 # Docker + Compose plugin (official script — works on arm64 too)
 curl -fsSL https://get.docker.com | sudo sh

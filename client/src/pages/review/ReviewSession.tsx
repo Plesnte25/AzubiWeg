@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowCounterClockwise, HandTap, Sparkle, SpeakerHigh, Timer, Trophy, X } from "@phosphor-icons/react";
 import { useLocation } from "react-router-dom";
-import { api, playWordAudio } from "../../api/client";
+import { api, playWordAudio, preloadWordAudio } from "../../api/client";
 import type { Grade, Word } from "../../api/types";
 import { ThemeToggle } from "../../components/chrome/ThemeToggle";
 import { toast } from "../../components/ui/Toast";
@@ -477,7 +477,7 @@ function FlashCard({
                 tabIndex={flipped ? 0 : -1}
                 onClick={(e) => {
                   e.stopPropagation();
-                  playWordAudio(w.id).catch(() => toast.error("Couldn't play it"));
+                  playWordAudio(w.id).catch((err: Error) => toast.error(err.message));
                 }}
                 className="flex cursor-pointer items-center justify-center p-0"
                 style={{ width: 40, height: 40, borderRadius: "50%", border: "2.5px solid var(--line)", background: "var(--plain)", color: "var(--plainText)", boxShadow: "2px 2px 0 var(--shadow)" }}
@@ -670,10 +670,22 @@ function ReviewSessionInner({ words, deckLabel }: { words?: Word[]; deckLabel?: 
   const cardMode: Mode = mode === "article" && !current?.word.genus ? "word" : mode;
 
   useEffect(() => setPick(null), [current?.word.id, s.idx]);
+  // warm the clip while the front shows, so turning the card plays it at once
+  useEffect(() => {
+    if (current) preloadWordAudio(current.word.id);
+  }, [current?.word.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Turning a card to its answer says the word. Called inside the tap/keypress itself (not from an effect on
+  // `flipped`), so the browser counts it as user-initiated playback, which iOS requires.
+  const reveal = () => {
+    if (!current) return;
+    s.setFlipped(true);
+    playWordAudio(current.word.id).catch((err: Error) => toast.error(err.message));
+  };
   const flip = () => {
     if (!current) return;
-    s.setFlipped(!s.flipped);
+    if (s.flipped) s.setFlipped(false);
+    else reveal();
   };
   const close = () => {
     if (s.graded.length) toast.success(`Saved · ${s.graded.length} graded`);
@@ -736,7 +748,7 @@ function ReviewSessionInner({ words, deckLabel }: { words?: Word[]; deckLabel?: 
             pick={pick}
             onPick={(a) => {
               setPick(a);
-              s.setFlipped(true);
+              reveal();
             }}
             onFlip={flip}
             bp={bp}
