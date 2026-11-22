@@ -41,7 +41,10 @@ async function main() {
       const { res } = await resolveWordSafe(word.headword);
       // only refile under a base word the old meaning itself names ("plural of Begrüßung" → Begrüßung)
       const named = formOfTargets(word.meaning!).map((t) => t.toLowerCase());
-      const target = res.headword.toLowerCase() !== word.sortKey && named.includes(res.headword.toLowerCase()) ? res.headword : null;
+      // A bare label ("first-person singular present", werde) names no base word; then trust a resolution that went
+      // through the inflected-form index (it sets formNote) to a different headword.
+      const viaForm = named.length === 0 && res.formNote !== null && res.meaning !== null && !isFormOfMeaning(res.meaning);
+      const target = res.headword.toLowerCase() !== word.sortKey && (named.includes(res.headword.toLowerCase()) || viaForm) ? res.headword : null;
       console.log(`  ${word.headword} — "${word.meaning}" → ${target ? `${target} — "${res.meaning ?? "?"}" · form: ${res.formNote ?? "-"}` : "no base word found, left as is"}`);
       if (!apply || !target) continue;
       const result = await vaultSync.enrichIntoVault(user.id, user.vaultPath!, word.headword, word.lesson);

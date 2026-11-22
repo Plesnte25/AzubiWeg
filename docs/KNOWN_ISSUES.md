@@ -358,6 +358,36 @@ checks of each open and fixed entry above (all fixed entries still hold).
     added before this are tagged lazily (`fillMissingCourseTopics`). Non-DW sources have no tags yet (their
     description only); YouTube durations aren't fetched.
 
+55. ✅ **Fixed** — **Some words had no audio** (e.g. *sich*, *vielleicht*; found by the user 2026-11-18). Words
+    without a Wikimedia Commons recording rely on Edge TTS, both at enrichment and via `?fallback=tts`. Microsoft
+    started answering the WebSocket with 403 to `msedge-tts` 2.0.7 (its hard-coded `Sec-MS-GEC-Version` Edge build
+    was too old), so every TTS word failed with "Audio isn't available right now". Upgraded to 2.1.1. **Will
+    recur:** when TTS 403s again, bump `msedge-tts` first. Words added while it was broken have `audioPath` null
+    and play through the fallback (cached in `data/generated-listening-audio/`).
+
+56. ✅ **Fixed** — **Pronunciation "couldn't be played" / missing on many words** (user, 2026-11-22). Four causes:
+    #55's `msedge-tts` bump was never committed, so production still ran the 403ing 2.0.7; the VPS had no
+    **ffmpeg**, so every Commons recording failed its OGG→MP3 conversion and fell back to that broken TTS (now in
+    DEPLOYMENT.md's apt line, and logged once when missing); on iPhone, `new Audio(blob).play()` after the authed
+    fetch ran outside the tap gesture and was refused (now one shared element, unlocked with a silent clip inside the
+    tap: `lib/playAudio.ts`); a truncated recording file was served as-is (now <1 KB counts as missing → TTS).
+    Toasts give the real reason. Review flashcards now say the word when turned to the answer (preloaded while
+    the front shows).
+
+57. ✅ **Fixed** — **Nouns without der/die/das** (user, 2026-11-22: "each noun needs its article stored"). The
+    article is the head of `grammar`, set from `KaikkiEntry.gender`; `extractGender` only read a bare `m`/`f`/`n`
+    before the first comma, missing ~25% of nouns (`m.weak` Kollege, `f.sg` Schadenfreude, `f:n` SMS). Now reads
+    every template shape, then sense gender tags, then the head line: misses fell to ~6.5% on a 5.6k-noun sample,
+    nearly all letters/abbreviations (A, NB, PS). Needs `npm run import:kaikki` then `npm run backfill:gender`
+    (fills empty `grammar` only, through the vault for vault users; lists words it left alone).
+
+58. ✅ **Fixed** — **Inflected forms stored with a label as their meaning** (user, 2026-11-22: *werde* =
+    "first-person singular present" instead of "to become"). Wiktionary writes these senses as
+    `["inflection of werden:", "first/third-person singular subjunctive I"]`; the label filter missed `first/` and
+    the roman numeral, so the label became werde's meaning and resolution never followed it to *werden*. Labels now
+    filtered fully, so "werde" files under *werden* with a form note. Old cards: re-import, then
+    `npm run backfill:form-meanings` (dry run) / `-- --apply`, which now also catches bare-label meanings.
+
 **Deployed 2026-11-15** (VPS at `95ad020`, #48–53): checked against the live site afterwards — demo login 404,
 `trusted_devices` migration applied, no Clarity in the page, the live bundle matches the local build, and live sync
 confirmed by the user on laptop + phone.

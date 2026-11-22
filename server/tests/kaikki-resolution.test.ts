@@ -115,6 +115,30 @@ describe("extractGender", () => {
     ).toBe("das");
   });
 
+  it.each([
+    ["Kollege", "m.weak", "der"],
+    ["Schadenfreude", "f.sg", "die"],
+    ["Wetter", "n.sg", "das"],
+    ["SMS", "f:n,-,-:en:e", "die"],
+    ["Liter", "((<m.weak>,<m,s,s>))", "der"],
+  ])("reads %s's template %s", (word, arg, gender) => {
+    expect(extractGender({ word, pos: "noun", head_templates: [{ name: "de-noun", args: { "1": arg } }] })).toBe(gender);
+  });
+
+  it("falls back to an unambiguous sense gender tag", () => {
+    expect(extractGender({ word: "Angestellte", pos: "noun", head_templates: [{ name: "de-noun", args: { "1": "+" } }], senses: [{ tags: ["feminine"] }] })).toBe("die");
+    expect(extractGender({ word: "X", pos: "noun", senses: [{ tags: ["masculine"] }, { tags: ["neuter"] }] })).toBeNull();
+  });
+
+  it("falls back to the head line's gender letter", () => {
+    expect(extractGender({ word: "AA", pos: "noun", head_templates: [{ name: "head", expansion: "AA n" }] })).toBe("das");
+    expect(extractGender({ word: "AA", pos: "noun", head_templates: [{ name: "head", expansion: "AA" }] })).toBeNull();
+  });
+
+  it("leaves plural-only nouns alone", () => {
+    expect(extractGender({ word: "Leute", pos: "noun", head_templates: [{ name: "de-noun", args: { "1": "p" } }] })).toBeNull();
+  });
+
   it("returns null when there is no de-noun template", () => {
     expect(extractGender({ word: "gehen", pos: "verb" })).toBeNull();
   });
@@ -320,6 +344,19 @@ describe("selectExactCaseEntries", () => {
     expect(filtered.meaning).toBe("(Adjective) bare, in cash");
     expect(filtered.meaning).not.toContain("nightclub");
     expect(isSpellingCognate("bar", filtered.meaning)).toBe(false);
+  });
+});
+
+describe("firstMeaning on an inflected form's own entry", () => {
+  it("finds no meaning in werde's senses (all 'inflection of werden:' labels), so resolution follows the lemma", () => {
+    const pre = "inflection of werden:";
+    expect(
+      firstMeaning([
+        { glosses: [pre, "first-person singular present"], tags: ["form-of"] },
+        { glosses: [pre, "first/third-person singular subjunctive I"], tags: ["form-of"] },
+        { glosses: [pre, "singular imperative"], tags: ["form-of"] },
+      ]),
+    ).toBeNull();
   });
 });
 

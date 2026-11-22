@@ -16,6 +16,13 @@ describe("isFormOfMeaning", () => {
     expect(isFormOfMeaning("(Noun) plural of Zahl; (Noun) number")).toBe(false);
   });
 
+  it("spots bare label meanings whose base word was dropped (werde)", () => {
+    expect(isFormOfMeaning("(Verb) first-person singular present")).toBe(true);
+    expect(isFormOfMeaning("first/third-person singular subjunctive I")).toBe(true);
+    expect(isFormOfMeaning("(Verb) singular imperative; (Verb) first-person singular present")).toBe(true);
+    expect(formOfTargets("(Verb) first-person singular present")).toEqual([]);
+  });
+
   it("names the base words", () => {
     expect(formOfTargets("(Noun) plural of Begrüßung")).toEqual(["Begrüßung"]);
     expect(formOfTargets("(Noun) gerund of zahlen; (Noun) plural of Zahl")).toEqual(["zahlen", "Zahl"]);

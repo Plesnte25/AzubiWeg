@@ -114,7 +114,7 @@ export function resolutionTitles(word: string): string[] {
 // name/interjection homograph by default.
 const POS_PRIORITY = ["noun", "verb", "adj", "adv", "name", "interjection"];
 
-async function findEntriesByHeadword(headwordLower: string): Promise<KaikkiEntry[]> {
+export async function findEntriesByHeadword(headwordLower: string): Promise<KaikkiEntry[]> {
   const rows = await prisma.kaikkiEntry.findMany({ where: { headwordLower } });
   return rows.sort((a, b) => {
     const hasMeaning = Number(!!b.meaning) - Number(!!a.meaning);
@@ -441,19 +441,36 @@ export interface KaikkiRecordRaw {
   forms?: KaikkiFormRaw[];
   sounds?: KaikkiSoundRaw[];
   etymology_text?: string;
-  head_templates?: { name?: string; args?: Record<string, string> }[];
+  head_templates?: { name?: string; args?: Record<string, string>; expansion?: string }[];
+  tags?: string[];
 }
 
 const GENDER_MAP: Record<string, string> = { m: "der", f: "die", n: "das" };
 
-/** Noun gender from the `de-noun` head template's first arg segment (e.g.
- * "n,,^er" -> neuter -> "das"). null for non-nouns or an unparseable template. */
+const TAG_GENDER: Record<string, string> = { masculine: "der", feminine: "die", neuter: "das" };
+// Leading gender letter of de-noun's first arg, in every shape Wiktionary writes it: "n,,^er", "m.weak" (Kollege),
+// "f.sg"/"n.sg" (no plural: Schadenfreude), "f:n,-,-" (two genders: the first is the main one), "<m,s,s>".
+const DE_NOUN_GENDER = /^[\s(<]*([mfn])(?![a-z])/;
+
+/** Noun gender ("der"/"die"/"das"): the `de-noun` head template first, then unambiguous sense/entry gender tags, then
+ * the head line ("AA n", "RAM n or m (…)"). null for plural-only nouns ("p"), adjectival nouns without tags, and
+ * non-nouns. Splitting on "," alone missed ~25% of nouns (every "m.weak"/"x.sg"/"x:y" template). */
 export function extractGender(rec: KaikkiRecordRaw): string | null {
   const t = rec.head_templates?.find((h) => h.name === "de-noun");
-  const arg1 = t?.args?.["1"];
-  if (!arg1) return null;
-  const code = arg1.split(",")[0]?.trim();
-  return code ? (GENDER_MAP[code] ?? null) : null;
+  const code = t?.args?.["1"]?.match(DE_NOUN_GENDER)?.[1];
+  if (code) return GENDER_MAP[code]!;
+
+  const tags = new Set([...(rec.tags ?? []), ...(rec.senses ?? []).flatMap((s) => s.tags ?? [])]);
+  const tagged = Object.keys(TAG_GENDER).filter((g) => tags.has(g));
+  if (tagged.length === 1) return TAG_GENDER[tagged[0]!]!;
+
+  for (const h of rec.head_templates ?? []) {
+    const exp = h.expansion;
+    if (!exp?.startsWith(rec.word)) continue;
+    const m = exp.slice(rec.word.length).match(/^\s+([mfn])(?=\s|\(|$)/);
+    if (m) return GENDER_MAP[m[1]!]!;
+  }
+  return null;
 }
 
 type CaseKey = "nom" | "akk" | "dat" | "gen";
@@ -546,15 +563,23 @@ export function isFormOfMeaning(meaning: string | null): boolean {
   if (!meaning?.trim()) return false;
   return meaning.split(";").every((sense) => {
     const gloss = sense.trim().replace(/^\([^)]*\)\s*/, "");
+    if (isBareGrammaticalLabel(gloss)) return true; // "first-person singular present" (the "of werden" was dropped)
     return FORM_OF_GLOSS_RE.test(gloss) && !gloss.includes(":") && !gloss.includes("(“");
   });
+}
+
+/** A gloss that is only grammatical labels ("first-person singular present", "singular imperative"), no word. */
+export function isBareGrammaticalLabel(gloss: string): boolean {
+  return BARE_GRAMMATICAL_FRAGMENT_RE.test(gloss.trim());
 }
 
 /** The base words a cross-reference meaning names ("plural of Begrüßung" → ["Begrüßung"]). */
 export function formOfTargets(meaning: string): string[] {
   return meaning
     .split(";")
-    .map((sense) => sense.trim().replace(/^\([^)]*\)\s*/, "").replace(FORM_OF_GLOSS_RE, "").trim().split(/[\s,(]/)[0] ?? "")
+    .map((sense) => sense.trim().replace(/^\([^)]*\)\s*/, ""))
+    .filter((gloss) => !isBareGrammaticalLabel(gloss)) // a bare label names no base word
+    .map((gloss) => gloss.replace(FORM_OF_GLOSS_RE, "").trim().split(/[\s,(]/)[0] ?? "")
     .filter(Boolean);
 }
 
@@ -569,8 +594,12 @@ export function formOfTargets(meaning: string): string[] {
 // consecutive terms (anchored start-to-end) so a real single-word
 // definition that happens to share a term's spelling ("form", "plural" as
 // legitimate short definitions) is never swallowed.
+// Label-only extras: "first/third-person singular subjunctive I" (werde, werdest…) slipped past the plain term
+// list on its "first/" and roman numeral, and became the published meaning of "werde". Never valid on their own
+// (the >=2-term rule still applies), so they can't swallow a real gloss either.
+const LABEL_TERM_RE = `${GRAMMATICAL_TERM_RE}|first|second|third|i|ii`;
 const BARE_GRAMMATICAL_FRAGMENT_RE = new RegExp(
-  `^(?:(?:${GRAMMATICAL_TERM_RE})[\\s/,]+){1,}(?:${GRAMMATICAL_TERM_RE})$`,
+  `^(?:(?:${LABEL_TERM_RE})[\\s/,]+){1,}(?:${LABEL_TERM_RE})$`,
   "i",
 );
 
