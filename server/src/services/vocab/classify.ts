@@ -121,9 +121,25 @@ export function classifyLevel(lesson: string | null): CefrLevel | null {
   return week >= 1 && week <= 26 ? levelForWeek(week) : null;
 }
 
+/**
+ * A stored phrase or sentence rather than a single word ("Wie geht's", "Bitte buchstabieren Sie das.", "Hallo!"):
+ * kept apart from words in Wortschatz and in word counts (user's call, 2026-11-23). Multi-word, or ending in ?/!,
+ * or a "." with a space before it (so "usw." stays a word). Reflexive and dictionary verbs ("sich freuen",
+ * "(Verb) to cycle" for "Rad fahren") are words.
+ */
+export function isPhraseHeadword(headword: string, meaning: string | null): boolean {
+  const h = headword.trim();
+  const spaced = /\s/.test(h);
+  if (!spaced && !/[?!]$/.test(h)) return false;
+  if (/^sich\s/i.test(h) && !/[.?!]$/.test(h)) return false;
+  if (/^\(\s*verb\s*\)/i.test(meaning ?? "") && !/[.?!]$/.test(h)) return false;
+  return true;
+}
+
 /** Attaches the read-time-derived facets (never persisted) to any word-shaped row. */
 export function withComputedFields<
   T extends {
+    headword: string;
     meaning: string | null;
     grammar: string | null;
     srDue: Date | null;
@@ -139,8 +155,9 @@ export function withComputedFields<
     grammar: word.grammar ? stripEditorialMetadata(word.grammar) : null,
     form: word.form ? stripEditorialMetadata(word.form) : word.form,
     example: word.example ? stripEditorialMetadata(word.example) : word.example,
-    wortart: deriveWortart(word.meaning, word.grammar),
-    genus: deriveGenus(word.grammar),
+    ...(isPhraseHeadword(word.headword, word.meaning)
+      ? { wortart: "Wendung" as const, genus: null }
+      : { wortart: deriveWortart(word.meaning, word.grammar), genus: deriveGenus(word.grammar) }),
     state: deriveSrsState(word),
     enrichmentStatus: deriveEnrichmentStatus(word.meaning, word.curation),
   };

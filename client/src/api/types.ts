@@ -102,7 +102,7 @@ export interface BentoDashboard {
   /** Active level's Level % split by skill (null percent = no items for that skill). */
   skillMastery: { skill: "reading" | "listening" | "grammar" | "writing" | "speaking"; passed: number; counted: number; percent: number | null }[];
   lernzeitToday: number;
-  words: { total: number; shaky: number; newThisWeek: number };
+  words: { total: number; phrases: number; shaky: number; newThisWeek: number };
   weakSpot:
     | { source: "self_test"; label: string; topic: string; level: string | null; percent: number; answered: number }
     | { source: "mistakes"; label: string; category: string; count: number; topics: string[] }

@@ -234,6 +234,11 @@ for `Phase ` before assuming a screen is unfinished or a stopgap is permanent.
   `taskEstimateMinutes(task)`, never by type. Completion is mirrored both ways (`setUnitCompletion`, and the unit
   PATCH updates linked tasks). What a lesson teaches is matched at read time (`topic-match.ts`, conservative:
   tune it against real DW tags, never loosen to "match more").
+- **Reviews are not ticket tasks.** Due flashcards and topic re-checks (`GET /today`'s `review`, `queues.topicReviews`)
+  are optional: never rows on the ticket, never in `plannedMinutes`/the goal. They live on Plan's ticket-tile Review
+  tab and Today's Review tile.
+- **Phrases vs words**: `isPhraseHeadword()` (`services/vocab/classify.ts`) makes a stored phrase/sentence `Wendung`
+  on read. Word counts and every Wortschatz tab but Phrases are single words only; use it for any new word count.
 - **Live sync across devices**: each tab holds an SSE stream (`GET /api/events`,
   `server/src/routes/events.ts`, hub in `server/src/services/live/hub.ts`).
   `broadcastChanges` middleware sends "change" to the user's other tabs after

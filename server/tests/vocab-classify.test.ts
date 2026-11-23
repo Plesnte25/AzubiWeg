@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyLevel, withComputedFields } from "../src/services/vocab/classify.js";
+import { classifyLevel, isPhraseHeadword, withComputedFields } from "../src/services/vocab/classify.js";
 import type { CardCuration } from "../src/services/vault/format.js";
 
 describe("classifyLevel", () => {
@@ -16,9 +16,26 @@ describe("classifyLevel", () => {
   });
 });
 
+describe("isPhraseHeadword", () => {
+  it.each([
+    ["Wie geht's", null],
+    ["Bitte buchstabieren Sie das.", "(Phrase) please spell that"],
+    ["Hallo!", "(Interjection) hello"],
+    ["Wie ist Ihr Name?", null],
+    ["Guten Tag.", null],
+  ])("%s is a phrase", (h, m) => expect(isPhraseHeadword(h, m)).toBe(true));
+
+  it.each([
+    ["Bahnhof", "(Noun) station"],
+    ["sich freuen", "(Verb) to be glad"],
+    ["Rad fahren", "(Verb) to cycle"],
+    ["usw.", "(Adverb) etc."],
+  ])("%s is a word", (h, m) => expect(isPhraseHeadword(h, m)).toBe(false));
+});
+
 describe("withComputedFields", () => {
   function word(meaning: string | null, curation: CardCuration) {
-    return { meaning, grammar: null, srDue: null, srInterval: null, curation };
+    return { headword: "Hund", meaning, grammar: null, srDue: null, srInterval: null, curation };
   }
 
   it("attaches enrichmentStatus alongside the existing computed facets", () => {
@@ -38,6 +55,12 @@ describe("withComputedFields", () => {
     });
     expect(result.meaning).toBe("(Noun) cat");
     expect(result.example).toBe("Die Katze schläft.");
+  });
+
+  it("marks a phrase as Wendung with no gender, even when its grammar starts with an article", () => {
+    const r = withComputedFields({ ...word("(Noun) good day", "generated"), headword: "Guten Tag.", grammar: "der; Plural: die Tage" });
+    expect(r.wortart).toBe("Wendung");
+    expect(r.genus).toBeNull();
   });
 
   it("published_review for an ambiguous/mt-fallback meaning under review", () => {

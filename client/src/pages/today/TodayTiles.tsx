@@ -191,8 +191,6 @@ export interface RouteRow {
   meta: string;
   color: string;
   done: boolean;
-  /** Review is a destination, not a checkable task. */
-  review?: boolean;
 }
 
 export function RouteTile({
@@ -270,17 +268,7 @@ export function RouteTile({
                 className="flex shrink-0 cursor-pointer items-center gap-2.5 hover:bg-plain2"
                 style={{ padding: "8px 10px", borderRadius: 14, border: "2px solid var(--dash)", transition: "background .15s" }}
               >
-                {row.review ? (
-                  <span
-                    aria-hidden="true"
-                    className="flex shrink-0 items-center justify-center"
-                    style={{ width: 24, height: 24, borderRadius: 8, border: "2.5px solid var(--line)", background: "var(--tomato)", color: "var(--onTile)", boxSizing: "border-box" }}
-                  >
-                    <ArrowRight size={13} weight="bold" />
-                  </span>
-                ) : (
-                  <Checkbox checked={row.done} onChange={() => onToggle(row)} label={`${row.title} done`} tiltWhenChecked />
-                )}
+                <Checkbox checked={row.done} onChange={() => onToggle(row)} label={`${row.title} done`} tiltWhenChecked />
                 <div className="min-w-0 flex-1" style={{ textDecoration: row.done ? "line-through" : "none", opacity: row.done ? 0.5 : 1 }}>
                   <div className="truncate" style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.2 }} lang="de">
                     {row.title}
@@ -455,7 +443,7 @@ export function WordsTile({ words, onOpen }: { words: BentoDashboard["words"]; o
       as="button"
       type="button"
       onClick={onOpen}
-      aria-label={`Wortschatz: ${words.total} words, ${words.shaky} shaky`}
+      aria-label={`Wortschatz: ${words.total} words, ${words.shaky} shaky${words.phrases ? `, ${words.phrases} phrases` : ""}`}
       bg="var(--mint)"
       tilt={-1.3}
       radius={22}
@@ -472,7 +460,9 @@ export function WordsTile({ words, onOpen }: { words: BentoDashboard["words"]; o
       <Label>Wortschatz</Label>
       <div>
         <div style={{ fontSize: pad(60), fontWeight: 700, lineHeight: 0.9, letterSpacing: "-.05em" }}>{words.total.toLocaleString("en")}</div>
-        <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>words · {words.shaky} shaky</div>
+        <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>
+          words · {words.shaky} shaky{words.phrases > 0 && <> · +{words.phrases} phrases</>}
+        </div>
       </div>
     </Tile>
   );

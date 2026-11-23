@@ -21,11 +21,12 @@ import { WordDetailsModal } from "./WordDetailsModal";
  * nav row. The detail is a tile at lg/md and a bottom sheet at sm. `/words/:id` deep-links select a word.
  */
 
-type FilterKey = "all" | "nouns" | "verbs" | "shaky" | "new" | "starred" | "review" | "incomplete";
+type FilterKey = "all" | "nouns" | "verbs" | "phrases" | "shaky" | "new" | "starred" | "review" | "incomplete";
 const FILTERS: [FilterKey, string][] = [
   ["all", "All"],
   ["nouns", "Nouns"],
   ["verbs", "Verbs"],
+  ["phrases", "Phrases"],
   ["shaky", "Shaky"],
   ["new", "New"],
   ["starred", "Starred"],
@@ -36,7 +37,13 @@ const STATUS_FILTERS: [FilterKey, string][] = [
   ["incomplete", "Incomplete"],
 ];
 
+/** Phrases and sentences ("Wie geht's", "Guten Tag.") live only under Phrases; every other filter is single words.
+ * The server marks them `Wendung` (classify.ts isPhraseHeadword). */
+const isPhrase = (w: Word) => w.wortart === "Wendung";
+
 function matches(w: Word, f: FilterKey): boolean {
+  if (f === "phrases") return isPhrase(w);
+  if (isPhrase(w)) return false;
   switch (f) {
     case "all":
       return true;
@@ -110,12 +117,17 @@ export default function Words() {
   const visible = useMemo(
     () =>
       words.filter(
-        (w) => matches(w, filter) && (!needle || w.headword.toLowerCase().includes(needle) || (w.meaning ?? "").toLowerCase().includes(needle)),
+        // searching from All finds phrases too, so nothing stored is ever unfindable
+        (w) =>
+          (matches(w, filter) || (!!needle && filter === "all")) &&
+          (!needle || w.headword.toLowerCase().includes(needle) || (w.meaning ?? "").toLowerCase().includes(needle)),
       ),
     [words, filter, needle],
   );
   const selected = words.find((w) => w.id === selectedId) ?? (bp === "sm" ? null : visible[0] ?? words[0] ?? null);
   const shaky = words.filter((w) => matches(w, "shaky")).length;
+  const phraseCount = words.filter(isPhrase).length;
+  const wordCount = words.length - phraseCount;
   const statusChips = STATUS_FILTERS.map(([k, l]) => [k, l, words.filter((w) => matches(w, k)).length] as const).filter(([, , n]) => n > 0);
 
   // der · die · das distribution of the user's nouns
@@ -155,7 +167,7 @@ export default function Words() {
               Wortschatz
             </h1>
             <span style={{ fontSize: 15, fontWeight: 700 }}>
-              {data ? `${words.length.toLocaleString("en")} words · ${shaky} shaky` : "…"}
+              {data ? `${wordCount.toLocaleString("en")} words${phraseCount ? ` · ${phraseCount} phrases` : ""} · ${shaky} shaky` : "…"}
             </span>
           </div>
           <button
@@ -262,7 +274,7 @@ export default function Words() {
                 <MagnifyingGlass size={24} weight="bold" aria-hidden="true" />
               </div>
               <span style={{ fontSize: 16, fontWeight: 700 }}>
-                {q ? `Nothing matches “${q}”.` : words.length === 0 ? "No words yet." : "No words in this filter yet."}
+                {q ? `Nothing matches “${q}”.` : words.length === 0 ? "No words yet." : filter === "phrases" ? "No phrases yet." : "No words in this filter yet."}
               </span>
               {!q && words.length === 0 && (
                 <>

@@ -43,7 +43,7 @@ import {
   selfTestScores,
   type DrillAnswer,
 } from "../services/learning/self-test-stats.js";
-import { deriveGenus, strength } from "../services/vocab/classify.js";
+import { deriveGenus, isPhraseHeadword, strength } from "../services/vocab/classify.js";
 import { lastGrades } from "./words.js";
 
 export const learningRouter = Router();
@@ -1036,7 +1036,7 @@ learningRouter.post("/quiz/gender-drill", async (req, res) => {
     lastGrades(req.userId),
   ]);
   const candidates = rows
-    .map((w) => ({ ...w, genus: deriveGenus(w.grammar), strength: strength(w, grades.get(w.id) ?? null) }))
+    .map((w) => ({ ...w, genus: isPhraseHeadword(w.headword, w.meaning) ? null : deriveGenus(w.grammar), strength: strength(w, grades.get(w.id) ?? null) }))
     .filter((w) => !parsed.data.shakyOnly || w.strength === 1 || w.strength === 2);
   const first = parsed.data.wordId ? candidates.find((w) => w.id === parsed.data.wordId && w.genus) : undefined;
   const rest = pickGenderDrill(candidates.filter((w) => w.id !== first?.id), parsed.data.size - (first ? 1 : 0));

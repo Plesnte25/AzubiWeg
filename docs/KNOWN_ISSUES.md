@@ -393,6 +393,19 @@ checks of each open and fixed entry above (all fixed entries still hold).
     filtered fully, so "werde" files under *werden* with a form note. Old cards: re-import, then
     `npm run backfill:form-meanings` (dry run) / `-- --apply`, which now also catches bare-label meanings.
 
+59. ✅ **Done** — **Reviews crowded Today's ticket** (user, 2026-11-23). Due flashcards ("Review N cards") and up to
+    five topic re-checks sat on both tickets as rows that never tick off (so "goal met" couldn't show), and
+    `GET /today` added their minutes to `plannedMinutes`, so heavy review days took fewer new topics. Reviews are now
+    optional: off both tickets and out of the goal. Plan's ticket tile has a **Today's ticket | Review N** switch
+    (remembered per browser) listing the flashcards and topic re-checks; Today keeps its Review tile.
+
+60. ✅ **Done** — **Phrases counted as words** (user, 2026-11-23: "Wie geht's", "Bitte buchstabieren Sie das."
+    among 222 "words"). `isPhraseHeadword` (`vocab/classify.ts`: multi-word or ending in ?/!; reflexive and dictionary
+    verbs stay words) marks them `Wendung` on read, with no gender. Wortschatz has a **Phrases** tab and every other
+    tab is single words (search from All still finds phrases); the header, the dashboard `words` block (`total`,
+    `shaky`, `newThisWeek`, new `phrases`), the Today hero and the Wortschatz tile count words only. Phrases stay in
+    the flashcard review and leave the gender drill. No migration.
+
 **Deployed 2026-11-15** (VPS at `95ad020`, #48–53): checked against the live site afterwards — demo login 404,
 `trusted_devices` migration applied, no Clarity in the page, the live bundle matches the local build, and live sync
 confirmed by the user on laptop + phone.

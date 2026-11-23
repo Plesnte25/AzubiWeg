@@ -10,7 +10,7 @@ import { skillPerformance } from "../services/learning/review.js";
 import { levelMastery, skillMastery } from "../services/learning/stations.js";
 import { pickWeakSpot } from "../services/learning/weak-spot.js";
 import { addDaysKey, mondayKey, weeklyGoal } from "../services/learning/weekly-goal.js";
-import { isShaky, strength } from "../services/vocab/classify.js";
+import { isPhraseHeadword, isShaky, strength } from "../services/vocab/classify.js";
 import { examGateForUser } from "./learning.js";
 import { lastGrades } from "./words.js";
 
@@ -48,7 +48,6 @@ dashboardRouter.get("/", async (req, res) => {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
 
   const [
-    totalWords,
     dueToday,
     newWords,
     reviewsToday,
@@ -66,7 +65,6 @@ dashboardRouter.get("/", async (req, res) => {
     totalLearningMinutesAgg,
     user,
   ] = await Promise.all([
-    prisma.word.count({ where: { userId: req.userId } }),
     // Same meaning: { not: null } exclusion reviews.ts's own /queue already
     // applies -- a word with no meaning yet was never gradeable, so it can
     // never actually surface in a review session even if srDue happens to
@@ -135,7 +133,7 @@ dashboardRouter.get("/", async (req, res) => {
   // Bento Today/Stats blocks (a second batch: independent of the legacy fields above, removed from there as the
   // Nocturne consumers go away in Phase 3)
   const [strengthWords, grades, activeDays, pings, examGate, mistakeAttempts, nextInterviewEvent, runningTask] = await Promise.all([
-    prisma.word.findMany({ where: { userId: req.userId }, select: { id: true, srInterval: true, leech: true, createdAt: true } }),
+    prisma.word.findMany({ where: { userId: req.userId }, select: { id: true, headword: true, meaning: true, srInterval: true, leech: true, createdAt: true } }),
     lastGrades(req.userId),
     prisma.dailyActiveMinutes.findMany({
       where: { userId: req.userId, date: { gte: new Date(`${calendarStart}T00:00:00Z`) } },
@@ -289,7 +287,10 @@ dashboardRouter.get("/", async (req, res) => {
   );
   const activeMastery = masteries[Math.max(0, masteryStates.indexOf("active"))]!;
 
-  const wordStrengths = strengthWords.map((w) => strength(w, grades.get(w.id) ?? null));
+  // Wortschatz counts are single words; phrases/sentences are counted apart (they still come up in reviews)
+  const singleWords = strengthWords.filter((w) => !isPhraseHeadword(w.headword, w.meaning));
+  const phraseCount = strengthWords.length - singleWords.length;
+  const wordStrengths = singleWords.map((w) => strength(w, grades.get(w.id) ?? null));
 
   res.json({
     bento: {
@@ -309,9 +310,10 @@ dashboardRouter.get("/", async (req, res) => {
       weeklyGoal: weeklyGoal(user.studyCapacityMinutes, user.studyDays, lernzeitByDay, todayKey),
       lernzeitToday: lernzeitByDay.get(todayKey) ?? 0,
       words: {
-        total: totalWords,
+        total: singleWords.length,
+        phrases: phraseCount,
         shaky: wordStrengths.filter(isShaky).length,
-        newThisWeek: strengthWords.filter((w) => w.createdAt >= sevenDaysAgo).length,
+        newThisWeek: singleWords.filter((w) => w.createdAt >= sevenDaysAgo).length,
       },
       weakSpot: pickWeakSpot(
         selfTestBreakdownRows.flatMap((r) =>
@@ -334,7 +336,7 @@ dashboardRouter.get("/", async (req, res) => {
       streakCalendar,
     },
     examTargetDate: user.examTargetDate ? user.examTargetDate.toISOString().slice(0, 10) : null,
-    totalWords,
+    totalWords: singleWords.length,
     dueToday,
     newWords,
     reviewsToday,
