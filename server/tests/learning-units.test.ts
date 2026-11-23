@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildManualUnits,
+  parseContents,
   buildPlaylistUnits,
   resizeManualUnits,
   unitProgress,
@@ -61,5 +62,32 @@ describe("resizeManualUnits", () => {
 
   it("is a no-op at the same total", () => {
     expect(resizeManualUnits(current, 3)).toEqual({ create: [], deletePositions: [] });
+  });
+});
+
+describe("buildManualUnits labels", () => {
+  it("names placeholders after the unit", () => {
+    expect(buildManualUnits(2, "chapters").map((u) => u.title)).toEqual(["Chapter 1", "Chapter 2"]);
+    expect(resizeManualUnits([{ position: 0 }], 2, "chapters").create[0]?.title).toBe("Chapter 2");
+  });
+});
+
+describe("parseContents", () => {
+  it("turns a pasted table of contents into chapter titles", () => {
+    const toc = [
+      "Inhalt",
+      "",
+      "Lektion 1: Hallo! ........ 8",
+      "• Lektion 2: Ich bin Journalistin.\t14",
+      "Lektion 3   20",
+      "Lektion 12",
+      "Modul-Plus, S. 46",
+      "  57 ",
+    ].join("\n");
+    expect(parseContents(toc)).toEqual(["Lektion 1: Hallo!", "Lektion 2: Ich bin Journalistin.", "Lektion 3", "Lektion 12", "Modul-Plus"]);
+  });
+
+  it("caps very long pastes", () => {
+    expect(parseContents(Array.from({ length: 400 }, (_, i) => `Kapitel ${i + 1}`).join("\n"))).toHaveLength(300);
   });
 });

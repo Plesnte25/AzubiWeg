@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowClockwise, ArrowSquareOut, Check, Image, MagnifyingGlass, Minus, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
 import { api, fetchFileBlobUrl, uploadFile } from "../../../api/client";
-import type { SourcePreview, StudySource, StudySourceType, StudySourceUnit, StudySourceUnitLabel } from "../../../api/types";
+import type { BookCandidate, SourcePreview, StudySource, StudySourceType, StudySourceUnit, StudySourceUnitLabel } from "../../../api/types";
 import { Chip } from "../../../components/ui/Chip";
 import { Modal } from "../../../components/ui/Modal";
 import { PillButton } from "../../../components/ui/PillButton";
@@ -16,6 +16,27 @@ import { TeachesSummary, TopicPill } from "./LessonTeaches";
 const eyebrow: CSSProperties = { fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase" };
 const field: CSSProperties = { height: 44, padding: "0 12px", border: "2.5px solid var(--line)", borderRadius: 12, background: "var(--plain)", color: "var(--plainText)", fontSize: 15, fontWeight: 600, boxSizing: "border-box", width: "100%" };
 const onError = (e: unknown) => toast.error(e instanceof Error ? e.message : "Something went wrong");
+const area: CSSProperties = { ...field, height: 120, padding: "10px 12px", fontSize: 14, lineHeight: 1.4, resize: "vertical", fontFamily: "inherit" };
+
+/** Mirrors the server's parseContents (server/src/services/learning/units.ts) closely enough to count the chapters
+ * as you paste; the server's parse is the one that's saved. */
+function contentsLines(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map((l) =>
+      l
+        .replace(/^\s*[-•*·–]\s+/, "")
+        .replace(/(?:\s*[.·…_]{2,}\s*|\t+\s*|\s{2,})\d{1,4}\s*$/, "")
+        .replace(/\s*[,–-]?\s*(?:S\.|Seite|p\.|pp\.|page)\s*\d{1,4}(?:\s*[-–]\s*\d{1,4})?\s*$/i, "")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter((l) => l && !/^[\d\s.]+$/.test(l) && !/^(?:inhalt(?:sverzeichnis)?|contents|table of contents|inhaltsübersicht)\s*:?$/i.test(l))
+    .slice(0, 300);
+}
+
+const bookMeta = (b: { authors: string[]; year?: number | null; pageCount?: number | null }) =>
+  [b.authors.slice(0, 2).join(", ") || null, b.year ?? null, b.pageCount ? `${b.pageCount} pages` : null].filter(Boolean).join(" · ");
 
 /** Sources feed Today's ticket (a lesson ticked here completes its ticket task), so the ticket and Today refresh too. */
 function useSourceRefresh() {
@@ -304,6 +325,7 @@ export function SourceModal({ source, stations, pickable, onClose }: { source: S
           </Chip>
         </div>
       </div>
+      {k === "book" && <BookChapters source={source} />}
       {source.units.length > 0 && <DailyLesson source={source} pending={daily.isPending} onChange={(d) => daily.mutate(d)} />}
       {source.plan.covered.length > 0 && (
         <div className="flex shrink-0 flex-col gap-2">
@@ -317,7 +339,9 @@ export function SourceModal({ source, stations, pickable, onClose }: { source: S
       )}
       {source.units.length > 0 && (
         <div className="flex shrink-0 flex-col gap-1.5">
-          <span style={eyebrow}>Units · {source.units.filter((u) => u.completedAt).length}/{source.units.length}</span>
+          <span style={eyebrow}>
+            {source.unitLabel[0]!.toUpperCase() + source.unitLabel.slice(1)} · {source.units.filter((u) => u.completedAt).length}/{source.units.length}
+          </span>
           {source.units.map((u) => (
             <UnitRow
               key={u.id}
@@ -331,6 +355,70 @@ export function SourceModal({ source, stations, pickable, onClose }: { source: S
         </div>
       )}
     </Modal>
+  );
+}
+
+/**
+ * A book's chapters from its table of contents: paste it (one chapter per line) and the units take those titles.
+ * Renaming keeps each chapter's tick; a book still tracked in pages switches to chapters and starts its progress
+ * over, since a page count says nothing about which chapter you're on.
+ */
+function BookChapters({ source }: { source: StudySource }) {
+  const refresh = useSourceRefresh();
+  const inPages = source.unitLabel === "pages";
+  const [draft, setDraft] = useState<string | null>(null);
+  const lines = draft === null ? [] : contentsLines(draft);
+  const save = useMutation({
+    mutationFn: (text: string) => api.updateStudySource(source.id, { contents: text }),
+    onSuccess: (r) => {
+      toast.success(`${r.source.units.length} chapters saved`);
+      setDraft(null);
+      refresh();
+    },
+    onError,
+  });
+  if (draft === null) {
+    return (
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {inPages && (
+          <span className="min-w-0 flex-1" style={{ fontSize: 13, fontWeight: 600 }}>
+            Tracked in pages. Paste the table of contents to follow it chapter by chapter instead.
+          </span>
+        )}
+        <PillButton
+          height={40}
+          variant="secondary"
+          icon={<PencilSimple size={15} weight="bold" aria-hidden="true" />}
+          onClick={() => setDraft(inPages ? "" : source.units.map((u) => u.title).join("\n"))}
+        >
+          {inPages ? "Switch to chapters" : source.units.length > 0 ? "Edit chapters" : "Add chapters"}
+        </PillButton>
+      </div>
+    );
+  }
+  return (
+    <label className="flex shrink-0 flex-col gap-1.5">
+      <span style={eyebrow}>Contents · {lines.length} chapter{lines.length === 1 ? "" : "s"}</span>
+      <textarea
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder={"One chapter per line:\nLektion 1: Hallo!\nLektion 2: Ich bin Journalistin.\n…"}
+        lang="de"
+        style={{ ...area, height: 180 }}
+      />
+      {inPages && source.completedUnits > 0 && (
+        <span style={{ fontSize: 12, fontWeight: 600 }}>Your page progress ({source.completedUnits} pages) starts over in chapters.</span>
+      )}
+      <div className="flex gap-2">
+        <PillButton height={40} variant="secondary" onClick={() => setDraft(null)}>
+          Cancel
+        </PillButton>
+        <PillButton height={40} className="flex-1" disabled={lines.length === 0 || save.isPending} onClick={() => save.mutate(draft)}>
+          {save.isPending ? "Saving…" : `Save ${lines.length} chapter${lines.length === 1 ? "" : "s"}`}
+        </PillButton>
+      </div>
+    </label>
   );
 }
 
@@ -497,7 +585,7 @@ function UnitRow({ sourceId, unit, date, next, onToggle }: { sourceId: string; u
 const TYPES: { k: SourceKind; type: StudySourceType; unit: StudySourceUnitLabel; provider?: string; count?: string; link: "optional" | "only" | "main" | "isbn" }[] = [
   { k: "video", type: "video", unit: "episodes", provider: "Channel / series", count: "Episodes", link: "optional" },
   { k: "audio", type: "audio", unit: "episodes", provider: "Podcast", count: "Episodes", link: "optional" },
-  { k: "book", type: "book", unit: "pages", provider: "Author / publisher", count: "Pages", link: "isbn" },
+  { k: "book", type: "book", unit: "chapters", provider: "Author / publisher", count: "Chapters", link: "isbn" },
   { k: "course", type: "course", unit: "lessons", provider: "School / platform", count: "Lessons", link: "optional" },
   { k: "article", type: "article", unit: "chapters", count: "Parts", link: "main" },
   { k: "link", type: "link", unit: "lessons", link: "only" },
@@ -508,7 +596,9 @@ const looksLikeIsbn = (s: string) => /^(97[89])?\d{9}[\dXx]$/.test(s.replace(/[\
 
 /**
  * Add a source (KNOWN_ISSUES #34): fetch before save. Pasting a link — or, for a book, a link or ISBN — looks it up
- * right away (debounced); a title search (book, podcast) runs on Fetch, which also retries. The preview shows what
+ * right away (debounced); a book's title searches as you type, a podcast's on Fetch (which also retries). A book
+ * title search lists its runners-up to pick from, and a book's units are its chapters: count them, or paste the
+ * table of contents for titled chapters. The preview shows what
  * was found and fills only the fields you left empty; everything stays editable, and a failed lookup says so.
  */
 export function AddSourceModal({ stations, defaultStationKey, onClose }: { stations: Station[]; defaultStationKey: string | null; onClose: () => void }) {
@@ -520,32 +610,71 @@ export function AddSourceModal({ stations, defaultStationKey, onClose }: { stati
   const [url, setUrl] = useState("");
   const [station, setStation] = useState<string | null>(defaultStationKey);
   const [found, setFound] = useState<SourcePreview | null>(null);
+  const [contents, setContents] = useState("");
+  // a book picked from a title search's runners-up: looked up (and saved) by its ISBN from then on
+  const [pickedIsbn, setPickedIsbn] = useState<string | null>(null);
+  // what the last lookup filled in, so a later lookup may replace it (but never what the user typed)
+  const autoFilled = useRef({ provider: "" });
   const t = TYPES.find((x) => x.k === kind)!;
+  const chapters = t.k === "book" ? contentsLines(contents) : [];
   // a book's "Link or ISBN": a link is saved as the source's link, an ISBN only drives the lookup
-  const bookIsbn = t.link === "isbn" && !looksLikeUrl(url) && looksLikeIsbn(url) ? url.trim() : null;
+  const bookIsbn = t.link === "isbn" ? (pickedIsbn ?? (!looksLikeUrl(url) && looksLikeIsbn(url) ? url.trim() : null)) : null;
   const link = t.link === "isbn" ? (looksLikeUrl(url) ? url.trim() : null) : url.trim() || null;
 
   const preview = useMutation({
-    mutationFn: (withTitle: boolean) => api.previewStudySource({ type: t.type, url: link, isbn: bookIsbn, title: withTitle ? title.trim() || null : null }),
-    onSuccess: (r) => {
-      setFound(r);
-      if (r.outcome === "failed" || r.outcome === "manual") return;
-      // fill only what the user left empty
+    mutationFn: (v: { withTitle: boolean; auto?: boolean }) =>
+      api.previewStudySource({ type: t.type, url: link, isbn: bookIsbn, title: v.withTitle ? title.trim() || null : null }),
+    onSuccess: (r, v) => {
+      const failed = r.outcome === "failed" || r.outcome === "manual";
+      // a miss while typing a title isn't news; only a lookup the user asked for (or a pasted link) reports one
+      setFound(failed && v.auto ? null : r);
+      if (failed) return;
+      // fill only what the user left empty (or what an earlier lookup filled)
       if (!title.trim() && r.title) setTitle(r.title);
-      if (!provider.trim() && r.provider) setProvider(r.provider);
+      if (r.provider && (!provider.trim() || provider === autoFilled.current.provider)) {
+        setProvider(r.provider);
+        autoFilled.current.provider = r.provider;
+      }
       const n = r.unitCount || r.totalUnits;
       if (!count && n) setCount(String(n));
     },
-    onError: () => setFound({ type: t.type, title: null, provider: null, coverImageUrl: null, totalUnits: null, unitCount: 0, outcome: "failed" }),
+    onError: (_, v) => setFound(v.auto ? null : { type: t.type, title: null, provider: null, coverImageUrl: null, totalUnits: null, unitCount: 0, outcome: "failed" }),
   });
   // pasting or changing a link (or ISBN) fetches on its own, debounced
   const lookupKey = `${t.type}|${link ?? ""}|${bookIsbn ?? ""}`;
   useEffect(() => {
     if (!link && !bookIsbn) return;
-    const id = setTimeout(() => preview.mutate(false), 700);
+    const id = setTimeout(() => preview.mutate({ withTitle: false }), 700);
     return () => clearTimeout(id);
   }, [lookupKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // a book title searches as you type (the server caches the answers), unless a link or ISBN already pins the book
+  const bookQuery = t.k === "book" && !link && !bookIsbn ? title.trim() : "";
+  useEffect(() => {
+    if (bookQuery.length < 4) return;
+    const id = setTimeout(() => preview.mutate({ withTitle: true, auto: true }), 900);
+    return () => clearTimeout(id);
+  }, [bookQuery]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => setFound(null), [kind]);
+
+  const pick = (b: BookCandidate) => {
+    setTitle(b.title);
+    if (b.authors.length > 0 && (!provider.trim() || provider === autoFilled.current.provider)) {
+      setProvider(b.authors.join(", "));
+      autoFilled.current.provider = b.authors.join(", ");
+    }
+    setPickedIsbn(b.isbn ?? null);
+    setFound({
+      type: "book",
+      title: b.title,
+      provider: b.authors.join(", ") || null,
+      coverImageUrl: b.thumbnailUrl,
+      totalUnits: null,
+      unitCount: 0,
+      outcome: "book",
+      pageCount: b.pageCount,
+      candidates: (found?.candidates ?? []).filter((c) => c !== b),
+    });
+  };
 
   const canSearchTitle = (t.type === "book" || t.type === "audio") && title.trim().length > 1;
   const add = useMutation({
@@ -556,7 +685,8 @@ export function AddSourceModal({ stations, defaultStationKey, onClose }: { stati
         url: link,
         isbn: bookIsbn,
         provider: provider.trim() || null,
-        totalUnits: count ? Math.max(1, Number(count)) : null,
+        contents: chapters.length > 0 ? contents : null,
+        totalUnits: chapters.length === 0 && count ? Math.max(1, Number(count)) : null,
         unitLabel: t.unit,
         stationKey: station,
         autoFetch: true,
@@ -574,6 +704,10 @@ export function AddSourceModal({ stations, defaultStationKey, onClose }: { stati
     add.mutate();
   };
   const foundCount = found ? found.unitCount || found.totalUnits : null;
+  const foundMeta =
+    found?.outcome === "book"
+      ? bookMeta({ authors: found.provider ? [found.provider] : [], pageCount: found.pageCount })
+      : [found?.provider, foundCount ? `${foundCount} ${t.unit}` : null].filter(Boolean).join(" · ");
   return (
     <Modal
       title="Add a source"
@@ -619,7 +753,10 @@ export function AddSourceModal({ stations, defaultStationKey, onClose }: { stati
         <span style={eyebrow}>{t.link === "isbn" ? "Link or ISBN (optional — exact lookup)" : t.link === "optional" ? "Link (optional — fills in the details)" : "Link"}</span>
         <input
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
+          onChange={(e) => {
+            setUrl(e.target.value);
+            setPickedIsbn(null);
+          }}
           placeholder={t.link === "isbn" ? "ISBN, or an Open Library / Google Books / Amazon link" : "https://…"}
           type={t.link === "isbn" ? "text" : "url"}
           style={field}
@@ -630,8 +767,11 @@ export function AddSourceModal({ stations, defaultStationKey, onClose }: { stati
         <div className="flex gap-2">
           <input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && canSearchTitle && preview.mutate(true)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setPickedIsbn(null);
+            }}
+            onKeyDown={(e) => e.key === "Enter" && canSearchTitle && preview.mutate({ withTitle: true })}
             placeholder={t.link === "only" ? "Taken from the page if left empty" : kind === "book" ? "e.g. Menschen A2 Kursbuch" : kind === "audio" ? "e.g. Coffee Break German" : "e.g. Nicos Weg"}
             aria-label="Title"
             style={{ ...field, flex: 1, minWidth: 0 }}
@@ -642,7 +782,7 @@ export function AddSourceModal({ stations, defaultStationKey, onClose }: { stati
               variant="secondary"
               icon={<MagnifyingGlass size={15} weight="bold" aria-hidden="true" />}
               disabled={preview.isPending || (!canSearchTitle && !link && !bookIsbn)}
-              onClick={() => preview.mutate(canSearchTitle)}
+              onClick={() => preview.mutate({ withTitle: canSearchTitle })}
             >
               {preview.isPending ? "Looking…" : "Fetch"}
             </PillButton>
@@ -661,22 +801,60 @@ export function AddSourceModal({ stations, defaultStationKey, onClose }: { stati
           <div className="min-w-0 flex-1" style={{ lineHeight: 1.25 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--plainMuted)" }}>Found</div>
             <div lang="de" style={{ fontSize: 14, fontWeight: 700 }}>{found.title ?? title}</div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--plainMuted)" }}>
-              {[found.provider, foundCount ? `${foundCount} ${t.unit}` : null].filter(Boolean).join(" · ") || "Details filled in below"}
-            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--plainMuted)" }}>{foundMeta || "Details filled in below"}</div>
           </div>
         </div>
       ))}
+      {found?.candidates && found.candidates.length > 0 && (
+        <div className="flex shrink-0 flex-col gap-1.5">
+          <span style={eyebrow}>Not this one?</span>
+          {found.candidates.map((b, i) => (
+            <button
+              key={`${b.isbn ?? b.title}-${i}`}
+              type="button"
+              onClick={() => pick(b)}
+              className="flex cursor-pointer items-center gap-2.5 text-left"
+              style={{ padding: "6px 10px", border: "2px solid var(--line)", borderRadius: 12, background: "var(--plain)", color: "var(--plainText)" }}
+            >
+              {b.thumbnailUrl ? (
+                <img src={b.thumbnailUrl} alt="" style={{ width: 28, height: 38, objectFit: "cover", borderRadius: 4, border: "1.5px solid var(--line)", flexShrink: 0 }} />
+              ) : null}
+              <span className="min-w-0 flex-1" style={{ lineHeight: 1.2 }}>
+                <span lang="de" className="block truncate" style={{ fontSize: 13, fontWeight: 700 }}>{b.title}</span>
+                <span className="block truncate" style={{ fontSize: 11.5, fontWeight: 600, color: "var(--plainMuted)" }}>{bookMeta(b)}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
       {t.provider && (
         <label className="flex shrink-0 flex-col gap-1.5">
           <span style={eyebrow}>{t.provider}</span>
           <input value={provider} onChange={(e) => setProvider(e.target.value)} style={field} />
         </label>
       )}
-      {t.count && (
+      {t.count && chapters.length === 0 && (
         <label className="flex shrink-0 flex-col gap-1.5">
           <span style={eyebrow}>{t.count}</span>
-          <input value={count} onChange={(e) => setCount(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="How many in total?" style={field} />
+          <input
+            value={count}
+            onChange={(e) => setCount(e.target.value.replace(/\D/g, ""))}
+            inputMode="numeric"
+            placeholder={t.k === "book" ? "How many chapters / Lektionen?" : "How many in total?"}
+            style={field}
+          />
+        </label>
+      )}
+      {t.k === "book" && (
+        <label className="flex shrink-0 flex-col gap-1.5">
+          <span style={eyebrow}>Contents (optional){chapters.length > 0 ? ` · ${chapters.length} chapter${chapters.length === 1 ? "" : "s"}` : ""}</span>
+          <textarea
+            value={contents}
+            onChange={(e) => setContents(e.target.value)}
+            placeholder={"Paste the table of contents, one chapter per line:\nLektion 1: Hallo!\nLektion 2: Ich bin Journalistin.\n…"}
+            lang="de"
+            style={area}
+          />
         </label>
       )}
       <div className="flex shrink-0 flex-col gap-2">

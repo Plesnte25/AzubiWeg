@@ -6,8 +6,10 @@
  */
 import type { BookResult } from "./googleBooks.js";
 
+export { extractIsbn } from "./bookLinks.js";
+
 const SEARCH = "https://openlibrary.org/search.json";
-const FIELDS = "title,author_name,number_of_pages_median,cover_i,first_publish_year";
+const FIELDS = "title,author_name,number_of_pages_median,cover_i,first_publish_year,isbn";
 const COVER = (id: number) => `https://covers.openlibrary.org/b/id/${id}-L.jpg`;
 
 export interface OpenLibraryDoc {
@@ -16,6 +18,7 @@ export interface OpenLibraryDoc {
   number_of_pages_median?: unknown;
   cover_i?: unknown;
   first_publish_year?: unknown;
+  isbn?: unknown;
 }
 
 const tokens = (s: string) =>
@@ -44,47 +47,65 @@ export function toBookResult(doc: OpenLibraryDoc): BookResult | null {
   if (typeof doc.title !== "string") return null;
   const authors = Array.isArray(doc.author_name) ? doc.author_name.filter((a): a is string => typeof a === "string") : [];
   const pages = typeof doc.number_of_pages_median === "number" && doc.number_of_pages_median > 0 ? doc.number_of_pages_median : null;
-  return { title: doc.title, authors, thumbnailUrl: typeof doc.cover_i === "number" ? COVER(doc.cover_i) : null, pageCount: pages };
+  const isbns = Array.isArray(doc.isbn) ? doc.isbn.filter((i): i is string => typeof i === "string") : [];
+  return {
+    title: doc.title,
+    authors,
+    thumbnailUrl: typeof doc.cover_i === "number" ? COVER(doc.cover_i) : null,
+    pageCount: pages,
+    // a work lists every edition's ISBN; any one of them finds the work again (a picked candidate re-looks itself up)
+    isbn: isbns.find((i) => i.length === 13) ?? isbns[0] ?? null,
+    year: typeof doc.first_publish_year === "number" ? doc.first_publish_year : null,
+  };
+}
+
+/** Every hit that matches at least half of what was typed, best first (query coverage counts double, so a score of
+ * 1.0 = half the typed words found). */
+export function rankBooks(query: string, docs: OpenLibraryDoc[]): BookResult[] {
+  return docs
+    .map((doc) => ({ doc, score: scoreBook(query, doc) }))
+    .filter((x) => x.score >= 1)
+    .sort((a, b) => b.score - a.score)
+    .map((x) => toBookResult(x.doc))
+    .filter((b): b is BookResult => b !== null);
 }
 
 /** The best-matching hit of a title search, or null when nothing matches at least half of what was typed. */
 export function pickBook(query: string, docs: OpenLibraryDoc[]): BookResult | null {
-  let best: { doc: OpenLibraryDoc; score: number } | null = null;
-  for (const doc of docs) {
-    const score = scoreBook(query, doc);
-    if (!best || score > best.score) best = { doc, score };
-  }
-  // query coverage counts double, so 1.0 = half the typed words found
-  return best && best.score >= 1 ? toBookResult(best.doc) : null;
+  return rankBooks(query, docs)[0] ?? null;
 }
 
-/** An ISBN-10/13 typed on its own or inside a book link (Open Library, Google Books `isbn=`, Amazon `/dp/<ISBN-10>`). */
-export function extractIsbn(input: string): string | null {
-  const s = input.trim();
-  const bare = s.replace(/[\s-]/g, "");
-  if (/^(97[89])?\d{9}[\dXx]$/.test(bare)) return bare.toUpperCase();
-  const inUrl = s.match(/(?:isbn[=/:]|\/dp\/|\/gp\/product\/)((?:97[89][-\s]?)?(?:\d[-\s]?){9}[\dXx])/i);
-  return inUrl ? inUrl[1]!.replace(/[\s-]/g, "").toUpperCase() : null;
-}
+// Open Library answers the same query the same way for hours; the Add-source preview, the create after it and a
+// second user adding the same textbook all hit this. Misses aren't kept, so a retry really retries.
+const CACHE_TTL_MS = 60 * 60_000;
+const cache = new Map<string, { at: number; docs: OpenLibraryDoc[] }>();
 
 async function search(params: string): Promise<OpenLibraryDoc[] | null> {
+  const hit = cache.get(params);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.docs;
   try {
     const res = await fetch(`${SEARCH}?${params}&fields=${FIELDS}`, {
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(7_000),
       headers: { "User-Agent": "AzubiWeg/1.0 (study source lookup)" },
     });
     if (!res.ok) return null;
     const body = (await res.json()) as { docs?: unknown };
-    return Array.isArray(body.docs) ? (body.docs as OpenLibraryDoc[]) : null;
+    if (!Array.isArray(body.docs)) return null;
+    const docs = body.docs as OpenLibraryDoc[];
+    if (docs.length > 0) {
+      cache.set(params, { at: Date.now(), docs });
+      if (cache.size > 300) cache.delete(cache.keys().next().value!);
+    }
+    return docs;
   } catch {
     return null;
   }
 }
 
-/** A title search, ranked. null on no match or any failure (callers fall back to Google Books, then manual). */
-export async function searchOpenLibrary(query: string): Promise<BookResult | null> {
+/** A title search, ranked best first; empty on no match or any failure (callers fall back to Google Books, then manual). */
+export async function searchOpenLibrary(query: string): Promise<BookResult[]> {
   const docs = await search(`q=${encodeURIComponent(query)}&limit=15`);
-  return docs ? pickBook(query, docs) : null;
+  return docs ? rankBooks(query, docs) : [];
 }
 
 /** Exact lookup by ISBN. */

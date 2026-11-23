@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseBooksResponse } from "../src/services/learning/googleBooks.js";
+import { parseBooksResponse, parseVolumeInfo } from "../src/services/learning/googleBooks.js";
 
 describe("parseBooksResponse", () => {
   it("extracts title, authors, https-upgraded thumbnail, and page count from the first result", () => {
@@ -10,6 +10,11 @@ describe("parseBooksResponse", () => {
             title: "Der Process",
             authors: ["Franz Kafka"],
             pageCount: 256,
+            publishedDate: "2008-03",
+            industryIdentifiers: [
+              { type: "ISBN_10", identifier: "3150096760" },
+              { type: "ISBN_13", identifier: "9783150096762" },
+            ],
             imageLinks: { thumbnail: "http://books.google.com/books/content?id=x&img=1" },
           },
         },
@@ -20,6 +25,8 @@ describe("parseBooksResponse", () => {
       authors: ["Franz Kafka"],
       thumbnailUrl: "https://books.google.com/books/content?id=x&img=1",
       pageCount: 256,
+      isbn: "9783150096762",
+      year: 2008,
     });
   });
 
@@ -32,6 +39,8 @@ describe("parseBooksResponse", () => {
       authors: [],
       thumbnailUrl: "https://x/small.png",
       pageCount: null,
+      isbn: null,
+      year: null,
     });
   });
 
@@ -40,5 +49,10 @@ describe("parseBooksResponse", () => {
     expect(parseBooksResponse({ items: [{}] })).toBeNull();
     expect(parseBooksResponse(null)).toBeNull();
     expect(parseBooksResponse("garbage")).toBeNull();
+  });
+
+  it("parses a single volume (GET /volumes/{id})", () => {
+    expect(parseVolumeInfo({ title: "Menschen A2", authors: ["Sandra Evans"] })?.title).toBe("Menschen A2");
+    expect(parseVolumeInfo(undefined)).toBeNull();
   });
 });

@@ -333,6 +333,8 @@ export const api = {
     stationKey?: string | null;
     /** Books: an ISBN typed in "Link or ISBN" (a book link goes in url). */
     isbn?: string | null;
+    /** A pasted table of contents: one unit (chapter) per line. */
+    contents?: string | null;
   }) =>
     request<{ source: StudySource; fetch: PlaylistFetchOutcome }>("/api/learning/sources", {
       method: "POST",
@@ -373,6 +375,8 @@ export const api = {
       stationKey: string | null;
       // re-fetch the default cover from the link (YouTube thumbnail / og:image)
       refetchCover: boolean;
+      // a pasted table of contents replaces the unit titles (one per line)
+      contents: string;
       // look the source up again and fill only what's still empty (provider, cover, unit count)
       refetchDetails: boolean;
       isbn: string | null;

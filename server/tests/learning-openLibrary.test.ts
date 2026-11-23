@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractIsbn, pickBook, scoreBook, toBookResult } from "../src/services/learning/openLibrary.js";
+import { extractIsbn, pickBook, rankBooks, scoreBook, toBookResult } from "../src/services/learning/openLibrary.js";
 
 // shapes from the live search.json (2026-09-29)
 const german1989 = { title: "German", author_name: ["Paul Coggle", "Heiner Schenke"], cover_i: 59102, number_of_pages_median: 272, first_publish_year: 1989 };
@@ -23,13 +23,29 @@ describe("pickBook", () => {
   });
 });
 
+describe("rankBooks", () => {
+  it("keeps every close match, best first, for the pick list", () => {
+    const ranked = rankBooks("German Coggle", [commissionE, complete2011, german1989]);
+    expect(ranked.map((b) => b.title)).toEqual(["German", "Complete German (Learn German with Teach Yourself)", "The Complete German Commission E Monographs"]);
+    expect(rankBooks("Menschen A1.1 Kursbuch", [commissionE])).toEqual([]);
+  });
+});
+
 describe("toBookResult", () => {
+  it("prefers an ISBN-13 and keeps the year", () => {
+    const r = toBookResult({ title: "Menschen", isbn: ["3191019022", "9783191019020"], first_publish_year: 2012 });
+    expect(r?.isbn).toBe("9783191019020");
+    expect(r?.year).toBe(2012);
+  });
+
   it("builds the large cover URL and drops empty page counts", () => {
     expect(toBookResult(complete2011)).toEqual({
       title: "Complete German (Learn German with Teach Yourself)",
       authors: ["Paul Coggle", "Heiner Schenke"],
       thumbnailUrl: "https://covers.openlibrary.org/b/id/14670036-L.jpg",
       pageCount: 408,
+      isbn: null,
+      year: null,
     });
     expect(toBookResult({ title: "X", number_of_pages_median: 0 })?.pageCount).toBeNull();
   });

@@ -28,7 +28,7 @@ import { ensureSyllabusSeeded } from "../services/learning/syllabus-seed.js";
 import { failedReview, isReviewDue, nextMastery } from "../services/learning/mastery.js";
 import { summarizeMistakes } from "../services/learning/mistakes.js";
 import { listeningAudioFor } from "../services/learning/listening-audio.js";
-import { buildManualUnits, type NewUnit, resizeManualUnits, unitProgress } from "../services/learning/units.js";
+import { buildManualUnits, type NewUnit, parseContents, resizeManualUnits, unitProgress } from "../services/learning/units.js";
 import { fetchSourceDetails, fetchSourceDetailsCached } from "../services/learning/sourceFetch.js";
 import { fillPlaylistDescriptions } from "../services/learning/youtubeDescriptions.js";
 import { fetchCoverUrl } from "../services/learning/cover.js";
@@ -496,6 +496,8 @@ const createSourceSchema = z.object({
   stationKey: STATION_KEY.nullish(),
   // books: an ISBN typed in "Link or ISBN" (a pasted book link comes as url) — used for the lookup, not stored
   isbn: z.string().trim().max(20).nullish(),
+  // a pasted table of contents: one unit per line (units.ts parseContents), titled — a book's chapters
+  contents: z.string().max(20_000).nullish(),
   // fill in the details via services/learning/sourceFetch.ts (playlist videos, course lessons, book / podcast
   // lookup, a page's title and image, a default cover). Any failure falls back to what was typed — never an error.
   autoFetch: z.boolean().default(true),
@@ -521,7 +523,7 @@ learningRouter.post("/sources", async (req, res) => {
   const parsed = createSourceSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: z.prettifyError(parsed.error) });
 
-  const { totalUnits, completedUnits, autoFetch, isbn, ...rest } = parsed.data;
+  const { totalUnits, completedUnits, autoFetch, isbn, contents, ...rest } = parsed.data;
 
   const details = autoFetch
     ? await fetchSourceDetailsCached(req.userId, { type: rest.type, title: rest.title, url: rest.url, isbn })
@@ -529,7 +531,9 @@ learningRouter.post("/sources", async (req, res) => {
   // a "video" link that is really a playlist is saved as "youtube" (the only type change a fetch makes)
   if (details?.type === "youtube") rest.type = "youtube";
   let units: NewUnit[] = details?.units ?? [];
-  if (units.length === 0 && totalUnits) units = buildManualUnits(totalUnits);
+  const contentTitles = contents ? parseContents(contents) : [];
+  if (units.length === 0 && contentTitles.length > 0) units = contentTitles.map((title, position) => ({ position, title }));
+  if (units.length === 0 && totalUnits) units = buildManualUnits(totalUnits, rest.unitLabel);
   const fetchOutcome = details?.outcome ?? "manual";
   const scrapedTitle = details?.title ?? null;
   const scrapedProvider = details?.provider ?? null;
@@ -595,6 +599,8 @@ const patchSourceSchema = z.object({
   // provider, cover, and the unit count when it has no units yet. `isbn` narrows a book lookup.
   refetchDetails: z.boolean().optional(),
   isbn: z.string().trim().max(20).nullish(),
+  // Source modal "Chapters": a pasted table of contents replaces the unit titles (see the handler)
+  contents: z.string().max(20_000).optional(),
   // Today's ticket takes this source's next lesson every study day (source-lessons.ts)
   dailyLesson: z.boolean().optional(),
   // minutes a lesson is budgeted at; null = the type's default
@@ -611,8 +617,41 @@ learningRouter.patch("/sources/:id", async (req, res) => {
   });
   if (!existing) return res.status(404).json({ error: "Study source not found" });
 
-  const { refetchCover, refetchDetails, isbn, ...data } = parsed.data;
+  const { refetchCover, refetchDetails, isbn, contents, ...data } = parsed.data;
   const hasUnits = existing.units.length > 0;
+  if (contents !== undefined) {
+    // Units from a pasted table of contents. Renaming keeps each unit's tick and ticket history by position; a source
+    // tracked in pages starts over, since page 3 being done says nothing about chapter 3.
+    const titles = parseContents(contents);
+    if (titles.length === 0) return res.status(400).json({ error: "Paste at least one chapter, one per line" });
+    const fresh = existing.unitLabel === "pages";
+    const sorted = [...existing.units].sort((a, b) => a.position - b.position);
+    const source = await prisma.$transaction(async (tx) => {
+      if (fresh) await tx.studySourceUnit.deleteMany({ where: { sourceId: existing.id } });
+      const kept = fresh ? [] : sorted.slice(0, titles.length);
+      const dropped = fresh ? [] : sorted.slice(titles.length);
+      if (dropped.length > 0) await tx.studySourceUnit.deleteMany({ where: { id: { in: dropped.map((u) => u.id) } } });
+      for (const [i, u] of kept.entries()) if (u.title !== titles[i]) await tx.studySourceUnit.update({ where: { id: u.id }, data: { title: titles[i]! } });
+      const next = kept.reduce((m, u) => Math.max(m, u.position + 1), 0);
+      if (titles.length > kept.length) {
+        await tx.studySourceUnit.createMany({
+          data: titles.slice(kept.length).map((title, i) => ({ sourceId: existing.id, position: next + i, title })),
+        });
+      }
+      const progress = unitProgress(await tx.studySourceUnit.findMany({ where: { sourceId: existing.id } }));
+      return tx.studySource.update({
+        where: { id: existing.id },
+        data: {
+          ...data,
+          unitLabel: data.unitLabel ?? (fresh ? "chapters" : existing.unitLabel),
+          totalUnits: progress.total,
+          completedUnits: progress.done,
+        },
+        include: SOURCE_INCLUDE,
+      });
+    });
+    return res.json({ source: await sourceView(req.userId, source) });
+  }
   if (data.dailyLesson === false && existing.dailyLesson) {
     // switched off: its lesson leaves the ticket, unless it's done or already worked on (that's history)
     await prisma.roadmapTask.updateMany({
@@ -635,6 +674,7 @@ learningRouter.patch("/sources/:id", async (req, res) => {
       data: {
         ...(existing.provider ? {} : { provider: found.provider }),
         ...(existing.coverImageUrl || existing.coverFileId ? {} : { coverImageUrl: found.coverImageUrl }),
+        // a book's page count stays out of totalUnits: its units are chapters
         ...(hasUnits || existing.totalUnits || !found.totalUnits ? {} : { totalUnits: found.totalUnits }),
       },
       include: SOURCE_INCLUDE,
@@ -668,7 +708,7 @@ learningRouter.patch("/sources/:id", async (req, res) => {
   if (hasUnits && data.totalUnits !== undefined && data.totalUnits !== null) {
     // resize the manual unit list; scraped playlist units resize the same way
     // (drops from the end / appends placeholders)
-    const plan = resizeManualUnits(existing.units, data.totalUnits);
+    const plan = resizeManualUnits(existing.units, data.totalUnits, data.unitLabel ?? existing.unitLabel);
     const [source] = await prisma.$transaction(async (tx) => {
       if (plan.deletePositions.length > 0) {
         await tx.studySourceUnit.deleteMany({

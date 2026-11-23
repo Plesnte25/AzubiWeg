@@ -106,7 +106,7 @@ export const SOURCE_COLOR: Record<SourceKind, string> = {
   link: "var(--pink)",
 };
 
-export const SOURCE_UNIT: Record<SourceKind, string> = { video: "ep", audio: "ep", book: "pages", course: "lessons", article: "parts", link: "" };
+export const SOURCE_UNIT: Record<SourceKind, string> = { video: "ep", audio: "ep", book: "chapters", course: "lessons", article: "parts", link: "" };
 
 export function sourceProgress(s: StudySource): { done: number; total: number | null; pct: number; label: string } {
   const total = s.totalUnits;

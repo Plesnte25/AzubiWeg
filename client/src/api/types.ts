@@ -524,6 +524,19 @@ export interface SourcePreview {
   /** Playlist videos / course lessons found (the create reuses them). */
   unitCount: number;
   outcome: PlaylistFetchOutcome;
+  /** Books: the page count, for information (a book's units are chapters). */
+  pageCount?: number | null;
+  /** Books found by a title search: the other close matches, to pick from. */
+  candidates?: BookCandidate[];
+}
+
+export interface BookCandidate {
+  title: string;
+  authors: string[];
+  thumbnailUrl: string | null;
+  pageCount: number | null;
+  isbn?: string | null;
+  year?: number | null;
 }
 
 export type LevelState = "done" | "active" | "locked";

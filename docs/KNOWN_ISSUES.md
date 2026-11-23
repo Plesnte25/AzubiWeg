@@ -406,6 +406,19 @@ checks of each open and fixed entry above (all fixed entries still hold).
     `shaky`, `newThisWeek`, new `phrases`), the Today hero and the Wortschatz tile count words only. Phrases stay in
     the flashcard review and leave the gender drill. No migration.
 
+61. ✅ **Done** — **Book lookup slow, blind to Amazon / Google links, and books tracked in pages** (user,
+    2026-11-23). Anonymous Google Books had a daily quota of 0 (every call a wasted 429), the lookups ran one after
+    another with 10 s timeouts, only `/dp/<ISBN-10>` links were understood, and a book's page count became hundreds of
+    "Lesson N" units. Now: `services/learning/bookLinks.ts` reads a link without fetching the shop page (checksum-valid
+    ISBN anywhere in it, Amazon's slug title for Kindle/ASIN links, Google Books `id=` / `/books/edition/<slug>/<id>`,
+    amzn.eu / a.co short links followed by redirect only); ISBN, Google id and title search run in parallel and Open
+    Library answers are cached for an hour; Google Books is only called with `GOOGLE_BOOKS_API_KEY`; Amazon pages are
+    no longer scraped for a cover. A book title searches as you type and lists up to three other matches to pick
+    ("Not this one?"). Books count **chapters**: Add source takes a count or a pasted table of contents
+    (`parseContents` strips bullets, dot leaders and page numbers), and the source modal's **Edit / Switch to
+    chapters** replaces the unit titles (ticks kept by position; a pages-tracked book starts over in chapters). Page
+    count is shown for information only.
+
 **Deployed 2026-11-15** (VPS at `95ad020`, #48–53): checked against the live site afterwards — demo login 404,
 `trusted_devices` migration applied, no Clarity in the page, the live bundle matches the local build, and live sync
 confirmed by the user on laptop + phone.

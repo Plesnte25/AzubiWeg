@@ -1,17 +1,18 @@
 /**
  * One place that fills in a study source from what the user typed or pasted, for every source type (KNOWN_ISSUES
- * #34): a YouTube playlist's videos, a Nicos Weg course's lessons, a book (Open Library by ISBN or title, Google
- * Books as the fallback), a podcast (iTunes), or any page's OpenGraph title and image — plus a default cover from the
+ * #34): a YouTube playlist's videos, a Nicos Weg course's lessons, a book (by ISBN, Google Books id or title — see
+ * lookupBook), a podcast (iTunes), or any page's OpenGraph title and image — plus a default cover from the
  * link. Shared by POST /sources/preview (fetch before save, nothing stored), POST /sources and a saved source's
  * "Fetch details". Every lookup is best-effort: a failure returns outcome "failed" and the user types the details.
  */
 import type { StudySourceType } from "@prisma/client";
 import { fetchCoverUrl, youtubeThumbnail } from "./cover.js";
 import { fetchGenericPreview } from "./genericPreview.js";
-import { fetchBook, type BookResult } from "./googleBooks.js";
+import { NO_LINK_INFO, extractIsbn, readBookLink } from "./bookLinks.js";
+import { fetchBook, fetchVolume, type BookResult } from "./googleBooks.js";
 import { fetchPodcast } from "./itunesPodcasts.js";
 import { extractCourseId, fetchCourse } from "./nicosweg.js";
-import { extractIsbn, openLibraryByIsbn, searchOpenLibrary } from "./openLibrary.js";
+import { openLibraryByIsbn, searchOpenLibrary } from "./openLibrary.js";
 import { buildCourseUnits, buildPlaylistUnits, type NewUnit } from "./units.js";
 import { extractPlaylistId, extractVideoId, fetchPlaylist } from "./youtube.js";
 
@@ -34,22 +35,46 @@ export interface SourceDetails {
   totalUnits: number | null;
   units: NewUnit[];
   outcome: FetchOutcome;
+  /** Books: the page count, shown for information only — a book's units are its chapters, never its pages. */
+  pageCount: number | null;
+  /** Books found by a title search: the other close matches (other volumes, editions), to pick from. */
+  candidates: BookResult[];
 }
 
-/** Books: exact by ISBN when there is one, else a ranked Open Library title search, else Google Books. */
-async function lookupBook(input: SourceInput): Promise<BookResult | null> {
-  const isbn = (input.isbn && extractIsbn(input.isbn)) || (input.url ? extractIsbn(input.url) : null);
-  if (isbn) {
-    const exact = await openLibraryByIsbn(isbn);
-    if (exact) return exact;
-  }
-  const title = input.title?.trim();
-  if (!title) return null;
-  return (await searchOpenLibrary(title)) ?? (await fetchBook(title));
+/**
+ * Books. Everything that can identify the book runs at once rather than one after the other with a timeout each: an
+ * ISBN (typed, or read off the link: Amazon's product id, a publisher or shop path), a Google Books link's volume id,
+ * and a title search (what was typed, else the link's slug). An exact hit wins over the title search; a title search
+ * also returns its runners-up so the user can pick the right volume (Menschen A1.1 vs A2 vs Arbeitsbuch).
+ */
+export async function lookupBook(input: SourceInput): Promise<{ book: BookResult | null; candidates: BookResult[] }> {
+  const link = input.url ? await readBookLink(input.url) : NO_LINK_INFO;
+  const isbn = (input.isbn && extractIsbn(input.isbn)) || link.isbn;
+  const query = input.title?.trim() || link.titleHint;
+  const [byIsbn, googleByIsbn, byGoogleId, ranked] = await Promise.all([
+    isbn ? openLibraryByIsbn(isbn) : null,
+    isbn ? fetchBook(`isbn:${isbn}`) : null, // null at once without a key
+    link.googleId ? fetchVolume(link.googleId) : null,
+    query ? searchOpenLibrary(query) : [],
+  ]);
+  const exact = byIsbn ?? byGoogleId ?? googleByIsbn;
+  if (exact) return { book: exact, candidates: [] };
+  if (ranked.length > 0) return { book: ranked[0]!, candidates: ranked.slice(1, 4) };
+  return { book: query ? await fetchBook(query) : null, candidates: [] };
 }
 
 export async function fetchSourceDetails(input: SourceInput): Promise<SourceDetails> {
-  const out: SourceDetails = { type: input.type, title: null, provider: null, coverImageUrl: null, totalUnits: null, units: [], outcome: "manual" };
+  const out: SourceDetails = {
+    type: input.type,
+    title: null,
+    provider: null,
+    coverImageUrl: null,
+    totalUnits: null,
+    units: [],
+    outcome: "manual",
+    pageCount: null,
+    candidates: [],
+  };
   const url = input.url?.trim() || null;
   const title = input.title?.trim() || null;
 
@@ -74,12 +99,13 @@ export async function fetchSourceDetails(input: SourceInput): Promise<SourceDeta
       out.outcome = "course";
     } else out.outcome = "failed";
   } else if (input.type === "book" && (title || url || input.isbn)) {
-    const book = await lookupBook(input);
+    const { book, candidates } = await lookupBook(input);
     if (book) {
       out.title = book.title;
       out.provider = book.authors.length > 0 ? book.authors.join(", ") : null;
       out.coverImageUrl = book.thumbnailUrl;
-      out.totalUnits = book.pageCount;
+      out.pageCount = book.pageCount;
+      out.candidates = candidates;
       out.outcome = "book";
     } else out.outcome = "failed";
   } else if (input.type === "audio" && title) {
@@ -103,8 +129,10 @@ export async function fetchSourceDetails(input: SourceInput): Promise<SourceDeta
   }
 
   // Every source with a link gets a cover from it by default (a YouTube thumbnail, else the page's og:image); a
-  // book's own cover wins over its shop page's image.
-  if (url && !out.coverImageUrl) out.coverImageUrl = await fetchCoverUrl(url, out.units);
+  // book's own cover wins over its shop page's image. Amazon answers server fetches with a bot check, so reading its
+  // page only cost seconds and never found an image.
+  const blockedShop = url ? /^https?:\/\/(?:[\w-]+\.)*(?:amazon\.[a-z.]+|amzn\.[a-z]+|a\.co)\//i.test(url) : false;
+  if (url && !out.coverImageUrl && !blockedShop) out.coverImageUrl = await fetchCoverUrl(url, out.units);
   const videoId = url ? extractVideoId(url) : null;
   if (videoId) out.coverImageUrl = youtubeThumbnail(videoId);
   return out;

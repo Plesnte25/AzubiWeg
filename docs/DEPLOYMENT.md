@@ -165,7 +165,7 @@ sudo -u azubiweg bash -c 'cd /opt/azubiweg/repo/server && set -a && source /opt/
   watch-page requests with "Sign in to confirm you're not a bot", so without it those lessons get no description.
   Google Cloud Console → new project → enable "YouTube Data API v3" → Credentials → API key (restrict it to that
   API). Free quota: 10,000 units a day; one request covers 50 videos.
-- `GOOGLE_BOOKS_API_KEY` — Books API, the fallback after Open Library for book lookups.
+- `GOOGLE_BOOKS_API_KEY` — Books API: exact lookups for pasted Google Books links and the fallback after Open Library. Without it Google is skipped entirely (the anonymous quota is 0 a day).
 
 ## 6. rclone: bridge the Obsidian vault over OneDrive
 
