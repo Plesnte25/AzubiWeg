@@ -210,17 +210,18 @@ export default function Journey() {
   });
   const activate = useMutation({ mutationFn: () => api.activateRoadmap(), onSuccess: () => (void queryClient.invalidateQueries({ queryKey: ["roadmap"] }), refresh()), onError });
 
-  // ── ticket rows: due reviews, then everything on today (taken topics, rolled-over and own tasks) ──
+  // ── ticket rows: everything on today (taken topics, rolled-over and own tasks). Due reviews are a separate,
+  // optional Review tab and never count toward the goal (user's call, 2026-11-23). ──
   const taskRow = (t: NonNullable<typeof today>["tasks"][number]): TicketRow => {
     const k = taskKind(t);
     return { key: `t:${t.id}`, taskId: t.id, title: t.title, meta: `${k.label} · ${taskEstimateMinutes(t)} min`, color: k.color, done: !!t.completedAt, running: !!t.timerRunningSince };
   };
   const tasks = (today?.tasks ?? []).filter((t) => !t.droppedAt);
   const reviewCards = today?.review.cards ?? 0;
-  const rows: TicketRow[] = [
-    ...(reviewCards > 0 ? [{ key: "review", review: true, title: `Review ${reviewCards} cards`, meta: `Vocab · ${today!.review.minutes} min`, color: "var(--tomato)", done: false }] : []),
-    ...(today?.queues.topicReviews ?? []).map((r) => ({ key: `r:${r.id}`, itemId: r.id, title: `Review: ${r.title}`, meta: "Topic review · 10 min", color: "var(--lilac)", done: false })),
-    ...tasks.map(taskRow),
+  const rows: TicketRow[] = tasks.map(taskRow);
+  const reviewRows: TicketRow[] = [
+    ...(reviewCards > 0 ? [{ key: "review", review: true, title: `Flashcards · ${reviewCards} due`, meta: `Vocab · ~${today!.review.minutes} min`, color: "var(--tomato)", done: false }] : []),
+    ...(today?.queues.topicReviews ?? []).map((r) => ({ key: `r:${r.id}`, itemId: r.id, title: `Review: ${r.title}`, meta: "Topic re-check · 10 min", color: "var(--lilac)", done: false })),
   ];
   const openRows = rows.filter((r) => !r.done);
   const minutesLeft = openRows.reduce((n, r) => n + Number(r.meta.match(/(\d+) min/)?.[1] ?? 0), 0);
@@ -236,9 +237,10 @@ export default function Journey() {
         : `${rows.length - openRows.length}/${rows.length} · ${minutesLeft} min left${goal ? ` · goal ${goal.minutes} min` : ""}`;
   const nextLabel = today?.next ? `${today.next.category === "grammar" ? "Grammar" : today.next.category === "vocab_theme" ? "Vocab" : "Skill"}: ${today.next.title}` : null;
 
-  const openRow = (r: TicketRow) => {
+  const openRow = (r: TicketRow) => setModal({ k: "task", taskId: r.taskId, itemId: r.itemId, origin: "Today's ticket" });
+  const openReview = (r: TicketRow) => {
     if (r.review) push("/review");
-    else setModal({ k: "task", taskId: r.taskId, itemId: r.itemId, origin: "Today's ticket" });
+    else setModal({ k: "task", itemId: r.itemId, origin: "Review" });
   };
   const toggleRow = (r: TicketRow) => {
     if (r.taskId) toggleTask.mutate({ id: r.taskId, done: !r.done });
@@ -342,6 +344,7 @@ export default function Journey() {
   const ticket = activated ? (
     <Ticket
       rows={rows}
+      reviews={reviewRows}
       capLine={capLine}
       goalMet={goalMet}
       next={nextLabel}
@@ -350,6 +353,7 @@ export default function Journey() {
       dragOK={dragOK}
       onToggle={toggleRow}
       onOpen={openRow}
+      onOpenReview={openReview}
       onWeek={() => setModal({ k: "week" })}
       onTake={() => take.mutate()}
     />

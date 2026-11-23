@@ -17,6 +17,7 @@ import {
 } from "@phosphor-icons/react";
 import type { RoadmapExtra, StudySource } from "../../../api/types";
 import { DuSticker, Starburst } from "../../../components/ui/Sticker";
+import { Segmented } from "../../../components/ui/Segmented";
 import { Tile } from "../../../components/ui/Tile";
 import { SKILL_COLORS } from "../../../lib/skills";
 import type { Breakpoint } from "../../../lib/useBreakpoint";
@@ -108,7 +109,7 @@ export interface TicketRow {
   color: string;
   done: boolean;
   running?: boolean;
-  /** A destination, not a checkbox (due reviews). */
+  /** The flashcards row of the Review tab: opens /review. */
   review?: boolean;
   taskId?: string;
   itemId?: string;
@@ -178,8 +179,19 @@ function RowText({ title, meta, done, onOpen, muted }: { title: string; meta: st
   );
 }
 
+type TicketView = "ticket" | "review";
+const VIEW_KEY = "azubiweg-ticket-view";
+function storedView(): TicketView {
+  try {
+    return localStorage.getItem(VIEW_KEY) === "review" ? "review" : "ticket";
+  } catch {
+    return "ticket";
+  }
+}
+
 export function Ticket({
   rows,
+  reviews,
   capLine,
   goalMet,
   next,
@@ -188,10 +200,13 @@ export function Ticket({
   dragOK,
   onToggle,
   onOpen,
+  onOpenReview,
   onWeek,
   onTake,
 }: {
   rows: TicketRow[];
+  /** Due flashcards and topic re-checks: optional, never on the ticket or in the goal (user's call, 2026-11-23). */
+  reviews: TicketRow[];
   capLine: string;
   /** The minutes goal is reached: the cap line and pill switch to "keep going". */
   goalMet: boolean;
@@ -202,9 +217,20 @@ export function Ticket({
   dragOK: boolean;
   onToggle: (r: TicketRow) => void;
   onOpen: (r: TicketRow) => void;
+  onOpenReview: (r: TicketRow) => void;
   onWeek: () => void;
   onTake: () => void;
 }) {
+  const [picked, setPicked] = useState<TicketView>(storedView);
+  const view: TicketView = reviews.length ? picked : "ticket";
+  const pick = (v: TicketView) => {
+    setPicked(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* private mode: just not remembered */
+    }
+  };
   const today = new Date();
   const firstOpen = rows.find((r) => !r.done)?.key;
   const sm = bp === "sm";
@@ -227,10 +253,31 @@ export function Ticket({
         </span>
       </button>
       <div className="flex min-w-0 flex-1 flex-col gap-2.5" style={{ padding: "16px 18px" }}>
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span style={{ fontSize: "calc(var(--k) * 24px)", fontWeight: 700, letterSpacing: "-.03em" }}>Today's ticket</span>
-          <span style={{ fontSize: 13, fontWeight: 700 }}>{capLine}</span>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {reviews.length ? (
+            <Segmented label="Ticket or reviews" options={[["ticket", "Today's ticket"], ["review", `Review ${reviews.length}`]] as const} value={view} onChange={pick} />
+          ) : (
+            <span style={{ fontSize: "calc(var(--k) * 24px)", fontWeight: 700, letterSpacing: "-.03em" }}>Today's ticket</span>
+          )}
+          <span style={{ fontSize: 13, fontWeight: 700 }}>{view === "ticket" ? capLine : "Optional · not part of today's goal"}</span>
         </div>
+        {view === "review" ? (
+          <div className="grid gap-2" style={{ gridTemplateColumns: bp === "lg" ? "repeat(2,minmax(0,1fr))" : "minmax(0,1fr)" }}>
+            {reviews.map((r) => (
+              <div
+                key={r.key}
+                className="flex items-center"
+                style={{ gap: 10, padding: "8px 10px", borderRadius: 14, border: "2px solid var(--dash)" }}
+              >
+                <span aria-hidden="true" className="flex shrink-0 items-center justify-center" style={{ width: 22, height: 22, borderRadius: 7, border: "2.5px solid var(--line)", background: r.color, color: "var(--onTile)" }}>
+                  <ArrowRight size={12} weight="bold" />
+                </span>
+                <RowText title={r.title} meta={r.meta} done={false} onOpen={() => onOpenReview(r)} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
         <div className="grid gap-2" style={{ gridTemplateColumns: bp === "lg" ? "repeat(2,minmax(0,1fr))" : "minmax(0,1fr)" }}>
           {rows.map((r) => {
             const c = r.key === firstOpen;
@@ -238,7 +285,7 @@ export function Ticket({
               <Draggable
                 key={r.key}
                 id={`ticket:${r.key}`}
-                enabled={dragOK && !r.review}
+                enabled={dragOK}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -253,13 +300,7 @@ export function Ticket({
                   flexShrink: 0,
                 }}
               >
-                {r.review ? (
-                  <span aria-hidden="true" className="flex shrink-0 items-center justify-center" style={{ width: 22, height: 22, borderRadius: 7, border: "2.5px solid var(--line)", background: "var(--tomato)", color: "var(--onTile)" }}>
-                    <ArrowRight size={12} weight="bold" />
-                  </span>
-                ) : (
-                  <RowBox done={r.done} accent={c} onToggle={() => onToggle(r)} label={`${r.title} done`} />
-                )}
+                <RowBox done={r.done} accent={c} onToggle={() => onToggle(r)} label={`${r.title} done`} />
                 <RowText title={r.title} meta={r.meta} done={r.done} onOpen={() => onOpen(r)} muted={c} />
                 {r.running && <span aria-label="Timer running" className="shrink-0" style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--tomato)", border: "2px solid var(--line)" }} />}
               </Draggable>
@@ -281,11 +322,13 @@ export function Ticket({
             </span>
           </button>
         ) : (
-          rows.some((r) => !r.review && !r.itemId) && (
+          rows.some((r) => !r.itemId) && (
             <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.75 }}>Every open topic is on your ticket — pass one to open the next.</span>
           )
         )}
         {dragOK && <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.75 }}>Tap a task to open it · drag one onto Notes to pin it</span>}
+          </>
+        )}
       </div>
     </section>
   );

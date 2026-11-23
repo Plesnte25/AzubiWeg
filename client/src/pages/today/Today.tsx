@@ -173,13 +173,10 @@ export default function Today() {
   if (!dash) return <SkeletonGrid style={gridStyle(bp, fill)} areas={areasOf(bp === "lg" ? LAYOUT.lg : LAYOUT[bp][0])} label="Loading Today" />;
   const b = dash.bento;
 
-  // Route rows: due reviews first (a destination, not a checkbox), then everything on today's ticket (the self-paced
-  // queue: taken topics, unfinished ones from earlier days, the user's own). Topic reviews live on the Plan ticket.
+  // Route rows: everything on today's ticket (the self-paced queue: taken topics, unfinished ones from earlier days,
+  // the user's own). Due reviews are optional and stay off the route: the Review tile here, Plan's Review tab.
   const todaysTasks = (today?.tasks ?? []).filter((t) => !t.droppedAt);
   const rows: RouteRow[] = [
-    ...(dash.dueToday > 0
-      ? [{ id: "review", title: `Review ${dash.dueToday} cards`, meta: `Vocab · ${reviewMinutes(dash.dueToday)} min`, color: "var(--tomato)", done: false, review: true }]
-      : []),
     ...todaysTasks.map((t) => {
       const kind = taskKind(t);
       return { id: t.id, title: t.title, meta: `${kind.label} · ${taskEstimateMinutes(t)} min`, color: kind.color, done: !!t.completedAt };
@@ -213,10 +210,7 @@ export default function Today() {
         }`;
   const dayLabel = today ? `Day ${today.overview.dayNumber}` : null;
 
-  const openRow = (row: RouteRow) => {
-    if (row.review) push("/review");
-    else push("/plan", { state: { openTaskId: row.id } });
-  };
+  const openRow = (row: RouteRow) => push("/plan", { state: { openTaskId: row.id } });
 
   return (
     <div className="grid min-h-0 flex-1" style={gridStyle(bp, fill)}>

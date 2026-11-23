@@ -109,6 +109,8 @@ const STATES = [
     ["plan-week", async (page) => page.getByRole("button", { name: "Open this week" }).click()],
     ["plan-library", async (page) => page.getByRole("button", { name: "See all" }).click()],
     ["plan-add-source", async (page) => page.getByRole("button", { name: "+ Add" }).click()],
+    // the ticket tile's optional Review tab (only there when something is due)
+    ["plan-review", async (page) => page.getByRole("radio", { name: /^Review \d+/ }).click()],
   ].map(([name, open]) => ({
     name,
     route: "/plan",

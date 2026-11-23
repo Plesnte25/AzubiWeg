@@ -17,7 +17,7 @@ import { appAudioDir } from "../services/vault/sync.js";
 import { isStudyDay, isValidCapacity, taskEstimateMinutes } from "../services/learning/daily-plan.js";
 import { planSelfPacedCleanup } from "../services/learning/self-paced.js";
 import { currentByLine, forecastDates, loadQueue, topicTaskData } from "../services/learning/queue.js";
-import { TOPIC_MINUTES, planTicket, queueOrder } from "../services/learning/ticket.js";
+import { planTicket, queueOrder } from "../services/learning/ticket.js";
 import { EXTRAS } from "../services/learning/extras.js";
 import { lessonSkill, lessonTitle, planSourceLessons, unitMinutes } from "../services/learning/source-lessons.js";
 import { fillMissingCourseTopics, teachesFor } from "../services/learning/source-topics.js";
@@ -309,8 +309,8 @@ roadmapRouter.get("/today", async (req, res) => {
       select: { id: true, title: true, level: true, theme: true, reviewDueAt: true },
     }),
   ]);
-  // due reviews come first and count toward the goal: words at their estimate, topic reviews at a topic's 10 min
-  const reviewMinutes = review.minutes + topicReviews.length * TOPIC_MINUTES;
+  // Due reviews (words + topic re-checks) are optional and live on Plan's Review tab, not the ticket: they never
+  // count toward the goal or crowd out topics (user's call, 2026-11-23).
 
   const { dayId, queue, next } = await prisma.$transaction(async (tx) => {
     await lockUser(tx, user.id);
@@ -362,7 +362,7 @@ roadmapRouter.get("/today", async (req, res) => {
     });
     const plan = planTicket({
       open: queue.open,
-      plannedMinutes: reviewMinutes + onToday.reduce((n, t) => n + taskEstimateMinutes(t), 0),
+      plannedMinutes: onToday.reduce((n, t) => n + taskEstimateMinutes(t), 0),
       goalMinutes: user.studyCapacityMinutes,
       restDay,
       hasTopicToday: onToday.some((t) => t.syllabusItemId !== null),
@@ -387,7 +387,7 @@ roadmapRouter.get("/today", async (req, res) => {
     review,
     goal: {
       minutes: user.studyCapacityMinutes,
-      plannedMinutes: reviewMinutes + live.reduce((n, t) => n + taskEstimateMinutes(t), 0),
+      plannedMinutes: live.reduce((n, t) => n + taskEstimateMinutes(t), 0),
       doneMinutes: live.filter((t) => t.completedAt).reduce((n, t) => n + taskEstimateMinutes(t), 0),
     },
     next: next ? { id: next.id, title: next.title, category: next.category, theme: next.theme } : null,
