@@ -7,6 +7,7 @@ import { Modal } from "../../components/ui/Modal";
 import { PillButton } from "../../components/ui/PillButton";
 import { toast } from "../../components/ui/Toast";
 import { useNavStack } from "../../lib/navStack";
+import { nounNotation } from "../../lib/nounNotation";
 import { articleChipStyle, articleLabel, nextReviewLabel, pipStyles, STRENGTH_LABELS } from "../../lib/wordBento";
 import { stripLeadingPosTag } from "../../lib/wordDisplay";
 
@@ -212,7 +213,10 @@ export function WordDetailPanel({
   const kind = isVerb ? "Verb" : word.genus ? "Noun" : (word.wortart ?? "Word");
   const plural = word.declension?.nom?.pl;
   const past = [word.conjugation?.past, word.conjugation?.perfect].filter(Boolean).join(" · ");
-  const form = isVerb ? past : plural ? `die ${plural}` : null;
+  // nouns: article, singular and plural ending together ("der Hund, -e"), the plural spelled out beneath
+  const notation = isVerb ? null : nounNotation(word);
+  const form = isVerb ? past : (notation ?? (plural ? `die ${plural}` : null));
+  const pluralOut = notation && plural && !notation.endsWith("(Pl.)") ? `die ${plural}` : null;
   const hasForms = isVerb || word.wortart === "Nomen" || !!word.genus;
   const strength = word.strength ?? 0;
   const meaning = stripLeadingPosTag(word.meaning ?? "", word.wortart);
@@ -291,10 +295,15 @@ export function WordDetailPanel({
           {/* plural for nouns, past/Perfekt for verbs; other word types have no form to show */}
           {hasForms && (
             <div style={plainBox}>
-              <div style={eyebrow}>{isVerb ? "Past · Perfekt" : "Plural"}</div>
+              <div style={eyebrow}>{isVerb ? "Past · Perfekt" : notation ? "Article · Plural" : "Plural"}</div>
               <div lang="de" style={{ fontSize: 15, fontWeight: 700, marginTop: 2, overflowWrap: "anywhere" }}>
                 {form || "—"}
               </div>
+              {pluralOut && (
+                <div lang="de" style={{ fontSize: 12, fontWeight: 600, opacity: 0.7, marginTop: 1, overflowWrap: "anywhere" }}>
+                  {pluralOut}
+                </div>
+              )}
             </div>
           )}
           <div style={plainBox}>

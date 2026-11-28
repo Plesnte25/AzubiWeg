@@ -1,4 +1,5 @@
 import { prisma } from "../../db.js";
+import { parseNounNote } from "../vocab/noun-notation.js";
 
 /**
  * Tatoeba fallback for a word's bilingual example. kaikki/Wiktionary examples come first; when a word has none that
@@ -29,7 +30,7 @@ const AUXILIARIES = new Set(["hat", "ist", "haben", "sein"]);
 
 /**
  * Every single-token form of a word that a sentence could contain: the headword, its declension cells (articles
- * stripped), plural from the grammar note, and its present, past and participle forms. Separable-verb halves ("rufe
+ * stripped), plural from the noun note ("der Hund, -e"), and its present, past and participle forms. Separable-verb halves ("rufe
  * … an") aren't matched; the headword and the participle still are.
  */
 export function wordForms(headword: string, opts: { grammar?: string | null; declension?: unknown; conjugation?: unknown } = {}): string[] {
@@ -39,8 +40,7 @@ export function wordForms(headword: string, opts: { grammar?: string | null; dec
     for (const t of tokenizeGerman(text)) if (!skip.has(t)) forms.add(t);
   };
   add(headword);
-  const plural = opts.grammar?.match(/Plural:\s*(?:die\s+)?([^\s,;]+)/i)?.[1];
-  add(plural);
+  add(parseNounNote(opts.grammar ?? null)?.plural);
   const decl = opts.declension as Declension | null | undefined;
   if (decl && typeof decl === "object") for (const cell of Object.values(decl)) (add(cell?.sg), add(cell?.pl));
   const conj = opts.conjugation as Conjugation | null | undefined;

@@ -41,7 +41,7 @@ async function seedUser(): Promise<{ id: string }> {
 }
 
 // Shaped like real enriched words (see enrichResolved() / buildGrammarNote() in services/enrichment/index.ts): the
-// meaning carries the Wiktionary POS tag, and `grammar` is "der; Plural: die …" for nouns and the principal parts for
+// meaning carries the Wiktionary POS tag, and `grammar` is "der Hund, -e" for nouns and the principal parts for
 // verbs, so the word class, gender and noun/verb filters derive the same way they do for a user's own words.
 const DEMO_WORDS: {
   headword: string;
@@ -55,7 +55,7 @@ const DEMO_WORDS: {
   conjugation?: { present: Record<string, string>; past?: string; perfect?: string };
 }[] = [
   {
-    headword: "Haus", meaning: "(Noun) house", grammar: "das; Plural: die Häuser",
+    headword: "Haus", meaning: "(Noun) house", grammar: "das Haus, -¨er",
     example: "Das Haus ist groß.", exampleTranslation: "The house is big.", level: "a1", state: "mastered",
     declension: {
       nom: { sg: "Haus", pl: "Häuser" },
@@ -65,7 +65,7 @@ const DEMO_WORDS: {
     },
   },
   {
-    headword: "Familie", meaning: "(Noun) family", grammar: "die; Plural: die Familien",
+    headword: "Familie", meaning: "(Noun) family", grammar: "die Familie, -n",
     example: "Meine Familie wohnt in Berlin.", exampleTranslation: "My family lives in Berlin.", level: "a1", state: "mastered",
   },
   {
@@ -78,7 +78,7 @@ const DEMO_WORDS: {
     },
   },
   {
-    headword: "Ausbildung", meaning: "(Noun) vocational training", grammar: "die; Plural: die Ausbildungen",
+    headword: "Ausbildung", meaning: "(Noun) vocational training", grammar: "die Ausbildung, -en",
     example: "Sie macht eine Ausbildung als Krankenschwester.", exampleTranslation: "She is training as a nurse.", level: "a1", state: "mastered",
     declension: {
       nom: { sg: "Ausbildung", pl: "Ausbildungen" },
@@ -101,7 +101,7 @@ const DEMO_WORDS: {
     example: "Er trinkt gern Kaffee.", exampleTranslation: "He likes drinking coffee.", level: "a1", state: "mastered",
   },
   {
-    headword: "Schule", meaning: "(Noun) school", grammar: "die; Plural: die Schulen",
+    headword: "Schule", meaning: "(Noun) school", grammar: "die Schule, -n",
     example: "Die Schule beginnt um acht Uhr.", exampleTranslation: "School starts at eight o'clock.", level: "a1", state: "mastered",
   },
   {
@@ -109,7 +109,7 @@ const DEMO_WORDS: {
     example: "Obst ist gesund.", exampleTranslation: "Fruit is healthy.", level: "a1", state: "mastered",
   },
   {
-    headword: "Bahnhof", meaning: "(Noun) train station", grammar: "der; Plural: die Bahnhöfe",
+    headword: "Bahnhof", meaning: "(Noun) train station", grammar: "der Bahnhof, -¨e",
     example: "Der Bahnhof ist nicht weit.", exampleTranslation: "The train station isn't far.", level: "a1", state: "due",
     declension: {
       nom: { sg: "Bahnhof", pl: "Bahnhöfe" },
@@ -119,31 +119,31 @@ const DEMO_WORDS: {
     },
   },
   {
-    headword: "Wochenende", meaning: "(Noun) weekend", grammar: "das; Plural: die Wochenenden",
+    headword: "Wochenende", meaning: "(Noun) weekend", grammar: "das Wochenende, -n",
     example: "Was machst du am Wochenende?", exampleTranslation: "What are you doing at the weekend?", level: "a1", state: "due",
   },
   {
-    headword: "Handy", meaning: "(Noun) mobile phone", grammar: "das; Plural: die Handys",
+    headword: "Handy", meaning: "(Noun) mobile phone", grammar: "das Handy, -s",
     example: "Mein Handy ist kaputt.", exampleTranslation: "My mobile phone is broken.", level: "a1", state: "due",
   },
   {
-    headword: "Geld", meaning: "(Noun) money", grammar: "das; Plural: die Gelder",
+    headword: "Geld", meaning: "(Noun) money", grammar: "das Geld, -er",
     example: "Ich habe kein Geld dabei.", exampleTranslation: "I don't have any money on me.", level: "a1", state: "due",
   },
   {
-    headword: "Termin", meaning: "(Noun) appointment", grammar: "der; Plural: die Termine",
+    headword: "Termin", meaning: "(Noun) appointment", grammar: "der Termin, -e",
     example: "Ich habe einen Termin beim Amt.", exampleTranslation: "I have an appointment at the authorities' office.", level: "a2", state: "due",
   },
   {
-    headword: "Meinung", meaning: "(Noun) opinion", grammar: "die; Plural: die Meinungen",
+    headword: "Meinung", meaning: "(Noun) opinion", grammar: "die Meinung, -en",
     example: "Was ist deine Meinung dazu?", exampleTranslation: "What's your opinion on that?", level: "a2", state: "due",
   },
   {
-    headword: "Umwelt", meaning: "(Noun) environment", grammar: "die; Plural: die Umwelten",
+    headword: "Umwelt", meaning: "(Noun) environment", grammar: "die Umwelt, -en",
     example: "Wir müssen die Umwelt schützen.", exampleTranslation: "We have to protect the environment.", level: "a2", state: "due",
   },
   {
-    headword: "Gesellschaft", meaning: "(Noun) society", grammar: "die; Plural: die Gesellschaften",
+    headword: "Gesellschaft", meaning: "(Noun) society", grammar: "die Gesellschaft, -en",
     example: "Das ist ein Problem für die ganze Gesellschaft.", exampleTranslation: "That is a problem for the whole of society.", level: "a2", state: "due",
   },
   {
@@ -151,23 +151,23 @@ const DEMO_WORDS: {
     example: "Ich möchte ein Visum beantragen.", exampleTranslation: "I would like to apply for a visa.", level: "a2", state: "new",
   },
   {
-    headword: "Bewerbung", meaning: "(Noun) job application", grammar: "die; Plural: die Bewerbungen",
+    headword: "Bewerbung", meaning: "(Noun) job application", grammar: "die Bewerbung, -en",
     example: "Ich schreibe eine Bewerbung.", exampleTranslation: "I'm writing a job application.", level: "a2", state: "new",
   },
   {
-    headword: "Vorstellungsgespräch", meaning: "(Noun) job interview", grammar: "das; Plural: die Vorstellungsgespräche",
+    headword: "Vorstellungsgespräch", meaning: "(Noun) job interview", grammar: "das Vorstellungsgespräch, -e",
     example: "Das Vorstellungsgespräch war erfolgreich.", exampleTranslation: "The job interview went well.", level: "a2", state: "new",
   },
   {
-    headword: "Versicherung", meaning: "(Noun) insurance", grammar: "die; Plural: die Versicherungen",
+    headword: "Versicherung", meaning: "(Noun) insurance", grammar: "die Versicherung, -en",
     example: "Brauche ich eine Versicherung?", exampleTranslation: "Do I need insurance?", level: "a2", state: "new",
   },
   {
-    headword: "Miete", meaning: "(Noun) rent", grammar: "die; Plural: die Mieten",
+    headword: "Miete", meaning: "(Noun) rent", grammar: "die Miete, -n",
     example: "Die Miete ist im August fällig.", exampleTranslation: "The rent is due in August.", level: "a2", state: "new",
   },
   {
-    headword: "Kollege", meaning: "(Noun) colleague", grammar: "der; Plural: die Kollegen",
+    headword: "Kollege", meaning: "(Noun) colleague", grammar: "der Kollege, -n",
     example: "Mein Kollege hilft mir gern.", exampleTranslation: "My colleague is happy to help me.", level: "a1", state: "new",
   },
   {
@@ -175,7 +175,7 @@ const DEMO_WORDS: {
     example: "Sei bitte pünktlich!", exampleTranslation: "Please be on time!", level: "a1", state: "new",
   },
   {
-    headword: "Prüfung", meaning: "(Noun) exam", grammar: "die; Plural: die Prüfungen",
+    headword: "Prüfung", meaning: "(Noun) exam", grammar: "die Prüfung, -en",
     example: "Die Prüfung ist nächste Woche.", exampleTranslation: "The exam is next week.", level: "a2", state: "new",
   },
 ];

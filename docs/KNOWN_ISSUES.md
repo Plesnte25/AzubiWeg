@@ -419,6 +419,18 @@ checks of each open and fixed entry above (all fixed entries still hold).
     chapters** replaces the unit titles (ticks kept by position; a pages-tracked book starts over in chapters). Page
     count is shown for information only.
 
+62. ✅ **Done** — **Learn the plural with the noun** (user, 2026-11-28: store every noun as "der Hund, -e" / "die
+    Katze, -n" / "das Kind, -er"). A noun's vault Grammar field is now dictionary notation, Goethe word-list style
+    (`services/vocab/noun-notation.ts`): `der Hund, -e`, `das Haus, -¨er` (umlaut on the stem vowel), `der Lehrer, -`,
+    `das Museum, Museen` (written out when the plural doesn't extend the singular), `die Eltern (Pl.)`,
+    `die Schadenfreude` (no plural known). A compound the dictionary lacks takes its head's gender *and* plural
+    (`compoundNoun`: Radiomoderatorin → `die Radiomoderatorin, -nen`). It still starts with der/die/das, so
+    `deriveGenus`/`deriveWortart` are unchanged; `parseNounNote` reads both this and the old
+    "der; Plural: die Hunde" shape. The review card's back and the word detail show the notation, with the plural
+    spelled out beneath (`client/src/lib/nounNotation.ts`, built from gender + declension for not-yet-rewritten
+    notes). Old cards: after deploy, `npm run backfill:noun-notation -- --dry-run`, then without the flag. Only notes in
+    the exact old generated shape are rewritten (hand-edited text never is); protected cards are only reformatted.
+
 **Deployed 2026-11-15** (VPS at `95ad020`, #48–53): checked against the live site afterwards — demo login 404,
 `trusted_devices` migration applied, no Clarity in the page, the live bundle matches the local build, and live sync
 confirmed by the user on laptop + phone.

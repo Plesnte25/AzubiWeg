@@ -7,6 +7,7 @@ import type { Grade, Word } from "../../api/types";
 import { ThemeToggle } from "../../components/chrome/ThemeToggle";
 import { toast } from "../../components/ui/Toast";
 import { generateGrammarTip } from "../../lib/grammarTips";
+import { nounNotation } from "../../lib/nounNotation";
 import { useNavStack } from "../../lib/navStack";
 import { useBreakpoint, type Breakpoint } from "../../lib/useBreakpoint";
 import { wordColor } from "../../lib/wordBento";
@@ -67,14 +68,15 @@ function kindLabel(w: Word): string {
   return (w.wortart ?? "word").toLowerCase();
 }
 
-/** Plural for nouns, principal parts for verbs. */
+/** The plural spelled out for nouns (the card's big line already shows its ending), principal parts for verbs. */
 function formsLine(w: Word): string | null {
   if (w.wortart === "Verb") {
     const parts = [w.conjugation?.past, w.conjugation?.perfect].filter(Boolean);
     return parts.length ? parts.join(" · ") : null;
   }
   const pl = w.declension?.nom?.pl;
-  return pl ? `pl. die ${pl}` : null;
+  // a plural-only noun IS its plural ("die Eltern (Pl.)"): nothing more to spell out
+  return pl && !nounNotation(w)?.endsWith("(Pl.)") ? `pl. die ${pl}` : null;
 }
 
 /**
@@ -345,7 +347,8 @@ function FlashCard({
   const sm = bp === "sm";
   const meaning = stripLeadingPosTag(w.meaning ?? "", w.wortart);
   const tint = wordColor(w);
-  const fullWord = `${w.genus ? `${w.genus} ` : ""}${w.headword}`;
+  // nouns in dictionary notation ("der Hund, -e"), so the article and plural are learned together
+  const fullWord = nounNotation(w) ?? `${w.genus ? `${w.genus} ` : ""}${w.headword}`;
   const forms = formsLine(w);
   const rule = w.genus ? generateGrammarTip(w) : null;
   const shown = mode === "meaning" ? meaning : w.headword;

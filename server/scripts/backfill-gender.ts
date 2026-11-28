@@ -1,6 +1,6 @@
 /**
  * One-off backfill: gives every saved noun its article (der/die/das). The article lives at the start of the
- * `grammar` field ("der; Plural: die Tische"), which enrichment only fills when the dictionary entry has a gender,
+ * `grammar` field ("der Tisch, -e"), which enrichment only fills when the dictionary entry has a gender,
  * and extractGender() used to miss ~25% of nouns ("m.weak", "f.sg", "f:n" templates). Run AFTER re-importing the
  * dictionary (`npm run import:kaikki`) so KaikkiEntry.gender is complete.
  *
@@ -12,21 +12,22 @@
  */
 import "dotenv/config";
 import { prisma } from "../src/db.js";
-import { buildGrammarNote } from "../src/services/enrichment/index.js";
-import { compoundGender, findEntriesByHeadword, selectExactCaseEntries } from "../src/services/enrichment/kaikki.js";
+import { buildGrammarNote, nounGrammarNote } from "../src/services/enrichment/index.js";
+import { findEntriesByHeadword, selectExactCaseEntries } from "../src/services/enrichment/kaikki.js";
 import { deriveGenus } from "../src/services/vocab/classify.js";
 import { formatCardLine } from "../src/services/vault/format.js";
 import { vaultSync } from "../src/services/vault/sync.js";
 
 const dryRun = process.argv.includes("--dry-run");
 
-// The dictionary noun's gender; else plural-only "die (nur Plural)"; else a compound's head (Radiomoderatorin -> die).
+// The dictionary noun's note ("der Tisch, -e"); else plural-only "die Eltern (Pl.)"; else a compound's head
+// (Radiomoderatorin -> "die Radiomoderatorin, -nen").
 async function nounGrammar(headword: string): Promise<string | null> {
   if (!/^[A-ZÄÖÜ]/.test(headword)) return null;
   const entries = selectExactCaseEntries(await findEntriesByHeadword(headword.toLowerCase()), headword);
   const noun = entries.find((e) => e.pos === "noun" && e.gender) ?? entries.find((e) => e.pos === "noun");
-  const note = noun ? buildGrammarNote({ ...noun, conjugation: null }) : null;
-  return note ?? compoundGender(headword);
+  const note = noun ? buildGrammarNote({ ...noun, conjugation: null }, headword) : null;
+  return note ?? nounGrammarNote(headword, null);
 }
 
 async function main() {
@@ -46,7 +47,7 @@ async function main() {
         continue;
       }
       if (w.grammar?.trim()) {
-        kept.push(`${w.headword} (has "${w.grammar}", dictionary says ${grammar.split(";")[0]})`);
+        kept.push(`${w.headword} (has "${w.grammar}", dictionary says "${grammar}")`);
         continue;
       }
       updates.set(w.sortKey, { id: w.id, grammar });

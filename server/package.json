@@ -14,6 +14,7 @@
     "import:derivbase": "tsx scripts/import-derivbase.ts",
     "backfill:kaikki": "tsx scripts/backfill-kaikki.ts",
     "backfill:gender": "tsx scripts/backfill-gender.ts",
+    "backfill:noun-notation": "tsx scripts/backfill-noun-notation.ts",
     "backfill:example-translation": "tsx scripts/backfill-example-translation.ts",
     "backfill:examples": "tsx scripts/backfill-examples.ts",
     "backfill:form-meanings": "tsx scripts/backfill-form-meanings.ts",

@@ -4,7 +4,7 @@ import {
   type Resolution,
   TransientLookupError,
   cleanExampleTranslation,
-  compoundGender,
+  compoundNoun,
   findEntryById,
   findPrimaryEntry,
   isEnglishCognate,
@@ -15,6 +15,7 @@ import {
 } from "./kaikki.js";
 import { type PonsBudget, ponsDiagnosticEligible, runPonsDiagnostic } from "./pons.js";
 import { findTatoebaExample, isSimpleExample, wordForms } from "./tatoeba.js";
+import { formatNounNotation } from "../vocab/noun-notation.js";
 
 export { resolveWord, type Resolution, TransientLookupError } from "./kaikki.js";
 export { createPonsBudget, type PonsBudget } from "./pons.js";
@@ -90,12 +91,12 @@ export async function resolveWordSafe(
   }
 }
 
-/** Free-text summary for the vault card's Grammar field, from a KaikkiEntry
- * — same human-readable convention the old wikitext version produced
- * ("der; Plural: die Häuser" / "geht, ging, ist gegangen"), now built from
- * already-structured data instead of regex. */
+/** Free-text summary for the vault card's Grammar field, from a KaikkiEntry: principal parts for a verb ("geht,
+ * ging, ist gegangen"), and for a noun the article, singular and plural ending together ("der Hund, -e", "das Haus,
+ * -¨er", "die Eltern (Pl.)"; see vocab/noun-notation.ts). `headword` is the singular when the declension table has none. */
 export function buildGrammarNote(
   entry: { gender: string | null; declension: unknown; conjugation: unknown } | null,
+  headword: string,
 ): string | null {
   if (!entry) return null;
   const conj = entry.conjugation as { present?: Record<string, string>; past?: string; perfect?: string } | null;
@@ -105,22 +106,25 @@ export function buildGrammarNote(
   }
   const decl = entry.declension as Record<string, { sg?: string; pl?: string }> | null;
   if (entry.gender) {
-    const plural = decl?.nom?.pl;
-    return plural ? `${entry.gender}; Plural: die ${plural}` : entry.gender;
+    return formatNounNotation({ article: entry.gender, singular: decl?.nom?.sg ?? headword, plural: decl?.nom?.pl ?? null });
   }
   // plural-only nouns (die Eltern, die Leute): no gender, but the article is always "die"
-  if (decl && Object.values(decl).some((c) => c.pl) && !Object.values(decl).some((c) => c.sg)) return "die (nur Plural)";
+  if (decl && Object.values(decl).some((c) => c.pl) && !Object.values(decl).some((c) => c.sg)) {
+    return formatNounNotation({ article: "die", singular: decl.nom?.pl ?? headword, plural: null, pluralOnly: true });
+  }
   return null;
 }
 
-/** buildGrammarNote, plus the compound-head gender for a noun the dictionary doesn't have a gender for. */
+/** buildGrammarNote, plus the compound's head for a noun the dictionary doesn't have (Radiomoderatorin -> die
+ * Radiomoderatorin, -nen, from Moderatorin). */
 export async function nounGrammarNote(
   headword: string,
   entry: { pos?: string; gender: string | null; declension: unknown; conjugation: unknown } | null,
 ): Promise<string | null> {
-  const note = buildGrammarNote(entry);
+  const note = buildGrammarNote(entry, headword);
   if (note || (entry && entry.pos !== "noun")) return note;
-  return compoundGender(headword);
+  const compound = await compoundNoun(headword);
+  return compound ? formatNounNotation({ article: compound.gender, singular: headword, plural: compound.plural }) : null;
 }
 
 /**

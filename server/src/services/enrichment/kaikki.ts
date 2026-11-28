@@ -483,34 +483,65 @@ const CASE_TAGS: Record<CaseKey, string> = {
 
 const NOUN_LIKE = /^[A-ZÄÖÜ][\p{L}-]*$/u;
 
-/** The single gender the dictionary gives an exact-case noun spelling, or null when it has none or several
- * ("Schild": der shield / das sign). */
-async function onlyNounGender(word: string): Promise<string | null> {
-  const nouns = selectExactCaseEntries(await findEntriesByHeadword(word.toLowerCase()), word).filter((e) => e.pos === "noun" && e.gender);
+export interface CompoundNoun {
+  gender: string;
+  plural: string | null;
+}
+
+type NounRow = { pos: string; gender: string | null; declension: unknown };
+
+/** The single gender the dictionary gives these exact-case noun entries, with their plural when they agree on one;
+ * null when they have no gender or several ("Schild": der shield / das sign). */
+function singleGenderNoun(entries: NounRow[]): CompoundNoun | null {
+  const nouns = entries.filter((e) => e.pos === "noun" && e.gender);
   const genders = new Set(nouns.map((e) => e.gender));
-  return genders.size === 1 ? [...genders][0]! : null;
+  if (genders.size !== 1) return null;
+  const plurals = new Set(nouns.map((e) => (e.declension as { nom?: { pl?: string } } | null)?.nom?.pl).filter(Boolean));
+  return { gender: [...genders][0]!, plural: plurals.size === 1 ? ([...plurals][0] as string) : null };
+}
+
+async function onlyNoun(word: string): Promise<CompoundNoun | null> {
+  return singleGenderNoun(selectExactCaseEntries(await findEntriesByHeadword(word.toLowerCase()), word));
+}
+
+/** Compound plural from its head's: the prefix, then the head's plural lowercased at the join ("Brat" + "Äpfel" ->
+ * "Bratäpfel"). Hyphenated compounds keep the head capitalised ("E-" + "Mails"). */
+function joinPlural(prefix: string, headPlural: string | null, hyphenated: boolean): string | null {
+  if (!headPlural) return null;
+  return prefix + (hyphenated ? headPlural : headPlural[0]!.toLowerCase() + headPlural.slice(1));
 }
 
 /**
- * Gender of a compound the dictionary lacks, from its head (the last part decides German gender: Radiomoderatorin ->
- * Moderatorin -> die, Redemittel -> Mittel -> das). Hyphenated compounds use the part after the last hyphen. Otherwise
- * the longest dictionary-noun suffix of 4+ letters wins; if that suffix has two genders, gives up rather than guess
- * a shorter one. Never for a word the dictionary knows as a proper name (Nürnberg isn't "der" because of Berg).
+ * Gender (and plural) of a compound the dictionary lacks, from its head (the last part decides German gender:
+ * Radiomoderatorin -> Moderatorin -> die, plural Radiomoderatorinnen; Redemittel -> Mittel -> das). Hyphenated
+ * compounds use the part after the last hyphen. Otherwise the longest dictionary-noun suffix of 4+ letters wins; if
+ * that suffix has two genders, gives up rather than guess a shorter one. Never for a word the dictionary knows as a
+ * proper name (Nürnberg isn't "der" because of Berg).
  */
-export async function compoundGender(headword: string): Promise<string | null> {
+export async function compoundNoun(headword: string): Promise<CompoundNoun | null> {
   if (!NOUN_LIKE.test(headword)) return null;
   const own = selectExactCaseEntries(await findEntriesByHeadword(headword.toLowerCase()), headword);
   if (own.some((e) => e.pos === "name")) return null;
-  const tail = headword.slice(headword.lastIndexOf("-") + 1);
-  if (tail !== headword) return NOUN_LIKE.test(tail) && tail.length >= 3 ? ((await onlyNounGender(tail)) ?? compoundGender(tail)) : null;
+  const cut = headword.lastIndexOf("-") + 1;
+  const tail = headword.slice(cut);
+  if (tail !== headword) {
+    if (!NOUN_LIKE.test(tail) || tail.length < 3) return null;
+    const head = (await onlyNoun(tail)) ?? (await compoundNoun(tail));
+    return head ? { gender: head.gender, plural: joinPlural(headword.slice(0, cut), head.plural, true) } : null;
+  }
   for (let i = 1; i <= headword.length - 4; i++) {
     const suffix = headword[i]!.toUpperCase() + headword.slice(i + 1);
-    const nouns = selectExactCaseEntries(await findEntriesByHeadword(suffix.toLowerCase()), suffix).filter((e) => e.pos === "noun" && e.gender);
-    if (nouns.length === 0) continue;
-    const genders = new Set(nouns.map((e) => e.gender));
-    return genders.size === 1 ? [...genders][0]! : null;
+    const entries = selectExactCaseEntries(await findEntriesByHeadword(suffix.toLowerCase()), suffix);
+    if (!entries.some((e) => e.pos === "noun" && e.gender)) continue;
+    const head = singleGenderNoun(entries);
+    return head ? { gender: head.gender, plural: joinPlural(headword.slice(0, i), head.plural, false) } : null;
   }
   return null;
+}
+
+/** Just the article of compoundNoun. */
+export async function compoundGender(headword: string): Promise<string | null> {
+  return (await compoundNoun(headword))?.gender ?? null;
 }
 
 /** Nom/Akk/Dat/Gen x Sg/Pl table from forms tagged `source: "declension"`.
